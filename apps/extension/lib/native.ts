@@ -11,7 +11,7 @@ import type { HoldReason } from './messages'
  */
 
 /** Must match the host manifest name written by `src-tauri/src/capture.rs`. */
-export const HOST_NAME = 'app.reflect.capture'
+export const HOST_NAME = 'app.kore.capture'
 
 export type SendOutcome =
   /** The host spooled the capture — remove it from the queue. */

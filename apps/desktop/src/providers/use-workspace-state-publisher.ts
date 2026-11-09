@@ -6,7 +6,7 @@ import { usePanes } from '@/providers/panes-provider'
 import { useSettings } from '@/providers/settings-provider'
 
 /**
- * Mirrors the main window's open notes into `.reflect/workspace.json` so
+ * Mirrors the main window's open notes into `.kore/workspace.json` so
  * external agents (`kore` CLI, `kore mcp`) can see what the user is looking at.
  * Mount once, under the main window's `PanesProvider`.
  */

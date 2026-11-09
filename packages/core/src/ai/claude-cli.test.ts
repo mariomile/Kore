@@ -9,7 +9,6 @@ import {
   claudeCliSystemPrompt,
   createClaudeCliLineParser,
   claudeStreamJsonUserLine,
-  parseClaudeCliLine,
   streamClaudeCliChat,
 } from './claude-cli'
 
@@ -17,14 +16,16 @@ afterEach(() => {
   setBridge(null)
 })
 
-describe('parseClaudeCliLine', () => {
+describe('createClaudeCliLineParser lines', () => {
+  const parseClaudeCliLine = createClaudeCliLineParser('')
+
   it('extracts top-level assistant text deltas', () => {
     const line = JSON.stringify({
       type: 'stream_event',
       parent_tool_use_id: null,
       event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Ciao' } },
     })
-    expect(parseClaudeCliLine(line)).toEqual({ type: 'text-delta', text: 'Ciao' })
+    expect(parseClaudeCliLine(line)).toEqual([{ type: 'text-delta', text: 'Ciao' }])
   })
 
   it('drops subagent deltas, non-text deltas, and other event types', () => {
@@ -33,26 +34,24 @@ describe('parseClaudeCliLine', () => {
       parent_tool_use_id: 'tool-1',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
     })
-    expect(parseClaudeCliLine(subagent)).toBeNull()
+    expect(parseClaudeCliLine(subagent)).toEqual([])
     const thinking = JSON.stringify({
       type: 'stream_event',
       parent_tool_use_id: null,
       event: { type: 'content_block_delta', delta: { type: 'thinking_delta' } },
     })
-    expect(parseClaudeCliLine(thinking)).toBeNull()
-    expect(parseClaudeCliLine(JSON.stringify({ type: 'system', subtype: 'init' }))).toBeNull()
-    expect(parseClaudeCliLine('not json at all')).toBeNull()
+    expect(parseClaudeCliLine(thinking)).toEqual([])
+    expect(parseClaudeCliLine(JSON.stringify({ type: 'system', subtype: 'init' }))).toEqual([])
+    expect(parseClaudeCliLine('not json at all')).toEqual([])
   })
 
   it('surfaces the terminal result with its error flag', () => {
     expect(
       parseClaudeCliLine(JSON.stringify({ type: 'result', is_error: false, result: 'Ciao' })),
-    ).toEqual({ type: 'result', isError: false, message: 'Ciao' })
-    expect(parseClaudeCliLine(JSON.stringify({ type: 'result', is_error: true }))).toEqual({
-      type: 'result',
-      isError: true,
-      message: null,
-    })
+    ).toEqual([{ type: 'result', isError: false, message: 'Ciao' }])
+    expect(parseClaudeCliLine(JSON.stringify({ type: 'result', is_error: true }))).toEqual([
+      { type: 'result', isError: true, message: null },
+    ])
   })
 })
 
@@ -96,6 +95,8 @@ describe('createClaudeCliLineParser', () => {
           label: 'Subagent',
           detail: 'Summarize alpha',
           parentId: null,
+          kind: 'subagent',
+          notePath: null,
         },
       },
       {
@@ -106,6 +107,8 @@ describe('createClaudeCliLineParser', () => {
           label: 'Find files',
           detail: 'notes/*.md',
           parentId: null,
+          kind: 'search',
+          notePath: null,
         },
       },
     ])
@@ -129,6 +132,8 @@ describe('createClaudeCliLineParser', () => {
           label: 'Read',
           detail: 'notes/alpha.md',
           parentId: 'agent-1',
+          kind: 'read',
+          notePath: 'notes/alpha.md',
         },
       },
     ])
@@ -263,7 +268,7 @@ describe('claudeCliSettingsJson', () => {
     ) as { permissions: { deny: string[] } }
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/notes/secret.md)')
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/daily/2026-01-01.md)')
-    expect(parsed.permissions.deny).toContain('Read(//graphs/work/.reflect/**)')
+    expect(parsed.permissions.deny).toContain('Read(//graphs/work/.kore/**)')
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/.git/**)')
     for (const tool of ['Grep', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch']) {
       expect(parsed.permissions.deny).toContain(tool)
@@ -276,7 +281,7 @@ describe('claudeCliSettingsJson', () => {
     }
     for (const rule of ['Read', 'Write', 'Edit']) {
       expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/notes/secret.md)`)
-      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.reflect/**)`)
+      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.kore/**)`)
       expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.git/**)`)
     }
     expect(parsed.permissions.deny).not.toContain('Write')
@@ -292,7 +297,7 @@ describe('claudeCliSettingsJson', () => {
       permissions: { deny: string[] }
     }
     expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/notes/secret.md)')
-    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/.reflect/**)')
+    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/.kore/**)')
   })
 })
 

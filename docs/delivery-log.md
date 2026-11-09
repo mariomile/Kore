@@ -15,6 +15,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   Agents each agent is Read-only, Proposes changes (the default for a new
   one) or Reads and writes, and you can change it without a new key.
 
+- Kore is the only name left: the vault folder is `.kore/`, links are
+  `kore://`, asset descriptions end in `.kore.md`, and settings live in
+  `kore/`. Opening an existing vault moves every old name across once and
+  never overwrites a file. The Reflect V1 import is gone.
+
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.
 

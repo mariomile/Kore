@@ -224,7 +224,7 @@ describe('focused note menu dispatch', () => {
     await vi.waitFor(() => {
       expect(emitTo).toHaveBeenCalledWith(
         { kind: 'WebviewWindow', label: 'note-1' },
-        'reflect://focused-note-menu-command',
+        'kore://focused-note-menu-command',
         'note.find',
       )
     })
@@ -244,7 +244,7 @@ describe('focused note menu dispatch', () => {
     await vi.waitFor(() => {
       expect(emitTo).toHaveBeenCalledWith(
         { kind: 'WebviewWindow', label: 'note-1' },
-        'reflect://focused-note-menu-command',
+        'kore://focused-note-menu-command',
         'edit.undo',
       )
     })
@@ -264,7 +264,7 @@ describe('focused note menu dispatch', () => {
     await vi.waitFor(() => {
       expect(emitTo).toHaveBeenCalledWith(
         { kind: 'WebviewWindow', label: 'note-1' },
-        'reflect://focused-note-menu-command',
+        'kore://focused-note-menu-command',
         'note.findNext',
       )
     })

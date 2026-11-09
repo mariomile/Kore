@@ -274,7 +274,7 @@ fn search_breaks_title_prefix_ties_by_pinned_then_recency() {
     fixture.write_note("notes/Tim MacRae.md", "an otherwise unrelated body\n");
     fixture.build_index();
 
-    let conn = rusqlite::Connection::open(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    let conn = rusqlite::Connection::open(fixture.root().join(".kore/index.sqlite")).unwrap();
     conn.execute(
         "UPDATE notes SET mtime = 100, is_pinned = 1 WHERE path = 'notes/Tim MacCaw Extended Project Planning.md'",
         [],
@@ -381,7 +381,7 @@ fn search_breaks_ties_by_pinned_then_recency() {
 
     // Identical title + body → identical title-rank and bm25; only the
     // tiebreakers differ. Pin the older note: pinned must win over recency.
-    let conn = rusqlite::Connection::open(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    let conn = rusqlite::Connection::open(fixture.root().join(".kore/index.sqlite")).unwrap();
     conn.execute(
         "UPDATE notes SET mtime = 100, is_pinned = 1 WHERE path = 'notes/older-pinned.md'",
         [],
@@ -419,7 +419,7 @@ fn search_warns_when_the_index_is_stale_but_still_returns_rows() {
     fixture.build_index();
     // An external edit after indexing: same mtime gate can't catch everything,
     // so force divergence (older mtime in the index row + different hash).
-    let conn = rusqlite::Connection::open(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    let conn = rusqlite::Connection::open(fixture.root().join(".kore/index.sqlite")).unwrap();
     conn.execute("UPDATE notes SET mtime = 1, file_hash = 'stale'", [])
         .unwrap();
     drop(conn);
@@ -923,7 +923,7 @@ fn show_resolves_a_nested_vault_path_argument() {
 
 #[test]
 fn scan_resolution_agrees_with_the_index_on_stems() {
-    // The same vault answers the same way whether or not `.reflect` has an
+    // The same vault answers the same way whether or not `.kore` has an
     // index — the parity commit 4 exists to keep.
     let fixture = graph();
     fixture.write_note("a/Plan.md", "# One Thing\nfirst body\n");
@@ -1148,7 +1148,7 @@ fn recent_lists_newest_public_notes_first() {
     fixture.write_note("templates/journal.md", "# Journal\nMood:\n");
     fixture.build_index();
     let conn =
-        rusqlite::Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap();
+        rusqlite::Connection::open(fixture.root().join(".kore").join("index.sqlite")).unwrap();
     for (path, updated) in [
         ("notes/old.md", 1_000_i64),
         ("notes/fresh.md", 2_000),
@@ -1200,7 +1200,7 @@ fn collection_lists_typed_tag_rows_with_properties() {
     );
     fixture.build_index();
     let conn =
-        rusqlite::Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap();
+        rusqlite::Connection::open(fixture.root().join(".kore").join("index.sqlite")).unwrap();
     // Mirror the desktop projection: tag rows, the tag's type, property rows.
     for path in ["notes/dispossessed.md", "notes/dune.md", "notes/secret.md"] {
         conn.execute(
@@ -1810,7 +1810,7 @@ fn active_reads_the_app_state_and_drops_private_tabs() {
     let fixture = agent_fixture();
     assert_eq!(kore(&fixture, &["active"]).status.code(), Some(3));
     fs::write(
-        fixture.root().join(".reflect/workspace.json"),
+        fixture.root().join(".kore/workspace.json"),
         r#"{"version":1,"activeNote":"notes/Secret.md","openNotes":["notes/Ada.md","notes/Secret.md","notes/Gone.md"],"updatedAt":"2026-11-05T10:00:00Z"}"#,
     )
     .unwrap();

@@ -30,7 +30,7 @@ export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
 interface AssetViewerDialogProps {
   /** Graph-relative path of the attachment being viewed (drives the title). */
   assetPath: string
-  /** The `reflect-asset://` URL to render, or null when unresolvable. */
+  /** The `kore-asset://` URL to render, or null when unresolvable. */
   url: string | null
   onClose: () => void
   /** Hand the file to the OS viewer instead (the pre-viewer behavior). */
@@ -39,7 +39,7 @@ interface AssetViewerDialogProps {
 
 /**
  * The in-app attachment viewer: a large dialog rendering the asset off the
- * graph's `reflect-asset://` protocol instead of bouncing to an external
+ * graph's `kore-asset://` protocol instead of bouncing to an external
  * app. PDFs use the webview's native renderer; HTML (and converted DOCX)
  * renders in a fully sandboxed iframe (no scripts, no same-origin, no forms
  * — `sandbox=""`), so a note attachment can never run code against the app;

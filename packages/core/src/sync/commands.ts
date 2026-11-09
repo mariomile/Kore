@@ -141,7 +141,7 @@ export const agentWritesSchema = z.object({
 })
 export type AgentWrites = z.infer<typeof agentWritesSchema>
 
-/** The agent-write journal `kore mcp` keeps under `.reflect/`. */
+/** The agent-write journal `kore mcp` keeps under `.kore/`. */
 export async function gitAgentWrites(generation: number): Promise<AgentWrites> {
   return await call('git_agent_writes', { generation }, agentWritesSchema)
 }

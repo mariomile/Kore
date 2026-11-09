@@ -4,9 +4,10 @@
 //! The owner accepts it (the CLI rebuilds the call through the MCP tool
 //! table and runs it signed as that agent) or rejects it (the file goes).
 //!
-//! The folder lives in the vault, not in `.reflect/`, so a proposal an agent
-//! makes through an always-on host reaches the owner's Mac with the next
-//! sync. It is hidden, so no index or note list ever shows it.
+//! The folder is the one synced part of the vault's `.kore/` runtime
+//! directory, so a proposal an agent makes through an always-on host
+//! reaches the owner's Mac with the next sync. It is hidden, so no index or
+//! note list ever shows it.
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -106,6 +107,12 @@ pub fn remove(root: &Path, id: &str) -> Result<(), CliError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn proposals_live_in_the_synced_part_of_the_runtime_directory() {
+        use reflect_index_schema::{KORE_DIR, SYNCED_SUBDIR};
+        assert_eq!(DIR, format!("{KORE_DIR}/{SYNCED_SUBDIR}"));
+    }
 
     #[test]
     fn proposals_round_trip_in_time_order_and_ids_cannot_escape() {

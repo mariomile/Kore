@@ -1,4 +1,4 @@
-//! Row-level access to `<graph>/.reflect/index.sqlite` (Plan 04): the write
+//! Row-level access to `<graph>/.kore/index.sqlite` (Plan 04): the write
 //! path that applies TS-built note projections, the reconcile scan, the
 //! embedding-table writes, and the read-only query bridge.
 //!

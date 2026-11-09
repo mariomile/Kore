@@ -49,8 +49,9 @@ pub(super) fn commit_all(
     ensure_clean_state(&repo)?;
     // In-memory hard guarantee, independent of any on-disk ignore file: the
     // runtime directory must never enter a backup commit (Plan 21 — a synced
-    // `.reflect/` is index corruption on every other device).
-    repo.add_ignore_rule("/.reflect/")?;
+    // `.kore/` is index corruption on every other device). Its `proposals/`
+    // subtree is the one exception: it syncs by design (Plan 33, A2).
+    repo.add_ignore_rule(&reflect_index_schema::IGNORE_RULES.join("\n"))?;
 
     let mut index = repo.index()?;
     let skipped = add_all_with_size_guard(&mut index, root, max_file_bytes)?;
@@ -163,7 +164,7 @@ pub(super) struct CommitAuthor {
 /// Commit only `paths` (graph-relative; adds, edits and deletions), authored
 /// by `author` and committed by the repository's own identity. Everything
 /// else in the working tree stays uncommitted for the next
-/// [`commit_all`]. Paths inside `.reflect/`, absolute paths, paths that
+/// [`commit_all`]. Paths inside `.kore/` (other than `proposals/`), absolute paths, paths that
 /// climb out of the graph, and files at/above the size guardrail are
 /// ignored. `committed: false` when the paths match HEAD.
 pub(super) fn commit_paths(
@@ -262,15 +263,20 @@ fn commit_index(
     })
 }
 
-/// A plain graph-relative path outside `.reflect/`.
+/// A plain graph-relative path outside `.kore/`, or inside its synced
+/// `proposals/` subtree.
 fn is_committable(rel: &str) -> bool {
     let path = Path::new(rel);
+    let mut components = path.components();
     !rel.is_empty()
         && path
             .components()
             .all(|component| matches!(component, std::path::Component::Normal(_)))
-        && path
-            .components()
-            .next()
-            .is_some_and(|first| first.as_os_str() != ".reflect")
+        && match components.next() {
+            Some(first) if first.as_os_str() == reflect_index_schema::KORE_DIR => components
+                .next()
+                .is_some_and(|second| second.as_os_str() == reflect_index_schema::SYNCED_SUBDIR),
+            Some(_) => true,
+            None => false,
+        }
 }

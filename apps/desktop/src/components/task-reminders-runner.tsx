@@ -19,12 +19,12 @@ const CHECK_INTERVAL_MS = 60_000
 
 /** Per-graph localStorage key: the last local day a reminder was sent. */
 export function taskRemindersCacheKey(graphRoot: string): string {
-  return `reflect.taskReminders.lastDay:${graphRoot}`
+  return `kore.taskReminders.lastDay:${graphRoot}`
 }
 
 /** Per-graph localStorage key: punctual task notifications already fired today. */
 export function taskRemindersPunctualCacheKey(graphRoot: string): string {
-  return `reflect.taskReminders.punctual:${graphRoot}`
+  return `kore.taskReminders.punctual:${graphRoot}`
 }
 
 /** The one-per-day summary line, or null when nothing is due. */

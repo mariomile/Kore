@@ -11,7 +11,14 @@
  * Subagent steps carry `parentId`: the id of the `Agent` call that spawned
  * them (the stream's `parent_tool_use_id`), which is how the renderer nests
  * a subagent's work under its card.
+ *
+ * The engine's tool names stop here: a step also carries its `kind` and the
+ * note it touched (`notePath`), so the renderer never switches on `Read`,
+ * `Agent` or `mcp__…` and another engine only has to describe its own tools.
  */
+
+/** What a step does, as the renderer shows it (its icon, whether it is a subagent card). */
+export type AgentStepKind = 'read' | 'write' | 'search' | 'plan' | 'subagent' | 'mcp' | 'other'
 
 /** One tool call the agent made, as the transcript records it. */
 export interface AgentStep {
@@ -25,6 +32,9 @@ export interface AgentStep {
   detail: string | null
   /** The subagent call this step ran inside, or null for the main agent. */
   parentId: string | null
+  kind: AgentStepKind
+  /** The graph-relative note the step read or wrote, which the transcript opens; else null. */
+  notePath: string | null
 }
 
 /** How a step ended: an error message, or a content-free summary of success. */
@@ -34,8 +44,56 @@ export interface AgentStepOutcome {
 }
 
 /** The tool name a subagent call goes by (`Task` is the pre-2.1 spelling). */
-export function isSubagentTool(tool: string): boolean {
+function isSubagentTool(tool: string): boolean {
   return tool === 'Agent' || tool === 'Task'
+}
+
+/** The kind of one Claude Code tool. */
+function claudeToolKind(tool: string): AgentStepKind {
+  if (isSubagentTool(tool)) {
+    return 'subagent'
+  }
+  switch (tool) {
+    case 'Read':
+      return 'read'
+    case 'Write':
+    case 'Edit':
+    case 'MultiEdit':
+    case 'NotebookEdit':
+      return 'write'
+    case 'Glob':
+    case 'Grep':
+      return 'search'
+    case 'TodoWrite':
+      return 'plan'
+    default:
+      return tool.startsWith('mcp__') ? 'mcp' : 'other'
+  }
+}
+
+/** The tools whose path is a note the user can open from the transcript. */
+const NOTE_TOOLS: ReadonlySet<string> = new Set(['Read', 'Write', 'Edit', 'MultiEdit'])
+
+/** A graph-relative Markdown path one of {@link NOTE_TOOLS} touched, else null. */
+function claudeNotePath(tool: string, path: string | null): string | null {
+  return NOTE_TOOLS.has(tool) && path !== null && path.endsWith('.md') && !path.startsWith('/')
+    ? path
+    : null
+}
+
+/**
+ * A step persisted before steps carried `kind` and `notePath`: derive both
+ * from its tool, as the transcript renderer used to. Its `detail` is the
+ * clipped relative path, so a clipped one opens nothing, as before.
+ */
+export function upgradeLegacyStep<T extends { tool: string; detail: string | null }>(
+  step: T,
+): T & Pick<AgentStep, 'kind' | 'notePath'> {
+  return {
+    ...step,
+    kind: claudeToolKind(step.tool),
+    notePath: claudeNotePath(step.tool, step.detail),
+  }
 }
 
 /** How a step the privacy sandbox refused reads in the transcript. */
@@ -84,45 +142,51 @@ export function describeClaudeToolCall(options: {
   graphRoot: string
 }): AgentStep {
   const { id, tool, input, parentId, graphRoot } = options
-  const path = stringField(input, 'file_path') ?? stringField(input, 'notebook_path')
-  const pathDetail = path === null ? null : clip(relativePath(path, graphRoot))
-  const base = { id, tool, parentId }
+  const absolute = stringField(input, 'file_path') ?? stringField(input, 'notebook_path')
+  const path = absolute === null ? null : relativePath(absolute, graphRoot)
+  const pathDetail = path === null ? null : clip(path)
+  const base = {
+    id,
+    tool,
+    parentId,
+    kind: claudeToolKind(tool),
+    notePath: claudeNotePath(tool, path),
+  }
+  return { ...base, ...claudeToolText(tool, input, pathDetail) }
+}
+
+/** The label and detail one Claude Code tool call shows. */
+function claudeToolText(
+  tool: string,
+  input: Record<string, unknown>,
+  pathDetail: string | null,
+): Pick<AgentStep, 'label' | 'detail'> {
+  if (isSubagentTool(tool)) {
+    return {
+      label: subagentLabel(stringField(input, 'subagent_type')),
+      detail: clipOrNull(stringField(input, 'description')),
+    }
+  }
   switch (tool) {
     case 'Read':
-      return { ...base, label: 'Read', detail: pathDetail }
+      return { label: 'Read', detail: pathDetail }
     case 'Write':
-      return { ...base, label: 'Write', detail: pathDetail }
+      return { label: 'Write', detail: pathDetail }
     case 'Edit':
     case 'MultiEdit':
     case 'NotebookEdit':
-      return { ...base, label: 'Edit', detail: pathDetail }
+      return { label: 'Edit', detail: pathDetail }
     case 'Glob':
-      return {
-        ...base,
-        label: 'Find files',
-        detail: clipOrNull(stringField(input, 'pattern')),
-      }
+      return { label: 'Find files', detail: clipOrNull(stringField(input, 'pattern')) }
     case 'Grep':
-      return {
-        ...base,
-        label: 'Search',
-        detail: clipOrNull(stringField(input, 'pattern')),
-      }
+      return { label: 'Search', detail: clipOrNull(stringField(input, 'pattern')) }
     case 'TodoWrite':
-      return { ...base, label: 'Update plan', detail: null }
-    case 'Agent':
-    case 'Task':
-      return {
-        ...base,
-        label: subagentLabel(stringField(input, 'subagent_type')),
-        detail: clipOrNull(stringField(input, 'description')),
-      }
+      return { label: 'Update plan', detail: null }
     default: {
       const mcp = mcpParts(tool)
-      if (mcp !== null) {
-        return { ...base, label: clip(mcp.name), detail: mcp.server }
-      }
-      return { ...base, label: clip(tool), detail: pathDetail }
+      return mcp === null
+        ? { label: clip(tool), detail: pathDetail }
+        : { label: clip(mcp.name), detail: mcp.server }
     }
   }
 }
@@ -182,7 +246,7 @@ export function summarizeClaudeToolResult(options: {
 }): AgentStepOutcome {
   if (options.isError) {
     const message = clip(resultText(options.content).replaceAll(/<\/?tool_use_error>/g, ''))
-    // The sandbox's deny rules (private notes, .reflect/, .git/) answer in
+    // The sandbox's deny rules (private notes, .kore/, .git/) answer in
     // CLI jargon; say what it means instead.
     if (/denied by your permission settings/i.test(message)) {
       return { error: PRIVACY_DENIED, summary: null }
@@ -193,6 +257,15 @@ export function summarizeClaudeToolResult(options: {
     }
   }
   const structured = options.structured
+  if (options.tool !== null && isSubagentTool(options.tool)) {
+    const steps = numberField(structured, 'totalToolUseCount')
+    const ms = numberField(structured, 'totalDurationMs')
+    const parts = [
+      ...(steps === null ? [] : [plural(steps, 'step')]),
+      ...(ms === null ? [] : [`${Math.max(1, Math.round(ms / 1000))}s`]),
+    ]
+    return { error: null, summary: parts.length === 0 ? null : parts.join(' · ') }
+  }
   switch (options.tool) {
     case 'Glob': {
       const files = numberField(structured, 'numFiles')
@@ -212,19 +285,6 @@ export function summarizeClaudeToolResult(options: {
         summary: lines === null ? null : plural(lines, 'line'),
       }
     }
-    case 'Agent':
-    case 'Task': {
-      const steps = numberField(structured, 'totalToolUseCount')
-      const ms = numberField(structured, 'totalDurationMs')
-      const parts = [
-        ...(steps === null ? [] : [plural(steps, 'step')]),
-        ...(ms === null ? [] : [`${Math.max(1, Math.round(ms / 1000))}s`]),
-      ]
-      return {
-        error: null,
-        summary: parts.length === 0 ? null : parts.join(' · '),
-      }
-    }
     default:
       return { error: null, summary: null }
   }
@@ -233,32 +293,27 @@ export function summarizeClaudeToolResult(options: {
 /** A step and the steps that ran inside it (a subagent's work). */
 export interface AgentStepNode<T extends { step: AgentStep }> {
   item: T
+  /** Only a subagent step has children. */
   children: AgentStepNode<T>[]
 }
 
 /**
  * Nest steps under the subagent calls that spawned them, preserving order.
- * A step whose parent is not in the list (should not happen) stays a root
- * rather than vanishing.
+ * Only a subagent step takes children; a step whose parent is missing or is
+ * not a subagent (should not happen) stays where it ran rather than vanishing.
  */
 export function agentStepTree<T extends { step: AgentStep }>(
   items: readonly T[],
 ): AgentStepNode<T>[] {
-  const nodes = new Map<string, AgentStepNode<T>>()
-  for (const item of items) {
-    nodes.set(item.step.id, { item, children: [] })
-  }
+  const subagents = new Map<string, AgentStepNode<T>>()
   const roots: AgentStepNode<T>[] = []
   for (const item of items) {
-    const node = nodes.get(item.step.id)
-    if (node === undefined) {
-      continue
-    }
-    const parent = item.step.parentId === null ? undefined : nodes.get(item.step.parentId)
-    if (parent !== undefined && parent !== node) {
-      parent.children.push(node)
-    } else {
-      roots.push(node)
+    const node: AgentStepNode<T> = { item, children: [] }
+    const parent = item.step.parentId === null ? undefined : subagents.get(item.step.parentId)
+    const siblings = parent === undefined ? roots : parent.children
+    siblings.push(node)
+    if (item.step.kind === 'subagent') {
+      subagents.set(item.step.id, node)
     }
   }
   return roots

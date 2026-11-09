@@ -4818,6 +4818,7 @@ dependencies = [
  "rusqlite",
  "rusqlite_migration",
  "sqlite-vec",
+ "tempfile",
 ]
 
 [[package]]

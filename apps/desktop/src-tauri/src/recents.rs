@@ -1,7 +1,7 @@
 //! Recent-graphs list (Plan 02).
 //!
 //! The recents list lives in the OS config dir — **never** inside any one
-//! graph's `.reflect/` — so it survives graph deletion and isn't synced as note
+//! graph's `.kore/` — so it survives graph deletion and isn't synced as note
 //! content.
 
 use std::fs;
@@ -26,8 +26,7 @@ pub struct RecentGraph {
 }
 
 fn store_path() -> AppResult<PathBuf> {
-    let base = dirs::config_dir().ok_or_else(|| AppError::io("no OS config dir"))?;
-    Ok(base.join("reflect-open").join("recent-graphs.json"))
+    Ok(crate::app_dir::app_config_dir()?.join("recent-graphs.json"))
 }
 
 /// Load the stored list. A missing store is an empty list, but a real IO error

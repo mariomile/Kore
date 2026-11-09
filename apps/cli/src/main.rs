@@ -12,14 +12,14 @@ use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
 /// Read, discover, and capture notes in a Kore graph.
 ///
 /// The graph resolves from --graph, then $KORE_GRAPH, then the nearest
-/// ancestor of the current directory containing .reflect/. Notes marked
+/// ancestor of the current directory containing .kore/. Notes marked
 /// `private: true` are never returned (and never captured into). Exit codes:
 /// 0 ok, 1 error, 2 usage, 3 not found or private, 4 index missing
 /// (search/tasks).
 #[derive(Parser)]
 #[command(name = "kore", version)]
 struct Cli {
-    /// Graph directory (default: nearest ancestor with .reflect/, or $KORE_GRAPH)
+    /// Graph directory (default: nearest ancestor with .kore/, or $KORE_GRAPH)
     #[arg(long, global = true, value_name = "PATH")]
     graph: Option<PathBuf>,
 

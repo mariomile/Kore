@@ -1,6 +1,6 @@
 //! SQLite index layer (Plan 04).
 //!
-//! The graph's rebuildable projection lives at `<graph>/.reflect/index.sqlite`,
+//! The graph's rebuildable projection lives at `<graph>/.kore/index.sqlite`,
 //! backed by the bundled SQLite (FTS5 compiled in) with sqlite-vec registered for
 //! Plan 09. Parsing/extraction happens in TS (`@reflect/core`, Plan 03); this
 //! module owns the schema/migrations ([`migrations`]), all writes — one
@@ -182,7 +182,7 @@ pub async fn index_open<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<u64> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index open");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index open");
     crate::blocking::run_blocking(move || {
         let graph = app.state::<GraphState>();
         let index = app.state::<IndexState>();
@@ -214,7 +214,7 @@ pub async fn index_apply<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index update");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index update");
     let applied = crate::blocking::run_blocking({
         let app = app.clone();
         move || {
@@ -237,7 +237,7 @@ pub async fn index_apply_batch<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index update");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index update");
     let applied = crate::blocking::run_blocking({
         let app = app.clone();
         move || {
@@ -279,7 +279,7 @@ pub async fn index_remove_batch<R: tauri::Runtime>(
     if paths.is_empty() {
         return Ok(());
     }
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index remove");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index remove");
     let wrote = crate::blocking::run_blocking({
         let app = app.clone();
         move || {
@@ -340,7 +340,7 @@ pub async fn note_move_indexed<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect note move");
+    let _background_task = background_task::scoped(&background_tasks, "Kore note move");
     // Kept for the events fired after the hop; `request` itself moves into
     // the closure below.
     let from = request.from.clone();
@@ -399,7 +399,7 @@ pub async fn index_move<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index move");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index move");
     // Kept for the events fired after the hop; `from`/`to` themselves move
     // into the closure below.
     let event_from = from.clone();
@@ -493,7 +493,7 @@ pub async fn index_touch<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index touch");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index touch");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         let mut state = lock_state(&index)?;
@@ -534,7 +534,7 @@ pub async fn index_meta_set<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index metadata");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index metadata");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         set_index_meta_for(&index, &key, &value, generation)
@@ -551,7 +551,7 @@ pub async fn index_clear<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index clear");
+    let _background_task = background_task::scoped(&background_tasks, "Kore index clear");
     let cleared = crate::blocking::run_blocking({
         let app = app.clone();
         move || {
@@ -585,7 +585,7 @@ pub async fn chat_message_save<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect chat save");
+    let _background_task = background_task::scoped(&background_tasks, "Kore chat save");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         let mut state = lock_state(&index)?;
@@ -623,7 +623,7 @@ pub async fn chat_conversation_delete<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect chat delete");
+    let _background_task = background_task::scoped(&background_tasks, "Kore chat delete");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         delete_chat_conversation_for(&index, &id, generation)
@@ -641,7 +641,7 @@ pub async fn embed_apply<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect embeddings update");
+    let _background_task = background_task::scoped(&background_tasks, "Kore embeddings update");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         let mut state = lock_state(&index)?;
@@ -665,7 +665,7 @@ pub async fn embed_remove<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect embeddings remove");
+    let _background_task = background_task::scoped(&background_tasks, "Kore embeddings remove");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
         let mut state = lock_state(&index)?;

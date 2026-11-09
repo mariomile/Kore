@@ -44,7 +44,7 @@ fn read_only_authorization(context: AuthContext<'_>) -> Authorization {
     }
 }
 
-/// Open the read bridge's connection: `<root>/.reflect/index.sqlite`
+/// Open the read bridge's connection: `<root>/.kore/index.sqlite`
 /// read-only, guarded by [`read_only_authorization`] for its whole life.
 /// Installing the authorizer once matters: `sqlite3_set_authorizer` expires
 /// every prepared statement, so toggling it around each query made SQLite

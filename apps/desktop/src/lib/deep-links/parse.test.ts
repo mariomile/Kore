@@ -115,19 +115,9 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink('kore://append/extra?text=hi')).toBeNull()
   })
 
-  it('still reads links written with the legacy reflect scheme', () => {
-    expect(parseDeepLink('reflect://today')).toEqual({
-      kind: 'navigate',
-      route: { kind: 'today' },
-    })
-    expect(parseDeepLink('reflect://note/01hzy3v9k2m4n6p8q0r2s4t6vw')).toEqual({
-      kind: 'openNote',
-      target: '01hzy3v9k2m4n6p8q0r2s4t6vw',
-    })
-  })
-
   it('rejects other schemes, unknown verbs, and non-URLs', () => {
     expect(parseDeepLink('https://today')).toBeNull()
+    expect(parseDeepLink('reflect://today')).toBeNull()
     expect(parseDeepLink('kore://settings')).toBeNull()
     expect(parseDeepLink('kore://edit-notes?content=evil')).toBeNull()
     expect(parseDeepLink('not a url')).toBeNull()
@@ -136,11 +126,10 @@ describe('parseDeepLink', () => {
 })
 
 describe('isDeepLinkUrl', () => {
-  it('matches the kore scheme and the legacy reflect one, regardless of case', () => {
+  it('matches only the kore scheme, regardless of case', () => {
     expect(isDeepLinkUrl('kore://today')).toBe(true)
     expect(isDeepLinkUrl('KORE://note/abc')).toBe(true)
-    expect(isDeepLinkUrl('reflect://today')).toBe(true)
-    expect(isDeepLinkUrl('REFLECT://note/abc')).toBe(true)
+    expect(isDeepLinkUrl('reflect://today')).toBe(false)
   })
 
   it('matches scheme-only, even links the parser would reject', () => {

@@ -105,7 +105,7 @@ export async function buildNoteProjection(
  *
  * The re-applied notes broadcast through {@link emitIndexApplied} — the same
  * post-apply signal the live indexer emits — because these writes bypass the
- * watcher pipeline entirely (`.reflect.md` files are untracked by design).
+ * watcher pipeline entirely (`.kore.md` files are untracked by design).
  * Without it, subscribers that follow the index (the embedding sync above
  * all, which must re-embed the notes so the new description text reaches the
  * semantic leg too) would never hear about description-driven changes.

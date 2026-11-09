@@ -27,7 +27,7 @@ const fresh: ChatAttachment = {
 
 describe('persistChatAttachmentFile', () => {
   it('writes the base64 payload and returns the attachment with its path', async () => {
-    const invoke = bridgeWith(vi.fn(async () => '.reflect/chat-attachments/conv-1/att-1.png'))
+    const invoke = bridgeWith(vi.fn(async () => '.kore/chat-attachments/conv-1/att-1.png'))
 
     const persisted = await persistChatAttachmentFile('conv-1', fresh, 7)
 
@@ -37,7 +37,7 @@ describe('persistChatAttachmentFile', () => {
       bytesBase64: 'iVBORw==',
       generation: 7,
     })
-    expect(persisted).toEqual({ ...fresh, path: '.reflect/chat-attachments/conv-1/att-1.png' })
+    expect(persisted).toEqual({ ...fresh, path: '.kore/chat-attachments/conv-1/att-1.png' })
   })
 
   it('leaves unknown media types, byte-less, and already-persisted attachments alone', async () => {
@@ -58,7 +58,7 @@ describe('readChatAttachmentDataUrl', () => {
     bridgeWith(vi.fn(async () => 'iVBORw=='))
 
     const dataUrl = await readChatAttachmentDataUrl(
-      { ...fresh, dataUrl: undefined, path: '.reflect/chat-attachments/conv-1/att-1.png' },
+      { ...fresh, dataUrl: undefined, path: '.kore/chat-attachments/conv-1/att-1.png' },
       7,
     )
 

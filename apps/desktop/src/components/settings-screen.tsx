@@ -17,7 +17,6 @@ import { ConnectorsSection } from './settings/connectors-section'
 import { DateTimeSection } from './settings/date-time-section'
 import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
-import { ImportSection } from './settings/import-section'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { ObsidianImportSection } from './settings/obsidian-import-section'
@@ -49,7 +48,6 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   sync: SyncSection,
   connectors: ConnectorsSection,
   integrations: IntegrationsSection,
-  import: ImportSection,
   'vault-compat': VaultCompatSection,
   'obsidian-import': ObsidianImportSection,
   about: AboutSection,

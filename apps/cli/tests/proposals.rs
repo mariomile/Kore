@@ -64,6 +64,9 @@ fn an_agents_tool_call_is_kept_signed_by_the_process_not_the_input() {
     assert_eq!(waiting[0]["agent"]["email"], "grok@agents.kore");
     assert_eq!(waiting[0]["call"]["tool"], "capture");
     assert_eq!(waiting[0]["call"]["arguments"]["text"], "buy milk");
+    // Journaled like an agent's note, so `kore mcp --sync` commits and pushes it.
+    let journal = read(&fixture, ".kore/agent-writes.jsonl");
+    assert!(journal.contains("\"path\":\".kore/proposals/"), "{journal}");
 }
 
 #[test]
@@ -126,7 +129,7 @@ fn accepting_writes_the_call_as_the_agent_and_rejecting_writes_nothing() {
         .concat();
     assert!(notes.contains("buy milk"), "{notes}");
     assert!(!notes.contains("buy eggs"), "{notes}");
-    let journal = read(&fixture, ".reflect/agent-writes.jsonl");
+    let journal = read(&fixture, ".kore/agent-writes.jsonl");
     assert!(journal.contains("\"agent\":\"Grok\""), "{journal}");
 }
 

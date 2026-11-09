@@ -123,8 +123,9 @@ export function TasksScreen(): ReactElement {
   const { data: projectNotes } = useQuery({
     queryKey: projectNotePathsQueryKey(graph?.root),
     queryFn: () => getProjectNotePaths(),
-    // Projects groups by them; Quick Add's `#Name` picks one.
-    enabled: enabled && (view === 'projects' || quickAddOpen),
+    // Projects groups by them; Quick Add's `#Name` picks one, so load them
+    // before the dialog opens: a fast "q, #Kore, Return" must still find it.
+    enabled,
   })
   const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
   const projects = useMemo(

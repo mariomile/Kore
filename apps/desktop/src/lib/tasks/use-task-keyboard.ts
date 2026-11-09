@@ -218,7 +218,7 @@ export function useTaskKeyboard({
         }
       }
       pendingGoToRef.current = 0
-      if (plain && onQuickAdd !== undefined && (event.key === 'q' || event.key === 'Q')) {
+      if (plain && onQuickAdd !== undefined && event.key === 'q') {
         event.preventDefault()
         onQuickAdd()
         return

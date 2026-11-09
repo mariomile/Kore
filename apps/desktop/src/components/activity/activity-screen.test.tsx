@@ -2,18 +2,24 @@ import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { ActivityCommit, ActivityPage } from '@reflect/core'
+import type { ActivityCommit, ActivityPage, Proposal } from '@reflect/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 
 const gitActivity = vi.hoisted(() => vi.fn<() => Promise<ActivityPage>>())
 const gitNoteHistory = vi.hoisted(() => vi.fn(() => Promise.resolve([])))
 const undoSitting = vi.hoisted(() => vi.fn())
+const listProposals = vi.hoisted(() => vi.fn<() => Promise<Proposal[]>>())
+const acceptProposal = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const rejectProposal = vi.hoisted(() => vi.fn<() => Promise<void>>())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   gitActivity,
   gitNoteHistory,
   undoSitting,
+  listProposals,
+  acceptProposal,
+  rejectProposal,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexGeneration: 1 }),
@@ -62,9 +68,19 @@ function RouteProbe(): ReactNode {
   return <output data-testid="route">{JSON.stringify(route)}</output>
 }
 
+const EDIT: Proposal = {
+  id: '1762621200000-abc',
+  at: NOW,
+  agent: { name: 'Grok bot', email: 'grok-bot@agents.kore' },
+  call: { tool: 'edit_note', arguments: { note: 'Atlas', oldText: 'draft', newText: 'final' } },
+}
+
 beforeEach(() => {
   gitActivity.mockReset().mockResolvedValue(PAGE)
   undoSitting.mockReset()
+  listProposals.mockReset().mockResolvedValue([])
+  acceptProposal.mockReset().mockResolvedValue(undefined)
+  rejectProposal.mockReset().mockResolvedValue(undefined)
 })
 
 async function renderScreen() {
@@ -137,5 +153,35 @@ describe('ActivityScreen', () => {
     await view.getByRole('button', { name: 'Undo', exact: true }).click()
     await expect.element(view.getByText(/Nothing was undone/)).toBeVisible()
     await expect.element(view.getByText('edited again since')).toBeVisible()
+  })
+
+  it('shows what a proposing agent wants to change and accepts it', async () => {
+    listProposals.mockResolvedValueOnce([EDIT]).mockResolvedValue([])
+    const view = await renderScreen()
+    const row = view.getByRole('listitem', { name: 'Grok bot: Edit Atlas' })
+    await expect.element(row).toBeVisible()
+    await expect.element(row.getByText('draft')).toBeVisible()
+    await expect.element(row.getByText('final')).toBeVisible()
+    await row.getByRole('button', { name: 'Accept' }).click()
+    await vi.waitFor(() => expect(acceptProposal).toHaveBeenCalledWith(1, EDIT.id))
+    await expect.element(view.getByText('Waiting for you')).not.toBeInTheDocument()
+  })
+
+  it('keeps a proposal whose write failed and says why', async () => {
+    listProposals.mockResolvedValue([EDIT])
+    acceptProposal.mockRejectedValue(new Error('the passage is not in the note any more'))
+    const view = await renderScreen()
+    await view.getByRole('button', { name: 'Accept' }).click()
+    await expect.element(view.getByText('the passage is not in the note any more')).toBeVisible()
+    await expect.element(view.getByText('Waiting for you')).toBeVisible()
+  })
+
+  it('rejects a proposal even before backup is on', async () => {
+    gitActivity.mockRejectedValue(new Error('no repository'))
+    listProposals.mockResolvedValueOnce([EDIT]).mockResolvedValue([])
+    const view = await renderScreen()
+    await view.getByRole('button', { name: 'Reject' }).click()
+    await vi.waitFor(() => expect(rejectProposal).toHaveBeenCalledWith(1, EDIT.id))
+    await expect.element(view.getByText(/read from the vault’s backup history/)).toBeVisible()
   })
 })

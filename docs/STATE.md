@@ -55,6 +55,9 @@ Draft without typing. Same draft PR #348, one step per commit.
 - [x] Next number counts every note in the tag, private ones included, in
   the app and the CLI alike (Mario, 2026-11-09), so a number is never
   handed out twice.
+- [x] The tag inheritance pass can no longer fail indexing a note (its
+  write already committed; a failure is logged), and every graph open runs
+  it once, so a failed pass heals itself (review fix, 2026-11-09).
 - Known limit: two notes born at the same instant can draw the same
   number.
 

@@ -92,6 +92,23 @@ export async function refreshTagTypeResolutions(generation: number): Promise<voi
   await call('index_tag_types_resolve', { rows: resolutions, generation }, voidSchema)
 }
 
+/**
+ * {@link refreshTagTypeResolutions} for callers whose own write already
+ * committed: a failure is logged, never thrown, so one bad pass cannot fail
+ * indexing a note. The stored columns keep their last values until the next
+ * pass, and every graph open runs one (`syncIndex`), so it heals itself.
+ */
+export async function refreshTagTypeResolutionsSafely(generation: number): Promise<void> {
+  try {
+    await refreshTagTypeResolutions(generation)
+  } catch (error: unknown) {
+    console.error(
+      'index: tag inheritance pass failed; it runs again on the next tag write or graph open',
+      error,
+    )
+  }
+}
+
 /** Which stored view a read wants: everything, or the outbound one. */
 export interface TagTypeReadOptions {
   /**

@@ -3,7 +3,7 @@ import { noteBasenameKey } from '../graph/note-reference'
 import { dateFromDailyPath, foldGraphPath, isCalendarDate } from '../graph/paths'
 import { call } from '../ipc/invoke'
 import type { IndexedNote } from './indexed-note'
-import { refreshTagTypeResolutions, touchesTagDefinitions } from './resolved-tag-types'
+import { refreshTagTypeResolutionsSafely, touchesTagDefinitions } from './resolved-tag-types'
 
 /** Index commands return `()` from Rust, which serializes to `null` over IPC. */
 const voidSchema = z.null()
@@ -27,11 +27,12 @@ export async function applyIndexedNote(note: IndexedNote, generation: number): P
 /**
  * Re-run the tag inheritance pass (Plan 33 B2) when a write touched a
  * definition note: a parent's change reshapes every child's stored schema,
- * so the pass covers the whole table, not only the written rows.
+ * so the pass covers the whole table, not only the written rows. The note's
+ * own write has already committed, so a failing pass never fails it.
  */
 async function afterTagWrite(paths: Iterable<string>, generation: number): Promise<void> {
   if (touchesTagDefinitions(paths)) {
-    await refreshTagTypeResolutions(generation)
+    await refreshTagTypeResolutionsSafely(generation)
   }
 }
 

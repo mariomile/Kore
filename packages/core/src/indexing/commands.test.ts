@@ -36,6 +36,21 @@ describe('the tag inheritance pass after index writes (Plan 33 B2)', () => {
     expect(commands().filter((command) => command === 'index_tag_types_resolve')).toHaveLength(2)
   })
 
+  it('logs a failing pass instead of failing the write that already committed', async () => {
+    invoke.mockImplementation(async (command) => {
+      if (command === 'index_tag_types_resolve') {
+        throw new Error('disk full')
+      }
+      return command === 'db_query'
+        ? [{ tag_key: 'contact', schema_json: '[]', is_private: 0 }]
+        : null
+    })
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(applyIndexedNotes([note('tags/contact.md')], 3)).resolves.toBeUndefined()
+    expect(logged).toHaveBeenCalledOnce()
+    logged.mockRestore()
+  })
+
   it('skips the pass when no definition note is involved', async () => {
     await applyIndexedNotes([note('people/ada.md')], 3)
     await removeFromIndexBatch(['people/ada.md'], 3)

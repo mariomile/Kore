@@ -1,5 +1,27 @@
 # Kore working state
 
+## Quick Add review fixes, 2026-11-09
+
+Ask: Mario OK'd the strict review of #346
+(`/mnt/project-files/analisi/review-qualita-pr-aperte-2026-11-08.md`, section
+"#346"). One commit per step.
+
+- [x] Core grammar: `QuickAdd.repeat` is a `TaskRepeat`; content is built with
+  `withTaskContentPriority`, `formatTaskDue` (task-due.ts) and
+  `formatTaskRepeat` (task-repeat.ts). "ogni 0 giorni" and `@repeat(foo)` stay
+  text; a second `[[date]]` stays plain text. Round-trip test re-reads content
+  with core's parsers.
+- [x] Look-alikes stay text: set/ago/mar/mag/gen/may need a preposition or a
+  year ("3 gen" alone no longer counts; "il 3 gen", "3 gennaio" do), "at 2"
+  needs minutes or am/pm, "1/2" needs a preposition or a year.
+- [x] Minor: projects load with the Tasks view, `Q` dropped (Shift never
+  reached it), ⌘T input capped at `TEXT_CAPTURE_MAX_LENGTH - QUICK_ADD_MAX_ADDED`,
+  ⌘T window documented as daily-only (no project list).
+- Left as is: `addTask`'s session path vs disk path mirrors the recurring-task
+  append; a missing daily note starts without its template, same as
+  `insertTask` (pre-existing, worth one fix for both). Quick Add stays in
+  `core/indexing` next to task-repeat/task-priority/task-views.
+
 ## Tasks: a way to the task's note, 2026-11-09
 
 Ask (Mario, 2026-11-09 08:33, with a screenshot of the Inbox: "devo avere il
@@ -3292,6 +3314,16 @@ screen: Agents then Close lands on today.
   (app runs the bundled CLI via `proposals_run`). Settings → Agents picks
   read / propose / write per agent, changeable without a new key; new
   agents start at propose. A2 is complete pending Mario's live check.
+
+- 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
+  moves to core: `headless/sync-sources.ts` resolves which connectors run,
+  their `KORE_<SOURCE>_*` variables and defaults from `CONNECTORS`; the
+  Rust side keeps only the flags and the `.reflect/sources.json` windows,
+  and the indexer host's write permission is an explicit `Session` mode.
+  The three bounded fetches (meta, oEmbed, data) share one request path in
+  `src-tauri/src/capture_fetch.rs`, bringing `capture.rs` from 1,063 to 810
+  lines. Verified: cargo test/clippy (cli), vitest headless + connectors,
+  a real `kore sources` run (usage errors, failed fetch, window saved).
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

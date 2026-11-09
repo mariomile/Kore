@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { parseQuickAdd } from './quick-add'
+import { matchDueTimePrefix } from '../markdown/task-due'
+import { parseQuickAdd, QUICK_ADD_MAX_ADDED } from './quick-add'
+import { taskContentPriority } from './task-priority'
+import { taskContentDueDate, taskContentRepeat } from './task-repeat'
 
 // Sunday 2026-11-08.
 const TODAY = '2026-11-08'
@@ -20,7 +23,8 @@ describe('parseQuickAdd: canonical content', () => {
     ['Report entro venerdì p1', '!! Report [[2026-11-13]]'],
     ['dentista dopodomani alle 9:30', 'dentista [[2026-11-10]] @09:30'],
     ['pagare F24 il 16 novembre', 'pagare F24 [[2026-11-16]]'],
-    ['rinnovo dominio 3 gen', 'rinnovo dominio [[2027-01-03]]'],
+    ['rinnovo dominio il 3 gen', 'rinnovo dominio [[2027-01-03]]'],
+    ['rinnovo dominio 3 gennaio', 'rinnovo dominio [[2027-01-03]]'],
     ['bolletta 15/11', 'bolletta [[2026-11-15]]'],
     ['review tra 3 giorni p2', '! review [[2026-11-11]]'],
     ['retro prossima settimana', 'retro [[2026-11-09]]'],
@@ -90,5 +94,102 @@ describe('parseQuickAdd: rules', () => {
   it('does not read words inside other words', () => {
     expect(content('lunedìssimo marzapane')).toBe('lunedìssimo marzapane')
     expect(content('update todays notes')).toBe('update todays notes')
+  })
+})
+
+/** What core's task grammar reads back from written content. */
+function readBack(written: string): Record<string, unknown> {
+  const dueDate = taskContentDueDate(written)
+  const afterLink =
+    dueDate === null ? '' : written.slice(written.indexOf(`[[${dueDate}]]`) + dueDate.length + 4)
+  return {
+    dueDate,
+    dueTime: matchDueTimePrefix(afterLink)?.time ?? null,
+    priority: taskContentPriority(written),
+    repeat: taskContentRepeat(written),
+  }
+}
+
+describe('parseQuickAdd: core reads back what the chips show', () => {
+  it.each([
+    'chiamare Luca domani alle 15 p1 ogni lunedì',
+    'backup ogni 2 settimane p2',
+    'pay rent every month at 9am',
+    'x @repeat(3m) 15/11',
+    'review [[2026-11-20]] e poi [[2026-11-25]]',
+    'call domani and see [[2026-11-25]] @10:00',
+    'water plants every 999 days',
+  ])('%s', (input) => {
+    const parsed = parseQuickAdd(input, TODAY, PROJECTS)
+    expect(readBack(parsed.content)).toEqual({
+      dueDate: parsed.dueDate,
+      dueTime: parsed.dueTime,
+      priority: parsed.priority,
+      repeat: parsed.repeat,
+    })
+  })
+
+  it('leaves a repeat core would ignore as text', () => {
+    const zero = parseQuickAdd('stretch ogni 0 giorni', TODAY)
+    expect(zero.repeat).toBeNull()
+    expect(zero.content).toBe('stretch ogni 0 giorni')
+    const nonsense = parseQuickAdd('x @repeat(foo)', TODAY)
+    expect(nonsense.repeat).toBeNull()
+    expect(nonsense.content).toBe('x @repeat(foo)')
+  })
+
+  it('keeps a second date link as plain text so the chip date stays the due date', () => {
+    const parsed = parseQuickAdd('review [[2026-11-20]] e poi [[2026-11-25]]', TODAY)
+    expect(parsed.dueDate).toBe('2026-11-20')
+    expect(parsed.content).toBe('review e poi 2026-11-25 [[2026-11-20]]')
+  })
+
+  it('types the repeat rule', () => {
+    expect(parseQuickAdd('backup ogni 2 settimane', TODAY).repeat).toEqual({
+      every: 2,
+      unit: 'week',
+    })
+    expect(parseQuickAdd('x weekly', TODAY).repeat).toEqual({ every: 1, unit: 'week' })
+  })
+})
+
+describe('parseQuickAdd: everyday words are not dates or times', () => {
+  it.each([
+    ['Set 2 reminders', 'Set 2 reminders'],
+    ['compra 2 set di piatti', 'compra 2 set di piatti'],
+    ['meet at 2 locations', 'meet at 2 locations'],
+    ['fai 1/2 del lavoro', 'fai 1/2 del lavoro'],
+    ['sent 3 days ago', 'sent 3 days ago'],
+    ['may 3 people join', 'may 3 people join'],
+    ['2 mar di bottiglie', '2 mar di bottiglie'],
+  ])('%s', (input, expected) => {
+    const parsed = parseQuickAdd(input, TODAY)
+    expect(parsed.content).toBe(expected)
+    expect(parsed.tokens).toEqual([])
+  })
+
+  it.each([
+    ['visita il 2 set', 'visita [[2027-09-02]]'],
+    ['call by may 3', 'call [[2027-05-03]]'],
+    ['ferie 3 ago 2027', 'ferie [[2027-08-03]]'],
+    ['bolletta il 1/2', 'bolletta [[2027-02-01]]'],
+    ['bolletta 5/11', 'bolletta [[2027-11-05]]'],
+    ['1/2 torta e poi 15/11', '1/2 torta e poi [[2026-11-15]]'],
+    ['meet at 2pm', 'meet [[2026-11-08]] @14:00'],
+    ['meet at 2:30', 'meet [[2026-11-08]] @02:30'],
+    ['chiamare alle 3', 'chiamare [[2026-11-08]] @03:00'],
+  ])('still reads %s', (input, expected) => {
+    expect(content(input)).toBe(expected)
+  })
+})
+
+describe('parseQuickAdd: length', () => {
+  it('never grows its input by more than QUICK_ADD_MAX_ADDED', () => {
+    const input = `${'x'.repeat(200)} domani alle 15 p1 ogni mese`
+    const worst = parseQuickAdd('x !! domani alle 23:59 monthly', TODAY).content
+    expect(worst.length - 'x'.length).toBeLessThanOrEqual(QUICK_ADD_MAX_ADDED)
+    expect(parseQuickAdd(input, TODAY).content.length).toBeLessThanOrEqual(
+      input.length + QUICK_ADD_MAX_ADDED,
+    )
   })
 })

@@ -3,7 +3,7 @@ import { setBridge } from '../ipc/bridge'
 import { openIndex } from '../indexing/commands'
 import { rebuildIndex, syncIndex } from '../indexing/indexer'
 import { createStdioBridge } from './stdio-bridge'
-import { syncSources } from './sync-sources'
+import { planSources, syncSources } from './sync-sources'
 
 /**
  * The headless indexer's entry point (`kore index`): the same projection the
@@ -29,6 +29,12 @@ async function main(argv: readonly string[]): Promise<number> {
   setBridge(bridge)
   let skipped = 0
   try {
+    // `kore sources` resolves its runs first: a usage problem (no token, an
+    // unknown source) is reported before the vault is indexed for nothing.
+    const sources = argv.includes('--sources') ? await planSources(process.env) : undefined
+    if (sources === null) {
+      return 0
+    }
     const generation = await openIndex()
     const options = {
       generation,
@@ -42,9 +48,9 @@ async function main(argv: readonly string[]): Promise<number> {
     } else {
       await syncIndex(options)
     }
-    if (argv.includes('--sources')) {
+    if (sources !== undefined) {
       // The index above lets the engine find notes the plugins already wrote.
-      const reports = await syncSources(generation)
+      const reports = await syncSources(sources, generation)
       if (reports.some((report) => report.created + report.updated > 0)) {
         await syncIndex(options)
       }

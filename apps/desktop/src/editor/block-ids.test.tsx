@@ -70,6 +70,16 @@ describe('BlockIds', () => {
     await expect.element(pmRoot.locate('.kore-block-flash')).toHaveTextContent('A table-like quote')
   })
 
+  it('draws each end-of-line marker muted, and leaves a mid-line caret alone', async () => {
+    await renderNote()
+    const markers = [...document.querySelectorAll('.kore-block-id')].map((el) => el.textContent)
+    expect(markers).toEqual(['^pro', '^quote'])
+    await pmRoot.getByText('Last line').click()
+    await userEvent.keyboard(' x^2 and ^tail')
+    await expect.poll(() => document.querySelectorAll('.kore-block-id').length).toBe(3)
+    expect(document.querySelectorAll('.kore-block-id')[2]?.textContent).toBe('^tail')
+  })
+
   it('is false for an unknown id', async () => {
     const handle = await renderNote()
     expect(handle.revealHeading?.('^nope')).toBe(false)

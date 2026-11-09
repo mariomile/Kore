@@ -22,3 +22,11 @@
     background-color: var(--accent-soft);
   }
 }
+
+/* The `^id` itself stays in the line (it is the link's anchor, and Obsidian
+   needs it) but reads as metadata, not as words. */
+.reflect-editor .kore-block-id {
+  color: var(--text-muted);
+  font-size: 0.75em;
+  letter-spacing: 0.02em;
+}

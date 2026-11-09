@@ -8,12 +8,45 @@ import { zoomTarget, zoomTo } from './block-zoom-plugin'
 /**
  * Obsidian block ids in the live editor (Plan 33 C3). A followed
  * `[[Note#^id]]` lands on the line that ends with `^id` (or, for an id alone
- * on its line, on the block above it) and flashes it. The markdown is never
- * touched by this plugin.
+ * on its line, on the block above it) and flashes it. Every marker draws small
+ * and muted, so the id stays in the file (Obsidian reads the same links)
+ * without crowding the line. The markdown is never touched by this plugin.
  */
 
 interface BlockIdState {
+  /** The quiet look of every `^id` marker at the end of a line. */
+  readonly markers: DecorationSet
   readonly flash: DecorationSet
+}
+
+/** A marker the way {@link lineBlockId} reads it, at the end of a text run. */
+const MARKER_RE = /(?:^|[ \t])(\^[\da-z-]+)[ \t]*$/i
+
+/**
+ * Inline decorations over every end-of-line `^id`. Only a marker in the
+ * textblock's last text node counts: an atom (a wiki link, a tag) after it
+ * means the caret is not at the end of the line.
+ */
+function markerDecorations(doc: ProseMirrorNode): DecorationSet {
+  const decorations: Decoration[] = []
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) {
+      return true
+    }
+    const last = node.lastChild
+    if (node.type.spec.code === true || last?.isText !== true) {
+      return false
+    }
+    const text = last.text ?? ''
+    const match = MARKER_RE.exec(text)
+    if (match?.[1] !== undefined) {
+      const end = pos + 1 + node.content.size
+      const from = end - (text.length - (match.index + match[0].indexOf('^')))
+      decorations.push(Decoration.inline(from, from + match[1].length, { class: 'kore-block-id' }))
+    }
+    return false
+  })
+  return DecorationSet.create(doc, decorations)
 }
 
 const blockIdKey = new PluginKey<BlockIdState>('kore-block-ids')
@@ -102,19 +135,31 @@ export function createBlockIdPlugin(): Plugin<BlockIdState> {
   return new Plugin<BlockIdState>({
     key: blockIdKey,
     state: {
-      init: () => ({ flash: DecorationSet.empty }),
+      init: (_config, state) => ({
+        markers: markerDecorations(state.doc),
+        flash: DecorationSet.empty,
+      }),
       apply(tr, value, _old, state) {
         const meta = tr.getMeta(blockIdKey) as
           | { flash: { from: number; to: number } | null }
           | undefined
+        const markers = tr.docChanged ? markerDecorations(tr.doc) : value.markers
         if (meta !== undefined) {
-          return { flash: flashDecorations(state, meta.flash) }
+          return { markers, flash: flashDecorations(state, meta.flash) }
         }
-        return tr.docChanged ? { flash: value.flash.map(tr.mapping, tr.doc) } : value
+        return tr.docChanged ? { markers, flash: value.flash.map(tr.mapping, tr.doc) } : value
       },
     },
     props: {
-      decorations: (state) => blockIdKey.getState(state)?.flash ?? null,
+      decorations(state) {
+        const value = blockIdKey.getState(state)
+        if (value === undefined) {
+          return null
+        }
+        return value.flash === DecorationSet.empty
+          ? value.markers
+          : value.markers.add(state.doc, value.flash.find())
+      },
     },
     view: () => ({
       update(view, previous) {

@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Every task links to the note it lives in: the note icon next to its date
+  or note name, also on the task you are editing. ⌘-click opens it beside.
+
 - Quick Add for tasks: press `q` in Tasks (or ⌘T in Quick Entry) and type
   "call Anna tomorrow at 3pm p1 #Kore". Dates, times, priority, repeats and
   the project are understood in Italian and English, shown as chips, and

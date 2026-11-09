@@ -490,7 +490,7 @@ describe('TasksScreen', () => {
     await view.unmount()
   })
 
-  it('opens a task’s source note from its title without an arrow', async () => {
+  it('opens a task’s source note from its title, marked with the note glyph', async () => {
     getOpenTasks.mockResolvedValue([
       task({
         notePath: 'notes/p.md',
@@ -502,8 +502,9 @@ describe('TasksScreen', () => {
     ])
     const view = await renderScreen()
 
-    const sourceLink = await view.findByRole('button', { name: 'Project' })
-    expect(sourceLink.querySelector('svg')).toBeNull()
+    const sourceLink = await view.findByRole('button', { name: 'Open note: Project' })
+    expect(sourceLink.textContent).toBe('Project')
+    expect(sourceLink.querySelector('svg')).not.toBeNull()
     await userEvent.click(sourceLink)
     expect(view.getByTestId('route').element().textContent).toContain('notes/p.md')
     await view.unmount()
@@ -521,7 +522,7 @@ describe('TasksScreen', () => {
     ])
     const view = await renderScreen()
 
-    fireEvent.click(await view.findByRole('button', { name: 'Project' }), {
+    fireEvent.click(await view.findByRole('button', { name: 'Open note: Project' }), {
       metaKey: true,
       ctrlKey: true,
     })
@@ -565,12 +566,46 @@ describe('TasksScreen', () => {
     ])
     const view = await renderScreen()
 
-    await userEvent.click(await view.findByRole('button', { name: /^Jun 9(, 2026)?$/ }))
+    await userEvent.click(await view.findByRole('button', { name: /^Open note: Jun 9(, 2026)?$/ }))
 
     expect(view.getByTestId('route').element().textContent).toBe(
       '{"kind":"daily","date":"2026-06-09"}',
     )
     expect(view.queryByTestId('task-editor')).toBeNull()
+    await view.unmount()
+  })
+
+  it('opens the note of the task being edited', async () => {
+    getOpenTasks.mockResolvedValue([
+      task({
+        notePath: 'daily/2026-06-09.md',
+        dailyDate: '2026-06-09',
+        text: 'daily task',
+        noteTitle: '2026-06-09',
+      }),
+    ])
+    const view = await renderScreen()
+
+    await userEvent.click(await view.findByRole('button', { name: 'daily task' }))
+    await expect.element(view.getByTestId('task-editor')).toBeInTheDocument()
+    await userEvent.click(view.getByRole('button', { name: /^Open note: Jun 9(, 2026)?$/ }))
+
+    expect(view.getByTestId('route').element().textContent).toBe(
+      '{"kind":"daily","date":"2026-06-09"}',
+    )
+    await view.unmount()
+  })
+
+  it('links a task under its note’s header to that note with the glyph alone', async () => {
+    getOpenTasks.mockResolvedValue([
+      task({ notePath: 'notes/p.md', text: 'project task', noteTitle: 'Project' }),
+    ])
+    const view = await renderScreen()
+
+    const link = await view.findByRole('button', { name: 'Open note: Project' })
+    expect(link.textContent).toBe('')
+    await userEvent.click(link)
+    expect(view.getByTestId('route').element().textContent).toContain('notes/p.md')
     await view.unmount()
   })
 

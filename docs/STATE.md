@@ -1,5 +1,21 @@
 # Kore working state
 
+## Tasks: a way to the task's note, 2026-11-09
+
+Ask (Mario, 2026-11-09 08:33, with a screenshot of the Inbox: "devo avere il
+modo di andare sulla nota del task se c'è"). The source date on the right
+already opened the note, but read as a due date and was disabled on the row
+being edited, which is the row you just clicked.
+
+- [x] `components/tasks/task-source-link.tsx`, shared by list rows and board
+  cards: note glyph + daily date or note title, `aria-label` "Open note: …",
+  ⌘-click opens in a split. Stays enabled while the row is in edit (the
+  editor's unmount flush keeps the draft). Rows under a note header get the
+  glyph alone, on hover.
+- [x] Tests in `tasks-screen.test.tsx` (edit-row case, glyph-only case); the
+  inherited "without an arrow" assertion is inverted on purpose.
+- No keyboard shortcut: a plain key would type into the focused inline editor.
+
 ## Tasks like Todoist, slice 2: Quick Add, 2026-11-08
 
 Ask (Mario, 2026-11-08 21:58, "procedi" after v0.92.0 shipped slice 1; plan

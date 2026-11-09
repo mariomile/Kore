@@ -163,8 +163,9 @@ function dedent(lines: readonly string[], by: number): string[] {
  */
 export function extractBlockSection(source: string, id: string): string | null {
   const lines = source.split('\n')
+  const scanned = [...scanLines(lines)]
   let index = -1
-  for (const [at, entry] of [...scanLines(lines)].entries()) {
+  for (const [at, entry] of scanned.entries()) {
     if (!entry.fenced && lineBlockId(entry.line) === id) {
       index = at
       break
@@ -182,7 +183,16 @@ export function extractBlockSection(source: string, id: string): string | null {
     if (above < 0) {
       return null
     }
-    range = [runAround(lines, above)[0], above + 1]
+    // A fenced block can hold blank lines: the block above is the whole fence.
+    let from = runAround(lines, above)[0]
+    if (scanned[above]?.fenced === true) {
+      // `above` closes the fence; its opener is the nearest fence line up.
+      from = above - 1
+      while (from > 0 && FENCE_RE.exec(lines[from]!) === null) {
+        from -= 1
+      }
+    }
+    range = [from, above + 1]
   } else if (LIST_ITEM_RE.test(lines[index]!)) {
     range = itemBranch(lines, index)
   } else {

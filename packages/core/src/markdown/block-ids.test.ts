@@ -102,6 +102,24 @@ describe('extractBlockSection', () => {
     expect(extractBlockSection(source, 'quote')).toBe('> quoted\n> twice')
   })
 
+  it('returns a whole fenced block above an id-only line, blank lines included', () => {
+    const md = [
+      'Intro',
+      '',
+      '```js',
+      'const a = 1',
+      '',
+      'const b = 2',
+      '```',
+      '',
+      '^code',
+      '',
+    ].join('\n')
+    expect(extractBlockSection(md, 'code')).toBe(
+      ['```js', 'const a = 1', '', 'const b = 2', '```'].join('\n'),
+    )
+  })
+
   it('is null for a missing id or one inside code', () => {
     expect(extractBlockSection(source, 'nope')).toBeNull()
     expect(extractBlockSection(source, 'pro2')).toBeNull()

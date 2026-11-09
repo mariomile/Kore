@@ -48,6 +48,7 @@ import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { OptionsChipsEditor } from './options-chips-editor'
+import { StartingValueField } from './starting-value-field'
 import {
   FIELD_LABEL_CLASS,
   PROPERTY_TYPE_LABELS,
@@ -218,6 +219,14 @@ export function TagPropertyRow({
           />
         </div>
       ) : null}
+      <StartingValueField
+        draft={draft}
+        options={draft.options
+          .split(',')
+          .map((option) => option.trim())
+          .filter((option) => option !== '')}
+        updateDraft={updateDraft}
+      />
       {isRelation ? (
         <label className="flex items-center gap-1.5">
           <span className={FIELD_LABEL_CLASS}>Target</span>

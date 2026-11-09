@@ -179,6 +179,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         reverseTag: '',
         reverseProperty: '',
         formulaExpression: '',
+        startingKind: 'none',
+        startingFixed: '',
       },
     ])
     setFocusRowId(nextRowId)

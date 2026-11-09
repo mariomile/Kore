@@ -1,6 +1,9 @@
 import {
   foldTag,
+  startingValueKind,
+  startingValueKinds,
   type RollupAggregation,
+  type StartingValueKind,
   type TagProperty,
   type TagPropertyType,
 } from '@reflect/core'
@@ -25,6 +28,10 @@ export interface PropertyDraft {
   reverseProperty: string
   /** A formula's expression (view-only; empty = not configured). */
   formulaExpression: string
+  /** The field's starting value (Plan 33 B4): none, or its kind. */
+  startingKind: StartingValueKind | 'none'
+  /** A fixed starting value as typed ('' = none yet). */
+  startingFixed: string
 }
 
 export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
@@ -67,7 +74,38 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     reverseTag: property.reverse?.tag ?? '',
     reverseProperty: property.reverse?.property ?? '',
     formulaExpression: property.formula?.expression ?? '',
+    startingKind: property.default === undefined ? 'none' : startingValueKind(property.default),
+    startingFixed:
+      property.default !== undefined && startingValueKind(property.default) === 'fixed'
+        ? String(property.default)
+        : '',
   }))
+}
+
+/** A draft's starting value as stored, or `undefined` for none (or one the
+ * type can't take, e.g. after the type changed). */
+export function draftStartingValue(draft: PropertyDraft): string | number | boolean | undefined {
+  if (
+    draft.startingKind === 'none' ||
+    !startingValueKinds(draft.type).includes(draft.startingKind)
+  ) {
+    return undefined
+  }
+  if (draft.startingKind !== 'fixed') {
+    return draft.startingKind
+  }
+  const fixed = draft.startingFixed.trim()
+  if (fixed === '') {
+    return undefined
+  }
+  if (draft.type === 'number' || draft.type === 'rating') {
+    const number = Number(fixed)
+    return Number.isFinite(number) ? number : undefined
+  }
+  if (draft.type === 'checkbox') {
+    return fixed === 'true'
+  }
+  return fixed
 }
 
 /** Draft rows for properties that were never stored (a preset seeding an
@@ -108,6 +146,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
             aggregation: draft.rollupAggregation,
           }
         : undefined
+    const startingValue = draftStartingValue(draft)
     return {
       name: draft.name.trim(),
       key: draft.key,
@@ -117,6 +156,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       ...(rollup === undefined ? {} : { rollup }),
       ...(reverse === undefined ? {} : { reverse }),
       ...(formula === undefined ? {} : { formula }),
+      ...(startingValue === undefined ? {} : { default: startingValue }),
     }
   })
 }

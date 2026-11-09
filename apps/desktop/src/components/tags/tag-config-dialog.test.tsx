@@ -376,6 +376,48 @@ describe('TagConfigDialog', () => {
     )
   })
 
+  it('gives fields a starting value and keeps a stored one', async () => {
+    definition.current = {
+      path: 'tags/invoice.md',
+      exists: true,
+      needsConversion: false,
+      properties: [
+        { name: 'Number', key: 'number', type: 'number', default: 'next-number' },
+        { name: 'Status', key: 'status', type: 'select', options: ['draft', 'sent'] },
+      ],
+      template: null,
+      icon: null,
+      parents: [],
+    }
+    const view = await render(<Dialog tag="invoice" onClose={() => {}} />)
+
+    const [numberStart, statusStart] = view.getByRole('combobox', { name: 'Starting value' }).all()
+    await expect.element(numberStart!).toHaveTextContent('Next number')
+    await statusStart!.click()
+    await view.getByRole('option', { name: 'Fixed value' }).click()
+    await view.getByRole('combobox', { name: 'Fixed starting value' }).click()
+    await view.getByRole('option', { name: 'draft' }).click()
+
+    await view.getByRole('button', { name: 'Save' }).click()
+    expect(saveTagType).toHaveBeenCalledWith(
+      'invoice',
+      [
+        { name: 'Number', key: 'number', type: 'number', default: 'next-number' },
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'select',
+          options: ['draft', 'sent'],
+          default: 'draft',
+        },
+      ],
+      7,
+      null,
+      null,
+      [],
+    )
+  })
+
   it('disables save while a row is invalid (duplicate key)', async () => {
     definition.current = {
       path: 'tags/book.md',

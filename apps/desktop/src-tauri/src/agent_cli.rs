@@ -192,6 +192,16 @@ fn resolve_binary(binary: AgentCliBinary) -> Option<PathBuf> {
     )
 }
 
+/// Locate `node` the way the agent CLIs are located (GUI-safe probing).
+pub(crate) fn resolve_node() -> Option<PathBuf> {
+    let name = if cfg!(windows) { "node.exe" } else { "node" };
+    resolve_binary_in(
+        name,
+        std::env::var_os("PATH").as_deref(),
+        dirs_home().as_deref(),
+    )
+}
+
 fn resolve_binary_in(name: &str, path_env: Option<&OsStr>, home: Option<&Path>) -> Option<PathBuf> {
     let mut probes = Vec::new();
     if let Some(path_env) = path_env {
@@ -319,7 +329,7 @@ fn gui_path_for(binary_path: &Path, path_env: Option<&OsStr>, home: Option<&Path
         .unwrap_or_else(|_| path_env.map_or_else(OsString::new, OsStr::to_os_string))
 }
 
-fn apply_gui_path(command: &mut Command, binary_path: &Path) {
+pub(crate) fn apply_gui_path(command: &mut Command, binary_path: &Path) {
     command.env(
         "PATH",
         gui_path_for(

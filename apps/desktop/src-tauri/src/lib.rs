@@ -32,6 +32,7 @@ mod git;
 mod graph_gitignore;
 mod haptics;
 mod icloud;
+mod kit_script;
 mod library;
 mod link_preview;
 #[cfg(desktop)]
@@ -318,6 +319,7 @@ pub fn run() {
             routine_script::routine_script_prepare,
             routine_script::routine_script_stop,
             routine_script::routine_script_run,
+            kit_script::kit_script_run,
             runtime::agent_run_lock_acquire,
             runtime::agent_run_lock_release,
             runtime::agent_run_lock_reset,

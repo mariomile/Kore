@@ -3327,6 +3327,23 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Plan 34 slice 1, step 3. Kore can run the vault's own kit
+  script. Rust `kit_script_run` (`src-tauri/src/kit_script.rs`) spawns
+  Node (found like the agent CLIs, GUI PATH included) on a `.mjs`/`.js`
+  inside the graph (traversal and symlink guarded, generation-pinned),
+  with an argv and no shell, bounded by the routine runner's
+  `run_bounded` (now shared). Core `cyber-brain/script.ts` is the policy:
+  typed `BrainCommand`s (remember, loop open/update/close, decision,
+  facts, check) spelled as inline `--key=value` so text can never become
+  an option, agent names slugged, the kit's refusal relayed verbatim.
+  Checked against Mario's real `brain.mjs` in a scratch vault: fact
+  stored with run record, daily line and commit; secrets refused; an
+  option-shaped text stays text. Finding for step 4: the kit reads dates
+  as `YYYY-MM-DD` or English/Italian month names, not weekdays, so the
+  chat must resolve "venerdì" itself. Verified: core node tests (2,565),
+  `pnpm check`, desktop clippy; desktop Rust tests can't link in the
+  container (ort), CI runs them.
+
 - 2026-11-09 — Plan 34 slice 1, step 2. Core reads a vault's cyber-brain
   configuration from the frontmatter of its `AGENTS.md`
   (`packages/core/src/cyber-brain/config.ts`): kit version, `writers`,

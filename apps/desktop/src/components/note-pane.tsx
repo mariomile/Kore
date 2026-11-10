@@ -81,7 +81,7 @@ const EmbeddedCollection = lazy(() =>
   })),
 )
 
-interface NotePaneProps {
+export interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
   path: string
   /**

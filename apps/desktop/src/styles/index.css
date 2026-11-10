@@ -1643,3 +1643,14 @@ html[data-sidebar-resizing] aside {
   letter-spacing: normal;
   color: var(--text-secondary);
 }
+
+/* Static daily days (daily-day.tsx): an empty paragraph keeps the line it has in
+   the editor, where ProseMirror fills it with a trailing break. */
+[data-static-day] .reflect-editor p:empty::before {
+  content: '\200b';
+}
+/* The editor root keeps its children's outer margins inside it
+   (a contenteditable is its own formatting context); the static root must too. */
+[data-static-day] .reflect-editor {
+  display: flow-root;
+}

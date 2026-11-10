@@ -27,6 +27,7 @@ function fakeSession(path: string) {
     editorChanged: () => {},
     externalChanged: () => {},
     flush,
+    flushOnClose: flush,
     keepMine: () => {},
     isDirty: () => false,
     loadTheirs: () => {},

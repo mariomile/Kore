@@ -180,7 +180,7 @@ interface SeedProperty {
 function tagDefinition(tag: string, properties: readonly SeedProperty[]): string {
   return [
     '---',
-    'lore: tag',
+    'kore: tag',
     'properties:',
     ...properties.flatMap((property) => [
       `  - name: ${property.name}`,

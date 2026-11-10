@@ -19,6 +19,7 @@ mod tests;
 
 use reflect_index_store::{embed_write, query, scan, write};
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
 use rusqlite::Connection;
@@ -75,6 +76,12 @@ struct ReadInner {
 pub struct IndexState {
     inner: Mutex<IndexInner>,
     read: Mutex<ReadInner>,
+    /// The generation of the open writer connection, or 0 while none is
+    /// open (generations start at 1). Published by `open_index_for` so
+    /// [`current_generation`] never takes the writer lock: a backup or a long
+    /// reindex holds that lock for seconds, and the note-window bootstrap
+    /// waiting on it froze the app.
+    published: AtomicU64,
 }
 
 fn lock_state(index: &IndexState) -> AppResult<MutexGuard<'_, IndexInner>> {
@@ -98,8 +105,8 @@ fn lock_read(index: &IndexState) -> AppResult<MutexGuard<'_, ReadInner>> {
 /// adopts the session through this — it must never rebind the connection or
 /// bump the generation the way `index_open` does.
 pub(crate) fn current_generation(index: &State<IndexState>) -> AppResult<Option<u64>> {
-    let state = lock_state(index)?;
-    Ok(state.conn.is_some().then_some(state.generation))
+    let generation = index.published.load(Ordering::Acquire);
+    Ok((generation != 0).then_some(generation))
 }
 
 /// Broadcast event fired after a note-projection write commits. Secondary
@@ -158,11 +165,13 @@ pub(super) fn open_index_for(graph: &GraphState, index: &IndexState) -> AppResul
     // the file it opens read-only.
     state.conn = None;
     state.root = None;
+    index.published.store(0, Ordering::Release);
     {
         let mut read = lock_read(index)?;
         read.conn = None;
     }
     state.conn = Some(migrations::open_index_at(&root)?);
+    index.published.store(state.generation, Ordering::Release);
     let mut read = lock_read(index)?;
     read.conn = Some(query::open_read_connection(&root)?);
     read.generation = state.generation;

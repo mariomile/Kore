@@ -1,4 +1,4 @@
-import { isHiddenBlockId, lineBlockId, newBlockId } from '@reflect/core'
+import { hiddenBlockIdTail, lineBlockId, newBlockId } from '@reflect/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import {
   Plugin,
@@ -29,13 +29,6 @@ interface BlockIdState {
 }
 
 /**
- * A marker Kore hides, at the end of a text run: four or more characters, the
- * rule {@link isHiddenBlockId} states. A shorter `^word` (`x ^2`) stays visible.
- */
-const MARKER_RE = /(?:^|[ \t])\^[\da-z-]{4,}[ \t]*$/i
-const ID_ONLY_RE = /^[ \t]*\^[\da-z-]{4,}[ \t]*$/i
-
-/**
  * The hidden tail of a textblock: from the whitespace before its `^id` to the
  * end of the line. Only a marker in the textblock's last text node counts: an
  * atom (a wiki link, a tag) after it means it is not at the end of the line.
@@ -54,16 +47,17 @@ function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
   if (!node.isTextblock || node.type.spec.code === true || last?.isText !== true) {
     return null
   }
+  // Which `^id` hides is core's rule (four or more characters).
   const text = last.text ?? ''
-  const match = MARKER_RE.exec(text)
-  if (match === null) {
+  const tail = hiddenBlockIdTail(text)
+  if (tail === null) {
     return null
   }
   const to = pos + 1 + node.content.size
   return {
-    from: to - (text.length - match.index),
+    from: to - (text.length - tail.start),
     to,
-    idOnly: ID_ONLY_RE.test(node.textContent),
+    idOnly: tail.idOnly && node.childCount === 1,
   }
 }
 
@@ -323,7 +317,12 @@ function flashDecorations(
  */
 type IdPlace =
   | { readonly kind: 'line'; readonly pos: number; readonly node: ProseMirrorNode }
-  | { readonly kind: 'below'; readonly after: number; readonly next: ProseMirrorNode | null }
+  | {
+      readonly kind: 'below'
+      readonly after: number
+      /** The block under it, where an existing id-only line would be. */
+      readonly next: { readonly pos: number; readonly node: ProseMirrorNode } | null
+    }
 
 function firstTextblock(
   node: ProseMirrorNode,
@@ -360,7 +359,8 @@ function idPlaceAt(doc: ProseMirrorNode, pos: number): IdPlace | null {
     return null
   }
   const after = top + topNode.nodeSize
-  return { kind: 'below', after, next: doc.nodeAt(after) }
+  const next = doc.nodeAt(after)
+  return { kind: 'below', after, next: next === null ? null : { pos: after, node: next } }
 }
 
 /** The block start of the caret's line, for commands run on the selection. */
@@ -386,16 +386,12 @@ export function ensureBlockIdAt(view: EditorView, pos: number): string | null {
   if (place === null) {
     return null
   }
-  if (place.kind === 'line') {
-    const existing = lineBlockId(place.node.textContent)
-    // A visible short `^word` is not reused: the line gets a hidden id.
-    if (existing !== null && isHiddenBlockId(existing) && place.node.lastChild?.isText === true) {
-      return existing
-    }
-  } else if (place.next?.isTextblock === true) {
-    const existing = place.next.textContent.trim()
-    if (/^\^[\da-z-]{4,}$/i.test(existing)) {
-      return existing.slice(1)
+  // Reuse the id the line already hides (a visible short `^word` is not one).
+  const carrier = place.kind === 'line' ? place : place.next
+  if (carrier !== null) {
+    const marker = hiddenMarker(carrier.node, carrier.pos)
+    if (marker !== null && (place.kind === 'line' || marker.idOnly)) {
+      return lineBlockId(carrier.node.textContent)
     }
   }
   const taken = new Set(blockIdsInDoc(state.doc))

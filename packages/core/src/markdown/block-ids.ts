@@ -16,8 +16,7 @@ const ID_ONLY_RE = /^[ \t]*\^[\da-z-]+[ \t]*$/i
  * A shorter `^word` at a line end, like `x ^2`, is more likely prose or math
  * than an id, so it stays visible; links to it still resolve.
  */
-const HIDDEN_TAIL_RE = /[ \t]+\^[\da-z-]{4,}[ \t]*$/i
-const HIDDEN_ID_ONLY_RE = /^[ \t]*\^[\da-z-]{4,}[ \t]*$/i
+const HIDDEN_TAIL_RE = /(?:^|[ \t])\^[\da-z-]{4,}[ \t]*$/i
 const LIST_ITEM_RE = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/
 
@@ -26,9 +25,27 @@ export function isBlockId(id: string): boolean {
   return VALID_ID_RE.test(id)
 }
 
-/** True for an id Kore hides in the editor, previews and extracted text. */
-export function isHiddenBlockId(id: string): boolean {
-  return id.length >= 4 && isBlockId(id)
+/** Where a hidden `^id` sits at the end of a line. */
+export interface HiddenBlockIdTail {
+  /**
+   * Where the hidden text starts: the one space or tab before `^` (so the
+   * line's own trailing spaces before it stay visible), or 0 at line start.
+   */
+  readonly start: number
+  /** The id stands alone on its line (Obsidian's id for the block above). */
+  readonly idOnly: boolean
+}
+
+/**
+ * The `^id` Kore hides at the end of `line`, or null. The one rule every
+ * surface shares, from the editor's hidden marker to search text.
+ */
+export function hiddenBlockIdTail(line: string): HiddenBlockIdTail | null {
+  const match = HIDDEN_TAIL_RE.exec(line)
+  if (match === null) {
+    return null
+  }
+  return { start: match.index, idOnly: line.slice(0, match.index).trim() === '' }
 }
 
 /** The id a line ends with, or null. */
@@ -77,10 +94,11 @@ export function withoutBlockIds(markdown: string): string {
   const kept: string[] = []
   // Fenced code is literal: `x ^2` inside a fence is code, not an id.
   for (const { line, fenced } of scanLines(markdown.split('\n'))) {
-    if (fenced) {
+    const tail = fenced ? null : hiddenBlockIdTail(line)
+    if (tail === null) {
       kept.push(line)
-    } else if (!HIDDEN_ID_ONLY_RE.test(line)) {
-      kept.push(line.replace(HIDDEN_TAIL_RE, ''))
+    } else if (!tail.idOnly) {
+      kept.push(line.slice(0, tail.start).trimEnd())
     }
   }
   return kept.join('\n')
@@ -95,15 +113,10 @@ export function blockIdSpans(body: string): { from: number; to: number }[] {
   const spans: { from: number; to: number }[] = []
   let offset = 0
   for (const { line, fenced } of scanLines(body.split('\n'))) {
-    if (!fenced) {
-      if (HIDDEN_ID_ONLY_RE.test(line)) {
-        spans.push({ from: offset, to: offset + line.length })
-      } else {
-        const tail = HIDDEN_TAIL_RE.exec(line)
-        if (tail !== null) {
-          spans.push({ from: offset + tail.index, to: offset + line.length })
-        }
-      }
+    const tail = fenced ? null : hiddenBlockIdTail(line)
+    if (tail !== null) {
+      const kept = tail.idOnly ? 0 : line.slice(0, tail.start).trimEnd().length
+      spans.push({ from: offset + kept, to: offset + line.length })
     }
     offset += line.length + 1
   }

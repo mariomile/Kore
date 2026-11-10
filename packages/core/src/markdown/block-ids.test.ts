@@ -4,7 +4,7 @@ import {
   blockLinkLabel,
   extractBlockSection,
   isBlockId,
-  isHiddenBlockId,
+  hiddenBlockIdTail,
   lineBlockId,
   newBlockId,
   noteLinkBlockId,
@@ -70,8 +70,9 @@ describe('blockIdsIn / withoutBlockIds', () => {
     expect(withoutBlockIds('area x ^2\nsee ^abc\nsee ^abcd\n^ab')).toBe(
       'area x ^2\nsee ^abc\nsee\n^ab',
     )
-    expect(isHiddenBlockId('abcd')).toBe(true)
-    expect(isHiddenBlockId('abc')).toBe(false)
+    expect(hiddenBlockIdTail('see  ^abcd ')).toEqual({ start: 4, idOnly: false })
+    expect(hiddenBlockIdTail('  ^abcd')).toEqual({ start: 1, idOnly: true })
+    expect(hiddenBlockIdTail('see ^abc')).toBeNull()
     // A short id still names its line, so an existing link to it resolves.
     expect(lineBlockId('see ^abc')).toBe('abc')
   })

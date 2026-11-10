@@ -164,7 +164,7 @@ fn blob_at(repo: &Repository, tree: Option<&Tree<'_>>, path: &str) -> AppResult<
 
 fn read_disk(root: &Path, path: &str) -> AppResult<Option<Vec<u8>>> {
     if path.split('/').any(|part| part == ".." || part.is_empty()) {
-        return Err(AppError::traversal(format!("{path} leaves the graph")));
+        return Err(AppError::traversal(format!("{path} leaves the vault")));
     }
     match std::fs::read(root.join(path)) {
         Ok(bytes) => Ok(Some(bytes)),

@@ -50,10 +50,10 @@ Start with today's note (⌘D). Everything else is optional.
 
 ## When you want more
 
-- **Find notes:** ⌘K searches your graph; ⌘/ lists shortcuts.
+- **Find notes:** ⌘K searches your vault; ⌘/ lists shortcuts.
 - **Collections:** open a type from the sidebar to view its notes. Configure properties to organize projects, people, companies or meetings.
-- **Agents:** in Settings → Agents, give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one graph.
-- **Protect your work:** Settings → Sync & data distinguishes Git file sync from a graph archive. An archive also includes saved chats, their images and this graph's automations.
+- **Agents:** in Settings → Agents, give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one vault.
+- **Protect your work:** Settings → Sync & data distinguishes sync (GitHub, iCloud) from a backup (a zip file). A backup also includes saved chats, their images and this vault's automations.
 
 Notes marked \`private: true\` are blocked from AI and content-processing services. They are still included in backups and any file sync you enable. Keep backups private. Provider keys stay in the OS keychain and are not exported.
 

@@ -68,7 +68,7 @@ fn export_backup(
         .ok_or_else(|| AppError::io("backup needs a destination folder"))?
         .canonicalize()?;
     if parent.starts_with(root.canonicalize()?) {
-        return Err(AppError::io("save the backup outside the graph folder"));
+        return Err(AppError::io("save the backup outside the vault folder"));
     }
     let staging = tempfile::tempdir()?;
     let snapshot = staging.path().join("index.sqlite");
@@ -256,7 +256,7 @@ fn restore_backup(archive_path: &Path, parent: &Path) -> AppResult<RestoredBacku
     let manifest: Manifest =
         serde_json::from_slice(&fs::read(staging.path().join(MANIFEST))?).map_err(zip_error)?;
     if manifest.version != 1 {
-        return Err(AppError::io("unsupported graph backup version"));
+        return Err(AppError::io("unsupported backup version"));
     }
     let conn = Connection::open_with_flags(
         staging.path().join(DATABASE),

@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
+
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as
   "Name (conflict).md", leaves the note on the other version, and tells you.

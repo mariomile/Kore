@@ -1,5 +1,19 @@
 # Kore working state
 
+## Editor no longer reverts to an older external version, 2026-11-10
+
+Ask: Mario authorized fixing the critical data-loss bugs from the holistic
+analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
+
+- [x] `note-session-state.ts`: disk reads in `reconcileFromDisk` are numbered;
+  a read that settles after a newer one started is dropped, and `load()`
+  supersedes any reconcile still reading. Two close external changes (v2, v3)
+  can no longer leave v2 in the editor and write it back over v3.
+- [x] Three tests in `note-session.test.ts` (clean adopt, parked conflict,
+  load restart), red without the fix.
+- Not done: two overlapping `load()` calls are still unordered (no caller
+  does that today). D1, D2 and D4 are other threads.
+
 ## Tag definitions marked kore: tag, 2026-11-10
 
 Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag

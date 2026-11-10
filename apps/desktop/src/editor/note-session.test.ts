@@ -1084,3 +1084,104 @@ describe('editor checkbox repeat spawn', () => {
     expect(h.writes.at(-1)?.contents).toBe('+ [x] buy milk\n')
   })
 })
+
+describe('out-of-order disk reads', () => {
+  /**
+   * A session whose reads can be held open: `hold()` makes the next read
+   * snapshot the disk now but settle only when its returned `release` runs.
+   */
+  function gatedHarness() {
+    const file = { content: 'v1\n' }
+    const writes: string[] = []
+    const gates: Array<Promise<void>> = []
+    const session = createNoteSession({
+      path: 'notes/a.md',
+      io: {
+        read: async () => {
+          const snapshot = file.content
+          const gate = gates.shift()
+          if (gate !== undefined) {
+            await gate
+          }
+          return snapshot
+        },
+        write: async (_path, contents) => {
+          writes.push(contents)
+          file.content = contents
+        },
+      },
+      classify: () => 'exact',
+      onSnapshot: () => {},
+      applyContent: () => {},
+      saveDebounceMs: 10,
+    })
+    function hold(): () => void {
+      let release!: () => void
+      gates.push(
+        new Promise<void>((resolve) => {
+          release = resolve
+        }),
+      )
+      return release
+    }
+    return { file, writes, session, hold }
+  }
+
+  it('a slow older read never replaces a newer one, so the next edit keeps v3', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged() // slow read, snapshots v2
+    h.file.content = 'v3\n'
+    h.session.externalChanged() // fast read, adopts v3
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
+
+    releaseV2()
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
+
+    h.session.editorChanged(`${h.session.content()}edit\n`)
+    await settled()
+    expect(h.file.content).toBe('v3\nedit\n')
+  })
+
+  it('a slow older read does not replace a newer parked conflict', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+    h.session.editorChanged('mine\n')
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged()
+    h.file.content = 'v3\n'
+    h.session.externalChanged()
+    await settled()
+    releaseV2()
+    await settled()
+
+    h.session.loadTheirs()
+    expect(h.session.content()).toBe('v3\n')
+    expect(h.writes).toEqual([])
+  })
+
+  it('a reconcile still reading when load() restarts is superseded by the load', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged()
+    h.file.content = 'v3\n'
+    h.session.load()
+    await settled()
+    releaseV2()
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
+  })
+})

@@ -16,6 +16,25 @@ asking, one PR per fix. The full report is
   flow).
 - Next: the other findings in the report wait for Mario's choice.
 
+## Edits under a conflict banner survive closing the note, 2026-11-10
+
+Ask: Mario picked "conflict copy" for D2 of the holistic analysis
+(`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`).
+
+- [x] `note-session-state.ts`: new `flushOnClose()` (tab close, note switch,
+  quit via `flushOpenDocuments`, and `dispose`). Under a parked conflict,
+  where saves stay paused, the buffer goes to a new file beside the note and
+  the note keeps the version on disk. Skipped when the buffer equals theirs
+  or was already copied. Blur and other flushes are unchanged.
+- [x] `packages/core/src/graph/conflict-copy.ts`: `Name (conflict).md`, then
+  `(conflict 2)`, ..., through the no-clobber `note_create`, the same names as
+  `conflict_copy_path` in `git/merge.rs` (TS mirror, no new Rust command).
+- [x] Toast "Saved your edits as a copy" naming both notes.
+- [x] Tests: session (copy once, nothing when equal to theirs), the hook
+  (unmount under conflict creates `notes/a (conflict).md`, no write), core
+  naming and collision.
+- Not verified on a real Mac.
+
 ## Editor no longer reverts to an older external version, 2026-11-10
 
 Ask: Mario authorized fixing the critical data-loss bugs from the holistic

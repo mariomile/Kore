@@ -99,8 +99,8 @@ describe('NotePropertiesSection', () => {
 
     await expect.element(view.getByText('Author')).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
-    await expect.element(view.getByText('#book')).toBeInTheDocument()
-    await expect.element(view.getByText('#media')).toBeInTheDocument()
+    await expect.element(view.getByText('Book', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Media', { exact: true })).toBeInTheDocument()
     expect(view.container.textContent).not.toContain('Creator')
 
     await view.getByRole('checkbox', { name: 'Read' }).click()

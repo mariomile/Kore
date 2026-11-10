@@ -36,10 +36,10 @@ describe('buildExportDocument', () => {
   })
 
   it('adds an escaped H1 only when asked', () => {
-    expect(buildExportDocument(base)).not.toContain('<h1 class="lore-export-title">')
+    expect(buildExportDocument(base)).not.toContain('<h1 class="kore-export-title">')
     const withHeading = buildExportDocument({ ...base, addTitleHeading: true })
     expect(withHeading).toContain(
-      '<h1 class="lore-export-title">Project &lt;Atlas&gt; &amp; &quot;Co&quot;</h1>',
+      '<h1 class="kore-export-title">Project &lt;Atlas&gt; &amp; &quot;Co&quot;</h1>',
     )
   })
 })

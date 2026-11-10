@@ -14,6 +14,14 @@ analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
 - Not done: two overlapping `load()` calls are still unordered (no caller
   does that today). D1, D2 and D4 are other threads.
 
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no

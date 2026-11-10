@@ -39,7 +39,7 @@ describe('TagPageDescription', () => {
   it('renders the definition note body with an Edit link to it', async () => {
     mockInvoke.mockImplementation(async (command, args) => {
       if (command === 'note_read' && args['path'] === 'tags/book.md') {
-        return '---\nlore: tag\n---\n# Book\n\nA book worth finishing.\n'
+        return '---\nkore: tag\n---\n# Book\n\nA book worth finishing.\n'
       }
       throw { kind: 'notFound', message: 'not found' }
     })

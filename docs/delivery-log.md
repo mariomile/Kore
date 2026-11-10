@@ -17,6 +17,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   The preview shows every detail the agent sent, and accepting twice never
   writes twice.
 
+- Settings → Agents: the Automations description no longer collapses into
+  a narrow column next to its buttons. The agent skill for Kore markdown
+  names the `.kore/` folder.
+
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in
   `kore/`. Opening an existing vault moves every old name across once and

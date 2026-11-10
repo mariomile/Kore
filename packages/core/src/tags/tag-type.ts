@@ -163,6 +163,79 @@ export function relationTargetOf(property: TagProperty): string | undefined {
   return property.type === 'relation' || property.type === 'relations' ? property.target : undefined
 }
 
+/**
+ * The collection a relation picker's "Create" entry files a new note into.
+ * A declared target (or `person`'s default) wins. An untargeted `relation` /
+ * `relations` field falls back to the collection named like the field itself
+ * (a `Company` field and a `#company` tag), so creating "Trade Republic" from
+ * a meeting's Company makes a Company note without the schema naming a
+ * target. `collections` is every tag the vault knows, in any casing.
+ * `undefined` means the new note is created plain, with no tag.
+ */
+export function relationCreateTarget(
+  property: TagProperty,
+  collections: readonly string[],
+): string | undefined {
+  const declared = relationTargetOf(property)
+  if (declared !== undefined) {
+    return declared
+  }
+  if (property.type !== 'relation' && property.type !== 'relations') {
+    return undefined
+  }
+  const known = new Set(collections.map((tag) => foldTag(tag)))
+  for (const candidate of [property.name, property.key]) {
+    const key = foldTag(candidate)
+    if (key !== '' && known.has(key)) {
+      return key
+    }
+  }
+  return undefined
+}
+
+/**
+ * The types a property can switch to in one gesture from a note's field
+ * label: every type that needs nothing beyond a name. Stamps (`created`,
+ * `updated`) and the computed types (`formula`, `rollup`, `reverse`) need
+ * their configuration, so they stay in the type's schema dialog.
+ */
+export const QUICK_PROPERTY_TYPES: readonly TagPropertyType[] = [
+  'text',
+  'number',
+  'checkbox',
+  'date',
+  'select',
+  'multiselect',
+  'status',
+  'url',
+  'email',
+  'phone',
+  'rating',
+  'files',
+  'relation',
+  'relations',
+  'person',
+]
+
+/**
+ * `property` switched to `type`, keeping its name and key (so stored values
+ * stay put and read as a mismatch until edited) and the settings the new type
+ * can still use: options for the select-like types, a target for the
+ * relation-like ones. Computed configuration (`rollup`, `reverse`,
+ * `formula`) drops, since it only means something on its own type.
+ */
+export function withPropertyType(property: TagProperty, type: TagPropertyType): TagProperty {
+  const keepsOptions = type === 'select' || type === 'multiselect' || type === 'status'
+  const keepsTarget = type === 'relation' || type === 'relations' || type === 'person'
+  return {
+    name: property.name,
+    key: property.key,
+    type,
+    ...(keepsOptions && property.options !== undefined ? { options: property.options } : {}),
+    ...(keepsTarget && property.target !== undefined ? { target: property.target } : {}),
+  }
+}
+
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]

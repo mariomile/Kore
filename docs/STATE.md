@@ -1,5 +1,31 @@
 # Kore working state
 
+## Project cleanup pass, 2026-11-09
+
+Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no
+longer needed. Fix what you're sure about and list the rest". One commit per
+fix. The full list, ranked, with what is left for him to decide, is
+`/mnt/project-files/analisi/pulizia-progetto-2026-11-09.md`. Files owned by
+the open PRs (#345 to #365) were listed, not touched.
+
+- [x] `apps/desktop/e2e/run-e2e.mjs` passes again (15/15). It is not in CI,
+  which is how it rotted: the sidebar's Open section is gone and Settings now
+  covers the sidebar.
+- [x] Settings → Agents: the Automations description keeps its width when
+  both template buttons show.
+- [x] Dead code: `useVisibleSettingsSections`, `settingsGroupTitle`; the
+  deprecated Kysely `orderBy([...])` in `graph-map.ts`.
+- [x] Docs: Kore naming in CONTRIBUTING.md, the icon flavor table and crate
+  descriptions; CONTRIBUTING's release rules (one config, changelog covers
+  the repo minus `exclude-paths`); links to `crates/index-store` and
+  `crates/index-schema/migrations`; the `kore-markdown` skill names `.kore`.
+- [x] `vite.config.ts` imports `package.json` with the JSON attribute.
+- Not done, waiting on Mario (see the file): dependency advisories (zod,
+  undici, xmldom; Renovate is not installed), upstream's provisioning profile
+  embedded in the DMG (`tauri.macos.conf.json`, belongs to #363), the e2e
+  smoke in CI, macOS runner queueing, archiving this file, ~108 dead remote
+  branches, AGENTS.md contradictions, the stale roadmap.
+
 ## Rename visible Reflect leftovers to Kore, 2026-11-09
 
 Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,
@@ -3340,6 +3366,16 @@ screen: Agents then Close lands on today.
   leave out (remember's confidence, create_note's properties), accept
   claims the file by rename first so a double click writes once and a
   failed write puts it back, and Activity says when proposals can't load.
+
+- 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
+  lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
+  non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check
+  over the docs, the desktop build and the e2e smoke on master `c25d0a2`.
+  Fixed what was certain (e2e smoke, Automations card width, two dead
+  helpers, a deprecated query call, stale names and links in docs, the Vite
+  JSON import, `.reflect` in the markdown skill). Verified: e2e 15/15,
+  settings and automations browser tests on Chromium, graph-map test,
+  typecheck, oxfmt. Not run: the desktop crate (CI covers it).
 
 - 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
   `kind` and the `notePath` they touched, set in core by the Claude Code

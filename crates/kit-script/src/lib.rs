@@ -83,7 +83,9 @@ impl Kit {
 /// no backslash, no empty, `.` or `..` segment. Mirrors `isSafeVaultFolder`
 /// in `packages/core/src/cyber-brain/config.ts`.
 pub fn is_safe_vault_folder(path: &str) -> bool {
-    if path.is_empty() || path.starts_with('/') || path.contains('\\') {
+    // `C:…` is a drive on Windows: `Path::join` would replace the vault.
+    let drive = path.as_bytes().get(1) == Some(&b':') && path.as_bytes()[0].is_ascii_alphabetic();
+    if path.is_empty() || path.starts_with('/') || path.contains('\\') || drive {
         return false;
     }
     path.split('/')
@@ -209,6 +211,83 @@ fn collect(
     Ok(())
 }
 
+/// Every quoted relative specifier (`'./x.mjs'`, `"../y"`) in `source`: a
+/// superset of what its `import`, `import()` and `require` name, so a
+/// module the kit pulls in from outside its folder is pinned too.
+fn relative_specifiers(source: &str) -> Vec<&str> {
+    let mut found = Vec::new();
+    for quote in ['"', '\'', '`'] {
+        let mut rest = source;
+        while let Some(start) = rest.find(quote) {
+            let after = &rest[start + 1..];
+            let Some(end) = after.find([quote, '\n']) else {
+                break;
+            };
+            let literal = &after[..end];
+            if literal.starts_with("./") || literal.starts_with("../") {
+                found.push(literal);
+            }
+            rest = &after[end..];
+            rest = rest.strip_prefix(quote).unwrap_or(rest);
+        }
+    }
+    found
+}
+
+/// Add, transitively, every vault file a pinned module names by a relative
+/// specifier, the way Node resolves it (exact, then `.js`/`.mjs`/`.cjs`/
+/// `.json`, then `index.js`). A specifier that resolves outside the vault
+/// is refused: Kore cannot pin it. A computed `import(x)` is out of reach of
+/// any static scan; the kit's own scripts use none.
+fn follow_relative_imports(root: &Path, out: &mut Collected) -> io::Result<()> {
+    let base = fs::canonicalize(root)?;
+    let mut seen: std::collections::HashSet<PathBuf> = out
+        .files
+        .iter()
+        .filter_map(|(_, path)| fs::canonicalize(path).ok())
+        .collect();
+    let mut queue: Vec<PathBuf> = seen.iter().cloned().collect();
+    while let Some(file) = queue.pop() {
+        let Ok(source) = fs::read_to_string(&file) else {
+            continue;
+        };
+        let Some(dir) = file.parent() else {
+            continue;
+        };
+        for specifier in relative_specifiers(&source) {
+            let plain = dir.join(specifier);
+            let candidates = [
+                plain.clone(),
+                plain.with_extension("js"),
+                plain.with_extension("mjs"),
+                plain.with_extension("cjs"),
+                plain.with_extension("json"),
+                plain.join("index.js"),
+            ];
+            let Some(found) = candidates
+                .iter()
+                .find_map(|candidate| fs::canonicalize(candidate).ok().filter(|p| p.is_file()))
+            else {
+                continue;
+            };
+            if !found.starts_with(&base) {
+                return Err(io::Error::other(format!(
+                    "the kit's code loads {specifier}, which is outside the vault"
+                )));
+            }
+            if seen.insert(found.clone()) {
+                let relative = found
+                    .strip_prefix(&base)
+                    .map(|path| path.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                out.push(relative, found.clone())?;
+                queue.push(found);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Lowercase-hex SHA-256 over the code the kit's script can load: every
 /// code file of the scripts folder (hidden files, `node_modules` and the
 /// files symlinks point at included), plus the `package.json` and
@@ -249,6 +328,7 @@ pub fn digest(root: &Path, kit: &Kit) -> io::Result<String> {
         }
         ancestor = folder.parent();
     }
+    follow_relative_imports(root, &mut out)?;
     out.files.sort_by(|a, b| a.0.cmp(&b.0));
     let mut hasher = Sha256::new();
     for (relative, path) in out.files {
@@ -302,17 +382,23 @@ pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), S
         return Err(format!("`{target}` is not a note path inside the vault"));
     }
     let path = root.join(&target);
-    let Ok(source) = fs::read_to_string(&path) else {
-        // A note that does not exist yet is new, so it is not private.
-        return Ok(());
-    };
-    let inside = match (fs::canonicalize(&path), fs::canonicalize(root)) {
-        (Ok(file), Ok(base)) => file.starts_with(base),
+    // The nearest part of the path that exists must resolve inside the
+    // vault, so neither the note nor a folder link on the way leaves it.
+    let existing = path
+        .ancestors()
+        .find(|ancestor| fs::symlink_metadata(ancestor).is_ok())
+        .unwrap_or(root);
+    let inside = match (fs::canonicalize(existing), fs::canonicalize(root)) {
+        (Ok(resolved), Ok(base)) => resolved.starts_with(base),
         _ => false,
     };
     if !inside {
         return Err(format!("`{target}` is not a note path inside the vault"));
     }
+    let Ok(source) = fs::read_to_string(&path) else {
+        // A note that does not exist yet is new, so it is not private.
+        return Ok(());
+    };
     if parse_frontmatter(split_frontmatter(&source).raw).private {
         return Err(format!(
             "`{target}` is private: Kore never lets an agent write into a private note"
@@ -606,6 +692,47 @@ mod tests {
         assert!(check(&["remember", "--text=x", "--target=CRM/New person"]).is_ok());
         assert!(check(&["remember", "--kind=block", "--text=x", "--target=NOW"]).is_ok());
         assert!(check(&["remember", "--text=x"]).is_ok());
+        assert!(check(&["remember", "--text=x", "--target=C:/Users/x"]).is_err());
+
+        // A folder link on the way to a new note cannot lead out of the vault.
+        #[cfg(unix)]
+        {
+            let outside = tempfile::tempdir().expect("outside");
+            std::os::unix::fs::symlink(outside.path(), root.join("Linked")).expect("link");
+            assert!(check(&["remember", "--text=x", "--target=Linked/new"]).is_err());
+        }
+    }
+
+    #[test]
+    fn modules_the_kit_imports_from_outside_its_folder_are_pinned() {
+        let (dir, kit) = vault();
+        let root = dir.path();
+        fs::write(
+            root.join("System/scripts/brain.mjs"),
+            "import { hook } from '../hooks.mjs'\nimport x from \"./core.mjs\"\n",
+        )
+        .expect("brain");
+        fs::write(root.join("System/hooks.mjs"), "export const hook = 1\n").expect("hooks");
+        let state = trust_state(root, &kit).expect("state");
+        trust(root, state.digest()).expect("trust");
+        fs::write(root.join("System/hooks.mjs"), "export const hook = 2\n").expect("swap");
+        assert!(!trust_state(root, &kit).expect("state").is_trusted());
+
+        // An import that resolves outside the vault cannot be pinned at all.
+        let outside = tempfile::tempdir().expect("outside");
+        fs::write(outside.path().join("evil.mjs"), "1").expect("evil");
+        fs::write(
+            root.join("System/scripts/brain.mjs"),
+            format!("import '{}'\n", {
+                let up = "../".repeat(root.components().count() + 2);
+                format!(
+                    "./{up}{}/evil.mjs",
+                    outside.path().display().to_string().trim_start_matches('/')
+                )
+            }),
+        )
+        .expect("brain");
+        assert!(trust_state(root, &kit).is_err());
     }
 
     fn args(words: &[&str]) -> Vec<String> {

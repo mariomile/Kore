@@ -158,6 +158,13 @@ export interface NoteEditorHandle {
   getSelection?(): SelectionJSON
   /** Restore an exact selection, or move the caret to a document edge. */
   setSelection(selection: SelectionJSON | 'start' | 'end'): void
+  /**
+   * Move the caret to the text under a viewport point, as a click there
+   * would. False when the point is not over this editor. For a press that
+   * arrived before the editor existed (a daily day still drawn as static
+   * text, which lays out the same).
+   */
+  setSelectionAtPoint?(x: number, y: number): boolean
   /** The current selection's text (blocks separated by blank lines). */
   getSelectedText(): string
   /** Open the selection AI menu (no-op on an empty selection). */
@@ -415,6 +422,14 @@ export function NoteEditor({
       focus: () => innerRef.current?.focus(),
       getSelection: () => innerRef.current?.getSelection() ?? { type: 'text', anchor: 0, head: 0 },
       setSelection: (selection) => innerRef.current?.setSelection(selection),
+      setSelectionAtPoint: (x, y) => {
+        const found = innerRef.current?.editor?.view.posAtCoords({ left: x, top: y }) ?? null
+        if (found === null) {
+          return false
+        }
+        innerRef.current?.setSelection({ type: 'text', anchor: found.pos, head: found.pos })
+        return true
+      },
       getSelectedText: () => innerRef.current?.getSelectedText() ?? '',
       openSelectionMenu: () => innerRef.current?.openSelectionMenu(),
       startPendingReplacement: (options) =>

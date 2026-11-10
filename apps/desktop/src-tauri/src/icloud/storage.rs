@@ -465,7 +465,7 @@ fn adopt_graph(root: &Path) -> AppResult<String> {
     let target = documents.join(&name);
     if dir_has_notes(&target) {
         return Err(AppError::io(format!(
-            "iCloud Drive already contains a graph named \"{name}\" — open that one instead, or rename one of the two"
+            "iCloud Drive already contains a vault named \"{name}\" — open that one instead, or rename one of the two"
         )));
     }
     adopt_into(root, &target)?;
@@ -497,7 +497,7 @@ fn copy_and_verify(root: &Path, target: &Path) -> AppResult<()> {
     let landed = count_graph_tree(target)?;
     if copied != landed {
         return Err(AppError::io(format!(
-            "the iCloud copy did not verify (copied {} files / {} bytes, found {} / {}); the original graph is untouched",
+            "the iCloud copy did not verify (copied {} files / {} bytes, found {} / {}); the original vault is untouched",
             copied.0, copied.1, landed.0, landed.1
         )));
     }

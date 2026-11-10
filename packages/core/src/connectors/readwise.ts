@@ -294,6 +294,7 @@ export const readwiseConnector: Connector = {
   defaultTags: ['readwise'],
   tokenUrl: 'https://readwise.io/access_token',
   tokenLabel: 'Access token',
+  tokenNoun: 'access token',
   overlapMs: 10 * 60 * 1000,
   verify,
   fetchNotes,

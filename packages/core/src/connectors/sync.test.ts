@@ -53,6 +53,7 @@ function connector(notes: ConnectorNote[]): Connector {
     defaultTags: [],
     tokenUrl: '',
     tokenLabel: '',
+    tokenNoun: '',
     overlapMs: 0,
     verify: async () => {},
     async *fetchNotes() {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { embedSnapshotText } from './embed-snapshot'
+import { embedSnapshotText, inlineEmbedSnapshots } from './embed-snapshot'
 import { parseNote } from './extract'
 
 /** JSON's escape for `-`, which Meowdown writes for the second dash of `--`. */
@@ -58,5 +58,39 @@ describe('parseNote with a saved post embed', () => {
     expect(text).toBe(
       'Read this grim @grimcodes Congrats to the team at @conductor_build -- shipping Conductor @conductor_build Parallel agents Then <!-- mine --> this',
     )
+  })
+})
+
+describe('inlineEmbedSnapshots', () => {
+  it('swaps a saved X embed for a quote of its author and post', () => {
+    const source = `#link\n\n![](https://x.com/grimcodes/status/1)${magic({ kind: 'x-post', data: POST })}\n`
+    expect(
+      inlineEmbedSnapshots(source)
+        .replaceAll(/\n{3,}/g, '\n\n')
+        .trim(),
+    ).toBe(
+      [
+        '#link',
+        '',
+        '> **grim** @grimcodes',
+        '> Congrats to the team',
+        '> at @conductor_build -- shipping',
+        '>',
+        '> > **Conductor** @conductor_build',
+        '> > Parallel agents',
+      ].join('\n'),
+    )
+  })
+
+  it('swaps a saved YouTube embed for its title and channel', () => {
+    const source = `![](https://youtu.be/x)${magic({ kind: 'youtube-video', data: { title: 'Talk', author_name: 'Kore' } })}`
+    expect(inlineEmbedSnapshots(source).trim()).toBe('> **Talk**\n> Kore')
+  })
+
+  it('leaves other comments and unreadable snapshots as written', () => {
+    const source = 'a <!-- mine --> b <!-- {"snapshot": --> c'
+    expect(inlineEmbedSnapshots(source)).toBe(source)
+    const plain = '![](https://example.com/a.png) and text'
+    expect(inlineEmbedSnapshots(plain)).toBe(plain)
   })
 })

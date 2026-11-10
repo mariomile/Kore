@@ -11,12 +11,10 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 import {
-  createRelationRow,
-  creatableRowTitle,
   EditorTrigger,
   editorSeedList,
+  useRelationCreateEntry,
   useRelationSuggestions,
   type PropertyEditorProps,
 } from './property-editor-shared'
@@ -44,7 +42,6 @@ export function MultiRelationPropertyEditor({
       latestLinks.current = editorSeedList(value)
     }
   }, [value])
-  const { graph } = useGraph()
   // Each entry is a stored `[[Target]]` value; a bare string (hand-written
   // YAML) still participates, keyed by its own text.
   const links = localLinks ?? editorSeedList(value)
@@ -52,18 +49,7 @@ export function MultiRelationPropertyEditor({
   // `person` scopes to its default collection even with no explicit target.
   const target = relationTargetOf(property)
   const suggestions = useRelationSuggestions(open, query, target)
-  // Same "Create in #target" entry as the single relation's picker.
-  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
-  const canCreate =
-    newRowTitle !== null &&
-    graph !== null &&
-    !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
-  const createAndToggle = async (): Promise<void> => {
-    if (target === undefined || newRowTitle === null || graph === null) {
-      return
-    }
-    append(await createRelationRow(target, newRowTitle, graph.generation))
-  }
+  const createEntry = useRelationCreateEntry(property, open, query, suggestions)
 
   const toggle = (insertText: string): void => {
     const candidate = relationValue(insertText)
@@ -162,11 +148,13 @@ export function MultiRelationPropertyEditor({
                     </CommandItem>
                   )
                 })}
-              {canCreate ? (
-                <CommandItem value="__create" onSelect={() => void createAndToggle()}>
-                  <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{target}
-                  </span>
+              {createEntry !== null ? (
+                <CommandItem
+                  value="__create"
+                  onSelect={() => void createEntry.create().then(append)}
+                >
+                  {/* Wraps instead of truncating: the collection name is the point. */}
+                  <span className="min-w-0 flex-1 break-words">{createEntry.label}</span>
                 </CommandItem>
               ) : null}
               {links.length > 0 ? (

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { NoteTagEntry } from '@reflect/core'
+import { tagDisplayName, type NoteTagEntry } from '@reflect/core'
 import { Close, Plus } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
@@ -48,14 +48,15 @@ export function NoteTypeField({
         {tags.map((entry) => (
           <li key={entry.tagKey}>
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">
-              {entry.type?.icon !== undefined ? (
-                <TagIcon
-                  icon={entry.type.icon}
-                  className="mr-0.5 size-3.5"
-                  emojiClassName="mr-0.5"
-                />
-              ) : null}
-              <span className="truncate">#{entry.tagKey}</span>
+              {/* The icon already says "tag" (the `#` glyph when none is
+                  chosen), so the name reads plain, the way the sidebar's
+                  Types list shows it: `# Meeting`, never `# #meeting`. */}
+              <TagIcon
+                icon={entry.type?.icon}
+                className="mr-0.5 size-3.5"
+                emojiClassName="mr-0.5"
+              />
+              <span className="truncate">{tagDisplayName(entry.tag)}</span>
               <button
                 type="button"
                 aria-label={`Remove #${entry.tagKey}`}

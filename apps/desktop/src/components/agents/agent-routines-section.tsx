@@ -130,7 +130,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
     <section className="mt-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-3">
         <CalendarClock aria-hidden className="size-5 text-text-muted" />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-72">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">
             Automations run only in {graph?.name ?? 'this graph'}, while it is open in Kore. The

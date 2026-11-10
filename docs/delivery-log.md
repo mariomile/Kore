@@ -26,6 +26,24 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   switch is animated: the block slides to the top while the rest fades.
   Escape or Back steps out, the block menu and ⌘K offer it too, and Find
   widens the zoom when the match is elsewhere in the note.
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
+- Two quick edits to a note from outside Kore (another device, an agent,
+  iCloud) no longer leave the editor on the older one, so your next keystroke
+  can't write it back over the newer text.
+
+- Settings → Agents: the Automations description no longer collapses into
+  a narrow column next to its buttons. The agent skill for Kore markdown
+  names the `.kore/` folder.
 
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in

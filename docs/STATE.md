@@ -1,3 +1,39 @@
+# Kore working state
+
+## Tasks like Todoist, slice 3: real projects, 2026-11-10
+
+- [x] Tasks slice 3 shipped (#365). Migration 0024_task_section; registers the
+  missing 0023_fts_rowid in Rust; LATEST_SCHEMA_VERSION 24, PROJECTION_VERSION
+  29, first launch rebuilds the index. Mobile doesn't render sections yet.
+
+## Pasted links & files settings, 2026-11-10
+
+Ask: Mario, "se incolliamo un link, questo va in una collection. Facciamole
+impostare da qualche parte, magari non tutti la vorrebbero". Default chosen on
+his decision card: everything off. (#376)
+
+- [x] Settings → Notes → Pasted links & files: one switch each for links,
+  images, PDFs and other files (`pasteCollect*`, off by default), plus "Keep
+  the page text" under links (`pasteSaveLinkText`, on). Off means the paste
+  lands in the note with no `notes/resource-….md` card.
+- [x] Gate lives in `useResourceCollection`; deliberate captures (share sheet,
+  extension, `kore capture`) still save; existing cards untouched.
+
+## Holistic analysis: Stop reaches a CLI run that is still starting, 2026-11-10
+
+Ask: Mario, "find any state machines, any bugs, and any things that could be
+optimized"; critical fixes that need no product decision may ship without
+asking, one PR per fix. The full report is
+`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`. (#370)
+
+- [x] `packages/core/src/ai/agent-cli.ts`: a Stop (or New chat, or a routine's
+  Stop) pressed while the CLI turn was still registering its listener or
+  spawning the child was lost, and the edit-capable run carried on headless.
+  The turn now settles as aborted before spawning when the signal is already
+  aborted, and holds the native stop until `agent_cli_run` has returned (one
+  stop, sent when the child exists). Same in `runAgentCliCommand` (the login
+  flow).
+
 ## Daily stream scroll: link cards no longer fade on hover, 2026-11-10
 
 Ask: Mario feels lag scrolling the daily notes and asked whether recent
@@ -21,7 +57,68 @@ releases made them heavier.
   stream runs at 40 fps on every version. Saves do not run while scrolling,
   so the index-query invalidation is not part of this.
 
-# Kore working state
+## Plan 33 group C: outliner gestures without changing the format, 2026-11-08
+
+Ask (Mario, 2026-11-08, "fai tutti sti passi dai", then "ok vai" after the
+product walkthrough; plan in `docs/plans/33-trust-and-structure.md`, order
+C1, C3, C2; one step = one commit, Mario's ok before each next feature).
+
+- [x] C1 zoom into a block (`apps/desktop/src/editor/block-zoom-plugin.ts`,
+  mounted by `block-zoom.tsx` in the note pane). ⌘⇧. zooms the block at the
+  caret: a list item with its children, a heading with its section (to the
+  next heading at its level or above), any other top-level block alone;
+  ⌘-click on a bullet zooms it too (a plain click still folds). ⌘⇧, or the
+  breadcrumb (note, enclosing headings, enclosing items) steps out one level.
+  Decorations and selection clamping only, so the Markdown never changes.
+  Mario asked on 2026-11-08 for "ogni blocco" after the list-only first
+  commit. Review fixes (2026-11-09, from the quality review of the open PRs,
+  Mario's "ok"): one `filterTransaction` rule refuses any step that would
+  move, join or insert content outside the zoom (replacing per-key guards;
+  whole-document replaces pass, so a reload ends the zoom); Enter on the
+  zoomed item's line opens a first child carrying the text after the caret;
+  ⌘A selects the zoomed text only and deleting a fully selected branch
+  empties its item; decorations live in plugin state and map through edits;
+  the pure model is split into `block-zoom-target.ts`. Mario asked for a
+  "super fluido" switch (2026-11-09): zooming in and out is a 180 ms View
+  Transition (the shared block slides, the page crossfades), names applied
+  through decorations because ProseMirror redraws a block whose DOM is
+  touched from outside; instant under reduced motion. Video:
+  `/mnt/project-files/video/zoom-fluido.mp4`. Verified: `block-zoom.test.tsx`
+  (11, chromium: tags in the branch still open, the file is byte-identical,
+  outdent/Enter-on-empty/⌘A-delete stay inside, Meowdown DOM guard),
+  `block-zoom-target.test.ts` (7, incl. the schema guard), all 27 editor
+  browser files, keymap test, `pnpm typecheck`, eslint/oxfmt.
+  UX pass (2026-11-09, Mario asked for an expert UX/UI review, then "fai
+  tutte le migliorie proposte"): the properties slot hides while zoomed (it
+  left an orphan divider), one `kore-zoom-title` style for a list item's line
+  and a section's heading (bullet and number dropped, task checkbox kept and
+  centred), crumbs show words only (`crumbText`: no tags or Markdown, wiki
+  links by label) and a tag stays body-sized in the title, Escape steps out
+  (after Meowdown's selection collapse) and Back does too (router store
+  `setViewBack`: a view in the current entry takes Back first, `canBack`
+  stays true), no block handle on the zoomed item's own line, "Zoom in" in
+  the block menu and "Zoom into/out of block" in the palette (last focused
+  editor), crumbs in the secondary colour folding their middle into "…" when
+  they don't fit, a hint under a zoomed leaf, the sliding block no longer
+  doubled, and a range selected outside the zoom (a Find match) widens it
+  until it shows (Find read 0/1 before). Video:
+  `/mnt/project-files/video/zoom-rifinito.mp4`. Verified: `block-zoom.test.tsx`
+  15, `block-zoom-target.test.ts` 8, router-store test, 31 browser files
+  (editor, routing, palette), palette and Back checked in the dev app.
+- [x] C3 `^id` line references: resolve, open at the line, transclude,
+  "copy link to line". Markers are hidden in the editor and previews (only
+  ids of four or more characters, Mario 2026-11-10) and links read the note
+  name. See the Session log entries of 2026-11-09 and 2026-11-10.
+- [x] C2 move a branch to another note (`⌘⇧M`, the block menu's "Move to
+  note…", ⌘K "Move block to note…"), Mario's "procedi" 2026-11-10. The block
+  zoom would show at the caret leaves the note in one undoable step and is
+  appended to the picked note (`apps/desktop/src/editor/move-branch.ts`,
+  picker in `move-branch-picker.tsx`); text policy in
+  `packages/core/src/markdown/move-branch.ts`: `[[Note#^id]]` links to a
+  moved line follow it in the two notes and in every note the index lists as
+  linking to it, a same-note link inside the branch to a line left behind
+  names the source. A failed write to the other note puts the branch back.
+  Nothing is left behind (the plan's rule); no cross-note undo yet.
 
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
@@ -1259,6 +1356,7 @@ tried from a real MCP client.
 
 **Next:** on the Mac, in Claude Desktop attach a note from the Kore server
 and run the `daily_review` prompt.
+
 ## Search operators in the CLI and MCP, 2026-10-17
 
 Follow-up to #279 (Mario: "Continua"): the palette understood Obsidian's
@@ -2293,6 +2391,7 @@ were not certified by this cycle.
 **Next:** Review this consolidation PR. Full-block extraction remains a separate
 product decision: define what stays in the source and the two-file Undo contract
 before implementation. No release/version bump is part of this cycle.
+
 ## Chat can say what a note is — 2026-09-22
 
 Slice C of the note-type work, and the third AI-app-control writer after the
@@ -2408,6 +2507,7 @@ the properties slot is measured against the live H1.
 **Next:** merge, then set a type from the picker on a real note and watch the
 tag page's collection pick up the row. Slice B stays parked until the
 `tags:`-in-frontmatter count on the vault is known.
+
 ## Chat can edit a supertag's schema — 2026-09-21
 
 Slice 2 of the AI-app-control map: after the icon (slice 1), what a tag
@@ -3417,6 +3517,49 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Plan 33 B2 and B4 merged (#348). Tag inheritance is resolved
+  once in core and stored in tag_types (migration 0025, projection 30).
+  Outbound readers (CLI, MCP, chat) use the public columns. Starting values
+  (today, now, next-number, fixed) are validated in core, stored as `start`,
+  and stamped only when a note joins a tag, in the app and in `kore new`/`kore
+  tag`. `created` is a starting value that is always today. The next number
+  counts every note, private ones included. The inheritance pass never fails
+  indexing and re-runs on every open. Known limits: the tag dialog shows only
+  the tag's own fields, and two notes born in the same instant can get the
+  same number.
+- 2026-11-10 — Fix (data loss, D4 of the holistic analysis, #372): the capture
+  drain no longer writes over a daily note that is still an iCloud
+  placeholder. On iOS an evicted note is a `.name.md.icloud` stub, so
+  `readNote` answered `notFound` and the drain saved a daily holding only the
+  shared link, forking the Mac's text into an iCloud conflict copy. Now, on
+  `notFound`, `readNoteUnlessMissing` (`capture-note.ts`) asks
+  `readNoteLocal`; an evicted note requests the download and stops the pass
+  with the new silent `ReconcileStop` reason `evicted`, the spool stays, and
+  the capture controller retries on a doubling timer (2 s to 60 s). Same for
+  text captures and for an evicted same-day capture note (no duplicate
+  capture). Verified: 5 new drain tests (red without the fix), 2 controller
+  tests, CI green on WebKit and Chromium. Not run on a device.
+- 2026-11-10 — Sync no longer loses a save that lands during the fetch
+  (holistic analysis bug D1, #374). The fast-forward path in
+  `apps/desktop/src-tauri/src/git/merge.rs` moved the ref and then ran a
+  forced `checkout_head`, which reverted any note saved after the cycle's
+  commit. It now writes the new tree with a safe `checkout_tree` before moving
+  the ref; when the save touches a file the remote also changed, the merge
+  errors and writes nothing, and the next cycle commits the save and does a
+  real merge. An unborn HEAD still adopts the remote tree with force. Two
+  tests in `git/tests/mod.rs` cover both cases.
+- 2026-11-09 — Plan 33 A2 (#350): `kore keys add --propose` keeps an agent's
+  writes in `.kore/proposals/` as the tool call it sent, signed by the
+  process; `kore proposals accept/reject`. No stored argv, accept rebuilds
+  through the MCP tool table, one `access` field per key, tool table moved to
+  `mcp/tools.rs`. Activity lists them under "Waiting for you" with a preview
+  and Accept/Reject (app runs the bundled CLI via `proposals_run`). Settings →
+  Agents picks read / propose / write per agent, changeable without a new key;
+  new agents start at propose. Full-review fixes: the preview lists every
+  argument a tool's own lines leave out, accept claims the file by rename
+  first so a double click writes once and a failed write puts it back, and
+  Activity says when proposals can't load. A2 complete pending Mario's live
+  check.
 - 2026-11-10 — Copy pass, no behavior change: the notes folder is called
   "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
   "Graph" now names only the dot view and the local graph. Sync means GitHub
@@ -3428,6 +3571,63 @@ screen: Agents then Close lands on today.
   the 40 affected vitest files on Chromium, rustfmt on the touched Rust
   files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
   shard, cargo test (only message strings changed, no Rust test asserts them).
+
+- 2026-11-10 — The two leftovers of the PR #345 quality review, behaviour
+  unchanged. `block-zoom-plugin.ts` (812 lines) split into
+  `block-zoom-state.ts` (plugin key, meta, `clearZoom`), `block-zoom-transition.ts`
+  (View Transition), `block-zoom-decorations.ts` (breadcrumb, hidden blocks,
+  title, leaf hint) and `block-zoom-editing.ts` (Enter, ⌘A, Delete inside a
+  zoom, `stepsStayInside`); the plugin file keeps commands, keymap and the
+  plugin. Delete at a line's visible end no longer lifts the hidden `^id` off
+  and puts it back from a microtask: like Enter it moves to the real end and
+  lets the editor join, and `keepMarkersAtLineEnd` carries the id to the end
+  of the joined line. New test for Delete on the last line.
+- 2026-11-10 — Quality review of PR #345 (Plan 33 group C), behaviour
+  unchanged: one `hiddenBlockIdTail` rule in core replaces three copied
+  regexes (editor marker, id reuse, previews and extraction); one
+  `lastFocusedEditor()` registry (`apps/desktop/src/editor/focused-editor.ts`,
+  mounted by NoteEditor) replaces the copies in zoom, ids and move;
+  `planBranchMove` returns the note transforms (`landIn`, `leaveFrom`,
+  `follow`, `linkingNotes`) so the editor only reads and writes. Left as
+  noted: the Delete marker lift-and-put-back in `block-id-plugin.ts` and the
+  812-line `block-zoom-plugin.ts`.
+
+- 2026-11-10 — Move a branch to another note (Plan 33 C2): ⌘⇧M, the block
+  menu and ⌘K open a "Move to…" picker over note titles (the current note is
+  never offered); the branch lands at the end of the picked note and `^id`
+  links follow it. Verified: `move-branch.test.ts` (6, core),
+  `move-branch.test.tsx` (3, chromium: the move with a link in a third note
+  repointed, the current note not offered, a failed write puts the branch
+  back), block-ids/zoom/toolbar/palette/shortcuts browser tests (61), keymap
+  and command tests (56), typecheck, lint.
+
+- 2026-11-10 — `^id` hiding rule (Plan 33 C3, Mario's card choice "Solo id
+  veri (4+ caratteri)"): the editor, previews, backlinks and extracted text
+  hide only markers of four or more characters (`isHiddenBlockId` in
+  `packages/core/src/markdown/block-ids.ts`, the same rule in
+  `block-id-plugin.ts`). A shorter `^word` such as `x ^2` stays visible and a
+  link to it still resolves; "Copy link to line" on such a line adds a real
+  six-character id instead of reusing it. Verified: core markdown tests
+  (578), `block-ids.test.tsx` (17, chromium), preview and backlink tests,
+  typecheck, lint.
+
+- 2026-11-09 — Line references with `^id` (Plan 33 C3): `[[Note#^id]]`
+  opens the note on that line and flashes it, `![[Note#^id]]` embeds the
+  line with its children, markers never show in the note (the caret steps
+  around them, links read the note name), and "Copy link to line" (block
+  menu, ⌘K) adds an id to that line only.
+
+- 2026-11-09 — Zoom UX pass (Plan 33 C1): clean top, one title style,
+  word-only crumbs that fold, Escape and Back step out, block menu and
+  palette entries, a hint under leaves, and Find widens the zoom to its match.
+
+- 2026-11-09 — Zoom review fixes and a smooth switch (Plan 33 C1): no edit
+  can push content out of the zoomed block, ⌘A and delete stay inside it,
+  and zooming in or out slides the block in about 180 ms.
+
+- 2026-11-08 — Zoom into any block (Plan 33 C1): ⌘⇧. shows only the list
+  item, heading section or block at the caret (⌘-click on a bullet too),
+  with a breadcrumb back; view state only, the note's Markdown never changes.
 
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character

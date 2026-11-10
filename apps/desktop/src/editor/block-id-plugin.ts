@@ -166,9 +166,10 @@ function clampCaret(oldState: EditorState, newState: EditorState): TextSelection
 
 /**
  * Keys that must act on the real end of the line, not the visible one: Enter
- * splits after the id (the id stays on its line), and → leaves the line
- * instead of stepping into the hidden text. Delete is handled by the plugin
- * (it carries the id to the end of the joined line).
+ * splits after the id (the id stays on its line), Delete joins the next line
+ * instead of eating the hidden id ({@link keepMarkersAtLineEnd} then carries
+ * the id to the end of the joined line), and → leaves the line instead of
+ * stepping into the hidden text.
  */
 function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
   if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
@@ -177,7 +178,7 @@ function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
   if (event.key === 'Backspace') {
     return skipHiddenLineBackward(view)
   }
-  if (event.key !== 'Enter' && event.key !== 'ArrowRight') {
+  if (event.key !== 'Enter' && event.key !== 'Delete' && event.key !== 'ArrowRight') {
     return false
   }
   const { state } = view
@@ -194,10 +195,19 @@ function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
     view.dispatch(state.tr.setSelection(near).scrollIntoView())
     return true
   }
-  // Move to the real end, then let the editor's own Enter run there.
+  // Move to the real end, then let the editor's own Enter or Delete run there.
   view.dispatch(
     state.tr.setSelection(TextSelection.create(state.doc, marker.to)).setMeta(SKIP_CLAMP, true),
   )
+  if (event.key === 'Delete') {
+    // Nothing to join (the last line): step back to the visible end.
+    const doc = view.state.doc
+    queueMicrotask(() => {
+      if (!view.isDestroyed && view.state.doc === doc && view.state.selection.head === marker.to) {
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, marker.from)))
+      }
+    })
+  }
   return false
 }
 
@@ -462,50 +472,6 @@ export function canLinkToBlock(view: EditorView): boolean {
 /** The plugin behind `^id` markers, arrival flashes and "Copy link to line". */
 export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockIdState> {
   let timer: ReturnType<typeof setTimeout> | undefined
-  /**
-   * Delete at a line's visible end joins the next line, which would land
-   * after the id and break it. The marker is lifted off first and put back at
-   * the end of whatever line the caret is on once the editor's own Delete has
-   * run (or right away when it did nothing).
-   */
-  let lifted: { text: string; at: number } | null = null
-  const putBack = (state: EditorState, at: number, text: string) => {
-    const $at = state.doc.resolve(Math.min(at, state.doc.content.size))
-    const end = $at.parent.isTextblock ? $at.end() : at
-    const tr = state.tr.insertText(text, end).setMeta(SKIP_CLAMP, true)
-    // The caret stays on the visible side of the marker it just got back.
-    if (state.selection.empty) {
-      tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map(state.selection.head, -1)))
-    }
-    return tr
-  }
-  const handleDelete = (view: EditorView, event: KeyboardEvent): boolean => {
-    if (
-      event.key !== 'Delete' ||
-      event.altKey ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey
-    ) {
-      return false
-    }
-    const { state } = view
-    const marker = markerAtCaret(state)
-    if (!state.selection.empty || marker === null || state.selection.head !== marker.from) {
-      return false
-    }
-    const text = state.doc.textBetween(marker.from, marker.to)
-    view.dispatch(state.tr.delete(marker.from, marker.to).setMeta(SKIP_CLAMP, true))
-    lifted = { text, at: marker.from }
-    queueMicrotask(() => {
-      const pending = lifted
-      lifted = null
-      if (pending !== null && !view.isDestroyed) {
-        view.dispatch(putBack(view.state, pending.at, pending.text))
-      }
-    })
-    return false
-  }
   return new Plugin<BlockIdState>({
     key: blockIdKey,
     state: {
@@ -525,15 +491,6 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
       },
     },
     appendTransaction(transactions, oldState, newState) {
-      if (lifted !== null && transactions.some((tr) => tr.docChanged)) {
-        let at = lifted.at
-        for (const tr of transactions) {
-          at = tr.mapping.map(at, -1)
-        }
-        const { text } = lifted
-        lifted = null
-        return putBack(newState, at, text)
-      }
       if (transactions.some((tr) => tr.docChanged)) {
         const kept = keepMarkersAtLineEnd(transactions, oldState, newState)
         if (kept !== null) {
@@ -550,7 +507,7 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
       return clamped === null ? null : newState.tr.setSelection(clamped)
     },
     props: {
-      handleKeyDown: (view, event) => handleDelete(view, event) || handleMarkerKey(view, event),
+      handleKeyDown: handleMarkerKey,
       decorations(state) {
         const value = blockIdKey.getState(state)
         if (value === undefined) {

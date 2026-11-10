@@ -3390,6 +3390,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — The two leftovers of the PR #345 quality review, behaviour
+  unchanged. `block-zoom-plugin.ts` (812 lines) split into
+  `block-zoom-state.ts` (plugin key, meta, `clearZoom`), `block-zoom-transition.ts`
+  (View Transition), `block-zoom-decorations.ts` (breadcrumb, hidden blocks,
+  title, leaf hint) and `block-zoom-editing.ts` (Enter, ⌘A, Delete inside a
+  zoom, `stepsStayInside`); the plugin file keeps commands, keymap and the
+  plugin. Delete at a line's visible end no longer lifts the hidden `^id` off
+  and puts it back from a microtask: like Enter it moves to the real end and
+  lets the editor join, and `keepMarkersAtLineEnd` carries the id to the end
+  of the joined line. New test for Delete on the last line.
 - 2026-11-10 — Quality review of PR #345 (Plan 33 group C), behaviour
   unchanged: one `hiddenBlockIdTail` rule in core replaces three copied
   regexes (editor marker, id reuse, previews and extraction); one

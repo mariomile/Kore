@@ -141,6 +141,14 @@ describe('BlockIds', () => {
     await expect.poll(() => handle.getMarkdown()).toContain('Para oneXstill para ^first')
   })
 
+  it('Delete at the end of the last line keeps the caret before the id', async () => {
+    const handle = await renderNote(['First line', '', 'Last line ^lastid', ''].join('\n'))
+    await pmRoot.getByText('Last line').click()
+    await userEvent.keyboard('{End}{Delete}')
+    await userEvent.keyboard('{ArrowLeft}X')
+    await expect.poll(() => handle.getMarkdown()).toContain('Last linXe ^lastid')
+  })
+
   it('Backspace at the start of the next line keeps the id at the end of the joined line', async () => {
     const note = ['foo ^abcd', 'bar', '', 'Last line', '']
       .join('\n')

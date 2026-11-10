@@ -251,6 +251,13 @@ export {
   type BlockContextLines,
   type BlockContextSource,
 } from './block-context'
+export {
+  listTagChildren,
+  collectionTagKeys,
+  tagExtendsLoop,
+  listTagParentCandidates,
+} from './resolved-tag-types'
+export { nextNumbers, startingValuesFor } from './starting-values'
 export { extractSnippetTasks, type SnippetTask } from './snippet-tasks'
 export {
   getTagType,

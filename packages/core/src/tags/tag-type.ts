@@ -156,6 +156,13 @@ export const tagPropertySchema = z.object({
   reverse: reverseConfigSchema.optional(),
   /** View-only formula config ({@link formulaConfigSchema}). */
   formula: formulaConfigSchema.optional(),
+  /**
+   * The value a note gets when it joins the tag through Kore (Plan 33 B4):
+   * `today`, `now`, `next-number`, or a fixed value. Hand-edited Markdown is
+   * never stamped. Read by `startingValues` (`./starting-values.ts`), which
+   * ignores a default the field's type can't hold.
+   */
+  default: z.union([z.string().min(1), z.number(), z.boolean()]).optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 
@@ -264,6 +271,14 @@ export interface TagType {
    * definition note's own and never reach the tag.
    */
   icon?: string
+  /**
+   * The tags this one builds on (`extends:` on the definition note), folded
+   * keys in declared order (Plan 33 B2). Stored as written; the index pass
+   * merges the inherited fields (`resolveTagTypes`), so a parent's edit
+   * reaches its children without touching them. Absent when the tag builds
+   * on nothing, like `icon`, so the many hand-built types stay valid.
+   */
+  extends?: readonly string[]
 }
 
 /**
@@ -348,11 +363,41 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
       ? templateRaw.trim()
       : undefined
   const icon = tagIconValue(frontmatter['icon'])
+  const parents = parseTagExtends(frontmatter['extends'])
   return {
     properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
+    ...(parents.length === 0 ? {} : { extends: parents }),
   }
+}
+
+/** The frontmatter key a definition names its parent tags under. */
+export const TAG_EXTENDS_KEY = 'extends'
+
+/**
+ * Read an `extends:` value: one tag or a list, with or without `#`, folded
+ * and de-duplicated in order. Anything that is not a tag name is dropped,
+ * the same tolerance every frontmatter read has. Self-references survive
+ * here; `resolveTagTypes` cuts every loop, a self-loop included.
+ */
+export function parseTagExtends(value: unknown): string[] {
+  const raw = typeof value === 'string' ? [value] : Array.isArray(value) ? value : []
+  const parents: string[] = []
+  for (const entry of raw) {
+    if (typeof entry !== 'string') {
+      continue
+    }
+    const name = entry.trim().replace(/^#/, '')
+    if (!isTagName(name)) {
+      continue
+    }
+    const key = foldTag(name)
+    if (!parents.includes(key)) {
+      parents.push(key)
+    }
+  }
+  return parents
 }
 
 /**
@@ -383,13 +428,15 @@ export function tagDisplayName(tag: string): string {
  * reader of the column goes through this pair).
  */
 export function encodeTagTypeJson(type: TagType): string {
-  if (type.template === undefined && type.icon === undefined) {
+  const parents = type.extends ?? []
+  if (type.template === undefined && type.icon === undefined && parents.length === 0) {
     return JSON.stringify(type.properties)
   }
   return JSON.stringify({
     properties: type.properties,
     ...(type.template === undefined ? {} : { template: type.template }),
     ...(type.icon === undefined ? {} : { icon: type.icon }),
+    ...(parents.length === 0 ? {} : { extends: parents }),
   })
 }
 
@@ -403,15 +450,18 @@ export function decodeTagTypeJson(column: string): TagType {
       properties: z.array(tagPropertySchema),
       template: z.string().min(1).optional(),
       icon: z.string().min(1).optional(),
+      extends: z.array(z.string()).optional(),
     })
     .parse(parsed)
   const template =
     object.template !== undefined && isTemplatePath(object.template) ? object.template : undefined
   const icon = tagIconValue(object.icon)
+  const parents = parseTagExtends(object.extends)
   return {
     properties: object.properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
+    ...(parents.length === 0 ? {} : { extends: parents }),
   }
 }
 

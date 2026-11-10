@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
+import { foldTag } from '../markdown'
 import {
   getNoteProperties,
   getTagType,
@@ -18,6 +19,14 @@ import { deriveCollectionPropertySchema } from './collection-schema'
 // SQL (snake_case columns, parameters) — the same harness note-list.test uses.
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
+// Which tags build on a collection's own (Plan 33 B2) is covered against a
+// real index in tag-inheritance-flow.test.ts; here none do, so the
+// positional query mocks below see only the collection's own reads.
+vi.mock('./resolved-tag-types', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./resolved-tag-types')>()),
+  collectionTagKeys: async (tag: string) => [foldTag(tag)],
+}))
+
 beforeEach(() => {
   mockInvoke.mockReset()
   setBridge({ invoke: mockInvoke, listen: async () => () => {} })
@@ -31,7 +40,7 @@ const bookSchema = '[{"name":"Author","key":"author","type":"text"}]'
 
 describe('getTagType', () => {
   it('decodes the stored schema for a folded tag key', async () => {
-    mockInvoke.mockResolvedValueOnce([{ schema_json: bookSchema }])
+    mockInvoke.mockResolvedValueOnce([{ resolved_json: bookSchema }])
     const type = await getTagType('Book')
     expect(type).toEqual({ properties: [{ name: 'Author', key: 'author', type: 'text' }] })
     const [command, args] = mockInvoke.mock.calls[0]!
@@ -43,7 +52,7 @@ describe('getTagType', () => {
   it('treats a missing or mangled row as untyped', async () => {
     mockInvoke.mockResolvedValueOnce([])
     expect(await getTagType('book')).toBeNull()
-    mockInvoke.mockResolvedValueOnce([{ schema_json: '{"nope":1}' }])
+    mockInvoke.mockResolvedValueOnce([{ resolved_json: '{"nope":1}' }])
     expect(await getTagType('book')).toBeNull()
   })
 })
@@ -51,8 +60,8 @@ describe('getTagType', () => {
 describe('listTagTypes', () => {
   it('lists typed tags and skips mangled schema columns', async () => {
     mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
-      { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: 'not json' },
+      { tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookSchema },
+      { tag_key: 'broken', note_path: 'tags/broken.md', resolved_json: 'not json' },
     ])
     expect(await listTagTypes()).toEqual([
       {
@@ -67,8 +76,8 @@ describe('listTagTypes', () => {
 describe('listNoteTagTypes', () => {
   it('joins the note’s tags against tag_types, skipping mangled schemas', async () => {
     mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
-      { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
+      { tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookSchema },
+      { tag_key: 'broken', note_path: 'tags/broken.md', resolved_json: '?' },
     ])
     const entries = await listNoteTagTypes('notes/a.md')
     expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
@@ -305,9 +314,9 @@ describe('deriveCollectionPropertySchema link inference', () => {
 describe('listTagsOnNote', () => {
   it('left-joins every carried tag, typed or not, and drops a mangled schema to untyped', async () => {
     mockInvoke.mockResolvedValueOnce([
-      { tag: 'Book', tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
-      { tag: 'idea', tag_key: 'idea', note_path: null, schema_json: null },
-      { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
+      { tag: 'Book', tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookSchema },
+      { tag: 'idea', tag_key: 'idea', note_path: null, resolved_json: null },
+      { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', resolved_json: '?' },
     ])
     const entries = await listTagsOnNote('notes/a.md')
     expect(entries).toEqual([

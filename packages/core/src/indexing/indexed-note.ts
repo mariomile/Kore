@@ -129,8 +129,12 @@ import {
  * Projects view's sections): existing rows have a null section until
  * reprojected. Rust now also runs migration 0023, whose FTS wipe this
  * rebuild refills.
+ * 30 - `tag_types` stores each tag's effective schema and child tags
+ * (migration 0025, Plan 33 B2), filled by the inheritance pass that runs
+ * after every write touching `tags/`. Existing rows hold NULL, which reads
+ * as untyped, until the rebuild this bump forces runs the pass.
  */
-export const PROJECTION_VERSION = 29
+export const PROJECTION_VERSION = 30
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

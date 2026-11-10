@@ -31,13 +31,7 @@ export async function addTagProperty(
     throw new Error(`#${tag} already has a "${trimmed}" property.`)
   }
   const property: TagProperty = { name: trimmed, key, type }
-  await saveTagType(
-    tag,
-    [...definition.properties, property],
-    generation,
-    definition.template,
-    definition.icon,
-  )
+  await saveTagType(tag, [...definition.properties, property], generation)
   return property
 }
 
@@ -52,7 +46,7 @@ export async function removeTagProperty(
   if (remaining.length === definition.properties.length) {
     return
   }
-  await saveTagType(tag, remaining, generation, definition.template, definition.icon)
+  await saveTagType(tag, remaining, generation)
 }
 
 /**
@@ -75,5 +69,5 @@ export async function setTagPropertyType(
   const next = definition.properties.map((property) =>
     property.key === key ? withPropertyType(property, type) : property,
   )
-  await saveTagType(tag, next, generation, definition.template, definition.icon)
+  await saveTagType(tag, next, generation)
 }

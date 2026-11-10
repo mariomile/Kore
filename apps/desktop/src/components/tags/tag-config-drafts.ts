@@ -1,6 +1,9 @@
 import {
   foldTag,
+  startingValueKind,
+  startingValueOf,
   type RollupAggregation,
+  type StartingValueKind,
   type TagProperty,
   type TagPropertyType,
 } from '@reflect/core'
@@ -25,6 +28,10 @@ export interface PropertyDraft {
   reverseProperty: string
   /** A formula's expression (view-only; empty = not configured). */
   formulaExpression: string
+  /** The field's starting value (Plan 33 B4): none, or its kind. */
+  startingKind: StartingValueKind | 'none'
+  /** A fixed starting value as typed ('' = none yet). */
+  startingFixed: string
 }
 
 export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
@@ -67,7 +74,41 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     reverseTag: property.reverse?.tag ?? '',
     reverseProperty: property.reverse?.property ?? '',
     formulaExpression: property.formula?.expression ?? '',
+    startingKind: property.default === undefined ? 'none' : startingValueKind(property.default),
+    startingFixed:
+      property.default !== undefined && startingValueKind(property.default) === 'fixed'
+        ? String(property.default)
+        : '',
   }))
+}
+
+/**
+ * A draft's starting value as the definition stores it, or `undefined` for
+ * none. Core decides what is valid (`startingValueOf`), so a value the type
+ * can't hold, or a kind left over from a changed type, is dropped here the
+ * same way a note never gets it.
+ */
+export function draftStartingValue(
+  draft: PropertyDraft,
+  options: readonly string[],
+): string | number | boolean | undefined {
+  const declared = draft.startingKind === 'fixed' ? draft.startingFixed.trim() : draft.startingKind
+  if (declared === 'none' || declared === '') {
+    return undefined
+  }
+  const start = startingValueOf({
+    name: draft.name,
+    key: draft.key,
+    type: draft.type,
+    options: [...options],
+    default: declared,
+  })
+  if (start === null) {
+    return undefined
+  }
+  // A fixed value is stored as its type holds it (`3`, `true`); a
+  // multiselect's single option stays the option text.
+  return start.kind === 'fixed' && !Array.isArray(start.value) ? start.value : declared
 }
 
 /** Draft rows for properties that were never stored (a preset seeding an
@@ -108,6 +149,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
             aggregation: draft.rollupAggregation,
           }
         : undefined
+    const startingValue = draftStartingValue(draft, options)
     return {
       name: draft.name.trim(),
       key: draft.key,
@@ -117,6 +159,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       ...(rollup === undefined ? {} : { rollup }),
       ...(reverse === undefined ? {} : { reverse }),
       ...(formula === undefined ? {} : { formula }),
+      ...(startingValue === undefined ? {} : { default: startingValue }),
     }
   })
 }

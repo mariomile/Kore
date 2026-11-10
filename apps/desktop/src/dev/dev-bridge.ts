@@ -33,6 +33,17 @@ const metaArgsSchema = z.object({ key: z.string(), value: z.string() })
 const touchArgsSchema = z.object({
   entries: z.array(z.object({ path: z.string(), mtime: z.number() })),
 })
+const resolveArgsSchema = z.object({
+  rows: z.array(
+    z.object({
+      tagKey: z.string(),
+      resolvedJson: z.string(),
+      publicResolvedJson: z.string().nullable(),
+      descendantsJson: z.string(),
+      publicDescendantsJson: z.string(),
+    }),
+  ),
+})
 const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
 const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
@@ -363,6 +374,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         for (const entry of touchArgsSchema.parse(args).entries) {
           index.touchNote(entry.path, entry.mtime)
         }
+        return null
+      }
+      case 'index_tag_types_resolve': {
+        index.setTagTypeResolutions(resolveArgsSchema.parse(args).rows)
         return null
       }
       case 'index_reconcile_scan':

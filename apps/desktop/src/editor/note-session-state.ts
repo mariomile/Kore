@@ -59,6 +59,14 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   // deleted, so rewriting it would recreate it).
   let discarded = false
   let adoptionRevision = 0
+  /**
+   * Orders disk reads. Each reconcile (and each `load`) takes the next number;
+   * a read that settles after a newer one started is stale and is dropped.
+   * Without it two close external changes (v2 then v3) could settle out of
+   * order and leave the editor on v2 while v3 sits on disk, and the next
+   * keystroke would write v2 back over v3.
+   */
+  let readSequence = 0
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -224,14 +232,16 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * external-change path).
    */
   async function reconcileFromDisk(): Promise<void> {
+    readSequence += 1
+    const sequence = readSequence
     let content: string
     try {
       content = await io.read(path)
     } catch {
       return // deleted/unreadable between event and read; nothing to reconcile
     }
-    if (disposed) {
-      return
+    if (disposed || sequence !== readSequence) {
+      return // a newer read (reconcile or load) owns the outcome
     }
     if (content === disk || content === inFlightWrite) {
       // Nothing to reconcile (stale, or an echo of our own possibly
@@ -269,6 +279,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function load(): void {
+    // Supersede any reconcile still in flight: its read predates this load.
+    readSequence += 1
     loading = true
     missedChange = false
     status = 'loading'

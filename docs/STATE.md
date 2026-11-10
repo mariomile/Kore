@@ -1,5 +1,20 @@
 # Kore working state
 
+## Holistic analysis: Stop reaches a CLI run that is still starting, 2026-11-10
+
+Ask: Mario, "find any state machines, any bugs, and any things that could be
+optimized"; critical fixes that need no product decision may ship without
+asking, one PR per fix. The full report is
+`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`.
+
+- [x] `packages/core/src/ai/agent-cli.ts`: a Stop (or New chat, or a routine's
+  Stop) pressed while the CLI turn was still registering its listener or
+  spawning the child was lost, and the edit-capable run carried on headless.
+  The turn now settles as aborted before spawning when the signal is already
+  aborted, and repeats the native stop once `agent_cli_run` has returned.
+  Same repeat in `runAgentCliCommand` (the login flow).
+- Next: the other findings in the report wait for Mario's choice.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no

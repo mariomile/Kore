@@ -162,6 +162,10 @@ export async function runAgentCliCommand(options: {
       cwd: null,
       streamStderr: true,
     })
+    // A cancel that arrived mid-spawn found no child to kill: repeat it.
+    if (options.signal?.aborted) {
+      onAbort()
+    }
     return await done
   } catch (cause) {
     return {
@@ -273,6 +277,14 @@ export async function* streamAgentCliTurn(
   }
   const unlisten = await getBridge().listen(CLI_EVENT, push)
 
+  // A Stop that landed while the listener was registering never reaches an
+  // `abort` handler added afterwards: settle here, before anything spawns.
+  if (options.signal?.aborted) {
+    unlisten()
+    yield { type: 'aborted', messages: [] }
+    return
+  }
+
   const onAbort = (): void => {
     void getBridge()
       .invoke('agent_cli_stop', { requestId })
@@ -334,6 +346,12 @@ export async function* streamAgentCliTurn(
       messages: [],
     }
     return
+  }
+  // A Stop sent while `agent_cli_run` was still spawning found no child to
+  // kill (the native stop is a no-op for an unknown request). The child
+  // exists now, so repeat it: its `done` event settles the turn as aborted.
+  if (options.signal?.aborted) {
+    onAbort()
   }
 
   const steering = options.steering

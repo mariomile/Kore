@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Stop in chat always stops the agent: pressing it (or starting a new chat)
+  in the first instant of a Claude Code or Codex turn no longer leaves the
+  run editing the vault in the background.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

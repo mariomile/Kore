@@ -102,6 +102,7 @@ export const workspaceSurfaceSchema = z.enum([
   'search',
   'tasks',
   'insights',
+  'memory',
   'activity',
   'graphMap',
   'terminal',
@@ -287,7 +288,7 @@ const openSearchTabStoredSchema = z.object({
 
 const openStaticSurfaceTabStoredSchema = z.object({
   kind: z.literal('surface'),
-  surface: z.enum(['tasks', 'insights', 'activity', 'graphMap', 'terminal', 'browser']),
+  surface: z.enum(['tasks', 'insights', 'memory', 'activity', 'graphMap', 'terminal', 'browser']),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenStaticSurfaceTab>
 

@@ -61,6 +61,15 @@ describe('parseFrontmatter', () => {
     expect(parseFrontmatter('id: x').data.private).toBe(false)
   })
 
+  it('treats cyber-brain sensitivity: private as the same hard block', () => {
+    expect(parseFrontmatter('sensitivity: private').data.private).toBe(true)
+    expect(parseFrontmatter('sensitivity: " Private "').data.private).toBe(true)
+    expect(parseFrontmatter('sensitivity: personal').data.private).toBe(false)
+    expect(parseFrontmatter('sensitivity: shareable').data.private).toBe(false)
+    expect(parseFrontmatter('sensitivity: [private]').data.private).toBe(false)
+    expect(parseFrontmatter('private: false\nsensitivity: private').data.private).toBe(true)
+  })
+
   it('coerces the pinned value: booleans, truthy words, numbers as explicit order', () => {
     expect(parseFrontmatter('pinned: true').data.pinned).toBe(true)
     expect(parseFrontmatter('pinned: yes').data.pinned).toBe(true)

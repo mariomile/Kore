@@ -29,8 +29,10 @@ use std::process::{Command, Stdio};
 
 use serde_json::{json, Map, Value};
 
+mod kit;
 pub mod propose;
 mod tools;
+use kit::{kit_tools, KIT_INSTRUCTIONS, KIT_TOOL_NAMES};
 use tools::*;
 
 /// Protocol revisions this server speaks, newest first. A client asking for
@@ -418,6 +420,13 @@ pub struct Server<R: Runner> {
     runner: R,
     read_only: bool,
     local: bool,
+    /// The vault keeps memory with its cyber-brain kit ([`kit_tools`]).
+    memory_kit: bool,
+    /// Offer only `vault_guide` and the memory tools (Kore's own chat, which
+    /// reads the vault with its own file tools).
+    memory_only: bool,
+    /// Who the stdio client is, for signing its writes (`kore mcp --agent`).
+    owner_name: Option<String>,
 }
 
 impl<R: Runner> Server<R> {
@@ -428,7 +437,28 @@ impl<R: Runner> Server<R> {
             runner,
             read_only,
             local: false,
+            memory_kit: false,
+            memory_only: false,
+            owner_name: None,
         }
+    }
+
+    /// Serve the kit's memory tools in place of the plain `remember`.
+    pub fn with_memory_kit(mut self, on: bool) -> Self {
+        self.memory_kit = on;
+        self
+    }
+
+    /// Offer only `vault_guide` and the memory tools.
+    pub fn memory_only(mut self) -> Self {
+        self.memory_only = true;
+        self
+    }
+
+    /// Sign the unnamed owner's writes as `name` (the app names its chat).
+    pub fn owner_named(mut self, name: Option<String>) -> Self {
+        self.owner_name = name.filter(|name| !name.trim().is_empty());
+        self
     }
 
     /// Also offer the tools that read outside the vault (`LOCAL_ONLY_TOOLS`).
@@ -440,10 +470,23 @@ impl<R: Runner> Server<R> {
 
     fn available(&self, caller: &Caller) -> Vec<Tool> {
         let writes = !self.read_only && caller.access.sees_writes();
-        tools()
-            .into_iter()
+        let all: Vec<Tool> = if self.memory_kit {
+            tools()
+                .into_iter()
+                .filter(|tool| tool.name != "remember")
+                .chain(kit_tools())
+                .collect()
+        } else {
+            tools()
+        };
+        all.into_iter()
             .filter(|tool| tool.effect == Effect::Read || writes)
             .filter(|tool| self.local || !LOCAL_ONLY_TOOLS.contains(&tool.name))
+            .filter(|tool| {
+                !self.memory_only
+                    || tool.name == "vault_guide"
+                    || KIT_TOOL_NAMES.contains(&tool.name)
+            })
             .collect()
     }
 
@@ -526,6 +569,15 @@ impl<R: Runner> Server<R> {
     /// the vault's rules — the same text an agent reading the git repo finds
     /// in AGENTS.md.
     fn instructions(&self) -> String {
+        let base = self.base_instructions();
+        if self.memory_kit {
+            format!("{base}\n\n{KIT_INSTRUCTIONS}")
+        } else {
+            base
+        }
+    }
+
+    fn base_instructions(&self) -> String {
         let Some(contract) = self
             .run_json(&["guide".to_string()])
             .ok()
@@ -568,11 +620,13 @@ impl<R: Runner> Server<R> {
             .into_iter()
             .find(|tool| tool.name == name)
             .ok_or((-32602, format!("unknown tool: {name}")))?;
-        let invocation = match invocation_for(&tool, args, caller.name.as_deref()) {
+        // The unnamed owner signs with `--agent` when the app named it.
+        let caller_name = caller.name.clone().or_else(|| self.owner_name.clone());
+        let invocation = match invocation_for(&tool, args, caller_name.as_deref()) {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
         };
-        let agent = AgentIdentity::for_caller(caller.name.as_deref());
+        let agent = AgentIdentity::for_caller(caller_name.as_deref());
         if caller.access == Access::Propose && tool.effect != Effect::Read {
             return Ok(self.propose(&agent, &tool, args));
         }
@@ -968,6 +1022,82 @@ mod tests {
         assert_eq!(calls.len(), 3, "invalid arguments never run");
         assert_eq!(bad_mode["result"]["isError"], true);
         assert_eq!(no_old["result"]["isError"], true);
+    }
+
+    #[test]
+    fn a_kit_vault_writes_memory_through_kore_brain() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false).with_memory_kit(true);
+        let names = tool_names(&server);
+        for name in KIT_TOOL_NAMES {
+            assert!(names.iter().any(|n| n == name), "{name} listed");
+        }
+        assert_eq!(names.iter().filter(|n| *n == "remember").count(), 1);
+        call(
+            &server,
+            "remember",
+            json!({ "text": "--now Alice runs pricing", "source": "call 2026-11-10" }),
+        );
+        call(
+            &server,
+            "open_loop",
+            json!({ "title": "Follow up with Alice", "due": "2026-11-13" }),
+        );
+        call(
+            &server,
+            "close_loop",
+            json!({ "id": "L-12", "outcome": "done" }),
+        );
+        let missing = call(&server, "record_decision", json!({ "title": "x" }));
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "brain",
+                "remember",
+                "--kind=fact",
+                "--text=--now Alice runs pricing",
+                "--source=call 2026-11-10"
+            ]
+        );
+        assert_eq!(
+            calls[1].0,
+            [
+                "brain",
+                "loop",
+                "open",
+                "--title=Follow up with Alice",
+                "--due=2026-11-13"
+            ]
+        );
+        assert_eq!(
+            calls[2].0,
+            ["brain", "loop", "close", "--id=L-12", "--outcome=done"]
+        );
+        assert_eq!(calls.len(), 3, "a decision without its fields never runs");
+        assert_eq!(missing["result"]["isError"], true);
+    }
+
+    #[test]
+    fn memory_only_offers_the_guide_and_the_memory_tools() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false)
+            .with_memory_kit(true)
+            .memory_only();
+        let mut names = tool_names(&server);
+        names.sort();
+        let mut expected: Vec<String> = KIT_TOOL_NAMES
+            .iter()
+            .chain(["vault_guide"].iter())
+            .map(|name| (*name).to_string())
+            .collect();
+        expected.sort();
+        assert_eq!(names, expected);
+        // Read-only still hides every write.
+        let read_only = Server::new(&recorder, true)
+            .with_memory_kit(true)
+            .memory_only();
+        assert_eq!(tool_names(&read_only), ["vault_guide"]);
     }
 
     #[test]

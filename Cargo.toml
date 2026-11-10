@@ -11,6 +11,7 @@ members = [
   "crates/graph-paths",
   "crates/index-schema",
   "crates/index-store",
+  "crates/kit-script",
   "crates/note-policy",
   "plugins/tauri-plugin-keyboard",
   "plugins/tauri-plugin-recording",
@@ -26,6 +27,7 @@ sha2 = "0.11.0"
 tempfile = "3.27.0"
 reflect-graph-paths = { path = "crates/graph-paths" }
 reflect-note-policy = { path = "crates/note-policy" }
+reflect-kit-script = { path = "crates/kit-script" }
 reflect-index-store = { path = "crates/index-store" }
 
 # Shipped builds trade compile time for a smaller, faster binary: one codegen

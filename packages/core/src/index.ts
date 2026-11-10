@@ -12,3 +12,4 @@
 export * from './exports/platform'
 export * from './exports/ai-actions'
 export * from './exports/sync-markdown-indexing'
+export * from './cyber-brain'

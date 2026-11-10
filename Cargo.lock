@@ -4784,6 +4784,7 @@ dependencies = [
  "reflect-graph-paths",
  "reflect-index-schema",
  "reflect-index-store",
+ "reflect-kit-script",
  "reflect-note-policy",
  "rusqlite",
  "saphyr",
@@ -4832,6 +4833,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "reflect-kit-script"
+version = "0.1.0"
+dependencies = [
+ "reflect-note-policy",
+ "saphyr",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+]
+
+[[package]]
 name = "reflect-note-policy"
 version = "0.1.0"
 dependencies = [
@@ -4870,6 +4882,7 @@ dependencies = [
  "reflect-graph-paths",
  "reflect-index-schema",
  "reflect-index-store",
+ "reflect-kit-script",
  "reflect-note-policy",
  "reqwest 0.12.28",
  "rusqlite",

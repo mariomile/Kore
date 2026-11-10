@@ -133,8 +133,12 @@ import {
  * (migration 0025, Plan 33 B2), filled by the inheritance pass that runs
  * after every write touching `tags/`. Existing rows hold NULL, which reads
  * as untyped, until the rebuild this bump forces runs the pass.
+ * 31 - `sensitivity: private` (cyber-brain's privacy level, Plan 35) sets
+ * `notes.is_private` like `private: true`. Rows indexed before hold `false`,
+ * so the CLI, `kore mcp` and search would still serve those notes until they
+ * were edited: the bump reprojects every note so the block holds at once.
  */
-export const PROJECTION_VERSION = 30
+export const PROJECTION_VERSION = 31
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

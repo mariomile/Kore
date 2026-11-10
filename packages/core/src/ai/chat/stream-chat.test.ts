@@ -581,3 +581,90 @@ describe('streamChatTurn', () => {
     expect(events.some((event) => event.type === 'text-delta')).toBe(true)
   })
 })
+
+describe('streamChatTurn memory tools', () => {
+  const BASE = {
+    messages: [{ role: 'user', content: 'remember I moved to Rome' }] satisfies ModelMessage[],
+    today: '2026-11-10',
+    semanticSearchEnabled: true,
+    customSystemPrompt: '',
+    context: null,
+    allowEdits: true,
+  }
+  const toolNames = (model: MockLanguageModelV3): string[] =>
+    (model.doStreamCalls[0]?.tools ?? []).map((tool) => tool.name)
+
+  it('leaves the memory tools out of a vault without a kit', async () => {
+    const model = new MockLanguageModelV3({ doStream: sequence([textTurn('ok')]) })
+
+    await collect(streamChatTurn(model, BASE))
+
+    expect(toolNames(model)).toContain('search_notes')
+    expect(toolNames(model)).not.toContain('remember')
+  })
+
+  it('lists them in a kit vault and writes through the kit', async () => {
+    const memoryWriteFn = vi.fn(async () => ({
+      ok: true as const,
+      output: 'remembered',
+      commit: null,
+    }))
+    const model = new MockLanguageModelV3({
+      doStream: sequence([
+        stream([
+          {
+            type: 'tool-call',
+            toolCallId: 'mem-1',
+            toolName: 'remember',
+            input: JSON.stringify({ text: 'Lives in Rome', source: 'chat' }),
+          },
+          { type: 'finish', finishReason: { unified: 'tool-calls', raw: undefined }, usage: USAGE },
+        ]),
+        textTurn('Saved.'),
+      ]),
+    })
+
+    const events = await collect(
+      streamChatTurn(model, {
+        ...BASE,
+        agentContext: {
+          profile: null,
+          soul: null,
+          memoryPath: 'agents/kore/MEMORY.md',
+          userMemory: null,
+          sharedFacts: null,
+          sharedLog: null,
+          agentMemory: null,
+          skills: [],
+          vaultContract: null,
+          memoryKit: {
+            contractPath: 'AGENTS.md',
+            skills: { dir: 'System/skills', kind: 'folder' },
+            tools: false,
+          },
+        },
+        toolDeps: { memoryWriteFn },
+      }),
+    )
+
+    expect(toolNames(model)).toContain('remember')
+    expect(JSON.stringify(model.doStreamCalls[0]?.prompt)).toContain('memory tools')
+    expect(memoryWriteFn).toHaveBeenCalledWith({
+      kind: 'remember',
+      memory: 'fact',
+      text: 'Lives in Rome',
+      source: 'chat',
+    })
+    expect(events).toContainEqual({
+      type: 'tool-result',
+      result: {
+        tool: 'memory',
+        toolCallId: 'mem-1',
+        action: 'remember',
+        label: 'Lives in Rome',
+        output: 'remembered',
+        error: null,
+      },
+    })
+  })
+})

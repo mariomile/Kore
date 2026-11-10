@@ -493,6 +493,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // exactly what a real fetch reports when there is no network.
         throw new ReflectError('network', 'dev bridge: no network for capture_data_fetch')
 
+      case 'kit_script_status':
+        // No vault kit script runs in the browser harness (Plan 35).
+        return null
+
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)
         throw new ReflectError('unknown', `dev bridge: unimplemented command "${command}"`)

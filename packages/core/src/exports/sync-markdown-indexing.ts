@@ -81,6 +81,7 @@ export {
   gistBodyHash,
   gistFilename,
   isPinned,
+  isSensitivityPrivate,
   pinnedOrder,
   PARSED_NOTE_VERSION,
   parseNote,

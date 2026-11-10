@@ -190,12 +190,12 @@ export const sidebarSectionsSchema = z
 
 /**
  * The workspace sidebar's primary navigation rows (Daily notes, New note, All
- * notes, Tasks, Graph), in the order the user dragged them into. Same closed-
- * set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
+ * notes, Tasks, Graph, and Memory, shown only in a cyber-brain vault), in the
+ * order the user dragged them into. Same closed-set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
  * key only records their arrangement. The terminal is not a row: it opens as
  * a tab from the tab strip's "+" menu.
  */
-const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph'])
+const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'])
 
 export type SidebarNavItem = z.infer<typeof sidebarNavEnum>
 

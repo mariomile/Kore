@@ -173,6 +173,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'insights' }),
   },
   {
+    id: 'nav.memory',
+    title: 'Memory',
+    keywords: ['cyber-brain', 'loops', 'decisions', 'facts', 'now', 'remember', 'runs'],
+    run: (context) => context.navigate({ kind: 'memory' }),
+  },
+  {
     id: 'nav.activity',
     title: 'Activity',
     keywords: ['agents', 'history', 'changes', 'log', 'undo', 'who', 'edits'],

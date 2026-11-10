@@ -134,41 +134,61 @@ const WIKI_UNSAFE_RE = /[[\]|\\\r\n]+/g
  * The title a picker's "Create" entry would give a new row, or `null` when
  * the query holds nothing a wiki link could name.
  */
-export function creatableRowTitle(query: string): string | null {
+function creatableRowTitle(query: string): string | null {
   const title = query.replaceAll(WIKI_UNSAFE_RE, ' ').replaceAll(/\s+/g, ' ').trim()
   return title === '' ? null : title
 }
 
+/** A relation picker's "Create" entry: what it says, and the note it makes. */
+export interface RelationCreateEntry {
+  label: string
+  /** Create the note and resolve to its wiki insert text. */
+  create: () => Promise<string>
+}
+
 /**
- * The collection a relation picker's "Create" entry files new notes into
- * (`relationCreateTarget`): the declared target, else the vault's collection
- * named like the field, else none (a plain note). The tag lists load only
- * while the picker is open and only for an untargeted field, sharing the
- * cache keys the schema dialog's target picker reads.
+ * The "Create" entry both relation pickers offer, or `null` when the query
+ * names nothing new (empty, or an exact title already suggested). The note
+ * files into `relationCreateTarget`: the declared target, else the vault's
+ * collection named like the field, else none (a plain note). The vault's tag
+ * lists load only while the picker is open, on the same cache keys the schema
+ * dialog's target picker reads.
  */
-export function useRelationCreateTarget(property: TagProperty, open: boolean): string | undefined {
+export function useRelationCreateEntry(
+  property: TagProperty,
+  open: boolean,
+  query: string,
+  suggestions: readonly WikiLinkSuggestion[],
+): RelationCreateEntry | null {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
-  const needsLookup =
-    open &&
-    bridgeReady &&
-    graph !== null &&
-    (property.type === 'relation' || property.type === 'relations') &&
-    property.target === undefined
+  const enabled = open && bridgeReady && graph !== null
   const { data: noteTags } = useQuery({
     queryKey: allNotesTagsQueryKey(graph?.root),
     queryFn: () => listNoteTags(),
-    enabled: needsLookup,
+    enabled,
   })
   const { data: tagTypes } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
     queryFn: () => listTagTypes(),
-    enabled: needsLookup,
+    enabled,
   })
-  return relationCreateTarget(property, [
+  const title = creatableRowTitle(query)
+  if (
+    title === null ||
+    graph === null ||
+    suggestions.some((suggestion) => suggestion.title.toLowerCase() === title.toLowerCase())
+  ) {
+    return null
+  }
+  const target = relationCreateTarget(property, [
     ...(noteTags ?? []).map((facet) => facet.tag),
     ...(tagTypes ?? []).map((entry) => entry.tagKey),
   ])
+  return {
+    label: target === undefined ? `Create note “${title}”` : `Create “${title}” in #${target}`,
+    create: () => createRelationRow(target, title, graph.generation),
+  }
 }
 
 /**
@@ -180,27 +200,30 @@ export function useRelationCreateTarget(property: TagProperty, open: boolean): s
  * already (the local-write echo usually has), else the title itself, which
  * the new note claims as soon as the projection lands.
  */
-export async function createRelationRow(
+async function createRelationRow(
   targetTag: string | undefined,
   title: string,
   generation: number,
 ): Promise<string> {
-  const path =
-    targetTag === undefined
-      ? await createNoteWithTitle(title, generation)
-      : await createNoteWithTitle(title, generation, `#${targetTag}`)
+  if (targetTag === undefined) {
+    return await insertTextFor(await createNoteWithTitle(title, generation), title)
+  }
+  const path = await createNoteWithTitle(title, generation, `#${targetTag}`)
   // A row born from the picker carries its `created` stamps too (Plan 29
   // T1) — best-effort: a failed stamp never loses the created note.
-  if (targetTag !== undefined) {
-    try {
-      const stamps = createdStampValues(await getTagType(targetTag))
-      if (Object.keys(stamps).length > 0) {
-        await commitNoteFrontmatter(path, { properties: stamps }, generation)
-      }
-    } catch {
-      // The note exists; the stamp can be filled by hand.
+  try {
+    const stamps = createdStampValues(await getTagType(targetTag))
+    if (Object.keys(stamps).length > 0) {
+      await commitNoteFrontmatter(path, { properties: stamps }, generation)
     }
+  } catch {
+    // The note exists; the stamp can be filled by hand.
   }
+  return await insertTextFor(path, title)
+}
+
+/** A created note's wiki insert text: its verified address, else its title. */
+async function insertTextFor(path: string, title: string): Promise<string> {
   try {
     const address = await getWikiAddressForPath(path)
     return address?.insertText ?? title

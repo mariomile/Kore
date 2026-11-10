@@ -199,7 +199,7 @@ export function relationCreateTarget(
  * `updated`) and the computed types (`formula`, `rollup`, `reverse`) need
  * their configuration, so they stay in the type's schema dialog.
  */
-export const QUICK_PROPERTY_TYPES = [
+export const QUICK_PROPERTY_TYPES: readonly TagPropertyType[] = [
   'text',
   'number',
   'checkbox',
@@ -215,7 +215,7 @@ export const QUICK_PROPERTY_TYPES = [
   'relation',
   'relations',
   'person',
-] as const satisfies readonly TagPropertyType[]
+]
 
 /**
  * `property` switched to `type`, keeping its name and key (so stored values

@@ -1,11 +1,6 @@
 import type { ReactElement } from 'react'
-import { NoteTypeField } from '@/components/notes/note-type-field'
-import { PropertyFieldLabel } from '@/components/notes/property-field-label'
-import { PropertyFieldValue } from '@/components/tags/property-field-value'
-import { PropertyValueEditor } from '@/components/tags/property-editors'
-import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
+import { NoteFieldList } from '@/components/notes/note-field-list'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
-import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { SidebarSection } from './sidebar-section'
 
 interface NotePropertiesSectionProps {
@@ -21,9 +16,8 @@ interface NotePropertiesSectionProps {
  * own page is where that offer belongs.
  */
 export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
-  const commitProperty = useCommitNoteProperty()
-  const openRelation = useOpenRelation()
-  const { tags, properties, values, ownerTagOf } = useNoteTypedProperties(path)
+  const fields = useNoteTypedProperties(path)
+  const { tags, properties } = fields
 
   if (tags.length === 0 && properties.length === 0) {
     return null
@@ -31,31 +25,7 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
 
   return (
     <SidebarSection storageKey="note-properties" title="Properties">
-      <ul className="space-y-0.5">
-        <NoteTypeField path={path} tags={tags} labelClassName="w-24" />
-        {properties.map((property) => (
-          <li key={property.key} className="flex min-h-7 items-center gap-2">
-            <PropertyFieldLabel
-              property={property}
-              ownerTag={ownerTagOf(property.key)}
-              className="w-24"
-            />
-            <PropertyValueEditor
-              property={property}
-              value={values?.[property.key]}
-              onCommit={(value) => commitProperty(path, property.key, value)}
-              onOpenRelation={openRelation}
-              align="end"
-            >
-              <PropertyFieldValue
-                property={property}
-                value={values?.[property.key]}
-                onOpenRelation={openRelation}
-              />
-            </PropertyValueEditor>
-          </li>
-        ))}
-      </ul>
+      <NoteFieldList path={path} fields={fields} labelClassName="w-24" align="end" />
     </SidebarSection>
   )
 }

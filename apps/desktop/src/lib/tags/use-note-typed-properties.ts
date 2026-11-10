@@ -146,16 +146,10 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
   }, [values, properties, mtime])
 
   const ownerTagOf = useCallback(
-    (key: string): string | null => {
-      const owner = tagTypes.find((entry) =>
-        entry.type.properties.some((property) => property.key === key),
-      )
-      if (owner === undefined) {
-        return null
-      }
-      return (tags ?? []).find((entry) => entry.tagKey === owner.tagKey)?.tag ?? owner.tagKey
-    },
-    [tagTypes, tags],
+    (key: string): string | null =>
+      (tags ?? []).find((entry) => entry.type?.properties.some((property) => property.key === key))
+        ?.tag ?? null,
+    [tags],
   )
 
   return { tags: tags ?? [], tagTypes, properties, values: overlaid, ownerTagOf }

@@ -56,9 +56,7 @@ export function PropertyFieldLabel({
   const typeLabel = PROPERTY_TYPE_LABELS[property.type]
   // The current type stays listed even when it is not a one-gesture type
   // (a formula, a stamp), so the menu always shows what the field is.
-  const choices: readonly TagPropertyType[] = (
-    QUICK_PROPERTY_TYPES as readonly TagPropertyType[]
-  ).includes(property.type)
+  const choices = QUICK_PROPERTY_TYPES.includes(property.type)
     ? QUICK_PROPERTY_TYPES
     : [property.type, ...QUICK_PROPERTY_TYPES]
 

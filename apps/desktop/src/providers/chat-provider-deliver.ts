@@ -555,7 +555,28 @@ export async function deliverChatTurn(
 
   try {
     if (editRun) {
-      await withAgentRunLock(run)
+      // Stop must work while the turn is still queued behind another agent
+      // run (an automation, a turn in another window): the signal cancels
+      // the wait, and the notice says why nothing is streaming yet.
+      await withAgentRunLock(run, {
+        signal: controller.signal,
+        onWaiting: () => {
+          const notice = {
+            kind: 'notice' as const,
+            tone: 'info' as const,
+            text: 'Waiting for another agent run to finish…',
+          }
+          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, notice] }))
+          return () => {
+            updateTurn((turn) => ({
+              ...turn,
+              parts: turn.parts.filter(
+                (part) => !(part.kind === 'notice' && part.text === notice.text),
+              ),
+            }))
+          }
+        },
+      })
     } else {
       await run()
     }

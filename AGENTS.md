@@ -160,8 +160,10 @@ Everything a user sees, types, pastes, or finds on disk is **Kore**:
   folder, every permission prompt, the `kore` CLI and its `kore mcp` server,
   `$KORE_GRAPH`, the agent skills, `.koreignore`, and the `kore://` deep links;
 - what Kore stores: the vault's runtime directory `.kore/`, asset
-  descriptions `*.kore.md` (`koreAsset: true`), the `kore/` config directory,
-  `kore.*` localStorage keys, the `kore-asset://` protocol, and the
+  descriptions `*.kore.md` (`koreAsset: true`), the tag-definition marker
+  `kore: tag` (was `lore: tag`, rewritten on the next schema save), the
+  `kore/` config directory, `kore.*` localStorage keys, the `kore-asset://`
+  protocol, the `kore-export-*` classes of exported HTML, and the
   `app.kore.capture` native-messaging host.
 
 Each stored name had a Reflect-era spelling (`.reflect/`, `*.reflect.md`,

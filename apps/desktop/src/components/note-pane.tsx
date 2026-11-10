@@ -58,6 +58,7 @@ import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
+import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -234,6 +235,12 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
+  // The header's "Add icon" is a pointer affordance for regular notes: daily
+  // notes stack in a stream where every day would grow one, and touch has no
+  // hover to reveal it.
+  const setNoteIcon = useNoteAppearanceEdit(path, generation)
+  const onIconChange =
+    setNoteIcon !== null && !dailyNote && !isTouchEditorSurface() ? setNoteIcon : undefined
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -453,7 +460,7 @@ export function NotePaneComponent({
   )
 
   return (
-    <div className={cn('relative', className)} aria-label={`Editing ${path}`}>
+    <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
         <NoteBreadcrumb path={path} />
 
@@ -488,6 +495,7 @@ export function NotePaneComponent({
         source={document.header}
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
+        onIconChange={onIconChange}
       />
 
       <NoteEditor

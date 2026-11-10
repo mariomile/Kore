@@ -64,10 +64,11 @@ export interface FrontmatterPatch {
    */
   tagTemplate?: string | null
   /**
-   * The tag's emoji (`icon:` on the definition, the note-icon key). `null`
-   * deletes the key; omitted leaves whatever is there.
+   * The note's icon (`icon:`: an emoji, `icon:<name>`, or an image), which
+   * is also a tag definition's icon. `null` deletes the key; omitted leaves
+   * whatever is there.
    */
-  tagIcon?: string | null
+  icon?: string | null
 }
 
 /**
@@ -104,8 +105,8 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   if (patch.tagTemplate !== undefined) {
     yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
   }
-  if (patch.tagIcon !== undefined) {
-    yaml['icon'] = patch.tagIcon === null ? undefined : patch.tagIcon
+  if (patch.icon !== undefined) {
+    yaml['icon'] = patch.icon === null ? undefined : patch.icon
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

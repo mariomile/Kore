@@ -86,7 +86,7 @@ export async function saveTagType(
   // kept them.
   const seed = upsertFrontmatter(
     '',
-    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template, tagIcon: icon }),
+    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template, icon }),
   )
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
@@ -94,7 +94,7 @@ export async function saveTagType(
   }
   await commitNoteFrontmatter(
     path,
-    { tagSchema: properties, tagTemplate: template, tagIcon: icon },
+    { tagSchema: properties, tagTemplate: template, icon },
     generation,
   )
 }

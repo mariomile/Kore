@@ -140,7 +140,7 @@ describe('saveTagType', () => {
     expect(commitFrontmatter).toHaveBeenCalledWith({
       tagSchema: schema,
       tagTemplate: null,
-      tagIcon: null,
+      icon: null,
     })
     expect(writeNote).not.toHaveBeenCalled()
   })

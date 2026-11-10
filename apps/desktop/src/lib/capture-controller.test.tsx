@@ -180,3 +180,54 @@ describe('createCaptureController (shared-inbox relay)', () => {
     expect(drainCaptureInbox).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('createCaptureController (iCloud-evicted daily)', () => {
+  const EVICTED = {
+    reason: 'evicted' as const,
+    message: 'daily/2026-06-11.md is still downloading',
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('retries on a doubling timer until the drain gets past the download, silently', async () => {
+    vi.useFakeTimers()
+    drainCaptureInbox
+      .mockResolvedValueOnce(drained({ pending: 1, stopped: EVICTED }))
+      .mockResolvedValueOnce(drained({ pending: 1, stopped: EVICTED }))
+      .mockResolvedValue(drained({ pending: 1, drained: 1 }))
+
+    create().start()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(2)
+
+    // Second stop: the wait doubles to 4s.
+    await vi.advanceTimersByTimeAsync(3_999)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(3)
+
+    // Drained: no further timer.
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(3)
+    expect(failOperation).not.toHaveBeenCalled()
+  })
+
+  it('drops the pending retry on dispose', async () => {
+    vi.useFakeTimers()
+    drainCaptureInbox.mockResolvedValue(drained({ pending: 1, stopped: EVICTED }))
+
+    create().start()
+    await vi.advanceTimersByTimeAsync(0)
+    controller?.dispose()
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    expect(drainCaptureInbox).toHaveBeenCalledTimes(1)
+  })
+})

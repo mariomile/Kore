@@ -1,18 +1,5 @@
 # Kore working state
 
-## Pasted links & files settings, 2026-11-10
-
-Ask: Mario, "se incolliamo un link, questo va in una collection. Facciamole
-impostare da qualche parte, magari non tutti la vorrebbero". Default chosen
-on his decision card: everything off.
-
-- [x] Settings → Notes → Pasted links & files: one switch each for links,
-  images, PDFs and other files (`pasteCollect*`, off by default), plus
-  "Keep the page text" under links (`pasteSaveLinkText`, on). Off means the
-  paste lands in the note with no `notes/resource-….md` card.
-- [x] Gate lives in `useResourceCollection`; deliberate captures (share
-  sheet, extension, `kore capture`) still save; existing cards untouched.
-
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
 Ask: Mario picked "conflict copy" for D2 of the holistic analysis
@@ -3406,6 +3393,18 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character

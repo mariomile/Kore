@@ -39,7 +39,7 @@ export function useObsidianImportDryRun(graph: GraphInfo | null): ObsidianImport
     queryKey: ['obsidian-import-dry-run', graph?.root, graph?.generation] as const,
     queryFn: async () => {
       if (graph === null || !bridgeReady) {
-        throw new Error('no graph is open')
+        throw new Error('no vault is open')
       }
       return await readObsidianImportSource(graph.generation)
     },

@@ -61,7 +61,7 @@ export async function runNoteBatch<T>({
     return { failures: [], ok: true }
   }
   if (graph === null || graph === undefined) {
-    startOperation(label).fail('No graph is open.')
+    startOperation(label).fail('No vault is open.')
     return { failures: [], ok: false }
   }
   const operation = startOperation(label)

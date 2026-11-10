@@ -187,6 +187,7 @@ export const granolaConnector: Connector = {
   defaultTags: ['meeting'],
   tokenUrl: 'https://docs.granola.ai/introduction',
   tokenLabel: 'API key',
+  tokenNoun: 'API key',
   overlapMs: 3 * 24 * 60 * 60 * 1000,
   verify,
   fetchNotes,

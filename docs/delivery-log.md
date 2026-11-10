@@ -7,10 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Pasting a link or a file no longer files it in a collection unless you
-  ask: Settings → Notes → Pasted links & files has a switch for links,
-  images, PDFs and other files, all off to start, and links can keep or
-  skip the page text.
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
 
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as

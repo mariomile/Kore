@@ -11,7 +11,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   the line that ends with `^id` and highlights it for a moment, and
   `![[Note#^id]]` shows that line (with its sub-items) inside another note.
   The `^id` stays in the file but never shows in the note, and the link
-  reads just the note's name. "Copy link to line"
+  reads just the note's name. Only ids of four or more characters hide, so
+  `x ^2` stays as written. "Copy link to line"
   in the block menu or ⌘K adds an id only to that line and copies the link.
 
 - Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that

@@ -60,6 +60,7 @@ export {
   blockLinkLabel,
   extractBlockSection,
   isBlockId,
+  isHiddenBlockId,
   lineBlockId,
   newBlockId,
   noteLinkBlockId,

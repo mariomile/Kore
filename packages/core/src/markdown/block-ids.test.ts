@@ -4,6 +4,7 @@ import {
   blockLinkLabel,
   extractBlockSection,
   isBlockId,
+  isHiddenBlockId,
   lineBlockId,
   newBlockId,
   noteLinkBlockId,
@@ -55,12 +56,24 @@ describe('blockIdsIn / withoutBlockIds', () => {
   })
 
   it('leaves fenced code alone', () => {
-    const md = ['```js', 'const x = a ^b', '^c', '```', 'text ^d'].join('\n')
-    expect(withoutBlockIds(md)).toBe(['```js', 'const x = a ^b', '^c', '```', 'text'].join('\n'))
+    const md = ['```js', 'const x = a ^beta', '^gamma', '```', 'text ^delta'].join('\n')
+    expect(withoutBlockIds(md)).toBe(
+      ['```js', 'const x = a ^beta', '^gamma', '```', 'text'].join('\n'),
+    )
   })
 
   it('removes markers and id-only lines', () => {
-    expect(withoutBlockIds('- one ^a\n| t |\n^d\nx^2')).toBe('- one\n| t |\nx^2')
+    expect(withoutBlockIds('- one ^a1b2\n| t |\n^d4e5\nx^2')).toBe('- one\n| t |\nx^2')
+  })
+
+  it('hides only ids of four or more characters', () => {
+    expect(withoutBlockIds('area x ^2\nsee ^abc\nsee ^abcd\n^ab')).toBe(
+      'area x ^2\nsee ^abc\nsee\n^ab',
+    )
+    expect(isHiddenBlockId('abcd')).toBe(true)
+    expect(isHiddenBlockId('abc')).toBe(false)
+    // A short id still names its line, so an existing link to it resolves.
+    expect(lineBlockId('see ^abc')).toBe('abc')
   })
 })
 
@@ -72,7 +85,7 @@ describe('extractBlockSection', () => {
     'intro line two ^intro',
     '',
     '- Plans',
-    '  - Pro: 49€ ^pro',
+    '  - Pro: 49€ ^price',
     '    - billed monthly ^monthly',
     '    - annual -20%',
     '  - Team: 99€',
@@ -89,7 +102,7 @@ describe('extractBlockSection', () => {
   ].join('\n')
 
   it('returns a list item with its children, dedented, markers removed', () => {
-    expect(extractBlockSection(source, 'pro')).toBe(
+    expect(extractBlockSection(source, 'price')).toBe(
       ['- Pro: 49€', '  - billed monthly', '  - annual -20%'].join('\n'),
     )
     expect(extractBlockSection(source, 'monthly')).toBe('- billed monthly')
@@ -130,7 +143,7 @@ describe('extractBlockSection', () => {
     const note = `---\ntitle: Pricing\n---\n${source}`
     expect(transclusionMarkdown(note, '^monthly')).toBe('- billed monthly')
     expect(transclusionMarkdown(note, '^missing')).toBeNull()
-    expect(transclusionMarkdown(note, null)).not.toContain('49€ ^pro')
+    expect(transclusionMarkdown(note, null)).not.toContain('49€ ^price')
   })
 })
 

@@ -3379,6 +3379,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — `^id` hiding rule (Plan 33 C3, Mario's card choice "Solo id
+  veri (4+ caratteri)"): the editor, previews, backlinks and extracted text
+  hide only markers of four or more characters (`isHiddenBlockId` in
+  `packages/core/src/markdown/block-ids.ts`, the same rule in
+  `block-id-plugin.ts`). A shorter `^word` such as `x ^2` stays visible and a
+  link to it still resolves; "Copy link to line" on such a line adds a real
+  six-character id instead of reusing it. Verified: core markdown tests
+  (578), `block-ids.test.tsx` (17, chromium), preview and backlink tests,
+  typecheck, lint.
+
 - 2026-11-09 — Line references with `^id` (Plan 33 C3): `[[Note#^id]]`
   opens the note on that line and flashes it, `![[Note#^id]]` embeds the
   line with its children, markers never show in the note (the caret steps

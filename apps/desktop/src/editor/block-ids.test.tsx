@@ -13,7 +13,7 @@ const NOTE = [
   '# Pricing',
   '',
   '- Plans',
-  '  - Pro costs 49 ^pro',
+  '  - Pro costs 49 ^price',
   '    - billed monthly',
   '- Other',
   '',
@@ -70,7 +70,7 @@ describe('BlockIds', () => {
   it('lands on the line a ^id names and flashes it, without touching the note', async () => {
     const handle = await renderNote()
     handle.focus()
-    expect(handle.revealHeading?.('^pro')).toBe(true)
+    expect(handle.revealHeading?.('^price')).toBe(true)
     const flashed = pmRoot.locate('.kore-block-flash')
     await expect.element(flashed).toBeVisible()
     expect(flashed.element().textContent).toContain('Pro costs 49')
@@ -93,15 +93,29 @@ describe('BlockIds', () => {
     await renderNote()
     await expect.element(pmRoot.getByText('Pro costs 49')).toBeVisible()
     expect((pmRoot.element() as HTMLElement).innerText).not.toContain('^')
-    expect(document.querySelector('.kore-block-id')?.textContent).toBe(' ^pro')
+    expect(document.querySelector('.kore-block-id')?.textContent).toBe(' ^price')
     expect(document.querySelector('.kore-block-id-line')?.textContent).toBe('^quote')
+  })
+
+  it('keeps a short ^word visible, and copying a link gives that line a real id', async () => {
+    const writeText = stubClipboard()
+    const handle = await renderNote(['Area is x ^2', '', 'Last line', ''].join('\n'))
+    await expect.element(pmRoot.getByText('Area is x ^2')).toBeVisible()
+    expect(document.querySelector('.kore-block-id')).toBeNull()
+    await pmRoot.getByText('Area is x ^2').click()
+    expect(copyLinkToLastFocusedLine()).toBe(true)
+    await expect.poll(() => writeText.mock.calls.length).toBe(1)
+    const id = /Area is x \^2 \^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
+    expect(id).toBeDefined()
+    expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)
+    await expect.element(pmRoot.getByText('Area is x ^2')).toBeVisible()
   })
 
   it('typing at the end of a line goes before its id', async () => {
     const handle = await renderNote()
     await pmRoot.getByText('Pro costs 49').click()
     await userEvent.keyboard('{End}€ a month')
-    await expect.poll(() => handle.getMarkdown()).toContain('  - Pro costs 49€ a month ^pro\n')
+    await expect.poll(() => handle.getMarkdown()).toContain('  - Pro costs 49€ a month ^price\n')
   })
 
   it('Enter at the end of a line leaves the id on that line', async () => {
@@ -109,33 +123,33 @@ describe('BlockIds', () => {
     await pmRoot.getByText('Other').click()
     await userEvent.keyboard('{End}{Enter}Third')
     await expect.poll(() => handle.getMarkdown()).toContain('- Other\n- Third')
-    expect(handle.getMarkdown()).toContain('  - Pro costs 49 ^pro\n')
+    expect(handle.getMarkdown()).toContain('  - Pro costs 49 ^price\n')
     await pmRoot.getByText('Pro costs 49').click()
     await userEvent.keyboard('{End}{Enter}Team')
     await expect.poll(() => handle.getMarkdown()).toContain('Team')
-    expect(handle.getMarkdown()).toMatch(/- Pro costs 49 \^pro\n/)
-    expect(handle.getMarkdown()).not.toMatch(/Team \^pro/)
+    expect(handle.getMarkdown()).toMatch(/- Pro costs 49 \^price\n/)
+    expect(handle.getMarkdown()).not.toMatch(/Team \^price/)
   })
 
   it('Delete at the end of a line keeps the id at the end of the joined line', async () => {
-    const note = ['Para one ^one', 'still para', '', 'Last line', ''].join('\n')
-    const handle = await renderNote(note.replace('^one\nstill para', '^one\n\nstill para'))
+    const note = ['Para one ^first', 'still para', '', 'Last line', ''].join('\n')
+    const handle = await renderNote(note.replace('^first\nstill para', '^first\n\nstill para'))
     await pmRoot.getByText('Para one').click()
     await userEvent.keyboard('{End}{Delete}')
-    await expect.poll(() => handle.getMarkdown()).toContain('Para onestill para ^one')
+    await expect.poll(() => handle.getMarkdown()).toContain('Para onestill para ^first')
     await userEvent.keyboard('X')
-    await expect.poll(() => handle.getMarkdown()).toContain('Para oneXstill para ^one')
+    await expect.poll(() => handle.getMarkdown()).toContain('Para oneXstill para ^first')
   })
 
   it('Backspace at the start of the next line keeps the id at the end of the joined line', async () => {
-    const note = ['foo ^abc', 'bar', '', 'Last line', '']
+    const note = ['foo ^abcd', 'bar', '', 'Last line', '']
       .join('\n')
-      .replace('^abc\nbar', '^abc\n\nbar')
+      .replace('^abcd\nbar', '^abcd\n\nbar')
     const handle = await renderNote(note)
     await pmRoot.getByText('bar', { exact: true }).click()
     caretToLineStart()
     await userEvent.keyboard('{Backspace}')
-    await expect.poll(() => handle.getMarkdown()).toContain('foobar ^abc')
+    await expect.poll(() => handle.getMarkdown()).toContain('foobar ^abcd')
     await expect.element(pmRoot.getByText('foobar')).toBeVisible()
   })
 
@@ -151,7 +165,7 @@ describe('BlockIds', () => {
 
   it('labels [[Note#^id]] with the note name only', async () => {
     const note = [
-      'See [[Pricing#^pro]] and [[#^quote]] and [[Pricing#^pro|the price]].',
+      'See [[Pricing#^price]] and [[#^quote]] and [[Pricing#^price|the price]].',
       '',
       'Last line',
       '',
@@ -174,7 +188,7 @@ describe('BlockIds', () => {
     await pmRoot.getByText('Other').click()
     await userEvent.keyboard(`{${mod}>}{Shift>}.{/Shift}{/${mod}}`)
     await expect.element(pmRoot.getByText('Last line')).not.toBeVisible()
-    expect(handle.revealHeading?.('^pro')).toBe(true)
+    expect(handle.revealHeading?.('^price')).toBe(true)
     await expect.element(pmRoot.getByText('Pro costs 49')).toBeVisible()
     await expect.element(pmRoot.getByText('Last line')).toBeVisible()
     // The caret lands on the line, not clamped back into the old zoom.
@@ -199,7 +213,7 @@ describe('BlockIds', () => {
     await pmRoot.getByText('Pro costs 49').click()
     expect(copyLinkToLastFocusedLine()).toBe(true)
     await expect.poll(() => writeText.mock.calls.length).toBe(1)
-    expect(writeText).toHaveBeenCalledWith('[[Pricing#^pro]]')
+    expect(writeText).toHaveBeenCalledWith('[[Pricing#^price]]')
     expect(handle.getMarkdown()).toBe(NOTE)
   })
 

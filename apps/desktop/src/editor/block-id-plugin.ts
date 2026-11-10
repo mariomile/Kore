@@ -1,4 +1,4 @@
-import { lineBlockId, newBlockId } from '@reflect/core'
+import { isHiddenBlockId, lineBlockId, newBlockId } from '@reflect/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import {
   Plugin,
@@ -28,9 +28,12 @@ interface BlockIdState {
   readonly flash: DecorationSet
 }
 
-/** A marker the way {@link lineBlockId} reads it, at the end of a text run. */
-const MARKER_RE = /(?:^|[ \t])\^[\da-z-]+[ \t]*$/i
-const ID_ONLY_RE = /^[ \t]*\^[\da-z-]+[ \t]*$/i
+/**
+ * A marker Kore hides, at the end of a text run: four or more characters, the
+ * rule {@link isHiddenBlockId} states. A shorter `^word` (`x ^2`) stays visible.
+ */
+const MARKER_RE = /(?:^|[ \t])\^[\da-z-]{4,}[ \t]*$/i
+const ID_ONLY_RE = /^[ \t]*\^[\da-z-]{4,}[ \t]*$/i
 
 /**
  * The hidden tail of a textblock: from the whitespace before its `^id` to the
@@ -385,12 +388,13 @@ export function ensureBlockIdAt(view: EditorView, pos: number): string | null {
   }
   if (place.kind === 'line') {
     const existing = lineBlockId(place.node.textContent)
-    if (existing !== null && place.node.lastChild?.isText === true) {
+    // A visible short `^word` is not reused: the line gets a hidden id.
+    if (existing !== null && isHiddenBlockId(existing) && place.node.lastChild?.isText === true) {
       return existing
     }
   } else if (place.next?.isTextblock === true) {
     const existing = place.next.textContent.trim()
-    if (/^\^[\da-z-]+$/i.test(existing)) {
+    if (/^\^[\da-z-]{4,}$/i.test(existing)) {
       return existing.slice(1)
     }
   }

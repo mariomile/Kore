@@ -10,14 +10,25 @@
 const VALID_ID_RE = /^[\da-z-]+$/i
 /** A marker at the end of a line, after whitespace or alone on the line. */
 const LINE_ID_RE = /(?:^|[ \t])\^([\da-z-]+)[ \t]*$/i
-const LINE_ID_TAIL_RE = /[ \t]+\^[\da-z-]+[ \t]*$/i
 const ID_ONLY_RE = /^[ \t]*\^[\da-z-]+[ \t]*$/i
+/**
+ * What Kore hides: a marker of four or more characters (Mario, 2026-11-10).
+ * A shorter `^word` at a line end, like `x ^2`, is more likely prose or math
+ * than an id, so it stays visible; links to it still resolve.
+ */
+const HIDDEN_TAIL_RE = /[ \t]+\^[\da-z-]{4,}[ \t]*$/i
+const HIDDEN_ID_ONLY_RE = /^[ \t]*\^[\da-z-]{4,}[ \t]*$/i
 const LIST_ITEM_RE = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/
 
 /** True for a string Obsidian accepts as a block id. */
 export function isBlockId(id: string): boolean {
   return VALID_ID_RE.test(id)
+}
+
+/** True for an id Kore hides in the editor, previews and extracted text. */
+export function isHiddenBlockId(id: string): boolean {
+  return id.length >= 4 && isBlockId(id)
 }
 
 /** The id a line ends with, or null. */
@@ -61,22 +72,22 @@ export function blockIdsIn(markdown: string): string[] {
   return ids
 }
 
-/** `markdown` with every end-of-line `^id` marker removed, for previews. */
+/** `markdown` with every hidden end-of-line `^id` marker removed, for previews. */
 export function withoutBlockIds(markdown: string): string {
   const kept: string[] = []
   // Fenced code is literal: `x ^2` inside a fence is code, not an id.
   for (const { line, fenced } of scanLines(markdown.split('\n'))) {
     if (fenced) {
       kept.push(line)
-    } else if (!ID_ONLY_RE.test(line)) {
-      kept.push(line.replace(LINE_ID_TAIL_RE, ''))
+    } else if (!HIDDEN_ID_ONLY_RE.test(line)) {
+      kept.push(line.replace(HIDDEN_TAIL_RE, ''))
     }
   }
   return kept.join('\n')
 }
 
 /**
- * Body offsets of every `^id` marker outside fenced code: an end-of-line
+ * Body offsets of every hidden `^id` marker outside fenced code: an end-of-line
  * marker with the whitespace before it, or a whole id-only line. Extraction
  * cuts them, so task titles, search text and previews never carry an id.
  */
@@ -85,10 +96,10 @@ export function blockIdSpans(body: string): { from: number; to: number }[] {
   let offset = 0
   for (const { line, fenced } of scanLines(body.split('\n'))) {
     if (!fenced) {
-      if (ID_ONLY_RE.test(line)) {
+      if (HIDDEN_ID_ONLY_RE.test(line)) {
         spans.push({ from: offset, to: offset + line.length })
       } else {
-        const tail = LINE_ID_TAIL_RE.exec(line)
+        const tail = HIDDEN_TAIL_RE.exec(line)
         if (tail !== null) {
           spans.push({ from: offset + tail.index, to: offset + line.length })
         }

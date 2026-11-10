@@ -9,6 +9,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 - Scrolling the daily notes past link preview cards is smoother: a card no
   longer fades its hover highlight in and out as it passes under the pointer.
+
 - Steadier terminal and chat: accented letters and emoji no longer turn
   into "��" in the terminal, a big paste no longer freezes the app, Stop
   works while a chat turn waits for an automation (which now says it is

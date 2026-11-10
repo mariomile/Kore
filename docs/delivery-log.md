@@ -14,6 +14,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   during a backup no longer freezes the app, and notes written by the CLI
   or MCP survive a system crash.
 
+- Two quick edits to a note from outside Kore (another device, an agent,
+  iCloud) no longer leave the editor on the older one, so your next keystroke
+  can't write it back over the newer text.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

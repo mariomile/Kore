@@ -22,9 +22,9 @@ describe('mobileSyncStatus', () => {
     expect(mobileSyncStatus({ phase: 'disconnected' }, 0)).toBeNull()
   })
 
-  it('rests on Backed up — the quiet tone the pill hides on', () => {
+  it('rests on Synced — the quiet tone the pill hides on', () => {
     const status = mobileSyncStatus(connected({ state: 'idle' }), 0)
-    expect(status).toEqual({ label: 'Backed up', tone: 'ok', detail: null })
+    expect(status).toEqual({ label: 'Synced', tone: 'ok', detail: null })
   })
 
   it('shows Syncing while a cycle runs — even with conflicts pending', () => {

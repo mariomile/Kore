@@ -1,7 +1,7 @@
 import {
   RESERVED_FRONTMATTER_KEYS,
+  TAG_DEFINITION_MARKER,
   TAG_EXTENDS_KEY,
-  TAG_TYPE_MARKER,
   type GistFrontmatter,
   type TagProperty,
 } from '@reflect/core'
@@ -49,7 +49,8 @@ export interface FrontmatterPatch {
    */
   properties?: Record<string, unknown>
   /**
-   * A tag definition's schema write (TDR 0005): sets the `lore: tag` marker
+   * A tag definition's schema write (TDR 0005): sets the `kore: tag` marker
+   * (dropping the older `lore: tag`)
    * and replaces the `properties` list whole. A typed field, not part of the
    * `properties` bag above — the reserved-key guard keeps *value* writes away
    * from these keys, while this write is deliberately about them. Routing it
@@ -92,7 +93,7 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
     }
   }
   if (patch.tagSchema !== undefined) {
-    yaml['lore'] = TAG_TYPE_MARKER
+    Object.assign(yaml, TAG_DEFINITION_MARKER)
     // Spelled out key-by-key so the YAML block's shape (and key order) is
     // this module's contract, not whatever object the caller happened to hold.
     yaml['properties'] = patch.tagSchema.map((property) => ({

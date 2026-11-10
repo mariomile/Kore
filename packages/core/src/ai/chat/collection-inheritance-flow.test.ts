@@ -58,15 +58,15 @@ describe('list_collection with tag inheritance', () => {
   beforeEach(() => {
     addNote(
       'tags/contact.md',
-      '---\nlore: tag\nprivate: true\nproperties:\n  - {name: Phone, key: phone, type: text}\n---\n',
+      '---\nkore: tag\nprivate: true\nproperties:\n  - {name: Phone, key: phone, type: text}\n---\n',
     )
     addNote(
       'tags/client.md',
-      '---\nlore: tag\nextends: contact\nproperties:\n  - {name: Contract, key: contract, type: text}\n---\n',
+      '---\nkore: tag\nextends: contact\nproperties:\n  - {name: Contract, key: contract, type: text}\n---\n',
     )
     addNote(
       'tags/secret.md',
-      '---\nlore: tag\nextends: client\nprivate: true\nproperties:\n  - {name: Codename, key: codename, type: text}\n---\n',
+      '---\nkore: tag\nextends: client\nprivate: true\nproperties:\n  - {name: Codename, key: codename, type: text}\n---\n',
     )
     addNote('people/acme.md', '---\ncontract: yearly\n---\n# Acme\n\n#client')
     addNote('people/x.md', '# X\n\n#secret')

@@ -41,7 +41,7 @@ function addNote(path: string, source: string, mtime = 1000): void {
 }
 
 function definition(fields: string[], options: { extends?: string; private?: boolean } = {}) {
-  const lines = ['---', 'lore: tag']
+  const lines = ['---', 'kore: tag']
   if (options.extends !== undefined) {
     lines.push(`extends: ${options.extends}`)
   }
@@ -155,12 +155,12 @@ describe('starting values through the index (Plan 33 B4)', () => {
   function invoice(
     fields = '  - {name: Number, key: number, type: number, default: next-number}',
   ): string {
-    return `---\nlore: tag\nproperties:\n${fields}\n---\n`
+    return `---\nkore: tag\nproperties:\n${fields}\n---\n`
   }
 
   it('numbers a new row one past the highest, child tags included', async () => {
     addNote('tags/invoice.md', invoice())
-    addNote('tags/credit.md', '---\nlore: tag\nextends: invoice\n---\n')
+    addNote('tags/credit.md', '---\nkore: tag\nextends: invoice\n---\n')
     addNote('bills/a.md', '---\nnumber: 41\n---\n# A\n\n#invoice')
     addNote('bills/b.md', '---\nnumber: 44\n---\n# B\n\n#credit')
     addNote('bills/c.md', '---\nnumber: 900\n---\n# C\n\n#other')
@@ -179,7 +179,7 @@ describe('starting values through the index (Plan 33 B4)', () => {
 
   it('starts at 1 in an empty collection, and an inherited field counts too', async () => {
     addNote('tags/invoice.md', invoice())
-    addNote('tags/credit.md', '---\nlore: tag\nextends: invoice\n---\n')
+    addNote('tags/credit.md', '---\nkore: tag\nextends: invoice\n---\n')
     await refreshTagTypeResolutions(1)
     expect(await nextNumbers('credit', await getTagType('credit'))).toEqual(
       new Map([['number', 1]]),

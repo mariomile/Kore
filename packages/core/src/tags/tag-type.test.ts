@@ -10,10 +10,13 @@ import {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  relationCreateTarget,
+  withPropertyType,
   relationValue,
   tagDefinitionPath,
   tagDisplayName,
   tagNameForDefinitionPath,
+  type TagProperty,
   type TagType,
 } from './tag-type'
 
@@ -22,16 +25,28 @@ function frontmatter(raw: Record<string, unknown>) {
 }
 
 describe('parseTagTypeFrontmatter', () => {
-  it('returns null without the lore: tag marker', () => {
+  it('returns null without the kore: tag marker', () => {
     expect(parseTagTypeFrontmatter(frontmatter({}))).toBeNull()
-    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'other' }))).toBeNull()
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'other' }))).toBeNull()
     expect(parseTagTypeFrontmatter(frontmatter({ properties: [] }))).toBeNull()
+  })
+
+  it('still reads a definition marked with the pre-rename lore: tag', () => {
+    const legacy = frontmatter({
+      lore: 'tag',
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+    })
+    expect(parseTagTypeFrontmatter(legacy)?.properties.map((property) => property.key)).toEqual([
+      'author',
+    ])
+    expect(isTagDefinitionNote('tags/book.md', legacy)).toBe(true)
+    expect(isTagDefinitionNote('tags/book.md', frontmatter({ lore: 'other' }))).toBe(false)
   })
 
   it('parses a well-formed schema in order', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           { name: 'Author', key: 'author', type: 'text' },
           { name: 'Rating', key: 'rating', type: 'number' },
@@ -50,7 +65,7 @@ describe('parseTagTypeFrontmatter', () => {
   it('drops malformed, duplicate, and reserved entries without failing', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           { name: 'Author', key: 'author', type: 'text' },
           'not an object',
@@ -66,8 +81,8 @@ describe('parseTagTypeFrontmatter', () => {
   })
 
   it('treats a missing or non-array properties key as an empty schema', () => {
-    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'tag' }))).toEqual({ properties: [] })
-    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'tag', properties: 'nope' }))).toEqual({
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'tag' }))).toEqual({ properties: [] })
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'tag', properties: 'nope' }))).toEqual({
       properties: [],
     })
   })
@@ -75,19 +90,19 @@ describe('parseTagTypeFrontmatter', () => {
   it('reads a bound template path and ignores anything that is not one', () => {
     expect(
       parseTagTypeFrontmatter(
-        frontmatter({ lore: 'tag', template: 'templates/book.md', properties: [] }),
+        frontmatter({ kore: 'tag', template: 'templates/book.md', properties: [] }),
       ),
     ).toEqual({ properties: [], template: 'templates/book.md' })
     expect(
       parseTagTypeFrontmatter(
-        frontmatter({ lore: 'tag', template: 'notes/not-a-template.md', properties: [] }),
+        frontmatter({ kore: 'tag', template: 'notes/not-a-template.md', properties: [] }),
       ),
     ).toEqual({ properties: [] })
   })
 
   it('reads a symbol icon reference and names a tag for chrome', () => {
     expect(
-      parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: 'icon:folder', properties: [] })),
+      parseTagTypeFrontmatter(frontmatter({ kore: 'tag', icon: 'icon:folder', properties: [] })),
     ).toEqual({ properties: [], icon: 'icon:folder' })
     expect(decodeTagTypeJson(encodeTagTypeJson({ properties: [], icon: 'icon:folder' }))).toEqual({
       properties: [],
@@ -99,14 +114,14 @@ describe('parseTagTypeFrontmatter', () => {
 
   it('reads an emoji icon and ignores image or malformed icons', () => {
     expect(
-      parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: '📚', properties: [] })),
+      parseTagTypeFrontmatter(frontmatter({ kore: 'tag', icon: '📚', properties: [] })),
     ).toEqual({ properties: [], icon: '📚' })
     expect(
       parseTagTypeFrontmatter(
-        frontmatter({ lore: 'tag', icon: 'attachments/cover.png', properties: [] }),
+        frontmatter({ kore: 'tag', icon: 'attachments/cover.png', properties: [] }),
       ),
     ).toEqual({ properties: [] })
-    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: 7, properties: [] }))).toEqual({
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'tag', icon: 7, properties: [] }))).toEqual({
       properties: [],
     })
   })
@@ -116,7 +131,7 @@ describe('typed relation targets', () => {
   it('round-trips a relation target through frontmatter and the codec', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           { name: 'Company', key: 'company', type: 'relation', target: 'company' },
           { name: 'Authors', key: 'authors', type: 'relations', target: 'person' },
@@ -134,7 +149,7 @@ describe('typed relation targets', () => {
   it('round-trips a reverse relation config', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           {
             name: 'People',
@@ -160,7 +175,7 @@ describe('typed relation targets', () => {
   it('tolerates a targetless relation and an empty target', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           { name: 'Series', key: 'series', type: 'relation' },
           { name: 'Broken', key: 'broken', type: 'relation', target: '' },
@@ -235,7 +250,7 @@ describe('definition paths', () => {
 
 describe('isTagDefinitionNote', () => {
   it('requires both the path and the marker', () => {
-    const marked = frontmatter({ lore: 'tag' })
+    const marked = frontmatter({ kore: 'tag' })
     expect(isTagDefinitionNote('tags/book.md', marked)).toBe(true)
     expect(isTagDefinitionNote('tags/book.md', frontmatter({}))).toBe(false)
     expect(isTagDefinitionNote('notes/book.md', marked)).toBe(false)
@@ -246,7 +261,7 @@ describe('relation values', () => {
   it('parses a well-formed schema with a relation property', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [{ name: 'Series', key: 'series', type: 'relation' }],
       }),
     )
@@ -256,7 +271,7 @@ describe('relation values', () => {
   it('parses a multi-relation property (a list of wiki links)', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [{ name: 'Authors', key: 'authors', type: 'relations' }],
       }),
     )
@@ -308,7 +323,7 @@ describe('new property types', () => {
   it('parses status, files, email, rating, and a view-only rollup', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({
-        lore: 'tag',
+        kore: 'tag',
         properties: [
           { name: 'Stage', key: 'stage', type: 'status', options: ['todo', 'doing', 'done'] },
           { name: 'Attachments', key: 'attachments', type: 'files' },
@@ -352,6 +367,53 @@ describe('new property types', () => {
   })
 })
 
+describe('withPropertyType', () => {
+  it('keeps name and key, and the settings the new type can use', () => {
+    const status: TagProperty = { name: 'Stage', key: 'stage', type: 'status', options: ['a', 'b'] }
+    expect(withPropertyType(status, 'select')).toEqual({ ...status, type: 'select' })
+    expect(withPropertyType(status, 'text')).toEqual({ name: 'Stage', key: 'stage', type: 'text' })
+    expect(
+      withPropertyType({ name: 'Co', key: 'co', type: 'relation', target: 'company' }, 'relations'),
+    ).toEqual({ name: 'Co', key: 'co', type: 'relations', target: 'company' })
+  })
+
+  it('drops computed configuration', () => {
+    expect(
+      withPropertyType(
+        { name: 'Total', key: 'total', type: 'formula', formula: { expression: '1' } },
+        'number',
+      ),
+    ).toEqual({ name: 'Total', key: 'total', type: 'number' })
+  })
+})
+
+describe('relationCreateTarget', () => {
+  const company = { name: 'Company', key: 'company', type: 'relation' } as const
+
+  it('keeps a declared target, and person keeps its default', () => {
+    expect(relationCreateTarget({ ...company, target: 'org' }, ['company'])).toBe('org')
+    expect(relationCreateTarget({ name: 'Owner', key: 'owner', type: 'person' }, [])).toBe('person')
+  })
+
+  it('files an untargeted relation into the collection named like the field', () => {
+    expect(relationCreateTarget(company, ['Meeting', 'Company'])).toBe('company')
+    expect(
+      relationCreateTarget({ name: 'With', key: 'with', type: 'relations' }, ['with', 'meeting']),
+    ).toBe('with')
+    // The key is the fallback when the display name has no collection.
+    expect(
+      relationCreateTarget({ name: 'Client', key: 'company', type: 'relation' }, ['company']),
+    ).toBe('company')
+  })
+
+  it('creates plain when no collection matches, and never for other types', () => {
+    expect(relationCreateTarget(company, ['meeting'])).toBeUndefined()
+    expect(
+      relationCreateTarget({ name: 'Company', key: 'company', type: 'text' }, ['company']),
+    ).toBeUndefined()
+  })
+})
+
 describe('relationTargetOf', () => {
   it('scopes person pickers to #person unless the schema overrides it', () => {
     expect(relationTargetOf({ name: 'Owner', key: 'owner', type: 'person' })).toBe('person')
@@ -390,17 +452,17 @@ describe('relationTargetOf', () => {
 describe('extends (Plan 33 B2)', () => {
   it('reads one parent or a list, folded, without # and duplicates', () => {
     expect(
-      parseTagTypeFrontmatter(frontmatter({ lore: 'tag', extends: '#Contact' }))?.extends,
+      parseTagTypeFrontmatter(frontmatter({ kore: 'tag', extends: '#Contact' }))?.extends,
     ).toEqual(['contact'])
     expect(
       parseTagTypeFrontmatter(
-        frontmatter({ lore: 'tag', extends: ['contact', '#Person', 'CONTACT', 3, 'not a tag!'] }),
+        frontmatter({ kore: 'tag', extends: ['contact', '#Person', 'CONTACT', 3, 'not a tag!'] }),
       )?.extends,
     ).toEqual(['contact', 'person'])
   })
 
   it('leaves extends off a definition that names no parent', () => {
-    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'tag' }))).toEqual({ properties: [] })
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'tag' }))).toEqual({ properties: [] })
   })
 
   it('round-trips through the schema column', () => {

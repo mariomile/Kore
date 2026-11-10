@@ -285,7 +285,7 @@ describe('NoteActionsMenu', () => {
     await act(() => graphStore.set(null))
     await dialog.getByRole('button', { name: 'Delete' }).click()
 
-    await expect.element(dialog.getByText('No graph is open.')).toBeInTheDocument()
+    await expect.element(dialog.getByText('No vault is open.')).toBeInTheDocument()
     expect(deleteOpenNote).not.toHaveBeenCalled()
     expect(onDeleted).not.toHaveBeenCalled()
   })

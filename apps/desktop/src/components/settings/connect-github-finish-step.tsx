@@ -52,7 +52,7 @@ export function ConnectGithubFinishStep({
             <strong>
               {view.repo.owner}/{view.repo.name} is public.
             </strong>{' '}
-            Anyone on the internet can read everything in this graph, including notes marked
+            Anyone on the internet can read everything in this vault, including notes marked
             private.
           </InlineAlert>
           <div className={groupClass}>
@@ -63,7 +63,7 @@ export function ConnectGithubFinishStep({
               disabled={wizard.pending || wizard.user === null}
               onClick={wizard.confirmPublic}
             >
-              Back up to a public repo
+              Sync to a public repo
             </Button>
             {layout === 'stack' ? changeRepository('Choose another repo') : null}
           </div>
@@ -109,7 +109,7 @@ export function ConnectGithubFinishStep({
             <strong>
               {view.repo.owner}/{view.repo.name}
             </strong>{' '}
-            so it can back up here.
+            so it can sync here.
           </p>
           <div className={groupClass}>
             <Button size={buttonSize} onClick={wizard.openInstallPage}>

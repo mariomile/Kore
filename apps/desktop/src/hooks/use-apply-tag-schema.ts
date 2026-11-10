@@ -46,7 +46,7 @@ export function useApplyTagSchema(): (change: TagSchemaChange) => Promise<void> 
   return useCallback(
     async ({ tag, properties, previousProperties, renames }: TagSchemaChange): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       const definition = await readTagDefinition(tag)
       // Same channel `readTagDefinition` read from (live session first), so a

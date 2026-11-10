@@ -224,6 +224,7 @@ export {
   captureSharedInboxRelay,
   promoteCaptureScreenshot,
 } from '../graph/commands'
+export { conflictCopyPath, saveConflictCopy } from '../graph/conflict-copy'
 export {
   DEFAULT_VAULT_LAYOUT,
   getVaultLayout,

@@ -11,7 +11,7 @@ import { startOperation } from '@/lib/operations'
  */
 export async function runCopyNotePath(root: string | null, path: string): Promise<void> {
   if (root === null) {
-    startOperation('Copying note path').fail('No graph is open')
+    startOperation('Copying note path').fail('No vault is open')
     return
   }
   try {

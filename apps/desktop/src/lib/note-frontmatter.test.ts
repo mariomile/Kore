@@ -256,34 +256,34 @@ describe('commitNoteFrontmatter', () => {
 
     expect(writeNote).toHaveBeenCalledWith(
       'tags/book.md',
-      '---\nlore: tag\nproperties:\n  - name: Author\n    key: author\n    type: text\n---\n# Books\n',
+      '---\nkore: tag\nproperties:\n  - name: Author\n    key: author\n    type: text\n---\n# Books\n',
       3,
     )
   })
 
   it('writes or clears a bound template on a tag definition', async () => {
-    readNote.mockResolvedValue('---\nlore: tag\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\nproperties: []\n---\n')
 
     await commitNoteFrontmatter('tags/book.md', { tagTemplate: 'templates/book.md' }, 3)
     const written = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(written[1]).toContain('template: templates/book.md')
 
     writeNote.mockClear()
-    readNote.mockResolvedValue('---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
     await commitNoteFrontmatter('tags/book.md', { tagTemplate: null }, 3)
     const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(cleared[1]).not.toContain('template:')
   })
 
   it('writes or clears the icon on a tag definition', async () => {
-    readNote.mockResolvedValue('---\nlore: tag\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\nproperties: []\n---\n')
 
     await commitNoteFrontmatter('tags/book.md', { tagIcon: '📚' }, 3)
     const written = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(written[1]).toMatch(/icon: "?📚"?/)
 
     writeNote.mockClear()
-    readNote.mockResolvedValue('---\nlore: tag\nicon: "📚"\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\nicon: "📚"\nproperties: []\n---\n')
     await commitNoteFrontmatter('tags/book.md', { tagIcon: null }, 3)
     const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(cleared[1]).not.toContain('icon:')

@@ -113,7 +113,7 @@ describe('startingValues', () => {
   it('reads default from a definition note', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatterSchema.parse({
-        lore: 'tag',
+        kore: 'tag',
         properties: [{ name: 'Met', key: 'met', type: 'date', default: 'today' }],
       }),
     )

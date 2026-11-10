@@ -7,15 +7,31 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Fields can start with a value: a new `#invoice` gets the next number,
-  today's date and status Draft by itself. Set it per field under
-  "Starting value" in the tag's settings. It applies when a note joins the
-  tag from Kore or from an agent; notes you already have are left alone.
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
 
-- A tag can build on another: give `#client` the line `extends: contact`
-  and every client gets the contact fields plus its own. The `#contact`
-  collection also lists clients, with a filter to show only plain
-  contacts. Private tag definitions stay out of everything agents see.
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
+
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
+- Two quick edits to a note from outside Kore (another device, an agent,
+  iCloud) no longer leave the editor on the older one, so your next keystroke
+  can't write it back over the newer text.
+
+- Settings → Agents: the Automations description no longer collapses into
+  a narrow column next to its buttons. The agent skill for Kore markdown
+  names the `.kore/` folder.
 
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in

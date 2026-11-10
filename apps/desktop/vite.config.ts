@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 // The single version source; tauri.conf.json's `version` also points here.
-import pkg from './package.json'
+import pkg from './package.json' with { type: 'json' }
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 

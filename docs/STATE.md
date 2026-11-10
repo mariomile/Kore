@@ -1,73 +1,94 @@
+## Daily stream scroll: link cards no longer fade on hover, 2026-11-10
+
+Ask: Mario feels lag scrolling the daily notes and asked whether recent
+releases made them heavier.
+
+- Measured (headless Chromium, production build, `?seed=obsidian` with
+  dailies shaped like his: bare X links, wiki links, agent log bullets;
+  60,000 px of wheel scroll): v0.85.0, v0.90.0, v0.93.0, v0.95.0 and master
+  spend the same main-thread time per mounted day (about 45 ms of script).
+  Nothing shipped in 0.93 to 0.95 touches the stream.
+- One regression, since link preview cards (v0.86.0): frames over 33 ms went
+  from 6-15 to 30-40 per run. Cause: `.kore-link-card` had a 120 ms
+  `background-color` transition, and scrolling moves cards under the resting
+  pointer, so each one repaints for the length of the fade twice.
+- [x] `styles/link-cards.css`: transition removed, the hover lift stays.
+  After: 5 frames over 33 ms, 60.4 fps (was 31 and 56.1).
+- Caveat: the container renders in software, so the Mac's GPU likely pays
+  less for the same repaint. Not verified on WebKit.
+- Not done, needs Mario's call: mounting a day costs a whole Meowdown editor
+  (about 105 chrome nodes, 28 state reconfigurations); at 4x CPU slowdown the
+  stream runs at 40 fps on every version. Saves do not run while scrolling,
+  so the index-query invalidation is not part of this.
+
 # Kore working state
 
-## Tags that build on other tags (Plan 33, B2), 2026-11-09
+## Edits under a conflict banner survive closing the note, 2026-11-10
 
-Ask (Mario, 2026-11-08): a tag can build on another, so `#client` gets
-`#contact`'s fields plus its own, and `#contact`'s collection also lists
-the clients. Plan: `docs/plans/33-trust-and-structure.md`. Draft PR #348,
-one step per commit.
+Ask: Mario picked "conflict copy" for D2 of the holistic analysis
+(`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`).
 
-- [x] `extends:` on a definition note (`tags/<name>.md`), one tag or a
-  list. `resolveTagTypes` (`packages/core/src/tags/tag-inheritance.ts`)
-  puts parents' fields first; the tag's own field wins a clash in the
-  parent's slot; a hand-written loop is cut at the edge that closes it.
-- [x] Resolved once, in core: after every index write that touches
-  `tags/`, `refreshTagTypeResolutions` stores the effective schema and the
-  child list per tag in `tag_types` (migration 0024), plus public variants
-  with private definitions left out. The app, `kore` and `kore mcp` only
-  read those columns; before the first pass they fall back to the own
-  schema.
-- [x] The parent's collection lists child-tag notes, nested ones too
-  (`#client/vip`), with a "With #child / Only #tag" filter. The CLI's
-  `kore collection` matches the same way.
-- [x] "Builds on" in the tag dialog; a save that would close a loop is
-  refused and the picker leaves those tags out.
-- [x] Outbound reads (chat `list_collection`/`list_tags`, CLI, MCP) use the
-  public columns: a private parent's fields never reach an agent through a
-  public child, and a private definition reads as untyped there.
-- Known limits: the tag dialog shows only the tag's own fields; the plain
-  list view of a tag shows only the exact tag.
+- [x] `note-session-state.ts`: new `flushOnClose()` (tab close, note switch,
+  quit via `flushOpenDocuments`, and `dispose`). Under a parked conflict,
+  where saves stay paused, the buffer goes to a new file beside the note and
+  the note keeps the version on disk. Skipped when the buffer equals theirs
+  or was already copied. Blur and other flushes are unchanged.
+- [x] `packages/core/src/graph/conflict-copy.ts`: `Name (conflict).md`, then
+  `(conflict 2)`, ..., through the no-clobber `note_create`, the same names as
+  `conflict_copy_path` in `git/merge.rs` (TS mirror, no new Rust command).
+- [x] Toast "Saved your edits as a copy" naming both notes.
+- [x] Tests: session (copy once, nothing when equal to theirs), the hook
+  (unmount under conflict creates `notes/a (conflict).md`, no write), core
+  naming and collision.
+- Not verified on a real Mac.
 
-## Starting values for fields (Plan 33, B4), 2026-11-09
+## Editor no longer reverts to an older external version, 2026-11-10
 
-Ask (Mario, 2026-11-08; go 2026-11-09): a field can say what a note gets
-when it joins the tag, so a new `#invoice` gets the next number and status
-Draft without typing. Same draft PR #348, one step per commit.
+Ask: Mario authorized fixing the critical data-loss bugs from the holistic
+analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
 
-- [x] `default:` on a schema field: `today`, `now` (day and minute),
-  `next-number`, or a fixed value. `startingValues`
-  (`packages/core/src/tags/starting-values.ts`) decides what to write and
-  ignores a default the type can't hold; `nextNumbers`
-  (`indexing/starting-values.ts`) reads one past the highest number in the
-  tag's collection, child tags included.
-- [x] Written only when a note joins the tag through Kore: new rows, the
-  Type field, an accepted chat `set_note_type`, `kore new`/`kore tag` (and
-  MCP through them). Hand-edited Markdown and notes already in the tag are
-  never stamped; a value the note or the caller already has wins.
-- [x] "Starting value" select per field in the tag dialog.
-- [x] Core validates each default once (`startingValueOf`) and the
-  inheritance pass stores it on the resolved schema as `start`; the CLI
-  (`apps/cli/src/starting_values.rs`) only materializes `start`, so the two
-  sides cannot disagree on what a default means (review fix, 2026-11-09).
-- [x] A `created` field is a starting value that is always `today`, so one
-  rule stamps it everywhere (`missingCreatedStamps` is gone), and
-  `kore tag` on a note already in the tag stamps nothing, like the app.
-- [x] Next number counts every note in the tag, private ones included, in
-  the app and the CLI alike (Mario, 2026-11-09), so a number is never
-  handed out twice.
-- [x] The tag inheritance pass can no longer fail indexing a note (its
-  write already committed; a failure is logged), and every graph open runs
-  it once, so a failed pass heals itself (review fix, 2026-11-09).
-- [x] Cleaner APIs (review fix, 2026-11-09): `collectionTagKeys(tag,
-  scope)`, `saveTagType(tag, properties, generation, {template, icon,
-  parents})` where an omitted field is left alone (an icon edit can no
-  longer wipe a template), and one starting-values read,
-  `startingValuesFor`, plus the pure `valuesMissingFrom`.
-- [x] The "only #tag" filter is its own component (`TagChildrenFilter`),
-  and the collection unit tests no longer match the descendants query by
-  its SQL text (review fix, 2026-11-09).
-- Known limit: two notes born at the same instant can draw the same
-  number.
+- [x] `note-session-state.ts`: disk reads in `reconcileFromDisk` are numbered;
+  a read that settles after a newer one started is dropped, and `load()`
+  supersedes any reconcile still reading. Two close external changes (v2, v3)
+  can no longer leave v2 in the editor and write it back over v3.
+- [x] Three tests in `note-session.test.ts` (clean adopt, parked conflict,
+  load restart), red without the fix.
+- Not done: two overlapping `load()` calls are still unordered (no caller
+  does that today). D1, D2 and D4 are other threads.
+
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
+## Project cleanup pass, 2026-11-09
+
+Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no
+longer needed. Fix what you're sure about and list the rest". One commit per
+fix. The full list, ranked, with what is left for him to decide, is
+`/mnt/project-files/analisi/pulizia-progetto-2026-11-09.md`. Files owned by
+the open PRs (#345 to #365) were listed, not touched.
+
+- [x] `apps/desktop/e2e/run-e2e.mjs` passes again (15/15). It is not in CI,
+  which is how it rotted: the sidebar's Open section is gone and Settings now
+  covers the sidebar.
+- [x] Settings → Agents: the Automations description keeps its width when
+  both template buttons show.
+- [x] Dead code: `useVisibleSettingsSections`, `settingsGroupTitle`; the
+  deprecated Kysely `orderBy([...])` in `graph-map.ts`.
+- [x] Docs: Kore naming in CONTRIBUTING.md, the icon flavor table and crate
+  descriptions; CONTRIBUTING's release rules (one config, changelog covers
+  the repo minus `exclude-paths`); links to `crates/index-store` and
+  `crates/index-schema/migrations`; the `kore-markdown` skill names `.kore`.
+- [x] `vite.config.ts` imports `package.json` with the JSON attribute.
+- Not done, waiting on Mario (see the file): dependency advisories (zod,
+  undici, xmldom; Renovate is not installed), upstream's provisioning profile
+  embedded in the DMG (`tauri.macos.conf.json`, belongs to #363), the e2e
+  smoke in CI, macOS runner queueing, archiving this file, ~108 dead remote
+  branches, AGENTS.md contradictions, the stale roadmap.
 
 ## Rename visible Reflect leftovers to Kore, 2026-11-09
 
@@ -3396,26 +3417,44 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-09 — Review fixes for PR #348 (Plan 33 B2/B4), six commits:
-  projection bump 29 so upgraded indexes fill the inheritance columns;
-  starting values validated once in core and stored as `start` for the
-  CLI; `created` is a `today` starting value; a failing inheritance pass
-  no longer fails indexing and every open re-runs it; options objects for
-  `collectionTagKeys`/`saveTagType`/`useCollection`; `TagChildrenFilter`.
-  Verified: core and desktop vitest (Chromium), typecheck, oxlint, eslint,
-  cargo test/clippy/fmt on the CLI.
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
-- 2026-11-09 — Starting values for fields (Plan 33 B4, PR #348): `today`,
-  `now`, `next-number` or a fixed value, written when a note joins a tag
-  through Kore or `kore new`/`kore tag`. Verified: core and desktop vitest,
-  the tag dialog and Type field suites, cargo test/clippy/fmt on the CLI.
+- 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
+  one commit each, no product change. Terminal: a multi-byte character
+  split across two 4 KB PTY reads decodes whole (streaming decoder in
+  `pty.rs`); `pty_write` only queues bytes for a per-session writer thread,
+  so a big paste can no longer block the main thread. Agent CLI: each
+  held-open stdin has its own lock and the map lock is never held across a
+  write, so Stop no longer hangs behind a slow prompt. `window_bootstrap`
+  reads the index generation from an atomic instead of the writer lock, so
+  a note window opened during a backup no longer freezes the app. Chat:
+  `withAgentRunLock` takes the turn's abort signal (Stop works while the
+  turn is queued behind an automation; a late native lease is handed back)
+  and shows a waiting notice after 300 ms. CLI writes and the capture inbox
+  fsync before the rename; CLI temps stage in `.kore/tmp/`. Verified:
+  agent-run-lock vitest, chat-provider browser test on Chromium, cargo
+  test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
+  typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
 
-- 2026-11-09 — Tags build on other tags (Plan 33 B2, PR #348). Inheritance
-  is resolved once in core and stored in `tag_types` (migration 0024);
-  app, CLI and MCP read the stored columns, outbound ones the public
-  variant. Verified: core and desktop vitest, browser suites for
-  all-notes/tags/dev, cargo test/clippy/fmt on the CLI and index crates
-  (the desktop crate does not build in the container: no GTK).
+- 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
+  lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
+  non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check
+  over the docs, the desktop build and the e2e smoke on master `c25d0a2`.
+  Fixed what was certain (e2e smoke, Automations card width, two dead
+  helpers, a deprecated query call, stale names and links in docs, the Vite
+  JSON import, `.reflect` in the markdown skill). Verified: e2e 15/15,
+  settings and automations browser tests on Chromium, graph-map test,
+  typecheck, oxfmt. Not run: the desktop crate (CI covers it).
 
 - 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
   `kind` and the `notePath` they touched, set in core by the Claude Code

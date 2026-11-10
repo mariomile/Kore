@@ -17,7 +17,7 @@ const definition = vi.hoisted(() => ({
   template: null as string | null,
   icon: null as string | null,
 }))
-const source = vi.hoisted(() => ({ text: '---\nlore: tag\nicon: 📚\n---\n' }))
+const source = vi.hoisted(() => ({ text: '---\nkore: tag\nicon: 📚\n---\n' }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
 const planPropertyRenames = vi.hoisted(() => vi.fn(async () => [] as unknown[]))
 const migratePropertyRenames = vi.hoisted(() => vi.fn(async () => {}))
@@ -53,7 +53,7 @@ beforeEach(() => {
   definition.properties = [AUTHOR]
   definition.template = 'templates/book.md'
   definition.icon = '📚'
-  source.text = '---\nlore: tag\nicon: 📚\n---\n'
+  source.text = '---\nkore: tag\nicon: 📚\n---\n'
 })
 
 describe('useApplyTagSchema', () => {
@@ -119,7 +119,7 @@ describe('useApplyTagSchema', () => {
         renames: [],
       }),
     ).rejects.toThrow(STALE_TAG_SCHEMA_MESSAGE)
-    source.text = '---\nlore: tag\nprivate: true\n---\n'
+    source.text = '---\nkore: tag\nprivate: true\n---\n'
     await expect(
       result.current({
         tag: 'book',

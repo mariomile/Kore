@@ -1,5 +1,23 @@
 # Kore working state
 
+## cyber-brain Memory view and API-chat memory tools (Plan 35, step 5), 2026-11-10
+
+Ask: Mario, "vai e non fermarti" on Plan 35 after step 4.
+
+- [x] `cyber-brain/memory-view.ts`: `loadMemoryOverview` reads NOW, loops,
+  decisions (private ones skipped) and the last two run files (50 runs);
+  `checkMemoryHealth` runs the kit's `check`. Parsers mirror the kit's.
+- [x] `memory` route and surface (tab, deep link, command `nav.memory`,
+  sidebar row shown only in a kit vault); `components/memory/memory-screen.tsx`
+  with Now, Open loops, Decisions, Recent memory writes, Health.
+- [x] `ai/chat/memory-tools.ts`: the five kit tools for the API-key chat,
+  wired into `buildNoteTools`; `memoryWriteForChat` runs them through
+  `kit_script_run` signed `Kore chat`; the engine lists them only in a kit
+  vault (`activeTools`) and the prompt then tells the model to use them.
+  Chip, stored transcript schema and tests updated.
+- Not done: undo of a run (needs a kit command), slice 4 routines.
+- Not verified on a real Mac.
+
 ## Tasks like Todoist, slice 3: real projects, 2026-11-10
 
 - [x] Tasks slice 3 shipped (#365). Migration 0024_task_section; registers the
@@ -3517,6 +3535,74 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
+  that agent-CLI chat runs (Claude Code, Codex) never see the in-process
+  tools of `ai/chat/tools.ts`, so the tools live in `kore mcp` instead and
+  slices 1 and 2 merge. New crate `reflect-kit-script` (detect the kit from
+  `AGENTS.md`, digest the scripts folder, `.kore/kit-trust.json`, argv
+  allowlist); `kore brain` runs the vault's `brain.mjs` only when allowed,
+  signed with the caller; `kore mcp` serves `remember`/`open_loop`/
+  `update_loop`/`close_loop`/`record_decision` in a kit vault, plus
+  `--memory-only` and `--agent`; the desktop `kit_script_run` takes the same
+  gate, with `kit_script_status`/`kit_script_trust` and Settings → Agents →
+  Memory to allow the script; `attachMemoryTools` gives writing CLI chat runs
+  the memory-only server; a kit vault's prompt drops Kore's `agents/` memory
+  and reads skills from `System/skills/<name>/SKILL.md`. Verified with
+  Mario's real `brain.mjs` in a scratch vault through `kore mcp`: fact, loop
+  open/close and decision land with run record, daily line and commit;
+  secrets refused. Not verified live: a Claude Code chat turn in the app.
+  Next: Mario's review; the API-key chat still only suggests memory.
+
+- 2026-11-09 — Plan 35 review fixes (full review, B2/I9). The cyber-brain
+  plan moves from 34 to 35 (34 is Kore Cloud, #364). `PROJECTION_VERSION`
+  31 (29 and 30 are taken by #348 and #365): rows indexed before
+  `sensitivity: private` counted held `is_private = false`, so the CLI,
+  `kore mcp` and search kept serving those notes until edited; the bump
+  reprojects every note. The plan now states the trust model of running
+  the vault's synced `brain.mjs` (and the hash-and-ask guard step 4 adds
+  before the chat can run it) and why the kit's commits and Kore's backup
+  sync can meet on `index.lock` without losing a write. An oversized
+  script argument names its size. Verified: core indexing + cyber-brain
+  tests, `pnpm check`, desktop clippy.
+
+- 2026-11-09 — Plan 35 slice 1, step 3. Kore can run the vault's own kit
+  script. Rust `kit_script_run` (`src-tauri/src/kit_script.rs`) spawns
+  Node (found like the agent CLIs, GUI PATH included) on a `.mjs`/`.js`
+  inside the graph (traversal and symlink guarded, generation-pinned),
+  with an argv and no shell, bounded by the routine runner's
+  `run_bounded` (now shared). Core `cyber-brain/script.ts` is the policy:
+  typed `BrainCommand`s (remember, loop open/update/close, decision,
+  facts, check) spelled as inline `--key=value` so text can never become
+  an option, agent names slugged, the kit's refusal relayed verbatim.
+  Checked against Mario's real `brain.mjs` in a scratch vault: fact
+  stored with run record, daily line and commit; secrets refused; an
+  option-shaped text stays text. Finding for step 4: the kit reads dates
+  as `YYYY-MM-DD` or English/Italian month names, not weekdays, so the
+  chat must resolve "venerdì" itself. Verified: core node tests (2,565),
+  `pnpm check`, desktop clippy; desktop Rust tests can't link in the
+  container (ort), CI runs them.
+
+- 2026-11-09 — Plan 35 slice 1, step 2. Core reads a vault's cyber-brain
+  configuration from the frontmatter of its `AGENTS.md`
+  (`packages/core/src/cyber-brain/config.ts`): kit version, `writers`,
+  `git`, `daily_notes` and its heading, `paths.system`/`paths.inbox`,
+  `content` destinations, and the kit script path
+  (`<system>/scripts/brain.mjs`). Read-only, never cached; a private
+  contract or broken YAML means no brain, bad fields fall back to the
+  kit's defaults, and a path that leaves the vault is refused. Nothing
+  uses it yet. Verified: core node tests (2,555), `pnpm check`.
+
+- 2026-11-09 — Plan 35 slice 1, step 1 (cyber-brain as Kore's memory
+  engine, `docs/plans/35-cyber-brain-memory.md`). `sensitivity: private`
+  (cyber-brain's privacy level) is now the same hard block as
+  `private: true`, in the TS frontmatter schema and the Rust
+  `note-policy` mirror, so every existing gate (MCP, chat, search, CLI
+  sandbox, `kore guide`) honors it. The chat's vault-contract budget goes
+  from 8,000 to 20,000 characters, matching `kore guide`: Mario's
+  cyber-brain AGENTS.md body is 8,038. Known limit: the editor's privacy
+  toggle clears only `private:`, so turning privacy off on a
+  `sensitivity: private` note does not stick. Verified: core node tests
+  (2,544), note-policy tests, `pnpm check`, `cargo fmt`.
 - 2026-11-10 — Plan 33 B2 and B4 merged (#348). Tag inheritance is resolved
   once in core and stored in tag_types (migration 0025, projection 30).
   Outbound readers (CLI, MCP, chat) use the public columns. Starting values

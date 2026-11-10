@@ -1,5 +1,46 @@
 # Kore working state
 
+## Edits under a conflict banner survive closing the note, 2026-11-10
+
+Ask: Mario picked "conflict copy" for D2 of the holistic analysis
+(`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`).
+
+- [x] `note-session-state.ts`: new `flushOnClose()` (tab close, note switch,
+  quit via `flushOpenDocuments`, and `dispose`). Under a parked conflict,
+  where saves stay paused, the buffer goes to a new file beside the note and
+  the note keeps the version on disk. Skipped when the buffer equals theirs
+  or was already copied. Blur and other flushes are unchanged.
+- [x] `packages/core/src/graph/conflict-copy.ts`: `Name (conflict).md`, then
+  `(conflict 2)`, ..., through the no-clobber `note_create`, the same names as
+  `conflict_copy_path` in `git/merge.rs` (TS mirror, no new Rust command).
+- [x] Toast "Saved your edits as a copy" naming both notes.
+- [x] Tests: session (copy once, nothing when equal to theirs), the hook
+  (unmount under conflict creates `notes/a (conflict).md`, no write), core
+  naming and collision.
+- Not verified on a real Mac.
+
+## Editor no longer reverts to an older external version, 2026-11-10
+
+Ask: Mario authorized fixing the critical data-loss bugs from the holistic
+analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
+
+- [x] `note-session-state.ts`: disk reads in `reconcileFromDisk` are numbered;
+  a read that settles after a newer one started is dropped, and `load()`
+  supersedes any reconcile still reading. Two close external changes (v2, v3)
+  can no longer leave v2 in the editor and write it back over v3.
+- [x] Three tests in `note-session.test.ts` (clean adopt, parked conflict,
+  load restart), red without the fix.
+- Not done: two overlapping `load()` calls are still unordered (no caller
+  does that today). D1, D2 and D4 are other threads.
+
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no
@@ -3421,6 +3462,23 @@ screen: Agents then Close lands on today.
   toggle clears only `private:`, so turning privacy off on a
   `sensitivity: private` note does not stick. Verified: core node tests
   (2,544), note-policy tests, `pnpm check`, `cargo fmt`.
+- 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
+  one commit each, no product change. Terminal: a multi-byte character
+  split across two 4 KB PTY reads decodes whole (streaming decoder in
+  `pty.rs`); `pty_write` only queues bytes for a per-session writer thread,
+  so a big paste can no longer block the main thread. Agent CLI: each
+  held-open stdin has its own lock and the map lock is never held across a
+  write, so Stop no longer hangs behind a slow prompt. `window_bootstrap`
+  reads the index generation from an atomic instead of the writer lock, so
+  a note window opened during a backup no longer freezes the app. Chat:
+  `withAgentRunLock` takes the turn's abort signal (Stop works while the
+  turn is queued behind an automation; a late native lease is handed back)
+  and shows a waiting notice after 300 ms. CLI writes and the capture inbox
+  fsync before the rename; CLI temps stage in `.kore/tmp/`. Verified:
+  agent-run-lock vitest, chat-provider browser test on Chromium, cargo
+  test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
+  typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
+
 - 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
   lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
   non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check

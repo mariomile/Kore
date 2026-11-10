@@ -42,12 +42,24 @@ export function AllNotesViewControls({
           }
         }}
       >
-        <SelectTrigger aria-label="Sort" data-size="sm">
+        {/* Dressed as the filter bar's pills, not the form-field Select, so the
+            header reads as one row of 28px controls; the menu drops below like
+            the Custom menu instead of covering its own trigger. */}
+        <SelectTrigger
+          aria-label="Sort"
+          size="sm"
+          className="h-7 gap-1 rounded-full border-0 data-[size=sm]:rounded-full bg-surface-hover py-0 pr-2 pl-3 text-[13px] font-medium text-text-secondary hover:text-text dark:bg-surface-hover dark:hover:bg-surface-hover [&_svg]:size-3.5! [&_svg]:text-text-muted"
+        >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent
+          alignItemWithTrigger={false}
+          align="end"
+          sideOffset={6}
+          className="w-auto min-w-44 p-1"
+        >
           {ALL_NOTES_SORTS.map((sort) => (
-            <SelectItem key={sort} value={sort}>
+            <SelectItem key={sort} value={sort} className="text-[13px]">
               {SORT_LABELS[sort]}
             </SelectItem>
           ))}

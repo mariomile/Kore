@@ -89,7 +89,7 @@ export function retargetOpenDocument(from: string, to: string, session: NoteSess
 export async function flushOpenDocuments(): Promise<void> {
   await Promise.allSettled(
     [...documents.values()].map(async (document) => {
-      await document.session.flush()
+      await document.session.flushOnClose()
       // Settle after the flush so the rename tracker has seen the final title;
       // settle() appends the rewrite synchronously, settled() awaits it.
       document.settle?.()

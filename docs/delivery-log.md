@@ -17,6 +17,21 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   are kept away from AI and agents exactly like `private: true`. The chat
   now reads up to 20,000 characters of the vault's AGENTS.md, as `kore
   guide` already did.
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
+- Two quick edits to a note from outside Kore (another device, an agent,
+  iCloud) no longer leave the editor on the older one, so your next keystroke
+  can't write it back over the newer text.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

@@ -27,7 +27,7 @@ describe('extractNoteProperties', () => {
         private: true,
         pinned: 3,
         aliases: ['x'],
-        lore: 'tag',
+        kore: 'tag',
         properties: [{ name: 'A', key: 'a', type: 'text' }],
         empty: [],
         nested: [['a']],

@@ -1,6 +1,11 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { splitFrontmatter, stripLeadingHeading } from '@reflect/core'
+import {
+  inlineEmbedSnapshots,
+  splitFrontmatter,
+  stripLeadingHeading,
+  stripLeadingTagLine,
+} from '@reflect/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
@@ -23,6 +28,8 @@ const NEAR_VIEWPORT_MARGIN = '400px'
  */
 const PREVIEW_SOURCE_BUDGET = 1200
 
+const NO_TAGS: readonly string[] = []
+
 function truncateAtBlockBoundary(body: string): string {
   if (body.length <= PREVIEW_SOURCE_BUDGET + 200) {
     return body
@@ -37,6 +44,11 @@ interface NoteCardPreviewProps {
   mtime: number
   /** The indexed plain-text snippet, shown until the real preview is read. */
   snippet: string
+  /**
+   * The tags the card's footer shows: a leading line of only these tags is
+   * dropped from the preview so the card doesn't say `#meeting` twice.
+   */
+  shownTags?: readonly string[] | undefined
   resolveImageUrl: (src: string) => string | null
 }
 
@@ -52,6 +64,7 @@ export function NoteCardPreview({
   path,
   mtime,
   snippet,
+  shownTags = NO_TAGS,
   resolveImageUrl,
 }: NoteCardPreviewProps): ReactElement | null {
   const { graph } = useGraph()
@@ -63,13 +76,19 @@ export function NoteCardPreview({
   // (staleTime Infinity) holds; a note edit reaches the card as a new key
   // via the refreshed list. Unrelated index updates must not reread cards.
   const { data: body } = useQuery({
-    queryKey: ['note-card-preview', graph?.root, generation, path, mtime],
+    queryKey: ['note-card-preview', graph?.root, generation, path, mtime, shownTags.join('\n')],
     queryFn: async () => {
       if (generation === null) {
         return null
       }
       const source = await readExistingNoteSource(path, generation)
-      return truncateAtBlockBoundary(stripLeadingHeading(splitFrontmatter(source).body))
+      // A passive card loads no remote embed, so a saved X/YouTube card
+      // reads as its quoted words rather than its snapshot JSON.
+      return truncateAtBlockBoundary(
+        inlineEmbedSnapshots(
+          stripLeadingTagLine(stripLeadingHeading(splitFrontmatter(source).body), shownTags),
+        ),
+      )
     },
     enabled: near && generation !== null,
     // A grid's worth of bodies has no business outliving the view by long.

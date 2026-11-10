@@ -21,12 +21,12 @@ below exactly.
 
 ## The definition note
 
-`tags/<tag>.md` marked `lore: tag`. Both the path and the marker are
+`tags/<tag>.md` marked `kore: tag`. Both the path and the marker are
 required. The body is the tag's description (rendered on its page).
 
 ```yaml
 ---
-lore: tag
+kore: tag
 properties:
   - { name: Author, key: author, type: relation, target: person }
   - { name: Rating, key: rating, type: rating }

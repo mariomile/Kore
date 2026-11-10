@@ -5,7 +5,7 @@ import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
  * definition note at `tags/<name>.md` whose frontmatter is marked
- * `lore: tag`. The definition's `properties` list is the schema a Collection
+ * `kore: tag`. The definition's `properties` list is the schema a Collection
  * view renders as columns and a note's properties panel renders as fields.
  *
  * Both conditions are required on purpose: the path alone must not claim
@@ -13,8 +13,20 @@ import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } 
  * an arbitrarily-placed note into a definition the path can't address.
  */
 
-/** The `lore:` frontmatter value that marks a note as a tag definition. */
+/** The `kore:` frontmatter value that marks a note as a tag definition. */
 export const TAG_TYPE_MARKER = 'tag'
+
+/**
+ * The marker as every writer applies it (`upsertFrontmatter` deletes an
+ * `undefined` key): `kore: tag`, dropping the `lore: tag` spelling used
+ * before the Kore rename. That old spelling is still read, so existing
+ * definitions stay typed until their next schema save rewrites them.
+ */
+export const TAG_DEFINITION_MARKER = { kore: TAG_TYPE_MARKER, lore: undefined } as const
+
+function hasTagTypeMarker(frontmatter: Frontmatter): boolean {
+  return frontmatter['kore'] === TAG_TYPE_MARKER || frontmatter['lore'] === TAG_TYPE_MARKER
+}
 
 /** Property value kinds a tag schema can declare (V1 set). */
 export const tagPropertyTypeSchema = z.enum([
@@ -163,6 +175,79 @@ export function relationTargetOf(property: TagProperty): string | undefined {
   return property.type === 'relation' || property.type === 'relations' ? property.target : undefined
 }
 
+/**
+ * The collection a relation picker's "Create" entry files a new note into.
+ * A declared target (or `person`'s default) wins. An untargeted `relation` /
+ * `relations` field falls back to the collection named like the field itself
+ * (a `Company` field and a `#company` tag), so creating "Trade Republic" from
+ * a meeting's Company makes a Company note without the schema naming a
+ * target. `collections` is every tag the vault knows, in any casing.
+ * `undefined` means the new note is created plain, with no tag.
+ */
+export function relationCreateTarget(
+  property: TagProperty,
+  collections: readonly string[],
+): string | undefined {
+  const declared = relationTargetOf(property)
+  if (declared !== undefined) {
+    return declared
+  }
+  if (property.type !== 'relation' && property.type !== 'relations') {
+    return undefined
+  }
+  const known = new Set(collections.map((tag) => foldTag(tag)))
+  for (const candidate of [property.name, property.key]) {
+    const key = foldTag(candidate)
+    if (key !== '' && known.has(key)) {
+      return key
+    }
+  }
+  return undefined
+}
+
+/**
+ * The types a property can switch to in one gesture from a note's field
+ * label: every type that needs nothing beyond a name. Stamps (`created`,
+ * `updated`) and the computed types (`formula`, `rollup`, `reverse`) need
+ * their configuration, so they stay in the type's schema dialog.
+ */
+export const QUICK_PROPERTY_TYPES: readonly TagPropertyType[] = [
+  'text',
+  'number',
+  'checkbox',
+  'date',
+  'select',
+  'multiselect',
+  'status',
+  'url',
+  'email',
+  'phone',
+  'rating',
+  'files',
+  'relation',
+  'relations',
+  'person',
+]
+
+/**
+ * `property` switched to `type`, keeping its name and key (so stored values
+ * stay put and read as a mismatch until edited) and the settings the new type
+ * can still use: options for the select-like types, a target for the
+ * relation-like ones. Computed configuration (`rollup`, `reverse`,
+ * `formula`) drops, since it only means something on its own type.
+ */
+export function withPropertyType(property: TagProperty, type: TagPropertyType): TagProperty {
+  const keepsOptions = type === 'select' || type === 'multiselect' || type === 'status'
+  const keepsTarget = type === 'relation' || type === 'relations' || type === 'person'
+  return {
+    name: property.name,
+    key: property.key,
+    type,
+    ...(keepsOptions && property.options !== undefined ? { options: property.options } : {}),
+    ...(keepsTarget && property.target !== undefined ? { target: property.target } : {}),
+  }
+}
+
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]
@@ -238,7 +323,7 @@ export function propertyKeyForName(name: string): string {
  * keys keep only the first well-formed occurrence.
  */
 export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | null {
-  if (frontmatter['lore'] !== TAG_TYPE_MARKER) {
+  if (!hasTagTypeMarker(frontmatter)) {
     return null
   }
   const raw = frontmatter['properties']
@@ -352,9 +437,9 @@ export function tagDefinitionPath(tag: string): string {
 
 /**
  * Is this note a tag definition? Requires both the `tags/<name>.md` path and
- * the `lore: tag` marker, so pre-existing user notes under `tags/` keep their
+ * the `kore: tag` marker (or the older `lore: tag`), so pre-existing user notes under `tags/` keep their
  * ordinary kind until explicitly converted.
  */
 export function isTagDefinitionNote(path: string, frontmatter: Frontmatter): boolean {
-  return tagNameForDefinitionPath(path) !== null && frontmatter['lore'] === TAG_TYPE_MARKER
+  return tagNameForDefinitionPath(path) !== null && hasTagTypeMarker(frontmatter)
 }

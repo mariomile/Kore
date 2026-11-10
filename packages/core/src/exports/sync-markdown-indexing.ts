@@ -156,6 +156,8 @@ export {
   type NoteIcon,
   displayNoteTitle,
   stripLeadingHeading,
+  stripLeadingTagLine,
+  inlineEmbedSnapshots,
   wikiLinkTargetForTitle,
   convertTaggedLineToNote,
   type TaggedLineConversion,
@@ -195,6 +197,7 @@ export {
 } from '../markdown'
 export {
   TAG_TYPE_MARKER,
+  TAG_DEFINITION_MARKER,
   EMPTY_TAG_TYPE,
   RESERVED_FRONTMATTER_KEYS,
   missingCreatedStamps,
@@ -213,6 +216,9 @@ export {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  relationCreateTarget,
+  withPropertyType,
+  QUICK_PROPERTY_TYPES,
   PERSON_DEFAULT_TARGET,
   localCalendarDate,
   createdStampValues,

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { captureDataFetch, captureMetaFetch, readNote, writeNote } from '../graph/commands'
-import { saveLinkText } from './link-text'
+import { saveLinkText, xPostTitle } from './link-text'
+import { resolveXPostEmbed } from './post-embed'
 
 /**
  * Runs in a real browser: the article and the caption track are parsed with
@@ -13,6 +14,21 @@ vi.mock('../graph/commands', () => ({
   readNote: vi.fn(),
   writeNote: vi.fn(),
 }))
+
+vi.mock('./post-embed', () => ({ resolveXPostEmbed: vi.fn() }))
+
+const POST = {
+  id: '2119051241770950781',
+  createdAt: '2026-11-07T12:56:00.000Z',
+  author: { name: 'Leo - 15 y/o founder', handle: 'leodev' },
+  body: [
+    {
+      type: 'text' as const,
+      text: 'Shipped my first agent-native app this weekend.\nLocal-first notes are ',
+    },
+    { type: 'link' as const, text: '#back', url: 'https://x.com/hashtag/back' },
+  ],
+}
 
 const notes = new Map<string, string>()
 
@@ -101,5 +117,45 @@ describe('saveLinkText', () => {
     expect(await saveLinkText('notes/resource-p.md', 1)).toBe(false)
     expect(captureMetaFetch).not.toHaveBeenCalled()
     expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it("titles an X post's card with its author and the start of the post", async () => {
+    const url = 'https://x.com/leodev/status/2119051241770950781'
+    notes.set('notes/resource-x.md', card(url, 'x.com'))
+    vi.mocked(resolveXPostEmbed).mockResolvedValue(POST)
+
+    expect(await saveLinkText('notes/resource-x.md', 1)).toBe(true)
+    const saved = notes.get('notes/resource-x.md')!
+    expect(saved).toContain(
+      '# Leo - 15 y/o founder: Shipped my first agent-native app this weekend. Local-first…\n',
+    )
+    expect(saved).toContain(
+      `[Leo - 15 y/o founder: Shipped my first agent-native app this weekend. Local-first…](${url})`,
+    )
+    expect(saved).not.toContain('## Page Text')
+    expect(captureMetaFetch).not.toHaveBeenCalled()
+  })
+
+  it("keeps an X card's title the user already changed", async () => {
+    const url = 'https://x.com/leodev/status/2119051241770950781'
+    notes.set(
+      'notes/resource-y.md',
+      card(url, 'x.com').replace('# x.com\n', '# Leo on local-first\n'),
+    )
+    vi.mocked(resolveXPostEmbed).mockResolvedValue(POST)
+
+    expect(await saveLinkText('notes/resource-y.md', 1)).toBe(false)
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+})
+
+describe('xPostTitle', () => {
+  it('keeps a short post whole and falls back to the handle', () => {
+    expect(xPostTitle({ ...POST, body: [{ type: 'text', text: 'gm' }] })).toBe(
+      'Leo - 15 y/o founder: gm',
+    )
+    expect(xPostTitle({ ...POST, author: { name: ' ', handle: 'leodev' }, body: [] })).toBe(
+      '@leodev',
+    )
   })
 })

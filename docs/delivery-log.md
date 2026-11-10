@@ -7,25 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Move a block to another note: put the caret on a line and press ⌘⇧M (or
-  use the block menu or ⌘K), pick the note, and the line with everything
-  under it moves to the end of that note. A heading moves with its section.
-  Links to its lines keep working: they now point at the new note.
-
-- Links to a single line, Obsidian-style: `[[Note#^id]]` opens the note on
-  the line that ends with `^id` and highlights it for a moment, and
-  `![[Note#^id]]` shows that line (with its sub-items) inside another note.
-  The `^id` stays in the file but never shows in the note, and the link
-  reads just the note's name. Only ids of four or more characters hide, so
-  `x ^2` stays as written. "Copy link to line"
-  in the block menu or ⌘K adds an id only to that line and copies the link.
-
-- Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that
-  list item with its children, that heading's section, or that paragraph,
-  with a breadcrumb to go back up. The note's file doesn't change. The
-  switch is animated: the block slides to the top while the rest fades.
-  Escape or Back steps out, the block menu and ⌘K offer it too, and Find
-  widens the zoom when the match is elsewhere in the note.
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
 
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as

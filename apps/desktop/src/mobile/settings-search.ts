@@ -1,5 +1,5 @@
 const SETTINGS_SEARCH_TERMS = {
-  graph: 'graph storage device icloud this device',
+  graph: 'vault graph storage device icloud this device',
   appearance:
     'appearance theme system light ash paper dark graphite ink space midnight accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round haptic feedback haptics vibration',
   calendar: 'calendar events access open settings',
@@ -7,7 +7,7 @@ const SETTINGS_SEARCH_TERMS = {
   ai: 'ai provider model system prompt api key',
   prompts: 'ai prompts custom prompt add prompt',
   audio: 'audio memo transcription auto format model',
-  backup: 'backup sync github',
+  backup: 'sync backup github',
   connectors: 'connectors readwise granola highlights meetings import sync',
   about: 'about notes version privacy policy',
 } as const

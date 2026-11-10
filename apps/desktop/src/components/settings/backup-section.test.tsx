@@ -85,7 +85,7 @@ describe('BackupSettingsField', () => {
     await expect.element(page.getByText('alex/notes')).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Reconnect GitHub…' })).toBeVisible()
     await expect.element(page.getByText('GitHub account')).toBeVisible()
-    await expect.element(page.getByText(/connected graphs stop backing up/i)).toBeVisible()
+    await expect.element(page.getByText(/connected vaults stop syncing/i)).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Open GitHub repo' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Sign out of GitHub/ })).toBeVisible()
   })
@@ -194,7 +194,7 @@ describe('BackupSettingsField', () => {
 
     await expect.element(page.getByRole('heading', { name: 'Sign out of GitHub?' })).toBeVisible()
     await expect
-      .element(page.getByText(/Every GitHub-backed graph will stop backing up/i))
+      .element(page.getByText(/Every vault synced with GitHub stops syncing/i))
       .toBeVisible()
     expect(sync.signOut).not.toHaveBeenCalled()
 

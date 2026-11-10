@@ -1,4 +1,5 @@
 import type { EditorView } from '@prosekit/pm/view'
+import { lastFocusedEditor } from './focused-editor'
 
 /**
  * Who opens "Move to…" for an editor (Plan 33 C2). Kept apart from the picker
@@ -12,7 +13,6 @@ export const MOVE_BRANCH_BINDING = 'Mod-Shift-m'
 export type MoveBranchOpener = (pos?: number) => boolean
 
 const openers = new WeakMap<EditorView, MoveBranchOpener>()
-let lastFocusedView: EditorView | null = null
 
 export function registerMoveBranchOpener(view: EditorView, opener: MoveBranchOpener): void {
   openers.set(view, opener)
@@ -20,13 +20,6 @@ export function registerMoveBranchOpener(view: EditorView, opener: MoveBranchOpe
 
 export function unregisterMoveBranchOpener(view: EditorView): void {
   openers.delete(view)
-  if (lastFocusedView === view) {
-    lastFocusedView = null
-  }
-}
-
-export function noteMoveBranchFocus(view: EditorView): void {
-  lastFocusedView = view
 }
 
 /** Open "Move to…" for the block at `pos` in `view`; false when it can't move. */
@@ -41,9 +34,6 @@ export function hasMoveBranch(view: EditorView): boolean {
 
 /** The palette entry: open "Move to…" for the caret's branch in the last focused note. */
 export function moveBranchFromLastFocused(): boolean {
-  const view = lastFocusedView
-  if (view === null || view.isDestroyed || !view.dom.isConnected) {
-    return false
-  }
-  return openMoveBranch(view)
+  const view = lastFocusedEditor()
+  return view !== null && openMoveBranch(view)
 }

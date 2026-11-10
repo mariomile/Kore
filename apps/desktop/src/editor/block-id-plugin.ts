@@ -446,7 +446,6 @@ export interface BlockIdOptions {
 }
 
 const linkTargets = new WeakMap<EditorView, () => string | null>()
-let lastFocusedView: EditorView | null = null
 
 /** The `[[Note#^id]]` text for a line, or null when the note has no link target. */
 export function blockLinkText(view: EditorView, id: string): string | null {
@@ -458,11 +457,6 @@ export function blockLinkText(view: EditorView, id: string): string | null {
 export function canLinkToBlock(view: EditorView): boolean {
   const target = linkTargets.get(view)?.()
   return target !== undefined && target !== null && target !== ''
-}
-
-/** The editor that last had focus, for "Copy link to line" run from the palette. */
-export function lastFocusedBlockIdView(): EditorView | null {
-  return lastFocusedView !== null && !lastFocusedView.isDestroyed ? lastFocusedView : null
 }
 
 /** The plugin behind `^id` markers, arrival flashes and "Copy link to line". */
@@ -571,14 +565,8 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
       if (options.linkTarget !== undefined) {
         linkTargets.set(editorView, options.linkTarget)
       }
-      if (editorView.hasFocus()) {
-        lastFocusedView = editorView
-      }
       return {
         update(view, previous) {
-          if (view.hasFocus()) {
-            lastFocusedView = view
-          }
           const before = blockIdKey.getState(previous)?.flash
           const after = blockIdKey.getState(view.state)?.flash
           if (after === undefined || after === before || after === DecorationSet.empty) {
@@ -594,9 +582,6 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
         destroy() {
           clearTimeout(timer)
           linkTargets.delete(editorView)
-          if (lastFocusedView === editorView) {
-            lastFocusedView = null
-          }
         },
       }
     },

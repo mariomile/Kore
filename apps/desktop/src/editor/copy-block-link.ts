@@ -6,8 +6,8 @@ import {
   canLinkToBlock,
   ensureBlockIdAt,
   ensureBlockIdAtCaret,
-  lastFocusedBlockIdView,
 } from './block-id-plugin'
+import { lastFocusedEditor } from './focused-editor'
 
 /**
  * "Copy link to line" (Plan 33 C3): give the block an Obsidian `^id` when it
@@ -39,7 +39,7 @@ export async function copyLinkToBlock(view: EditorView, pos?: number): Promise<b
 
 /** The palette entry: copy a link to the caret's line in the last focused note. */
 export function copyLinkToLastFocusedLine(): boolean {
-  const view = lastFocusedBlockIdView()
+  const view = lastFocusedEditor()
   if (view === null || !canLinkToBlock(view)) {
     return false
   }

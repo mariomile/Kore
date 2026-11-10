@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '@/test-utils/locator'
 import { BlockIds } from './block-ids'
-import { lastFocusedBlockIdView } from './block-id-plugin'
+import { lastFocusedEditor } from './focused-editor'
 import { BlockZoom } from './block-zoom'
 import { copyLinkToBlock, copyLinkToLastFocusedLine } from './copy-block-link'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
@@ -56,7 +56,7 @@ function stubClipboard(): ReturnType<typeof vi.fn> {
 
 /** The caret to the start of its line. `{Home}` does nothing in WebKit on macOS. */
 function caretToLineStart(): void {
-  const view = lastFocusedBlockIdView()!
+  const view = lastFocusedEditor()!
   const { $from } = view.state.selection
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, $from.start())))
 }
@@ -222,13 +222,13 @@ describe('BlockIds', () => {
     const note = ['```js', 'const a = 1', '```', '', 'Last line', ''].join('\n')
     const handle = await renderNote(note)
     await pmRoot.getByText('Last line').click()
-    const view = lastFocusedBlockIdView()!
+    const view = lastFocusedEditor()!
     expect(await copyLinkToBlock(view, 0)).toBe(true)
     const id = /```\n\n\^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
     expect(id).toBeDefined()
     expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)
     // A second copy finds the id it added.
-    expect(await copyLinkToBlock(lastFocusedBlockIdView()!, 0)).toBe(true)
+    expect(await copyLinkToBlock(lastFocusedEditor()!, 0)).toBe(true)
     expect(writeText).toHaveBeenLastCalledWith(`[[Pricing#^${id}]]`)
   })
 
@@ -239,7 +239,7 @@ describe('BlockIds', () => {
     await pmRoot.getByText('const a = 1').click()
     await userEvent.keyboard(`{${mod}>}{Shift>}.{/Shift}{/${mod}}`)
     await expect.element(pmRoot.getByText('Last line')).not.toBeVisible()
-    expect(await copyLinkToBlock(lastFocusedBlockIdView()!, 0)).toBe(true)
+    expect(await copyLinkToBlock(lastFocusedEditor()!, 0)).toBe(true)
     const id = /```\n\n\^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
     expect(id).toBeDefined()
     expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)

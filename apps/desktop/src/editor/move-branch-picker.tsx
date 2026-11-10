@@ -19,7 +19,6 @@ import { branchAt, moveBranch, type MoveDestination } from './move-branch'
 import {
   hasMoveBranch,
   MOVE_BRANCH_BINDING,
-  noteMoveBranchFocus,
   openMoveBranch,
   registerMoveBranchOpener,
   unregisterMoveBranchOpener,
@@ -104,14 +103,6 @@ export function MoveBranch({
               return {
                 destroy: () => unregisterMoveBranchOpener(view),
               }
-            },
-            props: {
-              handleDOMEvents: {
-                focus: (view) => {
-                  noteMoveBranchFocus(view)
-                  return false
-                },
-              },
             },
           }),
         ),

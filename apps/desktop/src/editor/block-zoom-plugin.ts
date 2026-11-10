@@ -18,6 +18,7 @@ import {
   targetSpan,
   type ZoomTarget,
 } from './block-zoom-target'
+import { lastFocusedEditor } from './focused-editor'
 
 export type { ZoomTarget } from './block-zoom-target'
 
@@ -309,16 +310,13 @@ export function zoomIntoBlockAt(view: EditorView, pos: number): void {
   }
 }
 
-/** The editor that last had focus, for commands run from outside it (the palette). */
-let lastFocusedView: EditorView | null = null
-
 /**
  * Zoom the last focused editor in (around its caret) or out one level, and
  * give it focus back. Returns whether anything changed.
  */
 export function zoomLastFocusedEditor(direction: 'in' | 'out'): boolean {
-  const view = lastFocusedView
-  if (view === null || view.isDestroyed || !view.dom.isConnected) {
+  const view = lastFocusedEditor()
+  if (view === null) {
     return false
   }
   const ran = (direction === 'in' ? zoomIn : zoomOut)(view.state, view.dispatch, view)
@@ -698,11 +696,6 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
     key: blockZoomKey,
     view: (editorView) => ({
       update: (view, previous) => {
-        // Focus may predate this plugin (it mounts after the editor), so any
-        // update while focused counts as well as the focus event.
-        if (view.hasFocus()) {
-          lastFocusedView = view
-        }
         const target = zoomTarget(view.state)
         if (!sameTarget(target, zoomTarget(previous))) {
           setPointerOverRoot(view, false)
@@ -710,9 +703,6 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         }
       },
       destroy: () => {
-        if (lastFocusedView === editorView) {
-          lastFocusedView = null
-        }
         options.onZoomChange?.(editorView, null)
       },
     }),
@@ -796,10 +786,6 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         }
       },
       handleDOMEvents: {
-        focus: (view) => {
-          lastFocusedView = view
-          return false
-        },
         mousedown: handleMarkerMouseDown,
         mousemove: markPointerOverRoot,
         mouseleave: (view) => {

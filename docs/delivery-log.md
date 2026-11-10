@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: sharing a link or a note while today's daily is still downloading
+  from iCloud no longer overwrites it. Kore asks iCloud for the file, waits,
+  and adds the capture once the real note is there.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

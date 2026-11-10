@@ -36,8 +36,12 @@ vi.mock('../graph/commands', () => ({
   promoteCaptureScreenshot: vi.fn(),
   readAsset: vi.fn(),
   readNote: vi.fn(),
+  readNoteLocal: vi.fn(),
   writeAsset: vi.fn(),
   writeNote: vi.fn(),
+}))
+vi.mock('../ipc/commands', () => ({
+  icloudRequestDownloads: vi.fn(),
 }))
 vi.mock('./meta-scrape', () => ({
   scrapePageMeta: vi.fn(),

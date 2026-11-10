@@ -3390,6 +3390,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Quality review of PR #345 (Plan 33 group C), behaviour
+  unchanged: one `hiddenBlockIdTail` rule in core replaces three copied
+  regexes (editor marker, id reuse, previews and extraction); one
+  `lastFocusedEditor()` registry (`apps/desktop/src/editor/focused-editor.ts`,
+  mounted by NoteEditor) replaces the copies in zoom, ids and move;
+  `planBranchMove` returns the note transforms (`landIn`, `leaveFrom`,
+  `follow`, `linkingNotes`) so the editor only reads and writes. Left as
+  noted: the Delete marker lift-and-put-back in `block-id-plugin.ts` and the
+  812-line `block-zoom-plugin.ts`.
+
 - 2026-11-10 — Move a branch to another note (Plan 33 C2): ⌘⇧M, the block
   menu and ⌘K open a "Move to…" picker over note titles (the current note is
   never offered); the branch lands at the end of the picked note and `^id`

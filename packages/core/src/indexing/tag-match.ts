@@ -19,3 +19,26 @@ export function carriesTagOrNested(notePathColumn: string, tag: string): RawBuil
         or ("filter_tags"."tag_key" >= ${`${key}/`} and "filter_tags"."tag_key" < ${`${key}0`}))
   )`
 }
+
+/**
+ * {@link carriesTagOrNested} over several tags at once: the note carries any
+ * of `tags` or a tag nested under one of them. A tag's collection passes its
+ * own tag plus the tags that build on it (Plan 33 B2).
+ */
+export function carriesAnyTagOrNested(
+  notePathColumn: string,
+  tags: readonly string[],
+): RawBuilder<boolean> {
+  const clauses = [...new Set(tags.map(foldTag))].map(
+    (key) => sql`("filter_tags"."tag_key" = ${key}
+        or ("filter_tags"."tag_key" >= ${`${key}/`} and "filter_tags"."tag_key" < ${`${key}0`}))`,
+  )
+  if (clauses.length === 0) {
+    return sql<boolean>`0`
+  }
+  return sql<boolean>`exists (
+    select 1 from "tags" as "filter_tags"
+    where "filter_tags"."note_path" = ${sql.raw(notePathColumn)}
+      and (${sql.join(clauses, sql` or `)})
+  )`
+}

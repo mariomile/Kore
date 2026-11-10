@@ -515,6 +515,40 @@ pub async fn index_touch<R: tauri::Runtime>(
     .await
 }
 
+/// Store the tag types' inheritance results core computed (Plan 33 B2), in
+/// one transaction (no-op if stale). Core owns the resolution; this only
+/// writes the columns.
+#[tauri::command]
+pub async fn index_tag_types_resolve<R: tauri::Runtime>(
+    rows: Vec<write::TagTypeResolution>,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
+) -> AppResult<()> {
+    let _background_task =
+        background_task::scoped(&background_tasks, "Reflect index tag type resolve");
+    let applied = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            let mut state = lock_state(&index)?;
+            if state.generation != generation {
+                return Ok(false);
+            }
+            let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+            write::set_tag_type_resolutions(conn, &rows)?;
+            Ok(true)
+        }
+    })
+    .await?;
+    // The pass runs after the row write that already fired the event, so
+    // readers refetch again to see the new schemas and child lists.
+    if applied {
+        emit_index_written(&app);
+    }
+    Ok(())
+}
+
 /// Upsert one `index_meta` key (no-op if stale). The table is bookkeeping the
 /// TS policy layer owns — e.g. `syncIndex` stamps the projection version after
 /// a rebuild — and `index_clear` deliberately preserves it, so a marker can

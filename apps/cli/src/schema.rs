@@ -11,7 +11,7 @@ use crate::commands::warn;
 use crate::error::CliError;
 use crate::frontmatter_values::{is_reserved_key, PropertyValue};
 use crate::keys::fold_tag;
-use crate::paths::{parse_calendar_date, today_date};
+use crate::paths::parse_calendar_date;
 
 /// One schema entry of `tag_types.schema_json` — the fields the CLI uses.
 /// Serde mirrors `tagPropertySchema` (`packages/core/src/tags/tag-type.ts`);
@@ -25,6 +25,10 @@ pub struct SchemaProperty {
     /// `select`/`multiselect`/`status` choices, when declared.
     #[serde(default)]
     pub options: Option<Vec<String>>,
+    /// The field's starting value (Plan 33 B4) as core validated and stored
+    /// it (`startingValueOf`); read by `crate::starting_values`.
+    #[serde(default)]
+    pub start: Option<crate::starting_values::Start>,
 }
 
 /// A decoded tag type: its properties and the bound new-row template path.
@@ -67,11 +71,17 @@ pub fn decode_schema(schema_json: &str) -> TagSchema {
     }
 }
 
-/// The schema of one tag, or `None` when the tag has no type.
+/// The schema of one tag, or `None` when the tag has no type. Inherited
+/// fields are already merged: core stores each tag's effective schema in
+/// `tag_types` (Plan 33 B2, `refreshTagTypeResolutions`), and the CLI reads
+/// the public one, because everything it prints reaches an agent. A private
+/// definition has no public schema, so it is no type at all here, and a
+/// private parent's fields are not in a public child's. A row the pass has
+/// not stored yet (NULL) reads as untyped too: it fails closed.
 pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, CliError> {
-    let schema_json: Option<String> = conn
+    let column: Option<Option<String>> = conn
         .query_row(
-            "SELECT schema_json FROM tag_types WHERE tag_key = ?1",
+            "SELECT public_resolved_json FROM tag_types WHERE tag_key = ?1",
             params![fold_tag(tag)],
             |row| row.get(0),
         )
@@ -80,7 +90,42 @@ pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, Cl
             rusqlite::Error::QueryReturnedNoRows => Ok(None),
             other => Err(other),
         })?;
-    Ok(schema_json.as_deref().map(decode_schema))
+    Ok(column.flatten().as_deref().map(decode_schema))
+}
+
+/// Which stored child list a read wants (Plan 33 B2).
+#[derive(Clone, Copy)]
+pub enum Descendants {
+    /// Children with public definitions: what a collection shows outbound.
+    Public,
+    /// Every child, private definitions included: for counts that never
+    /// reveal a note (`next-number`), so the CLI agrees with the app.
+    All,
+}
+
+/// The tags that build on `tag`, directly or not, as core stored them
+/// (Plan 33 B2): a parent's collection lists their notes too. Empty before
+/// core's first pass and for a tag nothing extends.
+pub fn load_descendants(
+    conn: &Connection,
+    tag: &str,
+    which: Descendants,
+) -> Result<Vec<String>, CliError> {
+    let sql = match which {
+        Descendants::Public => "SELECT public_descendants_json FROM tag_types WHERE tag_key = ?1",
+        Descendants::All => "SELECT descendants_json FROM tag_types WHERE tag_key = ?1",
+    };
+    let column: Option<Option<String>> = conn
+        .query_row(sql, params![fold_tag(tag)], |row| row.get(0))
+        .map(Some)
+        .or_else(|err| match err {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            other => Err(other),
+        })?;
+    Ok(column
+        .flatten()
+        .and_then(|json| serde_json::from_str::<Vec<String>>(&json).ok())
+        .unwrap_or_default())
 }
 
 /// The tags the index knows for a note, display-cased, one per key.
@@ -132,17 +177,6 @@ pub fn union_schema(conn: &Connection, tags: &[String]) -> Result<TagSchema, Cli
 impl TagSchema {
     pub fn property(&self, key: &str) -> Option<&SchemaProperty> {
         self.properties.iter().find(|property| property.key == key)
-    }
-
-    /// The `created` stamps a row born today would carry
-    /// (`createdStampValues`, `packages/core/src/tags/timestamps.ts`).
-    pub fn created_stamps(&self) -> Vec<(String, PropertyValue)> {
-        let today = today_date();
-        self.properties
-            .iter()
-            .filter(|property| property.kind == "created")
-            .map(|property| (property.key.clone(), PropertyValue::String(today.clone())))
-            .collect()
     }
 }
 
@@ -306,6 +340,7 @@ mod tests {
             key: key.to_string(),
             kind: kind.to_string(),
             options: None,
+            start: None,
         }
     }
 
@@ -370,7 +405,6 @@ mod tests {
             r#"{"properties":[{"name":"A","key":"a","type":"created","target":"x"}],"template":"templates/book.md"}"#,
         );
         assert_eq!(object.template.as_deref(), Some("templates/book.md"));
-        assert_eq!(object.created_stamps()[0].0, "a");
         assert!(decode_schema("nonsense").properties.is_empty());
     }
 }

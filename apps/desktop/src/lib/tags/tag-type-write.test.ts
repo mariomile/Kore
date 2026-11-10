@@ -8,12 +8,16 @@ const createNoteIfAbsent = vi.hoisted(() =>
   vi.fn<() => Promise<{ kind: 'created' | 'exists'; modifiedMs?: number }>>(),
 )
 const openSession = vi.hoisted(() => vi.fn(() => null))
+const tagExtendsLoop = vi.hoisted(() =>
+  vi.fn<(tag: string, parents: readonly string[]) => Promise<string | null>>(async () => null),
+)
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   readNote,
   writeNote,
   createNoteIfAbsent,
+  tagExtendsLoop,
 }))
 vi.mock('@/editor/open-documents', () => ({ openSession }))
 
@@ -24,6 +28,7 @@ beforeEach(() => {
   writeNote.mockClear()
   createNoteIfAbsent.mockReset()
   openSession.mockReset().mockReturnValue(null)
+  tagExtendsLoop.mockClear()
 })
 
 describe('readTagDefinition', () => {
@@ -36,6 +41,7 @@ describe('readTagDefinition', () => {
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     })
   })
 
@@ -137,11 +143,8 @@ describe('saveTagType', () => {
     // The schema lands in the live header (the session flushes it), so the
     // buffer's own next save can never revert it — and no disk write races
     // the open buffer.
-    expect(commitFrontmatter).toHaveBeenCalledWith({
-      tagSchema: schema,
-      tagTemplate: null,
-      tagIcon: null,
-    })
+    // Template and icon weren't given, so they are left as they are.
+    expect(commitFrontmatter).toHaveBeenCalledWith({ tagSchema: schema })
     expect(writeNote).not.toHaveBeenCalled()
   })
 
@@ -180,7 +183,7 @@ describe('saveTagType', () => {
   it('writes a bound template onto a new definition', async () => {
     createNoteIfAbsent.mockResolvedValue({ kind: 'created', modifiedMs: 1 })
 
-    await saveTagType('Book', schema, 3, 'templates/book.md')
+    await saveTagType('Book', schema, 3, { template: 'templates/book.md' })
 
     const [, contents] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(contents).toContain('template: templates/book.md')
@@ -189,9 +192,40 @@ describe('saveTagType', () => {
   it('writes the icon onto a new definition', async () => {
     createNoteIfAbsent.mockResolvedValue({ kind: 'created', modifiedMs: 1 })
 
-    await saveTagType('Book', schema, 3, null, '📚')
+    await saveTagType('Book', schema, 3, { icon: '📚' })
 
     const [, contents] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(contents).toMatch(/icon: "?📚"?/)
+  })
+})
+
+describe('saveTagType parents (Plan 33 B2)', () => {
+  it('reads extends: from the definition', async () => {
+    readNote.mockResolvedValue('---\nkore: tag\nextends: [contact]\nproperties: []\n---\n')
+    expect(await readTagDefinition('client')).toMatchObject({ parents: ['contact'] })
+  })
+
+  it('writes extends: on a new definition when parents are given', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created' })
+    await saveTagType('client', [], 7, { parents: ['contact'] })
+    const seed = (createNoteIfAbsent.mock.calls[0] as unknown as [string, string])[1]
+    expect(seed).toContain('extends:')
+    expect(seed).toContain('contact')
+  })
+
+  it('refuses parents that would close a loop, writing nothing', async () => {
+    tagExtendsLoop.mockResolvedValueOnce('client')
+    await expect(saveTagType('contact', [], 7, { parents: ['client'] })).rejects.toThrow(
+      "#contact can't build on #client",
+    )
+    expect(createNoteIfAbsent).not.toHaveBeenCalled()
+  })
+
+  it('leaves extends: alone when parents are not given', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created' })
+    await saveTagType('client', [], 7)
+    expect(tagExtendsLoop).not.toHaveBeenCalled()
+    const seed = (createNoteIfAbsent.mock.calls[0] as unknown as [string, string])[1]
+    expect(seed).not.toContain('extends')
   })
 })

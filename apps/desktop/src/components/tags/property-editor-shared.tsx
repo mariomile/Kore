@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   createNoteWithTitle,
-  createdStampValues,
+  startingValuesFor,
   decodeStoredList,
   foldTag,
   getTagType,
@@ -209,10 +209,11 @@ async function createRelationRow(
     return await insertTextFor(await createNoteWithTitle(title, generation), title)
   }
   const path = await createNoteWithTitle(title, generation, `#${targetTag}`)
-  // A row born from the picker carries its `created` stamps too (Plan 29
-  // T1) — best-effort: a failed stamp never loses the created note.
+  // A row born from the picker carries its `created` stamps (Plan 29 T1)
+  // and starting values (Plan 33 B4) too — best-effort: a failed stamp
+  // never loses the created note.
   try {
-    const stamps = createdStampValues(await getTagType(targetTag))
+    const stamps = await startingValuesFor(targetTag, await getTagType(targetTag))
     if (Object.keys(stamps).length > 0) {
       await commitNoteFrontmatter(path, { properties: stamps }, generation)
     }

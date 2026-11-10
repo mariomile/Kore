@@ -8,6 +8,7 @@ import {
   foldTag,
   getTagType,
   listCollection,
+  listTagChildren,
   type CollectionEntry,
   type CollectionSort,
 } from '@reflect/core'
@@ -20,31 +21,55 @@ export function collectionQueryKey(
   root: string | undefined,
   tag: string,
   sorts: readonly CollectionSort[],
-): readonly [string, string | undefined, string, string, string] {
+  ownOnly = false,
+): readonly [string, string | undefined, string, string, string, string] {
   return [
     INDEX_QUERY_SCOPE,
     root,
     'collection',
     foldTag(tag),
     sorts.map((sort) => `${sort.key}:${sort.direction}`).join(','),
+    ownOnly ? 'own' : 'all',
   ]
 }
 
 /**
+ * The tags that build on `tag` (Plan 33 B2), folded and sorted: their notes
+ * join the tag's collection unless the "only #tag" filter is on. Empty while
+ * loading and for a tag nothing extends.
+ */
+export function useTagChildren(tag: string | null): readonly string[] {
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+  const { data } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-children', foldTag(tag ?? '')],
+    queryFn: () => listTagChildren(tag ?? ''),
+    enabled: bridgeReady && graph !== null && tag !== null,
+  })
+  return data ?? NO_CHILDREN
+}
+
+const NO_CHILDREN: readonly string[] = []
+
+/**
  * The Collection rows for a typed tag (TDR 0005): the notes carrying the tag
- * with their indexed frontmatter values. `undefined` while the query settles.
+ * with their indexed frontmatter values, plus the notes of tags that build
+ * on it unless `ownOnly`. `undefined` while the query settles.
  */
 export function useCollection(
   tag: string | null,
   sorts: readonly CollectionSort[],
+  { ownOnly = false }: { ownOnly?: boolean } = {},
 ): CollectionEntry[] | undefined {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const { data } = useQuery({
-    queryKey: collectionQueryKey(graph?.root, tag ?? '', sorts),
+    queryKey: collectionQueryKey(graph?.root, tag ?? '', sorts, ownOnly),
     queryFn: async () => {
       const type = await getTagType(tag ?? '')
-      const rows = await listCollection(tag ?? '', effectiveCollectionSorts(type, sorts))
+      const rows = await listCollection(tag ?? '', effectiveCollectionSorts(type, sorts), {
+        ownOnly,
+      })
       if (type === null) {
         return rows
       }

@@ -139,7 +139,11 @@ export interface Tags {
 }
 
 export interface TagTypes {
+  descendantsJson: string | null;
   notePath: string;
+  publicDescendantsJson: string | null;
+  publicResolvedJson: string | null;
+  resolvedJson: string | null;
   schemaJson: string;
   tagKey: string;
 }

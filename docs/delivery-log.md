@@ -26,6 +26,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   switch is animated: the block slides to the top while the rest fades.
   Escape or Back steps out, the block menu and ⌘K offer it too, and Find
   widens the zoom when the match is elsewhere in the note.
+
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as
   "Name (conflict).md", leaves the note on the other version, and tells you.

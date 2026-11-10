@@ -62,6 +62,7 @@ C1, C3, C2; one step = one commit, Mario's ok before each next feature).
   linking to it, a same-note link inside the branch to a line left behind
   names the source. A failed write to the other note puts the branch back.
   Nothing is left behind (the plan's rule); no cross-note undo yet.
+
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
 Ask: Mario picked "conflict copy" for D2 of the holistic analysis
@@ -1298,6 +1299,7 @@ tried from a real MCP client.
 
 **Next:** on the Mac, in Claude Desktop attach a note from the Kore server
 and run the `daily_review` prompt.
+
 ## Search operators in the CLI and MCP, 2026-10-17
 
 Follow-up to #279 (Mario: "Continua"): the palette understood Obsidian's
@@ -2332,6 +2334,7 @@ were not certified by this cycle.
 **Next:** Review this consolidation PR. Full-block extraction remains a separate
 product decision: define what stays in the source and the two-file Undo contract
 before implementation. No release/version bump is part of this cycle.
+
 ## Chat can say what a note is — 2026-09-22
 
 Slice C of the note-type work, and the third AI-app-control writer after the
@@ -2447,6 +2450,7 @@ the properties slot is measured against the live H1.
 **Next:** merge, then set a type from the picker on a real note and watch the
 tag page's collection pick up the row. Slice B stays parked until the
 `tags:`-in-frontmatter count on the vault is known.
+
 ## Chat can edit a supertag's schema — 2026-09-21
 
 Slice 2 of the AI-app-control map: after the icon (slice 1), what a tag
@@ -3512,6 +3516,7 @@ screen: Agents then Close lands on today.
 - 2026-11-08 — Zoom into any block (Plan 33 C1): ⌘⇧. shows only the list
   item, heading section or block at the caret (⌘-click on a bullet too),
   with a breadcrumb back; view state only, the note's Markdown never changes.
+
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character
   split across two 4 KB PTY reads decodes whole (streaming decoder in

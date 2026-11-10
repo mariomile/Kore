@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Sync keeps a note you save while it is pulling another device's
+  changes. Before, that save could be silently reverted.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

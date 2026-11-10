@@ -3353,6 +3353,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Sync no longer loses a save that lands during the fetch
+  (holistic analysis bug D1). The fast-forward path in
+  `apps/desktop/src-tauri/src/git/merge.rs` moved the ref and then ran a
+  forced `checkout_head`, which reverted any note saved after the cycle's
+  commit. It now writes the new tree with a safe `checkout_tree` before
+  moving the ref; when the save touches a file the remote also changed, the
+  merge errors and writes nothing, and the next cycle commits the save and
+  does a real merge. An unborn HEAD still adopts the remote tree with force.
+  Two tests in `git/tests/mod.rs` cover both cases.
+
 - 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
   lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
   non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check

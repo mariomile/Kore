@@ -1,3 +1,26 @@
+## Daily stream scroll: link cards no longer fade on hover, 2026-11-10
+
+Ask: Mario feels lag scrolling the daily notes and asked whether recent
+releases made them heavier.
+
+- Measured (headless Chromium, production build, `?seed=obsidian` with
+  dailies shaped like his: bare X links, wiki links, agent log bullets;
+  60,000 px of wheel scroll): v0.85.0, v0.90.0, v0.93.0, v0.95.0 and master
+  spend the same main-thread time per mounted day (about 45 ms of script).
+  Nothing shipped in 0.93 to 0.95 touches the stream.
+- One regression, since link preview cards (v0.86.0): frames over 33 ms went
+  from 6-15 to 30-40 per run. Cause: `.kore-link-card` had a 120 ms
+  `background-color` transition, and scrolling moves cards under the resting
+  pointer, so each one repaints for the length of the fade twice.
+- [x] `styles/link-cards.css`: transition removed, the hover lift stays.
+  After: 5 frames over 33 ms, 60.4 fps (was 31 and 56.1).
+- Caveat: the container renders in software, so the Mac's GPU likely pays
+  less for the same repaint. Not verified on WebKit.
+- Not done, needs Mario's call: mounting a day costs a whole Meowdown editor
+  (about 105 chrome nodes, 28 state reconfigurations); at 4x CPU slowdown the
+  stream runs at 40 fps on every version. Saves do not run while scrolling,
+  so the index-query invalidation is not part of this.
+
 # Kore working state
 
 ## Edits under a conflict banner survive closing the note, 2026-11-10

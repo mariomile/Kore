@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
+
 - The notes folder is called a vault everywhere in Kore, and Graph means only
   the graph view. Sync is GitHub and iCloud, Backup is the zip file you
   export; the History panel and the connector links read correctly.

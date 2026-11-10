@@ -8,32 +8,7 @@ import {
   tagPropertyTypeSchema,
   type TagPropertyType,
 } from '@reflect/core'
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUturnRight,
-  Calculator,
-  Calendar,
-  CalendarClock,
-  Chart,
-  CheckCircle,
-  ChevronUpDown,
-  Flag,
-  Graph,
-  Hash,
-  History,
-  Inbox,
-  Link,
-  List,
-  Paperclip,
-  Pencil,
-  Phone,
-  Star,
-  Trash,
-  User,
-  WikiLink,
-  type Icon,
-} from '@/components/icons'
+import { ArrowDown, ArrowUp, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -48,6 +23,7 @@ import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { OptionsChipsEditor } from './options-chips-editor'
+import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import {
   FIELD_LABEL_CLASS,
   PROPERTY_TYPE_LABELS,
@@ -55,30 +31,6 @@ import {
   relationTargetTags,
   type PropertyDraft,
 } from './tag-config-drafts'
-
-/** One glyph per property type, so the picker reads at a glance. */
-const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
-  text: Pencil,
-  number: Hash,
-  checkbox: CheckCircle,
-  date: Calendar,
-  created: CalendarClock,
-  updated: History,
-  select: ChevronUpDown,
-  multiselect: List,
-  url: Link,
-  relation: WikiLink,
-  relations: Graph,
-  person: User,
-  status: Flag,
-  files: Paperclip,
-  email: Inbox,
-  phone: Phone,
-  rating: Star,
-  formula: Calculator,
-  rollup: Chart,
-  reverse: ArrowUturnRight,
-}
 
 export interface TagPropertyRowProps {
   draft: PropertyDraft

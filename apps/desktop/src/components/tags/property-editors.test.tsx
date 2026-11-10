@@ -10,12 +10,15 @@ const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
 const createNoteWithTitle = vi.hoisted(() => vi.fn())
 const getTagType = vi.hoisted(() => vi.fn())
 const getWikiAddressForPath = vi.hoisted(() => vi.fn())
+const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   createNoteWithTitle,
   getTagType,
   getWikiAddressForPath,
+  listNoteTags: async () => vaultTags.current.map((tag) => ({ tag, count: 1 })),
+  listTagTypes: async () => [],
   suggestWikiLinkTargets: async () => ({
     suggestions: relationSuggestions.current,
     claimedTargetKeys: [],
@@ -38,6 +41,7 @@ beforeEach(() => {
   createNoteWithTitle.mockReset()
   getTagType.mockReset().mockResolvedValue(null)
   getWikiAddressForPath.mockReset()
+  vaultTags.current = []
 })
 
 function stored(value: string, valueType: CollectionValue['valueType']): CollectionValue {
@@ -221,6 +225,37 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('button', { name: 'Edit Author note' }).click()
     await view.getByRole('option', { name: 'Ursula K. Le Guin' }).click()
     expect(onCommit).toHaveBeenCalledWith('[[Ursula K. Le Guin]]')
+  })
+
+  it('creates a new note from an untargeted relation into the collection named like the field', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['meeting', 'Company']
+    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1, '#company')
+  })
+
+  it('creates a plain note from an untargeted relation when no collection matches', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['meeting']
+    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create note “Trade Republic”' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1)
+    expect(getTagType).not.toHaveBeenCalled()
   })
 
   it('clears a relation from the picker', async () => {

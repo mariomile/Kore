@@ -29,7 +29,7 @@ const CONTACTS_PRIVACY_PANE =
  * prompt; a denial keeps the switch on and points at System Settings, since
  * the app cannot re-prompt once the user has decided. The section renders
  * only where the framework exists (macOS/iOS) — see
- * {@link useVisibleSettingsSections}.
+ * {@link useVisibleSettingsGroups}.
  */
 export function IntegrationsSection(): ReactElement | null {
   const { settings, updateSettings } = useSettings()

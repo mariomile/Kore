@@ -1,30 +1,71 @@
 # Kore working state
 
-## Tasks like Todoist, slice 3: real projects, 2026-11-09
+## Edits under a conflict banner survive closing the note, 2026-11-10
 
-Ask (Mario, 2026-11-09 17:43, "Ok, fai tutto." on the four-step proposal;
-plan in `/mnt/project-files/analisi/task-come-todoist.md`). One commit per step.
+Ask: Mario picked "conflict copy" for D2 of the holistic analysis
+(`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`).
 
-- [x] A task whose own line links `[[Project]]` counts under that project
-  (`linkedProjectsByTask`, `projectForTask`, `getTaskProjectLinks`); a task
-  written inside a project folder stays there. Linked daily tasks follow the
-  project's own, newest first.
-- [x] Projects list their tasks by section: `tasks.section` (migration 0024)
-  is the nearest top-level H2+ heading above the task; subtasks are indented
-  under their parent (`subtaskDepths`). Migration 0023 (fts rowid) was never
-  registered on the Rust side; it is now, and `LATEST_SCHEMA_VERSION` is 24.
-  Mobile does not render sections yet.
-- [x] `m` (or ⌘⇧M, which also works from an open row editor) moves the
-  selection to a project, then a section when the note has headings. Core
-  transforms `cutTaskBlock` / `pasteTaskBlock` carry the line and its nested
-  items verbatim; the desktop restores the source if the paste fails, and
-  the toast's Undo or ⌘Z puts both notes back, refusing if either changed.
-- [x] `#tag` in the Tasks search filters every view (desktop and mobile) to
-  tasks whose own line carries the tag or a child of it (`parseTaskQuery`,
-  `taskHasTags`); the filters menu lists the open tasks' tags and toggles
-  them in the search.
-- Out of scope, as proposed: nested projects, archived projects, drag and
-  drop between projects. Next: slice 4 polish, mobile Quick Add and sections.
+- [x] `note-session-state.ts`: new `flushOnClose()` (tab close, note switch,
+  quit via `flushOpenDocuments`, and `dispose`). Under a parked conflict,
+  where saves stay paused, the buffer goes to a new file beside the note and
+  the note keeps the version on disk. Skipped when the buffer equals theirs
+  or was already copied. Blur and other flushes are unchanged.
+- [x] `packages/core/src/graph/conflict-copy.ts`: `Name (conflict).md`, then
+  `(conflict 2)`, ..., through the no-clobber `note_create`, the same names as
+  `conflict_copy_path` in `git/merge.rs` (TS mirror, no new Rust command).
+- [x] Toast "Saved your edits as a copy" naming both notes.
+- [x] Tests: session (copy once, nothing when equal to theirs), the hook
+  (unmount under conflict creates `notes/a (conflict).md`, no write), core
+  naming and collision.
+- Not verified on a real Mac.
+
+## Editor no longer reverts to an older external version, 2026-11-10
+
+Ask: Mario authorized fixing the critical data-loss bugs from the holistic
+analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
+
+- [x] `note-session-state.ts`: disk reads in `reconcileFromDisk` are numbered;
+  a read that settles after a newer one started is dropped, and `load()`
+  supersedes any reconcile still reading. Two close external changes (v2, v3)
+  can no longer leave v2 in the editor and write it back over v3.
+- [x] Three tests in `note-session.test.ts` (clean adopt, parked conflict,
+  load restart), red without the fix.
+- Not done: two overlapping `load()` calls are still unordered (no caller
+  does that today). D1, D2 and D4 are other threads.
+
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
+## Project cleanup pass, 2026-11-09
+
+Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no
+longer needed. Fix what you're sure about and list the rest". One commit per
+fix. The full list, ranked, with what is left for him to decide, is
+`/mnt/project-files/analisi/pulizia-progetto-2026-11-09.md`. Files owned by
+the open PRs (#345 to #365) were listed, not touched.
+
+- [x] `apps/desktop/e2e/run-e2e.mjs` passes again (15/15). It is not in CI,
+  which is how it rotted: the sidebar's Open section is gone and Settings now
+  covers the sidebar.
+- [x] Settings → Agents: the Automations description keeps its width when
+  both template buttons show.
+- [x] Dead code: `useVisibleSettingsSections`, `settingsGroupTitle`; the
+  deprecated Kysely `orderBy([...])` in `graph-map.ts`.
+- [x] Docs: Kore naming in CONTRIBUTING.md, the icon flavor table and crate
+  descriptions; CONTRIBUTING's release rules (one config, changelog covers
+  the repo minus `exclude-paths`); links to `crates/index-store` and
+  `crates/index-schema/migrations`; the `kore-markdown` skill names `.kore`.
+- [x] `vite.config.ts` imports `package.json` with the JSON attribute.
+- Not done, waiting on Mario (see the file): dependency advisories (zod,
+  undici, xmldom; Renovate is not installed), upstream's provisioning profile
+  embedded in the DMG (`tauri.macos.conf.json`, belongs to #363), the e2e
+  smoke in CI, macOS runner queueing, archiving this file, ~108 dead remote
+  branches, AGENTS.md contradictions, the stale roadmap.
 
 ## Rename visible Reflect leftovers to Kore, 2026-11-09
 
@@ -3352,6 +3393,45 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
+
+- 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
+  one commit each, no product change. Terminal: a multi-byte character
+  split across two 4 KB PTY reads decodes whole (streaming decoder in
+  `pty.rs`); `pty_write` only queues bytes for a per-session writer thread,
+  so a big paste can no longer block the main thread. Agent CLI: each
+  held-open stdin has its own lock and the map lock is never held across a
+  write, so Stop no longer hangs behind a slow prompt. `window_bootstrap`
+  reads the index generation from an atomic instead of the writer lock, so
+  a note window opened during a backup no longer freezes the app. Chat:
+  `withAgentRunLock` takes the turn's abort signal (Stop works while the
+  turn is queued behind an automation; a late native lease is handed back)
+  and shows a waiting notice after 300 ms. CLI writes and the capture inbox
+  fsync before the rename; CLI temps stage in `.kore/tmp/`. Verified:
+  agent-run-lock vitest, chat-provider browser test on Chromium, cargo
+  test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
+  typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
+
+- 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
+  lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
+  non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check
+  over the docs, the desktop build and the e2e smoke on master `c25d0a2`.
+  Fixed what was certain (e2e smoke, Automations card width, two dead
+  helpers, a deprecated query call, stale names and links in docs, the Vite
+  JSON import, `.reflect` in the markdown skill). Verified: e2e 15/15,
+  settings and automations browser tests on Chromium, graph-map test,
+  typecheck, oxfmt. Not run: the desktop crate (CI covers it).
 
 - 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
   `kind` and the `notePath` they touched, set in core by the Claude Code

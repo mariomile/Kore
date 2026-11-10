@@ -1127,7 +1127,7 @@ describe('tag tools', () => {
     return output
   }
 
-  const DEFINITION = '---\nlore: tag\nicon: icon:folder\nproperties: []\n---\n# Company\n'
+  const DEFINITION = '---\nkore: tag\nicon: icon:folder\nproperties: []\n---\n# Company\n'
 
   it('lists tags over public notes only, re-checking each definition live', async () => {
     const listOptions: unknown[] = []
@@ -1154,8 +1154,8 @@ describe('tag tools', () => {
       // (that note's content) must not ship, while the tag itself may.
       readNoteFn: async (path) =>
         path === 'tags/meeting.md'
-          ? '---\nlore: tag\nprivate: true\n---\n'
-          : '---\nlore: tag\n---\n',
+          ? '---\nkore: tag\nprivate: true\n---\n'
+          : '---\nkore: tag\n---\n',
     })
     const execute = tools.list_tags.execute
     if (!execute) {
@@ -1248,7 +1248,7 @@ describe('tag tools', () => {
     })
     const privateTools = buildNoteTools({
       allowEdits: true,
-      readNoteFn: async () => `---\nlore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
+      readNoteFn: async () => `---\nkore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
     })
     expect(await runSetTagIcon(privateTools, { tag: 'diary', icon: 'lock' })).toEqual({
       ok: false,
@@ -1331,7 +1331,7 @@ describe('set_tag_schema', () => {
   /** #book with two properties, one of them a select. */
   const BOOK = [
     '---',
-    'lore: tag',
+    'kore: tag',
     'icon: 📚',
     'properties:',
     '  - name: Author',
@@ -1454,7 +1454,7 @@ describe('set_tag_schema', () => {
       readNoteFn: async () =>
         [
           '---',
-          'lore: tag',
+          'kore: tag',
           'properties:',
           '  - name: Books',
           '    key: books',
@@ -1550,7 +1550,7 @@ describe('set_tag_schema', () => {
     })
     const privateTools = buildNoteTools({
       allowEdits: true,
-      readNoteFn: async () => `---\nlore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
+      readNoteFn: async () => `---\nkore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
     })
     expect(await runSetTagSchema(privateTools, { tag: 'diary', properties })).toEqual({
       ok: false,

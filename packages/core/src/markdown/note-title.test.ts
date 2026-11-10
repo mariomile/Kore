@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
+import {
+  displayNoteTitle,
+  stripLeadingHeading,
+  stripLeadingTagLine,
+  wikiLinkTargetForTitle,
+} from './note-title'
 
 describe('displayNoteTitle', () => {
   it('flattens wiki links to their alias and markdown links to their text', () => {
@@ -68,5 +73,23 @@ describe('stripLeadingHeading', () => {
     expect(stripLeadingHeading('#NoSpace is a tag-like line\n')).toBe(
       '#NoSpace is a tag-like line\n',
     )
+  })
+})
+
+describe('stripLeadingTagLine', () => {
+  it('drops a leading line of tags the card already shows', () => {
+    expect(stripLeadingTagLine('#meeting\n\nScreen di 30 minuti', ['meeting'])).toBe(
+      '\nScreen di 30 minuti',
+    )
+    expect(stripLeadingTagLine('\n#Meeting #job\nBody', ['meeting', 'job'])).toBe('Body')
+  })
+
+  it('keeps a line with other words or a tag the card does not show', () => {
+    expect(stripLeadingTagLine('#meeting with Carolina\nBody', ['meeting'])).toBe(
+      '#meeting with Carolina\nBody',
+    )
+    expect(stripLeadingTagLine('#meeting #job\nBody', ['meeting'])).toBe('#meeting #job\nBody')
+    expect(stripLeadingTagLine('# Heading\nBody', ['meeting'])).toBe('# Heading\nBody')
+    expect(stripLeadingTagLine('', ['meeting'])).toBe('')
   })
 })

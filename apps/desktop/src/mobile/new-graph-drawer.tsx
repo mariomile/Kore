@@ -71,8 +71,8 @@ export function NewGraphDrawer({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent aria-label="New iCloud graph">
-        <DrawerTitle>New iCloud graph</DrawerTitle>
+      <DrawerContent aria-label="New iCloud vault">
+        <DrawerTitle>New iCloud vault</DrawerTitle>
         <DrawerBody>
           <div className="flex flex-col gap-1.5">
             <label htmlFor={nameId} className="text-xs font-medium text-text-secondary">

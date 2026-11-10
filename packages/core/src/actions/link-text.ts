@@ -3,9 +3,11 @@ import { captureMetaFetch, readNote, writeNote } from '../graph/commands'
 import { appendHeadingSection } from '../markdown/append-section'
 import { wikiLinkSafe } from '../markdown/edit'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
+import type { XPost } from '@post-embed/types'
 import { extractArticleFromHtml } from './article-text'
 import { isLinkedInUrl, xPostId } from './link-preview-providers'
 import { youtubeVideoId } from './oembed'
+import { resolveXPostEmbed } from './post-embed'
 import { fetchYouTubeTranscript } from './youtube-transcript'
 
 /**
@@ -97,6 +99,29 @@ function retitled(source: string, url: string, title: string | null): string {
   )
 }
 
+/** How much of a post's text an X card's title keeps before it trails off. */
+const X_TITLE_TEXT_CHARS = 60
+
+/**
+ * An X post's card title: its author, then the start of what they wrote, cut
+ * on a word — `Leo: Shipped my first agent-native app…`. A card would
+ * otherwise keep its placeholder (`x.com`) for good, since an X post keeps
+ * its words in the embed snapshot and has no page text to save.
+ */
+export function xPostTitle(post: XPost): string | null {
+  const author = post.author.name.trim() || `@${post.author.handle}`
+  const words = post.body
+    .map((segment) => segment.text)
+    .join('')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+  if (words === '') return author === '@' ? null : author
+  if (words.length <= X_TITLE_TEXT_CHARS) return `${author}: ${words}`
+  const cut = words.lastIndexOf(' ', X_TITLE_TEXT_CHARS)
+  const start = words.slice(0, cut > X_TITLE_TEXT_CHARS / 2 ? cut : X_TITLE_TEXT_CHARS)
+  return `${author}: ${start.replace(/[\s.,;:!?-]+$/, '')}…`
+}
+
 /** Cards already tried this session, so a dead page is not refetched on every paste. */
 const attempted = new Set<string>()
 
@@ -122,6 +147,9 @@ export async function saveLinkText(cardPath: string, generation: number): Promis
   ) {
     return false
   }
+  if (xPostId(url) !== null) {
+    return await saveXPostTitle(cardPath, generation, key, source, url)
+  }
   let text: LinkText | null
   try {
     text = await fetchLinkText(url)
@@ -138,5 +166,36 @@ export async function saveLinkText(cardPath: string, generation: number): Promis
     appendHeadingSection(retitled(current, url, text.title), heading, text.markdown),
     generation,
   )
+  return true
+}
+
+/**
+ * Give an X post's card the post's title in place of its host placeholder.
+ * The post is read the way its embed card reads it, so nothing new leaves
+ * the app. A title the user already changed stays.
+ */
+async function saveXPostTitle(
+  cardPath: string,
+  generation: number,
+  key: string,
+  source: string,
+  url: string,
+): Promise<boolean> {
+  let post: XPost | undefined
+  try {
+    post = await resolveXPostEmbed(url)
+  } catch {
+    post = undefined
+  }
+  if (post === undefined) {
+    // A gone post and a dropped connection look alike here: try again on a later paste.
+    attempted.delete(key)
+    return false
+  }
+  const current = await readNote(cardPath, generation)
+  if (current !== source) return false
+  const next = retitled(current, url, xPostTitle(post))
+  if (next === current) return false
+  await writeNote(cardPath, next, generation)
   return true
 }

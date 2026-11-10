@@ -1197,6 +1197,33 @@ fn session_adoption_reads_never_bump_generations() {
     assert_eq!(graph.0.lock().unwrap().generation, 3);
 }
 
+/// The bootstrap of a note window must not wait on the writer lock: a backup
+/// export or a long reindex holds it for the whole operation, and the window
+/// opening behind it used to freeze the app until it finished.
+#[test]
+fn current_generation_does_not_wait_on_the_writer_lock() {
+    use tauri::Manager;
+    let app = tauri::test::mock_builder()
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .expect("mock app");
+    app.manage(crate::fs::GraphState::default());
+    app.manage(super::IndexState::default());
+    app.manage(crate::background_task::BackgroundTaskState::default());
+
+    let graph_dir = tempfile::tempdir().expect("tempdir");
+    {
+        let state: tauri::State<crate::fs::GraphState> = app.state();
+        state.0.lock().unwrap().root = Some(graph_dir.path().to_path_buf());
+    }
+    let opened = super::open_index_for(&app.state(), &app.state()).expect("open");
+
+    let index: tauri::State<super::IndexState> = app.state();
+    let _held = super::lock_state(&index).expect("writer lock");
+    // With the old implementation this re-locked the same mutex and never
+    // returned.
+    assert_eq!(super::current_generation(&index).unwrap(), Some(opened));
+}
+
 /// Command-level integration: the generation gate that every TS write relies on.
 /// A write carrying a stale generation (issued before the index was reopened)
 /// must silently no-op rather than mutate the newly-opened index.

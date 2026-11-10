@@ -139,8 +139,8 @@ describe('GraphChooser', () => {
     await render(<GraphChooser />, { wrapper })
 
     await expect.element(page.getByRole('button', { name: 'Notes' })).toBeVisible()
-    await expect.element(page.getByText('Open an existing graph from iCloud Drive.')).toBeVisible()
-    await expect.element(page.getByText('or create new graph')).toBeVisible()
+    await expect.element(page.getByText('Open an existing vault from iCloud Drive.')).toBeVisible()
+    await expect.element(page.getByText('or create a new vault')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Work', exact: true }))
 
     await vi.waitFor(() =>

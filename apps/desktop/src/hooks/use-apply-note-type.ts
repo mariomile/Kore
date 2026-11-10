@@ -44,7 +44,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
   return useCallback(
     async ({ path, tag, remove }: NoteTypeChange): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       const source = await readNoteSource(path)
       const { raw } = splitFrontmatter(source)

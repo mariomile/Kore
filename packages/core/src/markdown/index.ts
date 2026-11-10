@@ -114,7 +114,13 @@ export {
 } from './edit'
 export { cutTaskBlock, pasteTaskBlock, taskSectionNames, type TaskBlock } from './task-move'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
-export { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
+export {
+  displayNoteTitle,
+  stripLeadingHeading,
+  stripLeadingTagLine,
+  wikiLinkTargetForTitle,
+} from './note-title'
+export { inlineEmbedSnapshots } from './embed-snapshot'
 export { convertTaggedLineToNote, type TaggedLineConversion } from './tagged-line-conversion'
 export { parseTaskMarker } from './task-marker'
 export {

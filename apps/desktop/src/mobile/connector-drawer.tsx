@@ -121,11 +121,11 @@ function ConnectorSheet({
               <Switch checked={importHistory} onCheckedChange={setImportHistory} />
             </label>
             <p className="text-sm text-text-muted">
-              Leave off if another app already wrote them into this graph.
+              Leave off if another app already wrote them into this vault.
             </p>
             <div className="flex justify-between gap-2">
               <Button type="button" variant="ghost" onClick={() => openUrlSync(connector.tokenUrl)}>
-                Get {connector.tokenLabel.toLowerCase()}
+                Get {connector.tokenNoun}
               </Button>
               <Button type="submit" disabled={busy || token.trim() === ''}>
                 {busy ? 'Checking…' : 'Connect'}

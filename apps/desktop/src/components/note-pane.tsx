@@ -47,6 +47,7 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { NoteTitleIcon } from '@/editor/note-title-icon'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -241,6 +242,9 @@ export function NotePaneComponent({
   const setNoteIcon = useNoteAppearanceEdit(path, generation)
   const onIconChange =
     setNoteIcon !== null && !dailyNote && !isTouchEditorSurface() ? setNoteIcon : undefined
+  // A note with a `#` title draws its icon on that line, left of the text;
+  // only a title-less note keeps it above the body.
+  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -495,6 +499,7 @@ export function NotePaneComponent({
         source={document.header}
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
         onIconChange={onIconChange}
       />
 
@@ -566,6 +571,12 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <NoteTitleIcon
+          header={document.header}
+          resolveImageUrl={resolveImageUrl}
+          onIconChange={onIconChange}
+          onTitle={setTitleDrawsIcon}
+        />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}

@@ -150,6 +150,7 @@ export {
   parseNoteAppearanceFromSource,
   parseNoteCover,
   parseNoteIcon,
+  noteIconValue,
   symbolIconValue,
   type NoteAppearance,
   type NoteIcon,

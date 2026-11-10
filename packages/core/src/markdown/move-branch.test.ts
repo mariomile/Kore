@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  followMovedIds,
-  planBranchMove,
-  retargetBlockLinks,
-  sourceLinkMatcher,
-} from './move-branch'
-
-const isDaily = (note: string): boolean => note.toLowerCase() === '2026-11-10'
+import { planBranchMove, retargetBlockLinks, type BranchMoveInput } from './move-branch'
 
 describe('retargetBlockLinks', () => {
   it('rewrites the note half only, keeping the id, label and embeds', () => {
@@ -23,57 +16,51 @@ describe('retargetBlockLinks', () => {
 })
 
 describe('planBranchMove', () => {
-  const base = {
+  const input = (
+    branch: string,
+    backlinks: BranchMoveInput['backlinks'] = [],
+  ): BranchMoveInput => ({
+    branch,
+    sourcePath: 'daily/2026-11-10.md',
     sourceTarget: '2026-11-10',
+    destinationPath: 'notes/deepagent.md',
     destinationTarget: 'DeepAgent',
-    pointsAtSource: isDaily,
-  }
+    backlinks,
+  })
 
   it('appends the branch to the end of the destination', () => {
-    const result = planBranchMove({
-      ...base,
-      branch: '- Idee\n  - voice agent',
-      remaining: '# Today\n\n- call Luca\n',
-      destination: '# DeepAgent\n\nNotes.\n',
-    })
-    expect(result.destination).toBe('# DeepAgent\n\nNotes.\n\n- Idee\n  - voice agent\n')
-    expect(result.source).toBe('# Today\n\n- call Luca\n')
-    expect(result.movedIds).toEqual([])
+    const move = planBranchMove(input('- Idee\n  - voice agent'))
+    expect(move.landIn('# DeepAgent\n\nNotes.\n')).toBe(
+      '# DeepAgent\n\nNotes.\n\n- Idee\n  - voice agent\n',
+    )
+    expect(move.leaveFrom('# Today\n\n- call Luca\n')).toBe('# Today\n\n- call Luca\n')
+    expect(move.movedIds).toEqual([])
+    expect(move.linkingNotes).toEqual([])
   })
 
   it('points links at moved lines to the destination, and links to lines left behind at the source', () => {
-    const result = planBranchMove({
-      ...base,
-      branch: '- Idee ^idee1\n  - see [[#^call1]] and [[#^idee1]]',
-      remaining: '- call Luca ^call1\n- back to [[#^idee1]] and [[2026-11-10#^idee1]]\n',
-      destination: 'Old link [[2026-11-10#^idee1|ideas]]\n',
-    })
-    expect(result.movedIds).toEqual(['idee1'])
-    expect(result.source).toBe(
-      '- call Luca ^call1\n- back to [[DeepAgent#^idee1]] and [[DeepAgent#^idee1]]\n',
-    )
-    expect(result.destination).toBe(
+    const move = planBranchMove(input('- Idee ^idee1\n  - see [[#^call1]] and [[#^idee1]]'))
+    expect(move.movedIds).toEqual(['idee1'])
+    expect(
+      move.leaveFrom('- call Luca ^call1\n- back to [[#^idee1]] and [[2026-11-10#^idee1]]\n'),
+    ).toBe('- call Luca ^call1\n- back to [[DeepAgent#^idee1]] and [[DeepAgent#^idee1]]\n')
+    expect(move.landIn('Old link [[2026-11-10#^idee1|ideas]]\n')).toBe(
       'Old link [[#^idee1|ideas]]\n\n- Idee ^idee1\n  - see [[2026-11-10#^call1]] and [[#^idee1]]\n',
     )
   })
-})
 
-describe('followMovedIds', () => {
-  it('repoints only links to the source whose id moved', () => {
-    const md = '[[2026-11-10#^idee1]] [[2026-11-10#^call1]] [[Other#^idee1]] [[#^idee1]]'
-    expect(followMovedIds(md, ['idee1'], isDaily, 'DeepAgent')).toBe(
-      '[[DeepAgent#^idee1]] [[2026-11-10#^call1]] [[Other#^idee1]] [[#^idee1]]',
+  it('lists and repoints the other notes that link to a moved line, however they name the source', () => {
+    const move = planBranchMove(
+      input('- Idee ^idee1', [
+        { sourcePath: 'notes/a.md', targetRaw: 'Today alias#^idee1' },
+        { sourcePath: 'notes/b.md', targetRaw: '2026-11-10#^call1' },
+        { sourcePath: 'notes/deepagent.md', targetRaw: '2026-11-10#^idee1' },
+        { sourcePath: 'daily/2026-11-10.md', targetRaw: '#^idee1' },
+      ]),
     )
-  })
-})
-
-describe('sourceLinkMatcher', () => {
-  it("matches the source title, its backlinks' spellings, and nothing else", () => {
-    const matches = sourceLinkMatcher('Weekly Plan', ['weekly plan#^abcd|x', 'WP alias#^efgh'])
-    expect(matches('Weekly Plan')).toBe(true)
-    expect(matches('WEEKLY PLAN')).toBe(true)
-    expect(matches('WP alias')).toBe(true)
-    expect(matches('Other')).toBe(false)
-    expect(matches('')).toBe(false)
+    expect(move.linkingNotes).toEqual(['notes/a.md'])
+    expect(
+      move.follow('[[Today alias#^idee1]] [[2026-11-10#^call1]] [[Other#^idee1]] [[#^idee1]]'),
+    ).toBe('[[DeepAgent#^idee1]] [[2026-11-10#^call1]] [[Other#^idee1]] [[#^idee1]]')
   })
 })

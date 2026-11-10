@@ -68,12 +68,11 @@ export {
   withoutBlockIds,
 } from './block-ids'
 export {
-  followMovedIds,
   planBranchMove,
   retargetBlockLinks,
-  sourceLinkMatcher,
   type BranchMove,
-  type BranchMoveResult,
+  type BranchMoveInput,
+  type SourceBacklink,
 } from './move-branch'
 export {
   extractHeadingSection,

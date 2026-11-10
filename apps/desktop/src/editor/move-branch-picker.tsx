@@ -83,8 +83,8 @@ export function MoveBranch({
   const [picker, setPicker] = useState<PickerState | null>(null)
   const [query, setQuery] = useState('')
   const enabled = linkTarget !== null && generation !== null
-  const latest = useRef({ enabled, open: setPicker })
-  latest.current = { enabled, open: setPicker }
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
 
   useExtension(
     useMemo(
@@ -93,11 +93,11 @@ export function MoveBranch({
           new Plugin({
             view: (view) => {
               registerMoveBranchOpener(view, (pos) => {
-                if (!latest.current.enabled || branchAt(view.state, pos) === null) {
+                if (!enabledRef.current || branchAt(view.state, pos) === null) {
                   return false
                 }
                 setQuery('')
-                latest.current.open({ view, pos })
+                setPicker({ view, pos })
                 return true
               })
               return {

@@ -1,14 +1,7 @@
 import { docToMarkdown } from '@meowdown/core'
 import type { EditorState } from '@prosekit/pm/state'
 import type { EditorView } from '@prosekit/pm/view'
-import {
-  errorMessage,
-  followMovedIds,
-  getBacklinks,
-  noteLinkBlockId,
-  planBranchMove,
-  sourceLinkMatcher,
-} from '@reflect/core'
+import { errorMessage, getBacklinks, planBranchMove, type SourceBacklink } from '@reflect/core'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'
 import { clearZoom } from './block-zoom-plugin'
@@ -74,99 +67,68 @@ export interface MoveBranchRequest {
  * operations status line; resolves to whether the branch moved.
  */
 export async function moveBranch(request: MoveBranchRequest): Promise<boolean> {
-  const { view, notePath, sourceTarget, destination, generation } = request
-  const label = `Moving to ${destination.title}`
+  const { view, notePath, destination, generation } = request
+  const refuse = (why: string): false => {
+    startOperation(`Moving to ${destination.title}`).fail(why)
+    return false
+  }
   if (destination.path === notePath) {
-    startOperation(label).fail('That is the note it is already in.')
-    return false
+    return refuse('That is the note it is already in.')
   }
-  const branch = branchAt(view.state, request.pos)
-  if (branch === null) {
-    startOperation(label).fail('There is nothing to move here.')
-    return false
+  const picked = branchAt(view.state, request.pos)
+  if (picked === null) {
+    return refuse('There is nothing to move here.')
   }
-  let backlinks: { sourcePath: string | null; targetRaw: string | null }[]
+  let backlinks: readonly SourceBacklink[]
   try {
     backlinks = await getBacklinks(notePath)
   } catch (cause) {
-    startOperation(label).fail(errorMessage(cause))
-    return false
+    return refuse(errorMessage(cause))
   }
   // The await let the user type: move only the branch they picked.
-  const now = branchAt(view.state, request.pos)
-  if (view.isDestroyed || now === null || now.markdown !== branch.markdown) {
-    startOperation(label).fail('The note changed while moving. Try again.')
-    return false
+  const branch = branchAt(view.state, request.pos)
+  if (view.isDestroyed || branch === null || branch.markdown !== picked.markdown) {
+    return refuse('The note changed while moving. Try again.')
   }
-  const pointsAtSource = sourceLinkMatcher(
-    sourceTarget,
-    backlinks.flatMap((link) => (link.targetRaw === null ? [] : [link.targetRaw])),
-  )
-  const plan = (remaining: string, into: string): ReturnType<typeof planBranchMove> =>
-    planBranchMove({
-      branch: now.markdown,
-      remaining,
-      destination: into,
-      sourceTarget,
-      destinationTarget: destination.target,
-      pointsAtSource,
-    })
-  const { movedIds } = plan('', '')
+  const move = planBranchMove({
+    branch: branch.markdown,
+    sourcePath: notePath,
+    sourceTarget: request.sourceTarget,
+    destinationPath: destination.path,
+    destinationTarget: destination.target,
+    backlinks,
+  })
 
-  const removed = view.state.doc.slice(now.from, now.to)
-  view.dispatch(clearZoom(view.state.tr.delete(now.from, now.to)).scrollIntoView())
+  const removed = view.state.doc.slice(branch.from, branch.to)
+  view.dispatch(clearZoom(view.state.tr.delete(branch.from, branch.to)).scrollIntoView())
   const afterDelete = view.state.doc
-
-  const operation = startOperation(label)
   try {
-    await commitNoteBodyTransform(
-      destination.path,
-      (into) => plan('', into).destination,
-      generation,
-    )
+    await commitNoteBodyTransform(destination.path, move.landIn, generation)
   } catch (cause) {
     // Nothing landed: put the branch back if the note is as the move left it.
     if (!view.isDestroyed && view.state.doc === afterDelete) {
-      view.dispatch(view.state.tr.replace(now.from, now.from, removed))
+      view.dispatch(view.state.tr.replace(branch.from, branch.from, removed))
     }
-    operation.fail(errorMessage(cause))
-    return false
+    return refuse(errorMessage(cause))
   }
 
-  const failed: string[] = []
-  // Same-note links in this note to the lines that left.
-  if (movedIds.length > 0) {
-    try {
-      await commitNoteBodyTransform(notePath, (source) => plan(source, '').source, generation)
-    } catch (cause) {
-      failed.push(errorMessage(cause))
-    }
-    const moved = new Set(movedIds)
-    const linking = new Set(
-      backlinks.flatMap((link) => {
-        const id = link.targetRaw === null ? null : noteLinkBlockId(link.targetRaw)
-        return link.sourcePath !== null && id !== null && moved.has(id) ? [link.sourcePath] : []
-      }),
-    )
-    linking.delete(notePath)
-    linking.delete(destination.path)
-    for (const path of linking) {
-      try {
-        await commitNoteBodyTransform(
-          path,
-          (source) => followMovedIds(source, movedIds, pointsAtSource, destination.target),
-          generation,
-        )
-      } catch (cause) {
-        failed.push(`${path}: ${errorMessage(cause)}`)
-      }
-    }
-  }
+  // The links that follow the moved lines; each note is its own write.
+  const writes =
+    move.movedIds.length === 0
+      ? []
+      : [
+          commitNoteBodyTransform(notePath, move.leaveFrom, generation),
+          ...move.linkingNotes.map((path) =>
+            commitNoteBodyTransform(path, move.follow, generation),
+          ),
+        ]
+  const failed = (await Promise.allSettled(writes)).flatMap((result) =>
+    result.status === 'rejected' ? [errorMessage(result.reason)] : [],
+  )
   const done = startOperation(
     `Moved to ${destination.title}`,
     request.open === undefined ? {} : { action: { label: 'Open', run: request.open } },
   )
-  operation.dismiss()
   if (failed.length > 0) {
     done.warn(`Some links to its lines were not updated: ${failed.join('; ')}`)
   } else {

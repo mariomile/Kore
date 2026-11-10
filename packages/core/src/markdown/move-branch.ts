@@ -47,68 +47,84 @@ export function retargetBlockLinks(
   return next
 }
 
-export interface BranchMove {
+/** One indexed link to the source note (the shape of a backlinks row). */
+export interface SourceBacklink {
+  readonly sourcePath: string | null
+  /** The raw target, fragment and label included (`Daily#^a1b2|label`). */
+  readonly targetRaw: string | null
+}
+
+export interface BranchMoveInput {
   /** The moved branch's Markdown, as it leaves the source note. */
   readonly branch: string
-  /** The source note without the branch. */
-  readonly remaining: string
-  /** The picked note before the move. */
-  readonly destination: string
+  readonly sourcePath: string
   /** How a link names the source note (`[[Daily]]`). */
   readonly sourceTarget: string
+  readonly destinationPath: string
   /** How a link names the picked note. */
   readonly destinationTarget: string
-  /** Whether a link's note half names the source note (title, alias or path). */
-  readonly pointsAtSource: (note: string) => boolean
+  /** Every indexed link to the source note. */
+  readonly backlinks: readonly SourceBacklink[]
 }
 
-export interface BranchMoveResult {
-  /** The source note to write: same-note links to moved lines now name the destination. */
-  readonly source: string
-  /** The picked note to write, with the branch appended at its end. */
-  readonly destination: string
-  /** The ids the branch carried: links to them elsewhere must follow ({@link followMovedIds}). */
+/**
+ * Every note edit a move makes, as text transforms over each note's current
+ * Markdown. A link to a moved line ends up naming the destination wherever it
+ * sits: written same-note (`[[#^id]]`) or as `[[Source#^id]]`, in the two
+ * notes or in any other note.
+ */
+export interface BranchMove {
+  /** The ids the branch carries. */
   readonly movedIds: readonly string[]
+  /**
+   * The picked note with the branch appended. Inside the branch, a same-note
+   * link to a line that stayed behind now names the source.
+   */
+  landIn(destination: string): string
+  /** The source note, already without the branch. */
+  leaveFrom(source: string): string
+  /** Other notes whose links name a moved line, to pass through {@link follow}. */
+  readonly linkingNotes: readonly string[]
+  follow(markdown: string): string
 }
 
-/**
- * The two notes after a move. A link to a moved line names the destination
- * wherever it sits in the two notes, written as a same-note `[[#^id]]` or as
- * `[[Source#^id]]`. Inside the branch, a same-note link to a line that stayed
- * behind now names the source.
- */
-export function planBranchMove(move: BranchMove): BranchMoveResult {
-  const movedIds = blockIdsIn(move.branch)
+export function planBranchMove(input: BranchMoveInput): BranchMove {
+  const movedIds = blockIdsIn(input.branch)
   const moved = new Set(movedIds)
+  const pointsAtSource = sourceLinkMatcher(
+    input.sourceTarget,
+    input.backlinks.flatMap((link) => (link.targetRaw === null ? [] : [link.targetRaw])),
+  )
   const toMoved = (note: string, id: string): boolean =>
-    moved.has(id) && (note === '' || move.pointsAtSource(note))
-  const branch = retargetBlockLinks(move.branch, (note, id) => {
+    moved.has(id) && (note === '' || pointsAtSource(note))
+  // `''` writes a same-note link.
+  const retargetMoved = (markdown: string, to: string): string =>
+    retargetBlockLinks(markdown, (note, id) => (toMoved(note, id) ? to : null))
+  const branch = retargetBlockLinks(input.branch, (note, id) => {
     if (note === '' && !moved.has(id)) {
-      return move.sourceTarget
+      return input.sourceTarget
     }
-    return note !== '' && toMoved(note, id) ? '' : null
+    return toMoved(note, id) ? '' : null
   })
-  const source = retargetBlockLinks(move.remaining, (note, id) =>
-    toMoved(note, id) ? move.destinationTarget : null,
+  const linkingNotes = new Set(
+    input.backlinks.flatMap((link) => {
+      const id = link.targetRaw === null ? null : noteLinkBlockId(link.targetRaw)
+      return link.sourcePath !== null && id !== null && moved.has(id) ? [link.sourcePath] : []
+    }),
   )
-  const destination = followMovedIds(move.destination, movedIds, move.pointsAtSource, '')
-  return { source, destination: appendBlock(destination, branch), movedIds }
-}
-
-/**
- * Another note's links after the move: each one that `pointsAtSource` says
- * names the source note, and whose id moved, now names the destination.
- */
-export function followMovedIds(
-  markdown: string,
-  movedIds: readonly string[],
-  pointsAtSource: (note: string) => boolean,
-  destinationTarget: string,
-): string {
-  const moved = new Set(movedIds)
-  return retargetBlockLinks(markdown, (note, id) =>
-    note !== '' && moved.has(id) && pointsAtSource(note) ? destinationTarget : null,
-  )
+  linkingNotes.delete(input.sourcePath)
+  linkingNotes.delete(input.destinationPath)
+  return {
+    movedIds,
+    landIn: (destination) => appendBlock(retargetMoved(destination, ''), branch),
+    leaveFrom: (source) => retargetMoved(source, input.destinationTarget),
+    linkingNotes: [...linkingNotes],
+    // Another note's same-note links are its own lines, never the source's.
+    follow: (markdown) =>
+      retargetBlockLinks(markdown, (note, id) =>
+        note !== '' && toMoved(note, id) ? input.destinationTarget : null,
+      ),
+  }
 }
 
 /** The note a link's note half names, as a comparable key; null when it names none. */
@@ -122,18 +138,15 @@ function noteKey(note: string): string | null {
 
 /**
  * Whether a link's note half names the source note: the way the source's own
- * links name it (`sourceTarget`) or the way any indexed backlink to it does
- * (`backlinkTargets`, the raw targets, fragments and labels included).
+ * links name it (`sourceTarget`) or the way any indexed backlink to it does.
  */
-export function sourceLinkMatcher(
+function sourceLinkMatcher(
   sourceTarget: string,
   backlinkTargets: readonly string[],
 ): (note: string) => boolean {
   const keys = new Set<string>()
   for (const target of [sourceTarget, ...backlinkTargets]) {
-    const link = target.split('|')[0] ?? ''
-    const hash = link.lastIndexOf('#')
-    const key = noteKey(hash === -1 ? link : link.slice(0, hash))
+    const key = noteKey(noteOf(target))
     if (key !== null) {
       keys.add(key)
     }

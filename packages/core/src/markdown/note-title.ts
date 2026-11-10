@@ -1,4 +1,6 @@
 import { wikiLinkSafe } from './edit'
+import { isTagName } from './extract'
+import { foldTag } from './keys'
 import { scanInlineSegments } from './scan'
 
 /**
@@ -65,6 +67,25 @@ function renderEmbeddedWikiLinks(title: string): string | null {
  */
 export function stripLeadingHeading(body: string): string {
   return body.replace(/^\s*#[ \t][^\n]*\n?/, '')
+}
+
+/**
+ * `body` without a leading line made only of `#tag`s that `shownTags` already
+ * carries — the habit of opening a note with its type (`#meeting`), which a
+ * card shows again in its footer. A line with any other word, or a tag the
+ * card does not show, stays.
+ */
+export function stripLeadingTagLine(body: string, shownTags: readonly string[]): string {
+  const match = /^\s*([^\n]*)\n?/.exec(body)
+  const line = match?.[1]?.trim() ?? ''
+  if (line === '') return body
+  const shown = new Set(shownTags.map(foldTag))
+  const tokens = line.split(/\s+/)
+  const onlyShownTags = tokens.every(
+    (token) =>
+      token.startsWith('#') && isTagName(token.slice(1)) && shown.has(foldTag(token.slice(1))),
+  )
+  return onlyShownTags ? body.slice(match?.[0].length ?? 0) : body
 }
 
 /**

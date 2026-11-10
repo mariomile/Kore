@@ -67,6 +67,13 @@ export {
   withoutBlockIds,
 } from './block-ids'
 export {
+  followMovedIds,
+  planBranchMove,
+  retargetBlockLinks,
+  type BranchMove,
+  type BranchMoveResult,
+} from './move-branch'
+export {
   extractHeadingSection,
   formatNoteTransclusion,
   parseNoteTransclusions,

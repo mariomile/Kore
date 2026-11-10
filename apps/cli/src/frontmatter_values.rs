@@ -12,7 +12,7 @@ use serde::Serialize;
 /// The app's own frontmatter keys — never properties, never writable through
 /// `set` (`RESERVED_FRONTMATTER_KEYS`, `packages/core/src/tags/tag-type.ts`).
 /// `tags` is tag membership, written by `tag` / `untag`, not a data column.
-pub const RESERVED_KEYS: [&str; 13] = [
+pub const RESERVED_KEYS: [&str; 15] = [
     "id",
     "title",
     "aliases",
@@ -25,6 +25,8 @@ pub const RESERVED_KEYS: [&str; 13] = [
     "template",
     "cover",
     "icon",
+    "kore",
+    "koreCollection",
     "tags",
 ];
 
@@ -199,6 +201,23 @@ pub fn is_pinned(raw: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The list mirrors core's `RESERVED_FRONTMATTER_KEYS`; a key added on
+    /// one side only would let `kore set` write over the app's own metadata.
+    #[test]
+    fn reserved_keys_match_core() {
+        let source = include_str!("../../../packages/core/src/tags/tag-type.ts");
+        let start = source
+            .find("RESERVED_FRONTMATTER_KEYS")
+            .and_then(|at| source[at..].find("new Set([").map(|offset| at + offset))
+            .expect("core declares RESERVED_FRONTMATTER_KEYS");
+        let body = &source[start..start + source[start..].find("])").unwrap()];
+        let mut core: Vec<&str> = body.split('\'').skip(1).step_by(2).collect();
+        let mut cli = RESERVED_KEYS.to_vec();
+        core.sort_unstable();
+        cli.sort_unstable();
+        assert_eq!(cli, core);
+    }
 
     #[test]
     fn extracts_scalars_and_scalar_lists_skipping_reserved_and_nested() {

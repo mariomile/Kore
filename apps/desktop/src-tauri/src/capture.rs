@@ -72,7 +72,10 @@ fn atomic_write_bytes_to(path: &Path, contents: &[u8]) -> AppResult<()> {
     fs::create_dir_all(dir)?;
     let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
     tmp.write_all(contents)?;
-    tmp.flush()?;
+    // Synced before the rename, or a system crash shortly after can leave the
+    // renamed file empty (the rename reaches the disk before the data). The
+    // inbox holds captures that exist nowhere else until the drain runs.
+    tmp.as_file().sync_all()?;
     tmp.persist(path)
         .map_err(|err| AppError::io(err.to_string()))?;
     Ok(())

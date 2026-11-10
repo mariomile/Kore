@@ -18,7 +18,7 @@ use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
@@ -161,8 +161,39 @@ impl AgentCliState {
 /// request id: `agent_cli_send` steers more input into a live turn, and
 /// removing an entry (close command, run done, stop) drops the pipe — the
 /// CLI sees end-of-input and finishes.
+///
+/// Each pipe sits behind its own lock. The map lock is only ever held to
+/// insert, look up or remove an entry, never across a write: a prompt larger
+/// than the pipe buffer blocks until the CLI starts reading, and holding the
+/// map lock for that long used to hang Stop, and every other run's steering,
+/// behind one slow CLI.
 #[derive(Default)]
-pub struct AgentCliStdinState(Mutex<HashMap<String, ChildStdin>>);
+pub struct AgentCliStdinState(Mutex<HashMap<String, SharedStdin>>);
+
+type SharedStdin = Arc<Mutex<ChildStdin>>;
+
+impl AgentCliStdinState {
+    fn insert(&self, request_id: String, stdin: SharedStdin) {
+        lock_ignoring_poison(&self.0).insert(request_id, stdin);
+    }
+
+    fn get(&self, request_id: &str) -> Option<SharedStdin> {
+        lock_ignoring_poison(&self.0).get(request_id).cloned()
+    }
+
+    fn remove(&self, request_id: &str) {
+        let removed = lock_ignoring_poison(&self.0).remove(request_id);
+        // Dropped outside the map lock. The pipe closes when the last holder
+        // (an in-flight write, if any) lets go.
+        drop(removed);
+    }
+}
+
+fn lock_ignoring_poison<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 #[derive(Clone, Serialize)]
 #[serde(
@@ -443,16 +474,19 @@ pub async fn agent_cli_run(
         let stdin_id = request_id.clone();
         std::thread::spawn(move || {
             if keep_open {
-                // Insert under the stdin mutex *before* writing so a
-                // handshake reply (Codex `thread/start` → `turn/start`)
-                // cannot race `agent_cli_send` and miss the pipe. Holding
-                // the lock across the write also keeps later sends from
-                // interleaving with a partial prompt.
+                // Register the pipe *before* writing so a handshake reply
+                // (Codex `thread/start` → `turn/start`) cannot race
+                // `agent_cli_send` and miss it. The pipe's own lock is taken
+                // first and held across the prompt, so a later send waits
+                // for the whole prompt instead of interleaving with it; the
+                // map lock is released at once, so Stop never waits on a
+                // slow reader.
                 if let Some(state) = stdin_app.try_state::<AgentCliStdinState>() {
-                    let mut pipes = state.0.lock().unwrap();
-                    let _ = stdin.write_all(prompt.as_bytes());
-                    let _ = stdin.flush();
-                    pipes.insert(stdin_id, stdin);
+                    let shared: SharedStdin = Arc::new(Mutex::new(stdin));
+                    let mut pipe = lock_ignoring_poison(&shared);
+                    state.insert(stdin_id, Arc::clone(&shared));
+                    let _ = pipe.write_all(prompt.as_bytes());
+                    let _ = pipe.flush();
                     return;
                 }
             }
@@ -553,7 +587,7 @@ pub async fn agent_cli_run(
         }
         // A streaming-input run's held stdin dies with the run.
         if let Some(stdin_state) = emit_app.try_state::<AgentCliStdinState>() {
-            stdin_state.0.lock().unwrap().remove(&emit_id);
+            stdin_state.remove(&emit_id);
         }
         let child = emit_app
             .try_state::<AgentCliState>()
@@ -599,7 +633,7 @@ pub async fn agent_cli_stop(
     stdin_state: tauri::State<'_, AgentCliStdinState>,
     request_id: String,
 ) -> AppResult<()> {
-    stdin_state.0.lock().unwrap().remove(&request_id);
+    stdin_state.remove(&request_id);
     let child = state.0.lock().unwrap().remove(&request_id);
     let Some(mut child) = child else {
         return Ok(());
@@ -622,15 +656,21 @@ pub async fn agent_cli_send(
     request_id: String,
     line: String,
 ) -> AppResult<()> {
-    let mut pipes = stdin_state.0.lock().unwrap();
-    let stdin = pipes
-        .get_mut(&request_id)
+    let stdin = stdin_state
+        .get(&request_id)
         .ok_or_else(|| AppError::not_found("the run is no longer accepting input"))?;
-    stdin
-        .write_all(line.as_bytes())
-        .and_then(|()| stdin.write_all(b"\n"))
-        .and_then(|()| stdin.flush())
-        .map_err(|err| AppError::io(format!("could not steer the run: {err}")))
+    // The write can block until the CLI reads (or the run is stopped, which
+    // breaks the pipe), so it runs off the async runtime and holds only this
+    // run's pipe lock.
+    crate::blocking::run_blocking(move || {
+        let mut stdin = lock_ignoring_poison(&stdin);
+        stdin
+            .write_all(line.as_bytes())
+            .and_then(|()| stdin.write_all(b"\n"))
+            .and_then(|()| stdin.flush())
+            .map_err(|err| AppError::io(format!("could not steer the run: {err}")))
+    })
+    .await
 }
 
 /// Close a streaming-input run's held-open stdin: end-of-input, so the CLI
@@ -641,7 +681,7 @@ pub async fn agent_cli_stdin_close(
     stdin_state: tauri::State<'_, AgentCliStdinState>,
     request_id: String,
 ) -> AppResult<()> {
-    stdin_state.0.lock().unwrap().remove(&request_id);
+    stdin_state.remove(&request_id);
     Ok(())
 }
 

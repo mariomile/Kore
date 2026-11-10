@@ -19,7 +19,8 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use reflect_kit_script::{
-    agent_slug, check_kit_args, detect, trust, trust_state, untrusted_message, Kit,
+    agent_slug, check_kit_args, check_kit_target, detect, trust, trust_state, untrusted_message,
+    Kit,
 };
 use serde_json::json;
 
@@ -104,6 +105,7 @@ fn signed_args(args: &[String], agent: Option<&str>) -> Vec<String> {
 
 fn write(root: &Path, kit: &Kit, json: bool, args: &[String]) -> Result<(), CliError> {
     check_kit_args(args).map_err(CliError::Usage)?;
+    check_kit_target(root, kit, args).map_err(CliError::runtime)?;
     let state = trust_state(root, kit)
         .map_err(|err| CliError::runtime(format!("could not read {}: {err}", kit.scripts_dir())))?;
     if !state.is_trusted() {

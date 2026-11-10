@@ -271,6 +271,56 @@ pub fn digest(root: &Path, kit: &Kit) -> io::Result<String> {
     Ok(hex)
 }
 
+/// The note a kit command writes, from its `--target=` (a vault path, `.md`
+/// optional, or `NOW`/`SOUL`/`USER` for a block), or `None` when it names
+/// none (the kit then queues the memory in its own inbox).
+fn kit_target(kit: &Kit, args: &[String]) -> Option<String> {
+    let target = args.iter().find_map(|arg| arg.strip_prefix("--target="))?;
+    let block = args.first().is_some_and(|word| word == "remember")
+        && args.iter().any(|arg| arg == "--kind=block");
+    if block {
+        let key = target.rsplit('/').next().unwrap_or(target);
+        let key = key.strip_suffix(".md").unwrap_or(key).to_ascii_uppercase();
+        return Some(format!("{}/identity/{key}.md", kit.system));
+    }
+    Some(if target.ends_with(".md") {
+        target.to_string()
+    } else {
+        format!("{target}.md")
+    })
+}
+
+/// Kore's privacy rule for kit writes: a command may not write into a note
+/// marked `private: true` or `sensitivity: private`, nor outside the vault,
+/// whoever asks. The kit itself does not know Kore's rule, so the gate runs
+/// before it, on the note the command names.
+pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), String> {
+    let Some(target) = kit_target(kit, args) else {
+        return Ok(());
+    };
+    if !is_safe_vault_folder(&target) {
+        return Err(format!("`{target}` is not a note path inside the vault"));
+    }
+    let path = root.join(&target);
+    let Ok(source) = fs::read_to_string(&path) else {
+        // A note that does not exist yet is new, so it is not private.
+        return Ok(());
+    };
+    let inside = match (fs::canonicalize(&path), fs::canonicalize(root)) {
+        (Ok(file), Ok(base)) => file.starts_with(base),
+        _ => false,
+    };
+    if !inside {
+        return Err(format!("`{target}` is not a note path inside the vault"));
+    }
+    if parse_frontmatter(split_frontmatter(&source).raw).private {
+        return Err(format!(
+            "`{target}` is private: Kore never lets an agent write into a private note"
+        ));
+    }
+    Ok(())
+}
+
 /// The digest the user last allowed on this machine, if any.
 pub fn trusted_digest(root: &Path) -> Option<String> {
     let text = fs::read_to_string(root.join(TRUST_PATH)).ok()?;
@@ -526,6 +576,36 @@ mod tests {
                 .expect("dir link");
             assert!(trust_state(root, &kit).is_err());
         }
+    }
+
+    #[test]
+    fn writes_into_private_notes_or_outside_the_vault_are_refused() {
+        let (dir, kit) = vault();
+        let root = dir.path();
+        fs::create_dir_all(root.join("CRM")).expect("crm");
+        fs::write(
+            root.join("CRM/Alice.md"),
+            "---\nsensitivity: private\n---\n# A\n",
+        )
+        .expect("a");
+        fs::write(root.join("CRM/Bob.md"), "# Bob\n").expect("b");
+        fs::create_dir_all(root.join("System/identity")).expect("identity");
+        fs::write(
+            root.join("System/identity/SOUL.md"),
+            "---\nprivate: true\n---\n",
+        )
+        .expect("soul");
+        let check = |words: &[&str]| check_kit_target(root, &kit, &args(words));
+
+        assert!(check(&["remember", "--text=x", "--target=CRM/Alice"]).is_err());
+        assert!(check(&["remember", "--text=x", "--target=CRM/Alice.md"]).is_err());
+        assert!(check(&["remember", "--kind=block", "--text=x", "--target=SOUL"]).is_err());
+        assert!(check(&["remember", "--text=x", "--target=../outside"]).is_err());
+        assert!(check(&["remember", "--text=x", "--target=/etc/passwd"]).is_err());
+        assert!(check(&["remember", "--text=x", "--target=CRM/Bob"]).is_ok());
+        assert!(check(&["remember", "--text=x", "--target=CRM/New person"]).is_ok());
+        assert!(check(&["remember", "--kind=block", "--text=x", "--target=NOW"]).is_ok());
+        assert!(check(&["remember", "--text=x"]).is_ok());
     }
 
     fn args(words: &[&str]) -> Vec<String> {

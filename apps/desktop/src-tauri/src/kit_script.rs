@@ -114,7 +114,8 @@ fn allow(root: &Path, digest: &str) -> AppResult<Option<KitScriptStatus>> {
 
 /// The kit's own rules before anything runs: the vault declares a kit, the
 /// script is its entry point, the argv is one of its write commands, and
-/// the user allowed the scripts as they are now.
+/// it writes into no private note, and the user allowed the scripts as
+/// they are now.
 fn gate(root: &Path, script: &str, args: &[String]) -> AppResult<()> {
     let kit = reflect_kit_script::detect(root)
         .ok_or_else(|| AppError::not_found("this vault has no cyber-brain kit"))?;
@@ -124,6 +125,7 @@ fn gate(root: &Path, script: &str, args: &[String]) -> AppResult<()> {
         )));
     }
     reflect_kit_script::check_kit_args(args).map_err(AppError::io)?;
+    reflect_kit_script::check_kit_target(root, &kit, args).map_err(AppError::io)?;
     let state = reflect_kit_script::trust_state(root, &kit)
         .map_err(|err| AppError::io(format!("could not read {}: {err}", kit.scripts_dir())))?;
     if !state.is_trusted() {

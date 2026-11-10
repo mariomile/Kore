@@ -4,9 +4,13 @@ import {
   countTasksByView,
   groupTasksForView,
   isFolderNotePath,
+  linkedProjectsByTask,
   projectForNote,
+  projectForTask,
+  taskLocationKey,
   taskViewsFor,
 } from './task-views'
+import { subtaskDepths } from './group-tasks'
 
 const TODAY = '2026-11-08'
 
@@ -21,6 +25,7 @@ function task(overrides: Partial<OpenTask> = {}): OpenTask {
     noteTitle: 'N',
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     isPinned: false,
     pinnedOrder: null,
@@ -121,5 +126,152 @@ describe('projects', () => {
       path: 'notes/Loose.md',
       title: 'Loose',
     })
+  })
+})
+
+describe('tasks linked to a project', () => {
+  const FOLDERS = new Set([
+    'Active/Projects/DeepAgent/DeepAgent.md',
+    'Active/Projects/Kore/Kore.md',
+  ])
+  const fromDaily = task({
+    notePath: 'Journal/Daily/09-11-2026.md',
+    markerOffset: 10,
+    dailyDate: '2026-11-09',
+    text: 'mandare la proposta ad Andrea DeepAgent',
+  })
+  const fromMeeting = task({
+    notePath: 'CRM/People/Andrea.md',
+    noteTitle: 'Andrea',
+    markerOffset: 11,
+  })
+  const insideKore = task({
+    notePath: 'Active/Projects/Kore/specs/Tasks.md',
+    noteTitle: 'Tasks',
+    markerOffset: 12,
+  })
+
+  it('maps each task line to the first project it links, and only to projects', () => {
+    const linked = linkedProjectsByTask(
+      [
+        // A person note is not a project: the next link on the line wins.
+        { notePath: fromDaily.notePath, markerOffset: 10, targetPath: 'CRM/People/Andrea.md' },
+        {
+          notePath: fromDaily.notePath,
+          markerOffset: 10,
+          targetPath: 'Active/Projects/DeepAgent/DeepAgent.md',
+        },
+        {
+          notePath: fromDaily.notePath,
+          markerOffset: 10,
+          targetPath: 'Active/Projects/Kore/Kore.md',
+        },
+        // A note under a project's folder counts as that project.
+        {
+          notePath: fromMeeting.notePath,
+          markerOffset: 11,
+          targetPath: 'Active/Projects/Kore/specs/Tasks.md',
+        },
+      ],
+      FOLDERS,
+    )
+    expect(linked.get(taskLocationKey(fromDaily))?.title).toBe('DeepAgent')
+    expect(linked.get(taskLocationKey(fromMeeting))?.title).toBe('Kore')
+    expect(linked.size).toBe(2)
+  })
+
+  it('a written-in project beats a linked one; a linked project beats a loose note', () => {
+    const deep = { path: 'Active/Projects/DeepAgent/DeepAgent.md', title: 'DeepAgent' }
+    const linked = new Map([
+      [taskLocationKey(fromDaily), deep],
+      [taskLocationKey(fromMeeting), deep],
+      [taskLocationKey(insideKore), deep],
+    ])
+    expect(projectForTask(fromDaily, FOLDERS, linked)).toEqual(deep)
+    expect(projectForTask(fromMeeting, FOLDERS, linked)).toEqual(deep)
+    expect(projectForTask(insideKore, FOLDERS, linked)?.title).toBe('Kore')
+    expect(projectForTask(fromDaily, FOLDERS)).toBeNull()
+    expect(projectForTask(fromMeeting, FOLDERS)?.title).toBe('Andrea')
+  })
+
+  it("shows a linked daily task under its project, after the project's own tasks", () => {
+    const deep = { path: 'Active/Projects/DeepAgent/DeepAgent.md', title: 'DeepAgent' }
+    const own = task({
+      notePath: 'Active/Projects/DeepAgent/DeepAgent.md',
+      noteTitle: 'DeepAgent',
+      markerOffset: 20,
+    })
+    const linked = new Map([[taskLocationKey(fromDaily), deep]])
+    expect(taskViewsFor(fromDaily, TODAY, true)).toEqual(['upcoming', 'projects'])
+    const groups = groupTasksForView('projects', [fromDaily, own], TODAY, FOLDERS, linked)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.label).toBe('DeepAgent')
+    expect(groups[0]!.tasks).toEqual([own, fromDaily])
+    expect(countTasksByView([fromDaily, own], TODAY, linked).projects).toBe(2)
+    expect(countTasksByView([fromDaily, own], TODAY).projects).toBe(1)
+  })
+})
+
+describe('project sections and subtasks', () => {
+  const FOLDERS = new Set(['P/DeepAgent/DeepAgent.md'])
+  const inNote = (
+    markerOffset: number,
+    text: string,
+    section: string | null,
+    breadcrumbs: string[] = [],
+  ) =>
+    task({
+      notePath: 'P/DeepAgent/DeepAgent.md',
+      noteTitle: 'DeepAgent',
+      markerOffset,
+      text,
+      section,
+      breadcrumbs,
+    })
+
+  it('lists a project by its headings, unsectioned and linked tasks first', () => {
+    const top = inNote(1, 'top', null)
+    const pricing = inNote(2, 'proposal', 'Pricing')
+    const onboarding = inNote(3, 'welcome mail', 'Onboarding')
+    const pricingLater = inNote(4, 'tiers', 'Pricing')
+    const linked = task({
+      notePath: 'daily/2026-11-09.md',
+      dailyDate: '2026-11-09',
+      markerOffset: 9,
+      text: 'call Andrea',
+      section: 'Tasks',
+    })
+    const deep = { path: 'P/DeepAgent/DeepAgent.md', title: 'DeepAgent' }
+    const [group] = groupTasksForView(
+      'projects',
+      [onboarding, pricingLater, linked, top, pricing],
+      TODAY,
+      FOLDERS,
+      new Map([[taskLocationKey(linked), deep]]),
+    )
+    expect(
+      group!.sections!.map((section) => [section.label, section.tasks.map((t) => t.text)]),
+    ).toEqual([
+      [null, ['top', 'call Andrea']],
+      ['Pricing', ['proposal', 'tiers']],
+      ['Onboarding', ['welcome mail']],
+    ])
+    expect(group!.tasks.map((t) => t.text)).toEqual([
+      'top',
+      'call Andrea',
+      'proposal',
+      'tiers',
+      'welcome mail',
+    ])
+  })
+
+  it('nests a subtask under the parent task listed above it', () => {
+    const parent = inNote(1, 'launch', null)
+    const child = inNote(2, 'write copy', null, ['launch'])
+    const grandchild = inNote(3, 'headline', null, ['launch', 'write copy'])
+    const underBullet = inNote(4, 'loose', null, ['Notes'])
+    expect(subtaskDepths([parent, child, grandchild, underBullet])).toEqual([0, 1, 2, 0])
+    // The parent not shown (e.g. completed and hidden): no indent.
+    expect(subtaskDepths([child])).toEqual([0])
   })
 })

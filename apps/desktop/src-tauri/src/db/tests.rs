@@ -147,6 +147,7 @@ fn task(marker_offset: i64, text: &str, checked: bool) -> IndexedTask {
         checked,
         due_date: None,
         due_time: None,
+        section: None,
     }
 }
 

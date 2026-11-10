@@ -24,6 +24,8 @@ export const SETTINGS_GROUPS = [
       { id: 'templates', title: 'Note templates' },
       { id: 'all-notes', title: 'All notes' },
       { id: 'tasks', title: 'Tasks' },
+      // Whether a paste also files a resource card in Links / Images / PDFs / Files.
+      { id: 'pasted-resources', title: 'Pasted links & files' },
       { id: 'search', title: 'Search' },
     ],
   },

@@ -125,12 +125,16 @@ import {
  * after the image) reads as the post's author and words in the note text, so
  * search finds a tweet by what it says. Existing rows hold the raw JSON until
  * reprojected.
- * 29 - `tag_types` stores each tag's effective schema and child tags
- * (migration 0024, Plan 33 B2), filled by the inheritance pass that runs
+ * 29 - `tasks.section` (the nearest top-level heading above a task, for the
+ * Projects view's sections): existing rows have a null section until
+ * reprojected. Rust now also runs migration 0023, whose FTS wipe this
+ * rebuild refills.
+ * 30 - `tag_types` stores each tag's effective schema and child tags
+ * (migration 0025, Plan 33 B2), filled by the inheritance pass that runs
  * after every write touching `tags/`. Existing rows hold NULL, which reads
  * as untyped, until the rebuild this bump forces runs the pass.
  */
-export const PROJECTION_VERSION = 29
+export const PROJECTION_VERSION = 30
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -245,6 +249,8 @@ export const indexedTaskSchema = z.object({
   dueDate: z.string().nullable(),
   /** Local `HH:MM` on {@link dueDate} from `@HH:MM` after the date link, or null. */
   dueTime: z.string().nullable(),
+  /** The nearest top-level heading above the task (level 2+), or null. */
+  section: z.string().nullable(),
 })
 export type IndexedTask = z.infer<typeof indexedTaskSchema>
 
@@ -505,6 +511,7 @@ export function buildIndexedNote(
       checked: task.checked,
       dueDate: task.dueDate,
       dueTime: task.dueTime,
+      section: task.section,
     })),
     properties,
     // FTS5's tokenizer splits on the punctuation ([["quotes"]], commas), so

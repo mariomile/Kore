@@ -1,0 +1,148 @@
+/* Zoom into a block (Plan 33, C1; `editor/block-zoom-plugin.ts`). The
+   plugin only decorates: blocks outside the zoom carry `.kore-zoom-hidden`,
+   and a breadcrumb widget sits above it. A zoomed list item also marks the
+   items around it `.kore-zoom-ancestor` and itself `.kore-zoom-root`. */
+
+.reflect-editor .kore-zoom-hidden {
+  display: none !important;
+}
+
+/* The note's properties belong to its title, which the zoom hides: without
+   this their slot keeps its divider at the top of the zoomed page. */
+.meowdown:has(> .kore-zoomed) > .reflect-note-properties-slot {
+  display: none;
+}
+
+/* An ancestor's bullet and indent go away so the branch starts at the margin. */
+.reflect-editor .kore-zoom-ancestor > .list-marker {
+  display: none;
+}
+.reflect-editor .kore-zoom-ancestor > .list-content {
+  margin-inline-start: 0;
+}
+
+/* The zoomed block reads as the page's title, whatever it is: a list item's
+   line or a section's heading get the same size and weight. A bullet or a
+   number means nothing out of context, so they go; a task keeps its checkbox,
+   centred on the title's line and scaled to it. */
+.reflect-editor .kore-zoom-title {
+  margin: 0 0 0.4em;
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.reflect-editor .kore-zoom-root:not([data-list-kind='task']) > .list-marker {
+  display: none;
+}
+/* No block handle on the zoomed item's own line: it can be neither moved
+   out of the zoom nor deleted from inside it. */
+.meowdown[data-zoom-over-root] > prosekit-block-handle-root {
+  visibility: hidden;
+}
+
+/* A tag stays body-sized next to the title: it labels the block, it is not
+   part of its name. */
+.reflect-editor .kore-zoom-title .md-tag {
+  font-size: calc(1em / 1.5);
+  font-weight: 500;
+  vertical-align: 0.15em;
+}
+.reflect-editor .kore-zoom-root[data-list-kind='ordered']::before {
+  display: none;
+}
+.reflect-editor .kore-zoom-root:not([data-list-kind='task']) > .list-content {
+  margin-inline-start: 0;
+}
+.reflect-editor .kore-zoom-root[data-list-kind='task'] > .list-marker {
+  height: calc(1.5em * 1.3);
+}
+.reflect-editor .kore-zoom-root[data-list-kind='task'] > .list-marker > label {
+  transform: scale(1.25);
+}
+/* The hint under a zoomed item that has no children yet. */
+.reflect-editor .kore-zoom-leaf-hint {
+  margin-top: 0.25em;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* A folded bullet opens while zoomed in, without rewriting its `+` marker. */
+.reflect-editor .kore-zoom-root[data-list-collapsed] > .list-content > :nth-child(n + 2) {
+  display: block !important;
+}
+
+.reflect-editor .kore-zoom-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.125em;
+  min-width: 0;
+  margin: 0 0 0.75em -0.4em;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  user-select: none;
+}
+/* One line: long names truncate, the last crumb (the parent) shrinks last. */
+.reflect-editor .kore-zoom-crumb {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 16em;
+  overflow: hidden;
+  padding: 0.15em 0.4em;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.reflect-editor .kore-zoom-crumb:last-child {
+  flex-shrink: 0.2;
+}
+.reflect-editor .kore-zoom-crumb:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.reflect-editor .kore-zoom-more {
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+.reflect-editor .kore-zoom-separator {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* Zooming animates with a View Transition (`animateZoom`): the block shared
+   by both zooms slides between its place and the top while the page around
+   it crossfades. Clicks pass through to the live editor while it runs. */
+:root.kore-zoom-transition::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(kore-zoom-block),
+::view-transition-old(kore-zoom-page),
+::view-transition-new(kore-zoom-page) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-group(kore-zoom-page) {
+  animation-duration: 0s;
+}
+/* The sliding block shows only its new look: crossfading the old one with
+   it doubled the text mid-slide. */
+::view-transition-old(kore-zoom-block) {
+  display: none;
+}
+::view-transition-new(kore-zoom-block) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(kore-zoom-block),
+  ::view-transition-old(kore-zoom-page),
+  ::view-transition-new(kore-zoom-page) {
+    animation: none;
+  }
+}

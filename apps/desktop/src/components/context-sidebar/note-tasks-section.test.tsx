@@ -29,6 +29,7 @@ function taskRow(overrides: Partial<NoteTaskRef>): NoteTaskRef {
     checked: false,
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     noteTitle: 'Casa Nuova',
     isPinned: false,

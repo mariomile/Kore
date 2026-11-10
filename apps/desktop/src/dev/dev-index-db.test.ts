@@ -66,6 +66,7 @@ function sampleNote(overrides: Partial<IndexedNote> = {}): IndexedNote {
         checked: false,
         dueDate: null,
         dueTime: null,
+        section: null,
       },
     ],
     properties: [],

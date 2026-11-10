@@ -40,6 +40,7 @@ pub mod mcp;
 pub mod mcp_http;
 pub mod note_file;
 pub mod paths;
+pub mod proposals;
 pub mod resolve;
 pub mod schema;
 pub mod search;

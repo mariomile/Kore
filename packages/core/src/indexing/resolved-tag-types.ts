@@ -17,7 +17,7 @@ import { db } from './db'
  * place the policy runs: after every index write that touches a definition
  * note, {@link refreshTagTypeResolutions} recomputes every tag type and
  * stores the effective schemas and the descendant lists in `tag_types`
- * (migration 0024). Every reader (the app's queries below, `kore` and
+ * (migration 0025). Every reader (the app's queries below, `kore` and
  * `kore mcp`) reads those columns instead of resolving again.
  *
  * The public columns are the same computation with private definitions
@@ -25,8 +25,8 @@ import { db } from './db'
  * agent through a public child, and a private definition has no public
  * schema at all. A NULL column reads as untyped: the pass has not stored
  * that row yet (a mangled `schema_json` it skipped, or the instant between
- * a write and its pass). Migration 0024 ships with a projection bump
- * (`PROJECTION_VERSION` 29), so an existing index is rebuilt and the pass
+ * a write and its pass). Migration 0025 ships with a projection bump
+ * (`PROJECTION_VERSION` 30), so an existing index is rebuilt and the pass
  * fills every row before anything reads it.
  */
 

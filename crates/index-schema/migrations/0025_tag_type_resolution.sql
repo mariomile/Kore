@@ -16,12 +16,9 @@
 -- All four are NULL until core's inheritance pass stores the row, and a
 -- NULL reads as untyped (never as the raw `schema_json`, which could leak
 -- a private parent's fields outbound). This migration ships with a
--- projection bump (`PROJECTION_VERSION` 29), so an existing index is
+-- projection bump (`PROJECTION_VERSION` 30), so an existing index is
 -- rebuilt on first open and the pass fills every row before anything reads
 -- it; every later open runs the pass once more.
---
--- (This file is numbered 0024 because an unregistered 0023_fts_rowid.sql
--- already sits in this folder; it is the 23rd migration.)
 ALTER TABLE tag_types ADD COLUMN resolved_json TEXT;
 ALTER TABLE tag_types ADD COLUMN public_resolved_json TEXT;
 ALTER TABLE tag_types ADD COLUMN descendants_json TEXT;

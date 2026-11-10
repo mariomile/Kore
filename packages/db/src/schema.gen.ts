@@ -156,6 +156,7 @@ export interface Tasks {
   markerOffset: number;
   notePath: string;
   raw: string;
+  section: string | null;
   text: string;
 }
 

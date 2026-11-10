@@ -410,6 +410,13 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return null
       }
 
+      // No bundled CLI in the browser harness: no agent has proposed anything.
+      case 'proposals_run':
+        if (args.action === 'list') {
+          return []
+        }
+        throw new ReflectError('notFound', 'dev bridge: no proposals')
+
       case 'git_status':
         return {
           initialized: false,

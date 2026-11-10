@@ -161,6 +161,9 @@ pub struct IndexedTask {
     /// Local `HH:MM` on `due_date` from `@HH:MM` after the date link, or None.
     #[serde(default)]
     pub due_time: Option<String>,
+    /// Nearest top-level heading above the task (level 2+), or None.
+    #[serde(default)]
+    pub section: Option<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -259,7 +262,7 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
     }
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
         for task in &note.tasks {
             let breadcrumbs = serde_json::to_string(&task.breadcrumbs)
@@ -272,7 +275,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 task.raw,
                 i64::from(task.checked),
                 task.due_date,
-                task.due_time
+                task.due_time,
+                task.section
             ])?;
         }
     }

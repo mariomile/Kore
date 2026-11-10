@@ -50,6 +50,17 @@ describe('operations store', () => {
     expect(result.current).toEqual([])
   })
 
+  it('a done operation with an action lingers so the action can be clicked', async () => {
+    const { result } = await renderHook(() => useOperations())
+    await act(() => {
+      startOperation('Moved to DeepAgent', { action: { label: 'Open', run: () => {} } }).done()
+    })
+    await act(() => vi.advanceTimersByTime(1200))
+    expect(result.current).toHaveLength(1)
+    await act(() => vi.advanceTimersByTime(8000))
+    expect(result.current).toEqual([])
+  })
+
   it('a warning operation lingers without being marked failed', async () => {
     const { result } = await renderHook(() => useOperations())
     let handle!: ReturnType<typeof startOperation>

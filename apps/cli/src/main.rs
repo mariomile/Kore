@@ -306,6 +306,11 @@ enum Command {
         #[arg(long, value_name = "SECS", default_value_t = 60, requires = "sync")]
         sync_every: u64,
     },
+    /// Writes agents with a "propose" key asked for, waiting for you
+    Proposals {
+        #[command(subcommand)]
+        action: Option<commands::proposals::ProposalsAction>,
+    },
     /// Named agents' own keys for `kore mcp --http` (no app needed)
     Keys {
         #[command(subcommand)]
@@ -330,12 +335,17 @@ enum Command {
 #[derive(Subcommand)]
 enum KeysAction {
     /// Give an agent its own key, printed once; read-only unless --write
+    /// or --propose
     Add {
         /// The name its writes are signed with (e.g. "Grok bot")
         name: String,
         /// Let this agent use the tools that write
-        #[arg(long)]
+        #[arg(long, conflicts_with = "propose")]
         write: bool,
+        /// Offer this agent the tools that write, but keep each write as a
+        /// proposal you accept or reject (`kore proposals`)
+        #[arg(long)]
+        propose: bool,
     },
     /// List the agents that have a key (never the keys)
     List,
@@ -352,19 +362,28 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
         CliError::Usage("set KORE_MCP_KEYS_FILE or HOME to say where agent keys live".into())
     })?;
     match action {
-        KeysAction::Add { name, write } => {
-            let agent = agent_keys::add(&path, name, *write)?;
+        KeysAction::Add {
+            name,
+            write,
+            propose,
+        } => {
+            let access = agent_keys::Access::from_flags(*write, *propose);
+            let agent = agent_keys::add(&path, name, access)?;
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({ "name": agent.name, "key": agent.key, "write": agent.write })
+                    serde_json::json!({ "name": agent.name, "key": agent.key, "access": access })
                 );
             } else {
                 println!("{}", agent.key);
                 eprintln!(
                     "kore: key for {:?} ({}), shown once. Give it to the agent with the server's /setup.md.",
                     agent.name,
-                    if agent.write { "read and write" } else { "read-only" }
+                    match access {
+                        agent_keys::Access::Read => "read-only",
+                        agent_keys::Access::Propose => "writes wait for you in `kore proposals`",
+                        agent_keys::Access::Write => "read and write",
+                    }
                 );
             }
         }
@@ -373,16 +392,12 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
             if json {
                 let listed: Vec<_> = agents
                     .iter()
-                    .map(|agent| serde_json::json!({ "name": agent.name, "write": agent.write }))
+                    .map(|agent| serde_json::json!({ "name": agent.name, "access": agent.access }))
                     .collect();
                 println!("{}", serde_json::json!({ "file": path, "agents": listed }));
             } else {
                 for agent in &agents {
-                    println!(
-                        "{}\t{}",
-                        agent.name,
-                        if agent.write { "write" } else { "read" }
-                    );
+                    println!("{}\t{}", agent.name, agent.access.label());
                 }
             }
         }
@@ -446,6 +461,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             limit,
         } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
         Command::Info => commands::info::run(&graph, cli.json),
+        Command::Proposals { action } => {
+            commands::proposals::run(&graph, cli.json, action.as_ref())
+        }
         Command::Guide { init } => commands::guide::run(&graph, cli.json, *init),
         Command::Tags => commands::tags::run(&graph, cli.json),
         Command::List { tag, kind, limit } => {

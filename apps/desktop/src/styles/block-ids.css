@@ -1,0 +1,31 @@
+/* Obsidian `^id` line references (Plan 33 C3; `editor/block-id-plugin.ts`).
+   A followed `[[Note#^id]]` flashes the line it lands on, then fades. */
+
+.reflect-editor .kore-block-flash {
+  border-radius: 4px;
+  animation: kore-block-flash 1.6s ease-out;
+}
+
+@keyframes kore-block-flash {
+  0%,
+  35% {
+    background-color: var(--accent-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reflect-editor .kore-block-flash {
+    animation: none;
+    background-color: var(--accent-soft);
+  }
+}
+
+/* The `^id` stays in the file (it is the link's anchor, and Obsidian needs
+   it) but never shows in the note: the plugin keeps the caret out of it. */
+.reflect-editor .kore-block-id,
+.reflect-editor .kore-block-id-line {
+  display: none;
+}

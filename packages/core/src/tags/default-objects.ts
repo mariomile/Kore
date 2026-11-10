@@ -90,13 +90,13 @@ export const DEFAULT_VAULT_OBJECTS: DefaultVaultObject[] = [
 
 /**
  * The definition note's source for one default object — the exact shape
- * `saveTagType` writes (the `lore: tag` marker plus `properties`), so the
+ * `saveTagType` writes (the `kore: tag` marker plus `properties`), so the
  * config dialog opens it as a typed tag with nothing to convert, followed by
  * an H1 and the explanatory body.
  */
 export function defaultObjectSource(object: DefaultVaultObject): string {
   const frontmatter = upsertFrontmatter('', {
-    lore: TAG_TYPE_MARKER,
+    kore: TAG_TYPE_MARKER,
     properties: object.properties.map((property) => ({
       name: property.name,
       key: property.key,

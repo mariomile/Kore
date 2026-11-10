@@ -1,5 +1,13 @@
 # Kore working state
 
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no

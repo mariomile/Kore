@@ -97,7 +97,7 @@ async function ensureResourceType(kind: ResourceKind, generation: number): Promi
   await createNoteIfAbsent(
     `tags/${kind}.md`,
     upsertFrontmatter(`# ${labels[kind]}\n`, {
-      lore: 'tag',
+      kore: 'tag',
       properties: [
         kind === 'link'
           ? { name: 'URL', key: 'url', type: 'url' }

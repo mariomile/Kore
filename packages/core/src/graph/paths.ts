@@ -19,7 +19,7 @@ export const NOTES_DIR = 'notes'
  */
 export const TEMPLATES_DIR = 'templates'
 /**
- * Tag definition notes (TDR 0005) — `tags/<name>.md` with a `lore: tag`
+ * Tag definition notes (TDR 0005) — `tags/<name>.md` with a `kore: tag`
  * marker defines the tag's type. Indexed as their own kind, linkable and
  * openable like notes, excluded from note-listing surfaces.
  */

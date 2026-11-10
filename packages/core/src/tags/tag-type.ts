@@ -5,7 +5,7 @@ import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
  * definition note at `tags/<name>.md` whose frontmatter is marked
- * `lore: tag`. The definition's `properties` list is the schema a Collection
+ * `kore: tag`. The definition's `properties` list is the schema a Collection
  * view renders as columns and a note's properties panel renders as fields.
  *
  * Both conditions are required on purpose: the path alone must not claim
@@ -13,8 +13,26 @@ import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } 
  * an arbitrarily-placed note into a definition the path can't address.
  */
 
-/** The `lore:` frontmatter value that marks a note as a tag definition. */
+/** The `kore:` frontmatter value that marks a note as a tag definition. */
 export const TAG_TYPE_MARKER = 'tag'
+
+/** The frontmatter key that carries {@link TAG_TYPE_MARKER}. */
+export const TAG_TYPE_MARKER_KEY = 'kore'
+
+/**
+ * The key the marker had before the Kore rename (`lore: tag`). Still read so
+ * existing definitions stay typed; every schema write replaces it with
+ * {@link TAG_TYPE_MARKER_KEY}, and nothing writes it again.
+ */
+export const LEGACY_TAG_TYPE_MARKER_KEY = 'lore'
+
+/** Does this frontmatter carry the tag-definition marker, under either key? */
+export function hasTagTypeMarker(frontmatter: Frontmatter): boolean {
+  return (
+    frontmatter[TAG_TYPE_MARKER_KEY] === TAG_TYPE_MARKER ||
+    frontmatter[LEGACY_TAG_TYPE_MARKER_KEY] === TAG_TYPE_MARKER
+  )
+}
 
 /** Property value kinds a tag schema can declare (V1 set). */
 export const tagPropertyTypeSchema = z.enum([
@@ -238,7 +256,7 @@ export function propertyKeyForName(name: string): string {
  * keys keep only the first well-formed occurrence.
  */
 export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | null {
-  if (frontmatter['lore'] !== TAG_TYPE_MARKER) {
+  if (!hasTagTypeMarker(frontmatter)) {
     return null
   }
   const raw = frontmatter['properties']
@@ -352,9 +370,9 @@ export function tagDefinitionPath(tag: string): string {
 
 /**
  * Is this note a tag definition? Requires both the `tags/<name>.md` path and
- * the `lore: tag` marker, so pre-existing user notes under `tags/` keep their
+ * the `kore: tag` marker (or the older `lore: tag`), so pre-existing user notes under `tags/` keep their
  * ordinary kind until explicitly converted.
  */
 export function isTagDefinitionNote(path: string, frontmatter: Frontmatter): boolean {
-  return tagNameForDefinitionPath(path) !== null && frontmatter['lore'] === TAG_TYPE_MARKER
+  return tagNameForDefinitionPath(path) !== null && hasTagTypeMarker(frontmatter)
 }

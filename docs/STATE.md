@@ -1,16 +1,5 @@
 # Kore working state
 
-## Daily stream: static days while scrolling, 2026-11-10
-
-- Every day entering view mounted a full editor; DailyDay now renders markdown
-  as static text (MarkdownView with editor classes) until scroll rests 150 ms.
-  Only days the static view draws identically (staticDayBody); cover/icon,
-  images, embeds, fences, math, tables, callouts, HTML, attachments and
-  conflicts stay editors. Editor swap is a hidden takeover until heights
-  match. 4x CPU: fps 39 → 45, frames >100 ms 67 → 32-35, script 10.4 s → 7.6
-  s. Open step: static images (392/910 of Mario's dailies). Not verified on
-  WebKit/Mac. (#381)
-
 ## Tasks like Todoist, slice 3: real projects, 2026-11-10
 
 - [x] Tasks slice 3 shipped (#365). Migration 0024_task_section; registers the
@@ -3528,6 +3517,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Plan 33 B2 and B4 merged (#348). Tag inheritance is resolved
+  once in core and stored in tag_types (migration 0025, projection 30).
+  Outbound readers (CLI, MCP, chat) use the public columns. Starting values
+  (today, now, next-number, fixed) are validated in core, stored as `start`,
+  and stamped only when a note joins a tag, in the app and in `kore new`/`kore
+  tag`. `created` is a starting value that is always today. The next number
+  counts every note, private ones included. The inheritance pass never fails
+  indexing and re-runs on every open. Known limits: the tag dialog shows only
+  the tag's own fields, and two notes born in the same instant can get the
+  same number.
 - 2026-11-10 — Fix (data loss, D4 of the holistic analysis, #372): the capture
   drain no longer writes over a daily note that is still an iCloud
   placeholder. On iOS an evicted note is a `.name.md.icloud` stub, so

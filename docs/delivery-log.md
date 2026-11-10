@@ -7,10 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Scrolling the daily notes stays smooth when the Mac is busy: while the
-  stream moves a day is drawn as plain text, and the days on screen become
-  editors again as soon as the scroll rests. A click on a day gives it its
-  editor at once, with the caret where you clicked.
+- Fields can start with a value. A new `#invoice` gets the next number,
+  today's date and status Draft by itself. Set it per field under "Starting
+  value" in the tag's settings. It applies when a note joins the tag from Kore
+  or from an agent; notes you already have are left alone.
+
+- A tag can build on another. Give `#client` the line `extends: contact` and
+  every client gets the contact fields plus its own. The `#contact` collection
+  also lists clients, with a filter to show only plain contacts. Private tag
+  definitions stay out of everything agents see.
 
 - Pasting a link or a file no longer files it in a collection unless you ask:
   Settings → Notes → Pasted links & files has a switch for links, images, PDFs

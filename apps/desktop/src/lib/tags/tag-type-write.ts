@@ -11,7 +11,7 @@ import { frontmatterPatchToYaml } from '@/editor/note-session'
 
 /**
  * Reading and writing tag definition notes (TDR 0005). The schema lives in
- * `tags/<key>.md` frontmatter (`lore: tag` + `properties`); saves ride the
+ * `tags/<key>.md` frontmatter (`kore: tag` + `properties`); saves ride the
  * typed `tagSchema` patch through the shared session-or-disk channel, so a
  * definition note open with unsaved edits takes the schema into its live
  * header instead of a disk write racing the buffer. Either way the write is
@@ -26,7 +26,7 @@ export interface TagDefinitionState {
   /** A file exists at the path. */
   exists: boolean
   /**
-   * The existing file lacks the `lore: tag` marker — a pre-existing user
+   * The existing file lacks the `kore: tag` marker — a pre-existing user
    * note. Saving over it is a *conversion* the user must confirm.
    */
   needsConversion: boolean

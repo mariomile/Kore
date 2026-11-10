@@ -15,8 +15,8 @@ async function collect(stream: AsyncGenerator<ChatStreamEvent>): Promise<ChatStr
   return events
 }
 
-const turn = (signal: AbortSignal): AsyncGenerator<ChatStreamEvent> =>
-  streamAgentCliTurn({
+function turn(signal: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  return streamAgentCliTurn({
     binary: 'claude',
     args: [],
     prompt: 'hi',
@@ -25,6 +25,7 @@ const turn = (signal: AbortSignal): AsyncGenerator<ChatStreamEvent> =>
     startFailureMessage: 'could not start',
     signal,
   })
+}
 
 describe('streamAgentCliTurn stop', () => {
   it('never spawns the CLI when Stop lands while the listener registers', async () => {

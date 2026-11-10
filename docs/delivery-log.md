@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- In a vault that keeps memory with cyber-brain, Kore's chat (on Claude Code
+  or Codex) and `kore mcp` write facts, loops and decisions by running the
+  vault's own memory script, so the result matches every other agent. The
+  script runs only after you allow it in Settings → Agents, and again after
+  it changes. New `kore brain` command.
+
 - Notes marked `sensitivity: private` (the cyber-brain kit's privacy level)
   are kept away from AI and agents exactly like `private: true`. The chat
   now reads up to 20,000 characters of the vault's AGENTS.md, as `kore

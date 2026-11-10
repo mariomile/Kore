@@ -148,6 +148,15 @@ describe('brainResult', () => {
     })
     expect(brainResult({ code: null, stdout: '', stderr: '', timedOut: true }).ok).toBe(false)
   })
+
+  it('names a crash by its error, not the Node version that closes the stack', () => {
+    const stderr =
+      "node:fs:440\n  return binding.readFileUtf8(path)\n\nError: ENOENT: no such file, open 'System/memory/loops.md'\n    at loopOpen (brain.mjs:450:42)\n\nNode.js v22.23.4\n"
+    expect(brainResult({ code: 1, stdout: '', stderr, timedOut: false })).toEqual({
+      ok: false,
+      error: "Error: ENOENT: no such file, open 'System/memory/loops.md'",
+    })
+  })
 })
 
 describe('runBrainCommand', () => {

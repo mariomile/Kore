@@ -282,11 +282,30 @@ enum Command {
         #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
         new: String,
     },
+    /// Write memory through the vault's own cyber-brain script
+    /// (`kore brain remember --kind=fact --text=…`); `status` reports the
+    /// kit, `trust` allows its current script
+    Brain {
+        /// `status`, `trust`, or the kit's own command and --option=value
+        /// arguments (remember, loop open|update|close, decision new, check)
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "ARGS"
+        )]
+        args: Vec<String>,
+    },
     /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
         #[arg(long)]
         read_only: bool,
+        /// Expose only vault_guide and the memory tools (a cyber-brain vault)
+        #[arg(long)]
+        memory_only: bool,
+        /// The stdio client's name, signed onto the memory it writes
+        #[arg(long, value_name = "NAME", conflicts_with = "http")]
+        agent: Option<String>,
         /// Serve over HTTP on this address (e.g. 127.0.0.1:8765) instead of
         /// stdio; requires KORE_MCP_TOKEN
         #[arg(long, value_name = "ADDR")]
@@ -499,8 +518,11 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::sources::run(&graph.root, cli.json, only.as_deref(), since.as_deref())
         }
         Command::Edit { note, old, new } => commands::edit::run(&graph, cli.json, note, old, new),
+        Command::Brain { args } => commands::brain::run(&graph, cli.json, args),
         Command::Mcp {
             read_only,
+            memory_only,
+            agent,
             http,
             public_url,
             redirect_uris,
@@ -516,7 +538,12 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             } else {
                 Box::new(runner)
             };
-            let server = mcp::Server::new(runner, *read_only);
+            let mut server = mcp::Server::new(runner, *read_only)
+                .with_memory_kit(reflect_kit_script::detect(&graph.root).is_some())
+                .owner_named(agent.clone());
+            if *memory_only {
+                server = server.memory_only();
+            }
             let Some(address) = http else {
                 let server = server.for_this_machine();
                 mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;

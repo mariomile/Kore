@@ -1,6 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   aiApiKeyForConfig,
+  attachMemoryTools,
   appendEvent,
   buildHistory,
   errorMessage,
@@ -421,9 +422,18 @@ export async function deliverChatTurn(
             chatModeAllowsEdits(chatMode) && cliProviderSupportsEdits(config.provider)
           const mcpAllowed =
             cliProviderSupportsMcp(config.provider) && (chatMode === 'full-access' || chatTools)
-          const mcpServers = mcpAllowed
+          const userMcpServers = mcpAllowed
             ? await resolveMcpServers(mcpServerSettings).catch(() => [])
             : []
+          // A cyber-brain vault's memory tools ride every run that may
+          // write: they are Kore's own local server, not an external tool.
+          const memory = await attachMemoryTools({
+            context: agentContext,
+            canWrite: allowEdits && cliProviderSupportsMcp(config.provider),
+            graphRoot: graph.root,
+            servers: userMcpServers,
+          })
+          const mcpServers = memory.servers
           controller.signal.throwIfAborted()
           return streamCliAgentChat(config.provider, {
             model: config.model,
@@ -435,7 +445,7 @@ export async function deliverChatTurn(
             privateNotePaths,
             allowEdits,
             mcpServers,
-            agentContext,
+            agentContext: memory.context,
             memoryWriteApproval: memoryWriteApproval,
             signal: controller.signal,
             // Inject-capable engines expose mid-turn steering: the steer

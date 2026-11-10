@@ -42,10 +42,16 @@ the graph (no traversal, no symlink out), only `.mjs`/`.js`, Node gets an
 argv and never a shell, a timeout kills the whole process tree, and core
 only ever runs the subcommands listed in `cyber-brain/script.ts`.
 
-To add in step 4, before the chat can trigger a run: Kore remembers the
-hash of the script it last ran for this vault and, when the file changed
-since (a kit upgrade, or a synced edit nobody made here), asks once before
-running it, naming what changed. A vault never seen before asks too.
+Since step 4 the script also runs only once the user allowed its exact
+content. `reflect-kit-script` hashes the whole scripts folder (the entry
+point imports its siblings; hidden entries and `node_modules` are skipped,
+a symlink counts by its target) and compares the digest with the one the
+user allowed on this machine (`.kore/kit-trust.json`). A new vault or any
+change, a kit upgrade or a synced edit nobody made here, stops every write
+until the user allows it again in Settings → Agents → Memory or with
+`kore brain trust`. The app, `kore brain` and `kore mcp` share the check.
+Allowing names the digest the user saw: if the scripts changed in between,
+the allow is refused.
 
 Git: with `git: true` the kit commits the files it wrote, and Kore's own
 backup sync (`git/commit.rs`, libgit2 `commit_all`) commits the same repo.
@@ -61,10 +67,22 @@ writes.
 1. **The chat writes memory like Claude Code.** `sensitivity: private` is the
    same hard block as `private: true`; the chat contract budget matches
    `kore guide` (20,000); detection from `AGENTS.md`; a native command that
-   runs `brain.mjs` with fixed subcommands; chat tools `remember`, `loop`,
-   `decision`; the kit's `System/skills/` served as vault skills.
+   runs `brain.mjs` with fixed subcommands; memory tools `remember`,
+   `open_loop`, `update_loop`, `close_loop`, `record_decision`; the kit's
+   `System/skills/` served as vault skills; Kore's own `agents/` memory off.
 2. **Kore MCP does the same** for ChatGPT, Grok and other remote agents, the
    agent name coming from the per-agent key (#321).
+
+Step 4 merged slices 1 and 2. The in-app chat mostly runs on an agent CLI
+(Claude Code, Codex), and those engines see only files and the MCP servers
+Kore hands them, never the in-process tools of the API-key chat
+(`ai/chat/tools.ts`). So the memory tools live once, in `kore mcp`, as
+`kore brain` invocations; a chat run that may write in a kit vault gets
+`kore mcp --memory-only --agent "Kore chat"` attached
+(`cyber-brain/chat.ts`), and ChatGPT or Grok reach the very same tools.
+"Memory behaves the same whoever writes it" is then literal: one tool, one
+script. The API-key chat says what it would save instead, until it gets
+the same tools.
 3. **Memory view**: NOW, open loops, decisions, run records with undo,
    `brain.mjs check` health. Read from the kit's files, no new data.
 4. **Optional**: `dream` / `weekly` as Kore routines with `brain.mjs check` as

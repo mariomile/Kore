@@ -36,12 +36,100 @@ pub async fn kit_script_run<R: tauri::Runtime>(
     crate::blocking::run_blocking(move || {
         let root =
             crate::fs::root_for_generation(&app.state::<crate::fs::GraphState>(), generation)?;
+        gate(&root, &script, &args)?;
         let node = crate::agent_cli::resolve_node().ok_or_else(|| {
             AppError::io("Node.js was not found: install Node 18 or newer to write memory")
         })?;
         run_kit_script(&node, &root, &script, &args, timeout_ms)
     })
     .await
+}
+
+/// What the kit is and whether its script may run, for Settings → Agents
+/// and the chat. `None` when the vault has no kit.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KitScriptStatus {
+    version: String,
+    script: String,
+    trust: &'static str,
+    digest: String,
+}
+
+fn status_of(root: &Path) -> AppResult<Option<KitScriptStatus>> {
+    let Some(kit) = reflect_kit_script::detect(root) else {
+        return Ok(None);
+    };
+    let state = reflect_kit_script::trust_state(root, &kit)
+        .map_err(|err| AppError::io(format!("could not read {}: {err}", kit.scripts_dir())))?;
+    Ok(Some(KitScriptStatus {
+        version: kit.version,
+        script: kit.script,
+        trust: state.label(),
+        digest: state.digest().to_string(),
+    }))
+}
+
+/// The open graph's kit, read-only.
+#[tauri::command]
+pub async fn kit_script_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> AppResult<Option<KitScriptStatus>> {
+    crate::blocking::run_blocking(move || {
+        let root = crate::fs::current_root(&app.state::<crate::fs::GraphState>())?;
+        status_of(&root)
+    })
+    .await
+}
+
+/// Allow the kit script the user was shown (`digest`). Refused when the
+/// scripts changed since, so what runs is always what was approved.
+#[tauri::command]
+pub async fn kit_script_trust<R: tauri::Runtime>(
+    digest: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<Option<KitScriptStatus>> {
+    crate::blocking::run_blocking(move || {
+        let root =
+            crate::fs::root_for_generation(&app.state::<crate::fs::GraphState>(), generation)?;
+        allow(&root, &digest)
+    })
+    .await
+}
+
+fn allow(root: &Path, digest: &str) -> AppResult<Option<KitScriptStatus>> {
+    let Some(current) = status_of(root)? else {
+        return Err(AppError::not_found("this vault has no cyber-brain kit"));
+    };
+    if current.digest != digest {
+        return Err(AppError::io(
+            "the memory script changed while you were looking at it: check it again",
+        ));
+    }
+    reflect_kit_script::trust(root, digest)
+        .map_err(|err| AppError::io(format!("could not record the allowed script: {err}")))?;
+    status_of(root)
+}
+
+/// The kit's own rules before anything runs: the vault declares a kit, the
+/// script is its entry point, the argv is one of its write commands, and
+/// the user allowed the scripts as they are now.
+fn gate(root: &Path, script: &str, args: &[String]) -> AppResult<()> {
+    let kit = reflect_kit_script::detect(root)
+        .ok_or_else(|| AppError::not_found("this vault has no cyber-brain kit"))?;
+    if kit.script != script {
+        return Err(AppError::io(format!(
+            "not the vault's kit script: {script}"
+        )));
+    }
+    reflect_kit_script::check_kit_args(args).map_err(AppError::io)?;
+    let state = reflect_kit_script::trust_state(root, &kit)
+        .map_err(|err| AppError::io(format!("could not read {}: {err}", kit.scripts_dir())))?;
+    if !state.is_trusted() {
+        return Err(AppError::io(reflect_kit_script::untrusted_message(&state)));
+    }
+    Ok(())
 }
 
 fn run_kit_script(
@@ -182,6 +270,35 @@ mod tests {
             );
         }
         assert!(kit_script_path(dir.path(), "System/scripts/brain.mjs").is_ok());
+    }
+
+    #[test]
+    fn the_gate_needs_a_kit_its_script_a_write_command_and_trust() {
+        let dir = vault();
+        let root = dir.path();
+        let args = vec!["remember".to_string(), "--text=a".to_string()];
+        let script = "System/scripts/brain.mjs";
+        assert!(gate(root, script, &args).is_err(), "no kit declared yet");
+        fs::write(root.join("AGENTS.md"), "---\ncyber_brain: \"0.1\"\n---\n").unwrap();
+        let untrusted = gate(root, script, &args).unwrap_err();
+        assert!(format!("{untrusted:?}").contains("new on this Mac"));
+
+        let status = status_of(root).unwrap().unwrap();
+        assert_eq!(status.trust, "new");
+        assert!(allow(root, "stale-digest").is_err());
+        assert_eq!(
+            allow(root, &status.digest).unwrap().unwrap().trust,
+            "trusted"
+        );
+        assert!(gate(root, script, &args).is_ok());
+        assert!(gate(root, "System/scripts/other.mjs", &args).is_err());
+        assert!(gate(root, script, &["facts".to_string(), "x".to_string()]).is_err());
+
+        fs::write(root.join(script), "console.log(2)\n").unwrap();
+        assert!(
+            gate(root, script, &args).is_err(),
+            "an edit takes the permission back"
+        );
     }
 
     #[test]

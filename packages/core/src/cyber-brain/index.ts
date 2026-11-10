@@ -15,3 +15,13 @@ export {
   type BrainCommand,
   type BrainResult,
 } from './script'
+export {
+  allowKitScript,
+  kitScriptStatus,
+  loadMemoryMcpServer,
+  MEMORY_CHAT_AGENT,
+  MEMORY_MCP_SERVER_NAME,
+  memoryMcpServer,
+  type KitScriptStatus,
+} from './trust'
+export { attachMemoryTools } from './chat'

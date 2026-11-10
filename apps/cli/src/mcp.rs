@@ -808,6 +808,152 @@ fn remembered_line(
     Ok(line)
 }
 
+/// The memory tools of a vault that keeps memory with its cyber-brain kit
+/// (Plan 35). Each runs `kore brain`, which runs the vault's own
+/// `brain.mjs`: the same formats, run record and commit as Claude Code or
+/// the nightly `dream`, signed with the calling agent's name. They replace
+/// the plain `remember` above for such a vault.
+const KIT_TOOL_NAMES: [&str; 5] = [
+    "remember",
+    "open_loop",
+    "update_loop",
+    "close_loop",
+    "record_decision",
+];
+
+const KIT_INSTRUCTIONS: &str = "This vault keeps memory with its cyber-brain kit. \
+remember, open_loop, update_loop, close_loop and record_decision run the vault's own \
+memory script, the same code every agent uses, so use them for every memory write and \
+never write memory files, loops or decisions by hand. Dates are YYYY-MM-DD: resolve \
+\"Friday\" or \"tomorrow\" yourself from today's date.";
+
+fn kit_text(description: &str) -> Value {
+    json!({ "type": "string", "description": description })
+}
+
+fn kit_tools() -> Vec<Tool> {
+    vec![
+        Tool {
+            name: "remember",
+            description: "Keep one durable memory the way the vault's kit does: a fact line `- fact [source: …; since: …]` in the note it belongs to (or the agent inbox, when the vault queues writes), with a run record and a commit. Give `source` (where it came from: a meeting, a chat, a document) for anything but a lesson; give `replaces` with the old line when a fact changes.",
+            effect: Effect::Add,
+            properties: || json!({
+                "text": kit_text("The memory, one line, in the vault's language"),
+                "kind": { "type": "string", "enum": ["fact", "block", "observation", "lesson"], "description": "fact (default), block (identity: NOW, USER or SOUL), observation, or lesson (yours)" },
+                "source": kit_text("Where it came from"),
+                "target": kit_text("The note it belongs in, or NOW/USER/SOUL for a block"),
+                "replaces": kit_text("The line this one replaces, kept as was:"),
+                "since": kit_text("YYYY-MM-DD the fact holds from (default today)"),
+                "now": { "type": "boolean", "description": "The user asked to write it now, even when the vault queues writes" }
+            }),
+            required: &["text"],
+            build: |args| {
+                Ok(Invocation::new("brain")
+                    .subcommand("remember")
+                    .option("kind", Some(string_arg(args, "kind")?.unwrap_or_else(|| "fact".to_string())))
+                    .option("text", Some(required_string(args, "text")?))
+                    .option("source", string_arg(args, "source")?)
+                    .option("target", string_arg(args, "target")?)
+                    .option("replaces", string_arg(args, "replaces")?)
+                    .option("since", string_arg(args, "since")?)
+                    .flag("now", bool_arg(args, "now")?))
+            },
+        },
+        Tool {
+            name: "open_loop",
+            description: "Open a loop (something someone owes or must come back to) with the vault's kit: it gets an id, lands in the loop list and today's daily note, with a run record and a commit. Dates are YYYY-MM-DD.",
+            effect: Effect::Add,
+            properties: || json!({
+                "title": kit_text("What has to happen, one line"),
+                "owner": kit_text("Who owes it (default the user)"),
+                "due": kit_text("YYYY-MM-DD it is due"),
+                "resurface": kit_text("YYYY-MM-DD to bring it back up"),
+                "state": kit_text("Where it stands now"),
+                "context": kit_text("The note or meeting it comes from"),
+                "status": { "type": "string", "enum": ["open", "waiting-user"] }
+            }),
+            required: &["title"],
+            build: |args| {
+                Ok(Invocation::new("brain")
+                    .subcommand("loop")
+                    .subcommand("open")
+                    .option("title", Some(required_string(args, "title")?))
+                    .option("owner", string_arg(args, "owner")?)
+                    .option("due", string_arg(args, "due")?)
+                    .option("resurface", string_arg(args, "resurface")?)
+                    .option("state", string_arg(args, "state")?)
+                    .option("context", string_arg(args, "context")?)
+                    .option("status", string_arg(args, "status")?))
+            },
+        },
+        Tool {
+            name: "update_loop",
+            description: "Update an open loop by its id: where it stands, its status, when to resurface it, or who owns it.",
+            effect: Effect::Add,
+            properties: || json!({
+                "id": kit_text("The loop's id"),
+                "state": kit_text("Where it stands now"),
+                "status": { "type": "string", "enum": ["open", "waiting-user", "closed"] },
+                "resurface": kit_text("YYYY-MM-DD to bring it back up"),
+                "owner": kit_text("Who owes it now")
+            }),
+            required: &["id"],
+            build: |args| {
+                Ok(Invocation::new("brain")
+                    .subcommand("loop")
+                    .subcommand("update")
+                    .option("id", Some(required_string(args, "id")?))
+                    .option("state", string_arg(args, "state")?)
+                    .option("status", string_arg(args, "status")?)
+                    .option("resurface", string_arg(args, "resurface")?)
+                    .option("owner", string_arg(args, "owner")?))
+            },
+        },
+        Tool {
+            name: "close_loop",
+            description: "Close a loop by its id with how it ended.",
+            effect: Effect::Add,
+            properties: || json!({
+                "id": kit_text("The loop's id"),
+                "outcome": kit_text("How it ended, one line")
+            }),
+            required: &["id", "outcome"],
+            build: |args| {
+                Ok(Invocation::new("brain")
+                    .subcommand("loop")
+                    .subcommand("close")
+                    .option("id", Some(required_string(args, "id")?))
+                    .option("outcome", Some(required_string(args, "outcome")?)))
+            },
+        },
+        Tool {
+            name: "record_decision",
+            description: "Record a decision the user made as its own decision note, the vault's kit format, with a run record and a commit. Only for a decision the user actually took, not a hypothesis.",
+            effect: Effect::Add,
+            properties: || json!({
+                "title": kit_text("Short title"),
+                "description": kit_text("One line: what was decided about"),
+                "decision": kit_text("What was decided"),
+                "context": kit_text("Why it came up"),
+                "options": kit_text("The options considered"),
+                "tradeoffs": kit_text("What it costs, what it buys")
+            }),
+            required: &["title", "description", "decision"],
+            build: |args| {
+                Ok(Invocation::new("brain")
+                    .subcommand("decision")
+                    .subcommand("new")
+                    .option("title", Some(required_string(args, "title")?))
+                    .option("description", Some(required_string(args, "description")?))
+                    .option("decision", Some(required_string(args, "decision")?))
+                    .option("context", string_arg(args, "context")?)
+                    .option("options", string_arg(args, "options")?)
+                    .option("tradeoffs", string_arg(args, "tradeoffs")?))
+            },
+        },
+    ]
+}
+
 fn tool_definition(tool: &Tool) -> Value {
     json!({
         "name": tool.name,
@@ -1069,6 +1215,13 @@ pub struct Server<R: Runner> {
     runner: R,
     read_only: bool,
     local: bool,
+    /// The vault keeps memory with its cyber-brain kit ([`kit_tools`]).
+    memory_kit: bool,
+    /// Offer only `vault_guide` and the memory tools (Kore's own chat, which
+    /// reads the vault with its own file tools).
+    memory_only: bool,
+    /// Who the stdio client is, for signing its writes (`kore mcp --agent`).
+    owner_name: Option<String>,
 }
 
 impl<R: Runner> Server<R> {
@@ -1079,7 +1232,28 @@ impl<R: Runner> Server<R> {
             runner,
             read_only,
             local: false,
+            memory_kit: false,
+            memory_only: false,
+            owner_name: None,
         }
+    }
+
+    /// Serve the kit's memory tools in place of the plain `remember`.
+    pub fn with_memory_kit(mut self, on: bool) -> Self {
+        self.memory_kit = on;
+        self
+    }
+
+    /// Offer only `vault_guide` and the memory tools.
+    pub fn memory_only(mut self) -> Self {
+        self.memory_only = true;
+        self
+    }
+
+    /// Sign the unnamed owner's writes as `name` (the app names its chat).
+    pub fn owner_named(mut self, name: Option<String>) -> Self {
+        self.owner_name = name.filter(|name| !name.trim().is_empty());
+        self
     }
 
     /// Also offer the tools that read outside the vault (`LOCAL_ONLY_TOOLS`).
@@ -1091,10 +1265,23 @@ impl<R: Runner> Server<R> {
 
     fn available(&self, caller: &Caller) -> Vec<Tool> {
         let writes = !self.read_only && caller.write;
-        tools()
-            .into_iter()
+        let all = if self.memory_kit {
+            tools()
+                .into_iter()
+                .filter(|tool| tool.name != "remember")
+                .chain(kit_tools())
+                .collect()
+        } else {
+            tools()
+        };
+        all.into_iter()
             .filter(|tool| tool.effect == Effect::Read || writes)
             .filter(|tool| self.local || !LOCAL_ONLY_TOOLS.contains(&tool.name))
+            .filter(|tool| {
+                !self.memory_only
+                    || tool.name == "vault_guide"
+                    || KIT_TOOL_NAMES.contains(&tool.name)
+            })
             .collect()
     }
 
@@ -1177,6 +1364,15 @@ impl<R: Runner> Server<R> {
     /// the vault's rules — the same text an agent reading the git repo finds
     /// in AGENTS.md.
     fn instructions(&self) -> String {
+        let base = self.base_instructions();
+        if self.memory_kit {
+            format!("{base}\n\n{KIT_INSTRUCTIONS}")
+        } else {
+            base
+        }
+    }
+
+    fn base_instructions(&self) -> String {
         let Some(contract) = self
             .run_json(&["guide".to_string()])
             .ok()
@@ -1219,8 +1415,9 @@ impl<R: Runner> Server<R> {
             .into_iter()
             .find(|tool| tool.name == name)
             .ok_or((-32602, format!("unknown tool: {name}")))?;
+        let caller_name = caller.name.clone().or_else(|| self.owner_name.clone());
         // A named caller signs as itself, whatever name it claims.
-        let signed = match (&caller.name, tool.name) {
+        let signed = match (&caller_name, tool.name) {
             (Some(agent), "remember") => {
                 let mut signed = args.clone();
                 signed.insert("agent".to_string(), Value::String(agent.clone()));
@@ -1236,7 +1433,7 @@ impl<R: Runner> Server<R> {
         let output = self.runner.run_as(
             &invocation.args,
             invocation.stdin.as_deref(),
-            &AgentIdentity::for_caller(caller.name.as_deref()),
+            &AgentIdentity::for_caller(caller_name.as_deref()),
         );
         Ok(tool_text(output.text, !output.success))
     }
@@ -1627,6 +1824,82 @@ mod tests {
         assert_eq!(calls.len(), 3, "invalid arguments never run");
         assert_eq!(bad_mode["result"]["isError"], true);
         assert_eq!(no_old["result"]["isError"], true);
+    }
+
+    #[test]
+    fn a_kit_vault_writes_memory_through_kore_brain() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false).with_memory_kit(true);
+        let names = tool_names(&server);
+        for name in KIT_TOOL_NAMES {
+            assert!(names.iter().any(|n| n == name), "{name} listed");
+        }
+        assert_eq!(names.iter().filter(|n| *n == "remember").count(), 1);
+        call(
+            &server,
+            "remember",
+            json!({ "text": "--now Alice runs pricing", "source": "call 2026-11-10" }),
+        );
+        call(
+            &server,
+            "open_loop",
+            json!({ "title": "Follow up with Alice", "due": "2026-11-13" }),
+        );
+        call(
+            &server,
+            "close_loop",
+            json!({ "id": "L-12", "outcome": "done" }),
+        );
+        let missing = call(&server, "record_decision", json!({ "title": "x" }));
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "brain",
+                "remember",
+                "--kind=fact",
+                "--text=--now Alice runs pricing",
+                "--source=call 2026-11-10"
+            ]
+        );
+        assert_eq!(
+            calls[1].0,
+            [
+                "brain",
+                "loop",
+                "open",
+                "--title=Follow up with Alice",
+                "--due=2026-11-13"
+            ]
+        );
+        assert_eq!(
+            calls[2].0,
+            ["brain", "loop", "close", "--id=L-12", "--outcome=done"]
+        );
+        assert_eq!(calls.len(), 3, "a decision without its fields never runs");
+        assert_eq!(missing["result"]["isError"], true);
+    }
+
+    #[test]
+    fn memory_only_offers_the_guide_and_the_memory_tools() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false)
+            .with_memory_kit(true)
+            .memory_only();
+        let mut names = tool_names(&server);
+        names.sort();
+        let mut expected: Vec<String> = KIT_TOOL_NAMES
+            .iter()
+            .chain(["vault_guide"].iter())
+            .map(|name| (*name).to_string())
+            .collect();
+        expected.sort();
+        assert_eq!(names, expected);
+        // Read-only still hides every write.
+        let read_only = Server::new(&recorder, true)
+            .with_memory_kit(true)
+            .memory_only();
+        assert_eq!(tool_names(&read_only), ["vault_guide"]);
     }
 
     #[test]

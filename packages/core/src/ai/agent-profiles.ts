@@ -3,11 +3,13 @@ import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { slugForTitle } from '../markdown/slug'
 import { createNoteIfAbsent, listFiles, readNote } from '../graph/commands'
 import { journalTailDigest, memoryDigest } from './memory-digest'
+import { loadCyberBrainConfig } from '../cyber-brain/config'
 import {
   AGENT_SKILLS_DIR,
   listVaultSkills,
   vaultSkillsPromptLines,
   type VaultSkill,
+  type VaultSkillsLayout,
 } from './vault-skills'
 import {
   newAgentMemorySeed,
@@ -270,6 +272,29 @@ export interface AgentPromptContext {
   skills: VaultSkill[]
   /** Where this run's agent keeps its own memory (exists or not yet). */
   memoryPath: string
+  /**
+   * The vault keeps memory with its cyber-brain kit (Plan 35): Kore's own
+   * `agents/` memory is off, skills come from the kit, and memory is
+   * written only through the kit's tools. `tools` says whether this run
+   * carries them (the chat attaches `kore mcp` for an agent CLI).
+   */
+  memoryKit?: MemoryKitContext | null
+}
+
+/** What a prompt needs to know about the vault's memory kit. */
+export interface MemoryKitContext {
+  /** The kit's contract file, for the prompt to point at. */
+  readonly contractPath: string
+  readonly skills: VaultSkillsLayout
+  /** Whether this run has the memory tools (`remember`, `open_loop`, …). */
+  readonly tools: boolean
+}
+
+/** The same context, now riding a run that carries the memory tools. */
+export function withMemoryTools(context: AgentPromptContext): AgentPromptContext {
+  return context.memoryKit == null
+    ? context
+    : { ...context, memoryKit: { ...context.memoryKit, tools: true } }
 }
 
 /**
@@ -287,23 +312,42 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     }
   }
   const memoryPath = agentMemoryPath(profile?.slug ?? DEFAULT_AGENT_SLUG)
+  const kit = await loadCyberBrainConfig().catch(() => null)
+  const memoryKit: MemoryKitContext | null =
+    kit === null
+      ? null
+      : {
+          contractPath: 'AGENTS.md',
+          skills: { dir: `${kit.systemPath}/skills`, kind: 'folder' },
+          tools: false,
+        }
+  // A kit vault has one memory, the kit's: Kore's own files stay unread so
+  // no second memory reaches the prompt.
+  const own = <T>(load: () => Promise<T | null>): Promise<T | null> =>
+    memoryKit === null ? load() : Promise.resolve(null)
   const [vaultContract, soul, userMemory, agentMemory, sharedFacts, sharedLog, skills] =
     await Promise.all([
       loadVaultContract(),
       profile === null
         ? Promise.resolve(null)
         : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
-      loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS, {
-        digest: true,
-      }),
-      loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true }),
-      loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, {
-        digest: true,
-      }),
-      loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, {
-        takeTail: true,
-      }),
-      listVaultSkills(),
+      own(() =>
+        loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS, {
+          digest: true,
+        }),
+      ),
+      own(() => loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true })),
+      own(() =>
+        loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, {
+          digest: true,
+        }),
+      ),
+      own(() =>
+        loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, {
+          takeTail: true,
+        }),
+      ),
+      listVaultSkills(memoryKit?.skills),
     ])
   return {
     vaultContract,
@@ -315,6 +359,7 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     sharedLog,
     skills,
     memoryPath,
+    memoryKit,
   }
 }
 
@@ -397,11 +442,16 @@ export function agentContextPromptLines(
       lines.push(`[summary of a longer file — read ${memoryPath} when you need the rest]`)
     }
   }
-  lines.push(...vaultSkillsPromptLines(context?.skills ?? []))
+  lines.push(...vaultSkillsPromptLines(context?.skills ?? [], context?.memoryKit?.skills))
   lines.push(
     '',
     'Recall: this digest is only the hot set — the vault itself is your long-term memory. Memory sections marked as summaries elide detail on purpose: read the named file when a turn needs it. When the digest lacks context, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
   )
+  const memoryKit = context?.memoryKit ?? null
+  if (memoryKit !== null) {
+    lines.push('', ...memoryKitUpkeepLines(memoryKit, options.canEdit))
+    return lines
+  }
   if (contract !== null) {
     lines.push(
       '',
@@ -478,4 +528,23 @@ export async function ensureUserMemoryNote(generation: number): Promise<void> {
 export async function ensureSharedMemoryNotes(generation: number): Promise<void> {
   await createNoteIfAbsent(AGENT_SHARED_FACTS_PATH, newSharedFactsSeed(), generation)
   await createNoteIfAbsent(AGENT_SHARED_LOG_PATH, newSharedLogSeed(), generation)
+}
+
+/**
+ * Memory upkeep in a kit vault: every write goes through the kit's own
+ * tools, which run the vault's script, so the chat writes memory exactly as
+ * any other agent does. Without the tools (a read-only run, or an engine
+ * that can't carry them) the chat says what it would save instead.
+ */
+export function memoryKitUpkeepLines(memoryKit: MemoryKitContext, canEdit: boolean): string[] {
+  if (canEdit && memoryKit.tools) {
+    return [
+      `Memory upkeep: this vault keeps memory with its cyber-brain kit (${memoryKit.contractPath}). Write every durable fact, loop and decision with the memory tools — remember, open_loop, update_loop, close_loop, record_decision — in the same turn; they run the vault's own memory script, so the format, the run record and the commit match every other agent. Never write memory files, loops or decisions by hand, and never store secrets or the content of private notes.`,
+      "Dates for the memory tools are YYYY-MM-DD: resolve “Friday”, “tomorrow” or “next week” from today's date yourself. Record a decision only when the user took it, not a hypothesis.",
+      'If a memory tool says the vault’s memory script is new or changed, tell the user to allow it in Settings → Agents and do not write the memory any other way.',
+    ]
+  }
+  return [
+    `Memory upkeep: this vault keeps memory with its cyber-brain kit (${memoryKit.contractPath}), and this run cannot write it. When you learn something durable, say so and give the exact fact, loop or decision to keep — never claim to have saved it, and never write memory files by hand.`,
+  ]
 }

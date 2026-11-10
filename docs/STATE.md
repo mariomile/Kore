@@ -3353,6 +3353,24 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
+  that agent-CLI chat runs (Claude Code, Codex) never see the in-process
+  tools of `ai/chat/tools.ts`, so the tools live in `kore mcp` instead and
+  slices 1 and 2 merge. New crate `reflect-kit-script` (detect the kit from
+  `AGENTS.md`, digest the scripts folder, `.kore/kit-trust.json`, argv
+  allowlist); `kore brain` runs the vault's `brain.mjs` only when allowed,
+  signed with the caller; `kore mcp` serves `remember`/`open_loop`/
+  `update_loop`/`close_loop`/`record_decision` in a kit vault, plus
+  `--memory-only` and `--agent`; the desktop `kit_script_run` takes the same
+  gate, with `kit_script_status`/`kit_script_trust` and Settings → Agents →
+  Memory to allow the script; `attachMemoryTools` gives writing CLI chat runs
+  the memory-only server; a kit vault's prompt drops Kore's `agents/` memory
+  and reads skills from `System/skills/<name>/SKILL.md`. Verified with
+  Mario's real `brain.mjs` in a scratch vault through `kore mcp`: fact, loop
+  open/close and decision land with run record, daily line and commit;
+  secrets refused. Not verified live: a Claude Code chat turn in the app.
+  Next: Mario's review; the API-key chat still only suggests memory.
+
 - 2026-11-09 — Plan 35 review fixes (full review, B2/I9). The cyber-brain
   plan moves from 34 to 35 (34 is Kore Cloud, #364). `PROJECTION_VERSION`
   31 (29 and 30 are taken by #348 and #365): rows indexed before

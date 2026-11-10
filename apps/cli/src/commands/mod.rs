@@ -9,6 +9,7 @@
 pub mod active;
 pub mod append;
 pub mod backlinks;
+pub mod brain;
 pub mod capture;
 pub mod collection;
 pub mod done;

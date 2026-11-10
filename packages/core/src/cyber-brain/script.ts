@@ -193,8 +193,16 @@ export function brainResult(outcome: z.infer<typeof kitOutcomeSchema>): BrainRes
     return { ok: false, error: 'The memory script did not finish in time.' }
   }
   if (outcome.code !== 0) {
-    const lines = outcome.stderr.trim().split('\n')
-    const last = (lines.findLast((line) => line.trim() !== '') ?? '').replace(/^error:\s*/, '')
+    // The kit's own refusal is `error: …`; a crash's reason is its `Error: …`
+    // line (the last line of a Node stack is only the Node version).
+    const lines = outcome.stderr
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+    const reason =
+      lines.findLast((line) => line.startsWith('error:') || line.includes('Error: ')) ??
+      lines.at(-1)
+    const last = (reason ?? '').replace(/^error:\s*/, '')
     return {
       ok: false,
       error: last === '' ? `The memory script exited with code ${outcome.code ?? '?'}.` : last,

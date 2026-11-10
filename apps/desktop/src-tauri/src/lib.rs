@@ -320,6 +320,8 @@ pub fn run() {
             routine_script::routine_script_stop,
             routine_script::routine_script_run,
             kit_script::kit_script_run,
+            kit_script::kit_script_status,
+            kit_script::kit_script_trust,
             runtime::agent_run_lock_acquire,
             runtime::agent_run_lock_release,
             runtime::agent_run_lock_reset,

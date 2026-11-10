@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

@@ -3353,6 +3353,23 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
+  one commit each, no product change. Terminal: a multi-byte character
+  split across two 4 KB PTY reads decodes whole (streaming decoder in
+  `pty.rs`); `pty_write` only queues bytes for a per-session writer thread,
+  so a big paste can no longer block the main thread. Agent CLI: each
+  held-open stdin has its own lock and the map lock is never held across a
+  write, so Stop no longer hangs behind a slow prompt. `window_bootstrap`
+  reads the index generation from an atomic instead of the writer lock, so
+  a note window opened during a backup no longer freezes the app. Chat:
+  `withAgentRunLock` takes the turn's abort signal (Stop works while the
+  turn is queued behind an automation; a late native lease is handed back)
+  and shows a waiting notice after 300 ms. CLI writes and the capture inbox
+  fsync before the rename; CLI temps stage in `.kore/tmp/`. Verified:
+  agent-run-lock vitest, chat-provider browser test on Chromium, cargo
+  test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
+  typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
+
 - 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
   lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the
   non-desktop crates (308), knip, cargo machete, `pnpm audit`, a link check

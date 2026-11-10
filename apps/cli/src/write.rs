@@ -1,5 +1,5 @@
 //! The CLI's file-write primitives, shared by every writing command. All
-//! writes are atomic (a sibling temp file renamed into place) so a crash
+//! writes are atomic (a synced temp file renamed into place) so a crash
 //! mid-write can never leave a truncated note, and every write honours the
 //! note's own line ending.
 
@@ -7,6 +7,8 @@ use std::fs;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use reflect_index_schema::KORE_DIR;
 
 use crate::error::CliError;
 use crate::note_file::checked_note_path;
@@ -19,20 +21,60 @@ pub fn line_ending(content: &str) -> &'static str {
     }
 }
 
-/// Write through a sibling temp file + rename so a crash mid-write can never
-/// leave a half-written note behind.
+/// Write through a temp file + rename so a crash mid-write can never leave a
+/// half-written note behind (see [`persist_synced`]).
 pub fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
     let dir = path
         .parent()
         .ok_or_else(|| CliError::Runtime(format!("no parent directory for {}", path.display())))?;
     fs::create_dir_all(dir)?;
-    let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
-    tmp.write_all(contents.as_bytes())?;
-    tmp.flush()?;
-    tmp.persist(path)
-        .map_err(|err| CliError::Runtime(err.to_string()))?;
+    persist_synced(dir, path, contents, false).map_err(|err| CliError::Runtime(err.to_string()))?;
     record_agent_write(path);
     Ok(())
+}
+
+/// Stage `contents` in a temp file, fsync it, then rename it onto `path`
+/// (refusing to replace an existing file when `noclobber`).
+///
+/// The fsync comes before the rename: without it, a system crash or power
+/// loss shortly after can leave the renamed note empty, because the rename
+/// reached the disk before the data did. The temp is staged in the graph's
+/// `.kore/tmp/` when there is one, as the desktop app does, so a temp
+/// stranded by a crash never sits in a folder iCloud or git syncs. If that
+/// is on another volume (a mount inside the vault) the rename cannot cross
+/// it, and the write falls back to a sibling temp.
+fn persist_synced(dir: &Path, path: &Path, contents: &str, noclobber: bool) -> std::io::Result<()> {
+    let persist = |tmp: tempfile::NamedTempFile| {
+        let persisted = if noclobber {
+            tmp.persist_noclobber(path)
+        } else {
+            tmp.persist(path)
+        };
+        persisted.map(drop).map_err(|err| err.error)
+    };
+    match persist(stage_in(&staging_dir(dir), contents)?) {
+        Err(err) if err.kind() == std::io::ErrorKind::CrossesDevices => {
+            persist(stage_in(dir, contents)?)
+        }
+        other => other,
+    }
+}
+
+fn stage_in(dir: &Path, contents: &str) -> std::io::Result<tempfile::NamedTempFile> {
+    fs::create_dir_all(dir)?;
+    let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
+    tmp.write_all(contents.as_bytes())?;
+    tmp.as_file().sync_all()?;
+    Ok(tmp)
+}
+
+/// `.kore/tmp/` of the nearest graph at or above `dir`, or `dir` itself when
+/// it is not inside a graph.
+fn staging_dir(dir: &Path) -> PathBuf {
+    dir.ancestors()
+        .map(|ancestor| ancestor.join(KORE_DIR))
+        .find(|kore| kore.is_dir())
+        .map_or_else(|| dir.to_path_buf(), |kore| kore.join("tmp"))
 }
 
 /// Why [`atomic_create`] did not create the file.
@@ -53,15 +95,11 @@ pub fn atomic_create(path: &Path, contents: &str) -> Result<(), CreateError> {
         )))
     })?;
     fs::create_dir_all(dir).map_err(CreateError::Other)?;
-    let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(CreateError::Other)?;
-    tmp.write_all(contents.as_bytes())
-        .and_then(|()| tmp.flush())
-        .map_err(CreateError::Other)?;
-    tmp.persist_noclobber(path).map_err(|err| {
-        if err.error.kind() == std::io::ErrorKind::AlreadyExists {
+    persist_synced(dir, path, contents, true).map_err(|err| {
+        if err.kind() == std::io::ErrorKind::AlreadyExists {
             CreateError::Exists
         } else {
-            CreateError::Other(err.error)
+            CreateError::Other(err)
         }
     })?;
     record_agent_write(path);
@@ -182,4 +220,51 @@ pub fn update_note(
     }
     atomic_write(&absolute, &next)?;
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn writes_stage_their_temp_in_the_graph_kore_dir() {
+        let graph = tempfile::tempdir().unwrap();
+        fs::create_dir(graph.path().join(KORE_DIR)).unwrap();
+        let folder = graph.path().join("Projects");
+        fs::create_dir(&folder).unwrap();
+        assert_eq!(
+            staging_dir(&folder),
+            graph.path().join(KORE_DIR).join("tmp")
+        );
+
+        let note = folder.join("Plan.md");
+        atomic_write(&note, "first").unwrap();
+        atomic_write(&note, "second").unwrap();
+        assert_eq!(fs::read_to_string(&note).unwrap(), "second");
+        // Nothing but the note in the synced folder: no stray temp files.
+        let entries: Vec<_> = fs::read_dir(&folder).unwrap().collect();
+        assert_eq!(entries.len(), 1);
+    }
+
+    #[test]
+    fn outside_a_graph_the_temp_is_a_sibling() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(staging_dir(dir.path()), dir.path());
+        let file = dir.path().join("state.json");
+        atomic_write(&file, "{}").unwrap();
+        assert_eq!(fs::read_to_string(&file).unwrap(), "{}");
+    }
+
+    #[test]
+    fn create_never_replaces_an_existing_file() {
+        let graph = tempfile::tempdir().unwrap();
+        fs::create_dir(graph.path().join(KORE_DIR)).unwrap();
+        let note = graph.path().join("Note.md");
+        atomic_create(&note, "mine").unwrap();
+        assert!(matches!(
+            atomic_create(&note, "theirs"),
+            Err(CreateError::Exists)
+        ));
+        assert_eq!(fs::read_to_string(&note).unwrap(), "mine");
+    }
 }

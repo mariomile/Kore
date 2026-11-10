@@ -30,6 +30,14 @@ analysis (`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`, D3).
 - Not done: two overlapping `load()` calls are still unordered (no caller
   does that today). D1, D2 and D4 are other threads.
 
+## Tag definitions marked kore: tag, 2026-11-10
+
+Ask: Mario's "ok" to the follow-up of #354 (the last visible Lore name). Tag
+definitions are now marked `kore: tag`; core still reads `lore: tag`
+(`hasTagTypeMarker`, `tags/tag-type.ts`) and every schema save writes `kore`
+and drops `lore`. Default objects, resource collections and the dev seed write
+the new key; the CLI reserves `kore`/`koreCollection` like core does.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no
@@ -3382,6 +3390,23 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
+  one commit each, no product change. Terminal: a multi-byte character
+  split across two 4 KB PTY reads decodes whole (streaming decoder in
+  `pty.rs`); `pty_write` only queues bytes for a per-session writer thread,
+  so a big paste can no longer block the main thread. Agent CLI: each
+  held-open stdin has its own lock and the map lock is never held across a
+  write, so Stop no longer hangs behind a slow prompt. `window_bootstrap`
+  reads the index generation from an atomic instead of the writer lock, so
+  a note window opened during a backup no longer freezes the app. Chat:
+  `withAgentRunLock` takes the turn's abort signal (Stop works while the
+  turn is queued behind an automation; a late native lease is handed back)
+  and shows a waiting notice after 300 ms. CLI writes and the capture inbox
+  fsync before the rename; CLI temps stage in `.kore/tmp/`. Verified:
+  agent-run-lock vitest, chat-provider browser test on Chromium, cargo
+  test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
+  typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
 
 - 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
   lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the

@@ -149,8 +149,11 @@ export async function runAgentCliCommand(options: {
       settle?.({ code: event.data.code, lines, failure })
     }
   })
+  let started = false
   const onAbort = (): void => {
-    void bridge.invoke('agent_cli_stop', { requestId }).catch(() => {})
+    if (started) {
+      void bridge.invoke('agent_cli_stop', { requestId }).catch(() => {})
+    }
   }
   options.signal?.addEventListener('abort', onAbort, { once: true })
   try {
@@ -162,7 +165,8 @@ export async function runAgentCliCommand(options: {
       cwd: null,
       streamStderr: true,
     })
-    // A cancel that arrived mid-spawn found no child to kill: repeat it.
+    // The native stop needs the child: deliver a cancel that came mid-spawn.
+    started = true
     if (options.signal?.aborted) {
       onAbort()
     }
@@ -285,7 +289,13 @@ export async function* streamAgentCliTurn(
     return
   }
 
+  // The native stop is a no-op until `agent_cli_run` has registered the
+  // child, so a Stop pressed mid-spawn waits here and is sent right after.
+  let started = false
   const onAbort = (): void => {
+    if (!started) {
+      return
+    }
     void getBridge()
       .invoke('agent_cli_stop', { requestId })
       .catch(() => {})
@@ -347,9 +357,9 @@ export async function* streamAgentCliTurn(
     }
     return
   }
-  // A Stop sent while `agent_cli_run` was still spawning found no child to
-  // kill (the native stop is a no-op for an unknown request). The child
-  // exists now, so repeat it: its `done` event settles the turn as aborted.
+  // The child exists now: deliver a Stop that arrived while it was spawning.
+  // Its `done` event then settles the turn as aborted.
+  started = true
   if (options.signal?.aborted) {
     onAbort()
   }

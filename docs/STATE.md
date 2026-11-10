@@ -11,8 +11,9 @@ asking, one PR per fix. The full report is
   Stop) pressed while the CLI turn was still registering its listener or
   spawning the child was lost, and the edit-capable run carried on headless.
   The turn now settles as aborted before spawning when the signal is already
-  aborted, and repeats the native stop once `agent_cli_run` has returned.
-  Same repeat in `runAgentCliCommand` (the login flow).
+  aborted, and holds the native stop until `agent_cli_run` has returned (one
+  stop, sent when the child exists). Same in `runAgentCliCommand` (the login
+  flow).
 - Next: the other findings in the report wait for Mario's choice.
 
 ## Project cleanup pass, 2026-11-09

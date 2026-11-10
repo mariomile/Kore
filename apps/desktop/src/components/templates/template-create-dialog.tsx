@@ -70,7 +70,7 @@ export function TemplateCreateDialog({ context }: TemplateCreateDialogProps): Re
         <DialogHeader>
           <DialogTitle>New template</DialogTitle>
           <DialogDescription>
-            A markdown file in your graph's <code>templates/</code> folder.
+            A markdown file in your vault's <code>templates/</code> folder.
           </DialogDescription>
         </DialogHeader>
         <form

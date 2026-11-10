@@ -67,8 +67,8 @@ export function GithubSignOutRow({ signOut, description }: GithubSignOutRowProps
           <DialogHeader>
             <DialogTitle>Sign out of GitHub?</DialogTitle>
             <DialogDescription>
-              This removes the GitHub token from this machine. Every GitHub-backed graph will stop
-              backing up until you sign in again.
+              This removes the GitHub token from this machine. Every vault synced with GitHub stops
+              syncing until you sign in again.
             </DialogDescription>
           </DialogHeader>
           {action.error !== null ? <p className="text-xs text-danger">{action.error}</p> : null}

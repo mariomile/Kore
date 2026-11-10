@@ -210,6 +210,7 @@ describe('parseNote — tasks', () => {
         markerOffset: 2,
         dueDate: null,
         dueTime: null,
+        section: null,
       },
       {
         text: 'call mum',
@@ -219,6 +220,7 @@ describe('parseNote — tasks', () => {
         markerOffset: 17,
         dueDate: null,
         dueTime: null,
+        section: null,
       },
     ])
   })
@@ -234,6 +236,7 @@ describe('parseNote — tasks', () => {
         markerOffset: 2,
         dueDate: null,
         dueTime: null,
+        section: null,
       },
     ])
   })
@@ -279,6 +282,28 @@ describe('parseNote — tasks', () => {
     expect(note.tasks[0]?.breadcrumbs).toEqual(['Project Alpha continues on this line'])
   })
 
+  it('records the section heading each task sits under, but never the H1 title', () => {
+    const note = parse(
+      [
+        '# DeepAgent',
+        '+ [ ] above every section',
+        '## Pricing',
+        '+ [ ] send the proposal',
+        '> ## Quoted heading',
+        '+ [ ] still pricing',
+        '### Tiers',
+        '+ [ ] define tiers',
+        '',
+      ].join('\n'),
+    )
+    expect(note.tasks.map((task) => [task.text, task.section])).toEqual([
+      ['above every section', null],
+      ['send the proposal', 'Pricing'],
+      ['still pricing', 'Pricing'],
+      ['define tiers', 'Tiers'],
+    ])
+  })
+
   it('uses parent task rows as breadcrumbs for nested subtasks', () => {
     const note = parse('+ [ ] parent task\n  + [x] child task\n')
     expect(note.tasks.map((task) => ({ text: task.text, breadcrumbs: task.breadcrumbs }))).toEqual([
@@ -298,6 +323,7 @@ describe('parseNote — tasks', () => {
         markerOffset: 2,
         dueDate: null,
         dueTime: null,
+        section: null,
       },
     ])
   })

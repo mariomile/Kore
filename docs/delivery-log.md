@@ -7,21 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- A Memory view for cyber-brain vaults: what's in NOW, the open loops, the
-  decisions and the latest memory writes from every agent, each opening its
-  file, plus the kit's own health check. The chat with your own API key
-  can now save memory through the kit too.
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
 
-- In a vault that keeps memory with cyber-brain, Kore's chat (on Claude Code
-  or Codex) and `kore mcp` write facts, loops and decisions by running the
-  vault's own memory script, so the result matches every other agent. The
-  script runs only after you allow it in Settings → Agents, and again after
-  it changes. New `kore brain` command.
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
 
-- Notes marked `sensitivity: private` (the cyber-brain kit's privacy level)
-  are kept away from AI and agents exactly like `private: true`. The chat
-  now reads up to 20,000 characters of the vault's AGENTS.md, as `kore
-  guide` already did.
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as
   "Name (conflict).md", leaves the note on the other version, and tells you.

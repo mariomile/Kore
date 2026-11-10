@@ -38,6 +38,13 @@ export interface RouterStore {
   navigate(route: Route, options?: NavigateOptions): void
   back(): void
   forward(): void
+  /**
+   * Let a view inside the current entry take the next Back first (a zoomed
+   * block steps out before the note is left). `owner` keys the step so each
+   * view replaces or clears only its own; `null` clears. While any step is
+   * set, `canBack` is true and `back()` runs the latest one instead of moving.
+   */
+  setViewBack(owner: object, step: (() => void) | null): void
   /** Synchronous, monotonic navigation-state revision. */
   navigationRevision(): number
   saveScrollState(offset: number): void
@@ -80,6 +87,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
   const scrollById = new Map<number, number>()
   const scrollBySurface = new Map<string, number>()
   const listeners = new Set<() => void>()
+  const viewBacks = new Map<object, () => void>()
 
   function current(): HistoryEntry {
     return stack[index]!
@@ -92,7 +100,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
       entryId: entry.id,
       arrivalSeq,
       arrivalFocusEditor,
-      canBack: index > 0,
+      canBack: viewBacks.size > 0 || index > 0,
       canForward: index < stack.length - 1,
       backRoute: index > 0 ? stack[index - 1]!.route : null,
     }
@@ -160,6 +168,11 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
   }
 
   function back(): void {
+    const viewStep = [...viewBacks.values()].at(-1)
+    if (viewStep !== undefined) {
+      viewStep()
+      return
+    }
     if (index === 0) {
       return // nothing behind us — must not advance the navigation revision
     }
@@ -167,6 +180,17 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     arrivalFocusEditor = false
     index -= 1
     emit()
+  }
+
+  function setViewBack(owner: object, step: (() => void) | null): void {
+    const had = viewBacks.has(owner)
+    viewBacks.delete(owner)
+    if (step !== null) {
+      viewBacks.set(owner, step)
+    }
+    if (had !== (step !== null)) {
+      emit()
+    }
   }
 
   function forward(): void {
@@ -221,6 +245,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     navigate,
     back,
     forward,
+    setViewBack,
     navigationRevision: () => revision,
     saveScrollState(offset) {
       scrollById.set(current().id, offset)

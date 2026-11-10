@@ -26,6 +26,7 @@ pub mod new;
 pub mod open;
 pub mod path;
 pub mod properties;
+pub mod proposals;
 pub mod recent;
 pub mod route;
 pub mod search;

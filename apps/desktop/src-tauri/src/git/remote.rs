@@ -117,7 +117,7 @@ fn callbacks_with_credentials<'cb>(token: Option<String>) -> RemoteCallbacks<'cb
 
 fn origin(repo: &Repository) -> AppResult<git2::Remote<'_>> {
     repo.find_remote("origin")
-        .map_err(|_| AppError::not_found("no backup remote is configured for this graph"))
+        .map_err(|_| AppError::not_found("no sync remote is configured for this vault"))
 }
 
 /// Fetch `origin` (configured refspecs) and report ahead/behind for the

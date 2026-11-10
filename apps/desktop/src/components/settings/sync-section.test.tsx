@@ -99,7 +99,7 @@ describe('SyncSection', () => {
 
     const section = page.getByRole('region', { name: 'Sync' })
     await expect.element(legend(section, 'iCloud Drive')).toBeInTheDocument()
-    await expect.element(section.getByText('1 graph in iCloud Drive.')).toBeInTheDocument()
+    await expect.element(section.getByText('1 vault in iCloud Drive.')).toBeInTheDocument()
     await expect.element(legend(section, 'GitHub sync')).toBeInTheDocument()
     await expect
       .element(section.getByRole('button', { name: /connect github/i }))

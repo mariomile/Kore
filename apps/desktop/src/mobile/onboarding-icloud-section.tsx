@@ -96,7 +96,7 @@ export function OnboardingIcloudSection(props: OnboardingIcloudSectionProps): Re
             {graphs.length > 0 ? <MobileDivider>Start fresh</MobileDivider> : null}
             <div className="flex flex-col gap-1.5">
               <label htmlFor={nameId} className="text-xs font-medium text-text-secondary">
-                Graph name
+                Vault name
               </label>
               <Input
                 id={nameId}
@@ -126,7 +126,7 @@ export function OnboardingIcloudSection(props: OnboardingIcloudSectionProps): Re
               disabled={busy || cleanName === null || nameTaken || documentsRoot === null}
             >
               {pendingChoice === 'icloud-create' ? <Spinner /> : <Cloud aria-hidden />}
-              {pendingChoice === 'icloud-create' ? 'Setting up…' : 'Setup graph'}
+              {pendingChoice === 'icloud-create' ? 'Setting up…' : 'Set up vault'}
             </Button>
           </div>
         </>

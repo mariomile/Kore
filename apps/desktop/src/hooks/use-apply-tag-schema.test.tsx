@@ -69,8 +69,6 @@ describe('useApplyTagSchema', () => {
       'Book',
       [AUTHOR, { name: 'Read on', key: 'read-on', type: 'date' }],
       7,
-      'templates/book.md',
-      '📚',
     )
     expect(migratePropertyRenames).toHaveBeenCalledWith([], 7)
   })
@@ -108,7 +106,7 @@ describe('useApplyTagSchema', () => {
       previousProperties: [],
       renames: [],
     })
-    expect(saveTagType).toHaveBeenCalledWith('decision', [AUTHOR], 7, null, null)
+    expect(saveTagType).toHaveBeenCalledWith('decision', [AUTHOR], 7)
   })
 
   it('refuses a stale, private, or unmarked definition without writing', async () => {

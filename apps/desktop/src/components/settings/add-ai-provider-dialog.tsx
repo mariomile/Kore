@@ -142,7 +142,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
         <DialogHeader>
           <DialogTitle>Add AI provider</DialogTitle>
           <DialogDescription>
-            Keys are stored in your OS keychain, never in your graph.
+            Keys are stored in your OS keychain, never in your vault.
           </DialogDescription>
         </DialogHeader>
         <form

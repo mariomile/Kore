@@ -30,3 +30,10 @@ export function projectNotePathsQueryKey(
 ): readonly [string, string | undefined, 'tasks-project-notes'] {
   return [INDEX_QUERY_SCOPE, graphRoot, 'tasks-project-notes']
 }
+
+/** The query key for the wiki links on task lines (tasks counted under a linked project). */
+export function taskProjectLinksQueryKey(
+  graphRoot: string | undefined,
+): readonly [string, string | undefined, 'tasks-project-links'] {
+  return [INDEX_QUERY_SCOPE, graphRoot, 'tasks-project-links']
+}

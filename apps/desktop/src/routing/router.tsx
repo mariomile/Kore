@@ -47,6 +47,8 @@ interface RouterValue {
   navigate: (route: Route, options?: NavigateOptions) => void
   back: () => void
   forward: () => void
+  /** See {@link RouterStore.setViewBack}. */
+  setViewBack: RouterStore['setViewBack']
   canBack: boolean
   canForward: boolean
   /**
@@ -119,6 +121,7 @@ export function RouterProvider({
       navigate: bound.navigate,
       back: bound.back,
       forward: bound.forward,
+      setViewBack: bound.setViewBack,
       saveScrollState: bound.saveScrollState,
       clearScrollState: bound.clearScrollState,
       savedScroll: bound.savedScroll,
@@ -126,6 +129,11 @@ export function RouterProvider({
     [snapshot, bound],
   )
   return <RouterContext value={value}>{children}</RouterContext>
+}
+
+/** The router when rendered inside a RouterProvider, else null (editor tests). */
+export function useOptionalRouter(): RouterValue | null {
+  return use(RouterContext)
 }
 
 /** Access the current route + navigation. Use within a RouterProvider. */

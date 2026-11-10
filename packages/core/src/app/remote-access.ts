@@ -21,19 +21,41 @@ export const REMOTE_ACCESS_TOKEN_SECRET = 'kore-mcp-token'
 /** Keychain entry holding the named agents' keys (the `KORE_MCP_AGENTS`). */
 export const REMOTE_ACCESS_AGENTS_SECRET = 'kore-mcp-agents'
 
-const remoteAgentSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  key: z.string().min(24),
-  write: z.boolean(),
-})
+/**
+ * What a named agent may do with the tools that write (Plan 33, A2): hide
+ * them, keep each call as a proposal for you to accept in Activity, or run
+ * them. `kore mcp` reads the same three words.
+ */
+export const REMOTE_AGENT_ACCESS = ['read', 'propose', 'write'] as const
+export type RemoteAgentAccess = (typeof REMOTE_AGENT_ACCESS)[number]
+
+/** An agent as the keychain holds it: `access`, or the older `write` flag. */
+const remoteAgentSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    key: z.string().min(24),
+    access: z.enum(REMOTE_AGENT_ACCESS).optional(),
+    write: z.boolean().optional(),
+  })
+  .transform(({ id, name, key, access, write }) => ({
+    id,
+    name,
+    key,
+    access: access ?? (write === true ? 'write' : 'read'),
+  }))
 
 /**
- * One named agent with its own key: its writes are signed with `name`, it
- * may write only when `write` is on (and the server is not read-only), and
- * removing it disconnects that agent alone.
+ * One named agent with its own key: its writes are signed with `name`,
+ * `access` says whether it may write, propose or only read (a read-only
+ * server never lets it write), and removing it disconnects that agent alone.
  */
-export type RemoteAgent = z.infer<typeof remoteAgentSchema>
+export interface RemoteAgent {
+  readonly id: string
+  readonly name: string
+  readonly key: string
+  readonly access: RemoteAgentAccess
+}
 
 const remoteMcpStatusSchema = z.object({
   running: z.boolean(),
@@ -124,11 +146,15 @@ export async function remoteAgents(): Promise<RemoteAgent[]> {
   return agents.success ? agents.data : []
 }
 
-/**
- * Give a new agent its own key. It starts read-only unless `write` is set,
- * and works once the server restarts.
- */
-export async function addRemoteAgent(name: string, write: boolean): Promise<RemoteAgent> {
+async function saveRemoteAgents(agents: readonly RemoteAgent[]): Promise<void> {
+  await setSecret(REMOTE_ACCESS_AGENTS_SECRET, JSON.stringify(agents))
+}
+
+/** Give a new agent its own key with `access`; it works once the server restarts. */
+export async function addRemoteAgent(
+  name: string,
+  access: RemoteAgentAccess,
+): Promise<RemoteAgent> {
   const trimmed = name.trim()
   if (trimmed === '') {
     throw new Error('Give the agent a name.')
@@ -141,19 +167,22 @@ export async function addRemoteAgent(name: string, write: boolean): Promise<Remo
     id: randomToken().slice(0, 16),
     name: trimmed,
     key: randomToken(),
-    write,
+    access,
   }
-  await setSecret(REMOTE_ACCESS_AGENTS_SECRET, JSON.stringify([...agents, agent]))
+  await saveRemoteAgents([...agents, agent])
   return agent
+}
+
+/** Change what an agent may do, keeping its key; it applies at the restart. */
+export async function setRemoteAgentAccess(id: string, access: RemoteAgentAccess): Promise<void> {
+  const agents = await remoteAgents()
+  await saveRemoteAgents(agents.map((agent) => (agent.id === id ? { ...agent, access } : agent)))
 }
 
 /** Remove an agent's key: that agent alone is disconnected at the restart. */
 export async function removeRemoteAgent(id: string): Promise<void> {
   const agents = await remoteAgents()
-  await setSecret(
-    REMOTE_ACCESS_AGENTS_SECRET,
-    JSON.stringify(agents.filter((agent) => agent.id !== id)),
-  )
+  await saveRemoteAgents(agents.filter((agent) => agent.id !== id))
 }
 
 /**

@@ -646,7 +646,7 @@ describe('Sidebar', () => {
     )
 
     await view.getByRole('button', { name: /Notes/ }).click()
-    await page.getByRole('menuitem', { name: /open another graph/i }).click()
+    await page.getByRole('menuitem', { name: /open another vault/i }).click()
     expect(chooseGraph).toHaveBeenCalled()
     expect(pickAndOpen).not.toHaveBeenCalled()
   })
@@ -673,7 +673,7 @@ describe('Sidebar', () => {
     const { view } = await renderSidebar()
 
     await view.getByRole('button', { name: /Notes/ }).click()
-    await page.getByRole('menuitem', { name: /reveal graph in finder/i }).click()
+    await page.getByRole('menuitem', { name: /reveal vault in finder/i }).click()
 
     expect(revealItemInDir).toHaveBeenCalledWith('/notes')
   })
@@ -759,7 +759,7 @@ describe('Sidebar', () => {
     const { view } = await renderSidebar()
 
     await view.getByRole('button', { name: /Notes/ }).click()
-    await page.getByRole('menuitem', { name: 'Graph color' }).click()
+    await page.getByRole('menuitem', { name: 'Vault color' }).click()
     await page.getByRole('menuitem', { name: 'Teal' }).click()
     await vi.waitFor(() => expect(updateSettingsWith).toHaveBeenCalled())
 

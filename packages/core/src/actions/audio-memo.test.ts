@@ -750,6 +750,7 @@ describe('isSilentStop', () => {
     expect(isSilentStop(stop('network'))).toBe(true)
     expect(isSilentStop(stop('config'))).toBe(true)
     expect(isSilentStop(stop('stale'))).toBe(true)
+    expect(isSilentStop(stop('evicted'))).toBe(true)
   })
 
   it('treats unexpected reasons as worth surfacing', () => {

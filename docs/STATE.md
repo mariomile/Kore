@@ -1,22 +1,27 @@
+## Daily stream scroll: link cards no longer fade on hover, 2026-11-10
+
+Ask: Mario feels lag scrolling the daily notes and asked whether recent
+releases made them heavier.
+
+- Measured (headless Chromium, production build, `?seed=obsidian` with
+  dailies shaped like his: bare X links, wiki links, agent log bullets;
+  60,000 px of wheel scroll): v0.85.0, v0.90.0, v0.93.0, v0.95.0 and master
+  spend the same main-thread time per mounted day (about 45 ms of script).
+  Nothing shipped in 0.93 to 0.95 touches the stream.
+- One regression, since link preview cards (v0.86.0): frames over 33 ms went
+  from 6-15 to 30-40 per run. Cause: `.kore-link-card` had a 120 ms
+  `background-color` transition, and scrolling moves cards under the resting
+  pointer, so each one repaints for the length of the fade twice.
+- [x] `styles/link-cards.css`: transition removed, the hover lift stays.
+  After: 5 frames over 33 ms, 60.4 fps (was 31 and 56.1).
+- Caveat: the container renders in software, so the Mac's GPU likely pays
+  less for the same repaint. Not verified on WebKit.
+- Not done, needs Mario's call: mounting a day costs a whole Meowdown editor
+  (about 105 chrome nodes, 28 state reconfigurations); at 4x CPU slowdown the
+  stream runs at 40 fps on every version. Saves do not run while scrolling,
+  so the index-query invalidation is not part of this.
+
 # Kore working state
-
-## cyber-brain Memory view and API-chat memory tools (Plan 35, step 5), 2026-11-10
-
-Ask: Mario, "vai e non fermarti" on Plan 35 after step 4.
-
-- [x] `cyber-brain/memory-view.ts`: `loadMemoryOverview` reads NOW, loops,
-  decisions (private ones skipped) and the last two run files (50 runs);
-  `checkMemoryHealth` runs the kit's `check`. Parsers mirror the kit's.
-- [x] `memory` route and surface (tab, deep link, command `nav.memory`,
-  sidebar row shown only in a kit vault); `components/memory/memory-screen.tsx`
-  with Now, Open loops, Decisions, Recent memory writes, Health.
-- [x] `ai/chat/memory-tools.ts`: the five kit tools for the API-key chat,
-  wired into `buildNoteTools`; `memoryWriteForChat` runs them through
-  `kit_script_run` signed `Kore chat`; the engine lists them only in a kit
-  vault (`activeTools`) and the prompt then tells the model to use them.
-  Chip, stored transcript schema and tests updated.
-- Not done: undo of a run (needs a kit command), slice 4 routines.
-- Not verified on a real Mac.
 
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
@@ -3412,74 +3417,18 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
-  that agent-CLI chat runs (Claude Code, Codex) never see the in-process
-  tools of `ai/chat/tools.ts`, so the tools live in `kore mcp` instead and
-  slices 1 and 2 merge. New crate `reflect-kit-script` (detect the kit from
-  `AGENTS.md`, digest the scripts folder, `.kore/kit-trust.json`, argv
-  allowlist); `kore brain` runs the vault's `brain.mjs` only when allowed,
-  signed with the caller; `kore mcp` serves `remember`/`open_loop`/
-  `update_loop`/`close_loop`/`record_decision` in a kit vault, plus
-  `--memory-only` and `--agent`; the desktop `kit_script_run` takes the same
-  gate, with `kit_script_status`/`kit_script_trust` and Settings → Agents →
-  Memory to allow the script; `attachMemoryTools` gives writing CLI chat runs
-  the memory-only server; a kit vault's prompt drops Kore's `agents/` memory
-  and reads skills from `System/skills/<name>/SKILL.md`. Verified with
-  Mario's real `brain.mjs` in a scratch vault through `kore mcp`: fact, loop
-  open/close and decision land with run record, daily line and commit;
-  secrets refused. Not verified live: a Claude Code chat turn in the app.
-  Next: Mario's review; the API-key chat still only suggests memory.
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
-- 2026-11-09 — Plan 35 review fixes (full review, B2/I9). The cyber-brain
-  plan moves from 34 to 35 (34 is Kore Cloud, #364). `PROJECTION_VERSION`
-  31 (29 and 30 are taken by #348 and #365): rows indexed before
-  `sensitivity: private` counted held `is_private = false`, so the CLI,
-  `kore mcp` and search kept serving those notes until edited; the bump
-  reprojects every note. The plan now states the trust model of running
-  the vault's synced `brain.mjs` (and the hash-and-ask guard step 4 adds
-  before the chat can run it) and why the kit's commits and Kore's backup
-  sync can meet on `index.lock` without losing a write. An oversized
-  script argument names its size. Verified: core indexing + cyber-brain
-  tests, `pnpm check`, desktop clippy.
-
-- 2026-11-09 — Plan 35 slice 1, step 3. Kore can run the vault's own kit
-  script. Rust `kit_script_run` (`src-tauri/src/kit_script.rs`) spawns
-  Node (found like the agent CLIs, GUI PATH included) on a `.mjs`/`.js`
-  inside the graph (traversal and symlink guarded, generation-pinned),
-  with an argv and no shell, bounded by the routine runner's
-  `run_bounded` (now shared). Core `cyber-brain/script.ts` is the policy:
-  typed `BrainCommand`s (remember, loop open/update/close, decision,
-  facts, check) spelled as inline `--key=value` so text can never become
-  an option, agent names slugged, the kit's refusal relayed verbatim.
-  Checked against Mario's real `brain.mjs` in a scratch vault: fact
-  stored with run record, daily line and commit; secrets refused; an
-  option-shaped text stays text. Finding for step 4: the kit reads dates
-  as `YYYY-MM-DD` or English/Italian month names, not weekdays, so the
-  chat must resolve "venerdì" itself. Verified: core node tests (2,565),
-  `pnpm check`, desktop clippy; desktop Rust tests can't link in the
-  container (ort), CI runs them.
-
-- 2026-11-09 — Plan 35 slice 1, step 2. Core reads a vault's cyber-brain
-  configuration from the frontmatter of its `AGENTS.md`
-  (`packages/core/src/cyber-brain/config.ts`): kit version, `writers`,
-  `git`, `daily_notes` and its heading, `paths.system`/`paths.inbox`,
-  `content` destinations, and the kit script path
-  (`<system>/scripts/brain.mjs`). Read-only, never cached; a private
-  contract or broken YAML means no brain, bad fields fall back to the
-  kit's defaults, and a path that leaves the vault is refused. Nothing
-  uses it yet. Verified: core node tests (2,555), `pnpm check`.
-
-- 2026-11-09 — Plan 35 slice 1, step 1 (cyber-brain as Kore's memory
-  engine, `docs/plans/35-cyber-brain-memory.md`). `sensitivity: private`
-  (cyber-brain's privacy level) is now the same hard block as
-  `private: true`, in the TS frontmatter schema and the Rust
-  `note-policy` mirror, so every existing gate (MCP, chat, search, CLI
-  sandbox, `kore guide`) honors it. The chat's vault-contract budget goes
-  from 8,000 to 20,000 characters, matching `kore guide`: Mario's
-  cyber-brain AGENTS.md body is 8,038. Known limit: the editor's privacy
-  toggle clears only `private:`, so turning privacy off on a
-  `sensitivity: private` note does not stick. Verified: core node tests
-  (2,544), note-policy tests, `pnpm check`, `cargo fmt`.
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character
   split across two 4 KB PTY reads decodes whole (streaming decoder in

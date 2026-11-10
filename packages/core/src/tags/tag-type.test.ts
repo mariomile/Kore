@@ -448,3 +448,28 @@ describe('relationTargetOf', () => {
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
   })
 })
+
+describe('extends (Plan 33 B2)', () => {
+  it('reads one parent or a list, folded, without # and duplicates', () => {
+    expect(
+      parseTagTypeFrontmatter(frontmatter({ kore: 'tag', extends: '#Contact' }))?.extends,
+    ).toEqual(['contact'])
+    expect(
+      parseTagTypeFrontmatter(
+        frontmatter({ kore: 'tag', extends: ['contact', '#Person', 'CONTACT', 3, 'not a tag!'] }),
+      )?.extends,
+    ).toEqual(['contact', 'person'])
+  })
+
+  it('leaves extends off a definition that names no parent', () => {
+    expect(parseTagTypeFrontmatter(frontmatter({ kore: 'tag' }))).toEqual({ properties: [] })
+  })
+
+  it('round-trips through the schema column', () => {
+    const type: TagType = {
+      properties: [{ name: 'Contract', key: 'contract', type: 'text' }],
+      extends: ['contact'],
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})

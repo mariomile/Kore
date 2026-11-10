@@ -9,14 +9,13 @@
 
 use std::collections::HashMap;
 
-use rusqlite::params;
-
 use crate::commands::output::{print_json, CollectionJson, CollectionNoteJson, PropertyJson};
 use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::frontmatter_values::PropertyValue;
 use crate::graph::Graph;
-use crate::schema::{decode_schema, SchemaProperty};
+use crate::schema::{load_descendants, load_schema, Descendants, SchemaProperty};
+use crate::search::{tag_match_sql, Binds};
 
 pub fn run(
     graph: &Graph,
@@ -29,56 +28,53 @@ pub fn run(
     let (opened, staleness) = require_index(&graph.root)?;
 
     let tag_key = crate::keys::fold_tag(tag);
-    let schema_json: Option<String> = opened
-        .conn
-        .query_row(
-            "SELECT schema_json FROM tag_types WHERE tag_key = ?1",
-            params![tag_key],
-            |row| row.get(0),
-        )
-        .map(Some)
-        .or_else(|err| match err {
-            rusqlite::Error::QueryReturnedNoRows => Ok(None),
-            other => Err(other),
-        })?;
-    let Some(schema_json) = schema_json else {
+    // Tolerant like the app: a mangled column reads as an empty schema, and
+    // the rows still list. Inherited fields are merged in (Plan 33 B2).
+    let Some(resolved) = load_schema(&opened.conn, tag)? else {
         return Err(CliError::NotFound(format!(
             "#{tag} has no type — configure the tag in Kore to define its collection"
         )));
     };
-    // Tolerant like the app: a mangled column reads as an empty schema, and
-    // the rows still list.
-    let schema: Vec<SchemaProperty> = decode_schema(&schema_json).properties;
+    let schema: Vec<SchemaProperty> = resolved.properties;
+    // The notes of tags that build on this one are rows too, like the app's
+    // collection (`listCollection` without `ownOnly`), and so are the notes of
+    // tags nested under any of them (`#contact/vip`), with the same match
+    // `kore search` uses. The descendants come from core's stored pass.
+    let mut binds = Binds::default();
+    let sort_bind = sort.map(|key| binds.text(key));
+    let mut member_keys = vec![tag_key.clone()];
+    member_keys.extend(load_descendants(&opened.conn, tag, Descendants::Public)?);
+    let member_clauses = member_keys
+        .iter()
+        .map(|key| tag_match_sql("t.tag_key", key, &mut binds))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    let member_filter =
+        format!("EXISTS (SELECT 1 FROM tags t WHERE t.note_path = n.path AND ({member_clauses}))");
 
     // Mirrors `listCollection`: missing sort values last regardless of
     // direction, then the numeric key, then the string form, case-insensitive.
     let direction = if desc { "DESC" } else { "ASC" };
-    let query = if sort.is_some() {
-        format!(
-            "SELECT n.path, n.title, n.mtime FROM tags t
-             JOIN notes n ON n.path = t.note_path
-             LEFT JOIN note_properties sp ON sp.note_path = n.path AND sp.key = ?2
-             WHERE t.tag_key = ?1 AND n.kind IN ('note','daily') AND n.is_private = 0
+    let query = match &sort_bind {
+        Some(sort_key) => format!(
+            "SELECT n.path, n.title, n.mtime FROM notes n
+             LEFT JOIN note_properties sp ON sp.note_path = n.path AND sp.key = {sort_key}
+             WHERE {member_filter} AND n.kind IN ('note','daily') AND n.is_private = 0
              ORDER BY sp.value IS NULL, sp.value_number {direction},
                       sp.value COLLATE NOCASE {direction}, n.mtime DESC, n.path"
-        )
-    } else {
-        "SELECT n.path, n.title, n.mtime FROM tags t
-         JOIN notes n ON n.path = t.note_path
-         WHERE t.tag_key = ?1 AND n.kind IN ('note','daily') AND n.is_private = 0
-         ORDER BY n.is_pinned DESC, n.mtime DESC, n.path"
-            .to_string()
+        ),
+        None => format!(
+            "SELECT n.path, n.title, n.mtime FROM notes n
+             WHERE {member_filter} AND n.kind IN ('note','daily') AND n.is_private = 0
+             ORDER BY n.is_pinned DESC, n.mtime DESC, n.path"
+        ),
     };
     // The row cursor is walked lazily and abandoned at the limit, so rows
     // past the cap never leave SQLite (the `recent` idiom); the on-disk
     // privacy re-check runs inside the walk, before a row takes a slot.
     let mut statement = opened.conn.prepare(&query)?;
-    let query_params: Vec<&str> = match sort {
-        Some(key) => vec![tag_key.as_str(), key],
-        None => vec![tag_key.as_str()],
-    };
     let mut kept: Vec<(String, String)> = Vec::new();
-    let rows = statement.query_map(rusqlite::params_from_iter(query_params), |row| {
+    let rows = statement.query_map(rusqlite::params_from_iter(binds.values), |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;
     for row in rows {

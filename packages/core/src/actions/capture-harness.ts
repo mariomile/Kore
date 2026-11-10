@@ -12,9 +12,11 @@ import {
   promoteCaptureScreenshot,
   readAsset,
   readNote,
+  readNoteLocal,
   writeAsset,
   writeNote,
 } from '../graph/commands'
+import { icloudRequestDownloads } from '../ipc/commands'
 import { getSecret } from '../secrets/keychain'
 import {
   captureIdentity,
@@ -47,6 +49,8 @@ export const listFilesMock = vi.mocked(listFiles)
 export const promoteMock = vi.mocked(promoteCaptureScreenshot)
 export const readAssetMock = vi.mocked(readAsset)
 export const readNoteMock = vi.mocked(readNote)
+export const readNoteLocalMock = vi.mocked(readNoteLocal)
+export const requestDownloadsMock = vi.mocked(icloudRequestDownloads)
 export const writeAssetMock = vi.mocked(writeAsset)
 export const writeNoteMock = vi.mocked(writeNote)
 export const scrapeMock = vi.mocked(scrapePageMeta)
@@ -71,6 +75,14 @@ const notFound = () => ({ kind: 'notFound', message: 'missing' })
 export const files = new Map<string, string>()
 /** The in-memory spool (`.kore/inbox/`). */
 export const spool = new Map<string, { contents: string; modifiedMs: number }>()
+/**
+ * Notes that exist only as an iOS iCloud eviction stub: `readNote` answers
+ * `notFound` for them (the logical path is absent), `readNoteLocal` answers
+ * `evicted`, and `icloudRequestDownloads` "downloads" them back into `files`
+ * only when {@link downloadOnRequest} is set.
+ */
+export const evicted = new Map<string, string>()
+export const downloadOnRequest = { enabled: false }
 /** What `captureInboxReject` moved into `.kore/inbox-rejected/`. */
 export const rejected = new Map<string, string>()
 
@@ -123,6 +135,8 @@ export function wireCaptureMocks(): void {
   files.clear()
   spool.clear()
   rejected.clear()
+  evicted.clear()
+  downloadOnRequest.enabled = false
 
   inboxListMock.mockImplementation(async () =>
     [...spool].map(([name, entry]) => ({
@@ -153,6 +167,24 @@ export function wireCaptureMocks(): void {
     const contents = files.get(path)
     if (contents === undefined) throw notFound()
     return contents
+  })
+  readNoteLocalMock.mockImplementation(async (path) => {
+    if (evicted.has(path)) return { kind: 'evicted' }
+    const contents = files.get(path)
+    if (contents === undefined) throw notFound()
+    return { kind: 'content', content: contents }
+  })
+  requestDownloadsMock.mockImplementation(async (paths) => {
+    if (downloadOnRequest.enabled) {
+      for (const path of paths) {
+        const contents = evicted.get(path)
+        if (contents !== undefined) {
+          evicted.delete(path)
+          files.set(path, contents)
+        }
+      }
+    }
+    return paths.length
   })
   writeNoteMock.mockImplementation(async (path, contents) => {
     files.set(path, contents)

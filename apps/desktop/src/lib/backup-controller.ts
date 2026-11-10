@@ -367,7 +367,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
         onLargeFilesSkipped: (files) => {
           // Surface the guardrail loudly: these files are NOT in the backup.
           const names = files.map((file) => file.path).join(', ')
-          startOperation('Backing up').fail(`Too large to back up (kept local): ${names}`)
+          startOperation('Syncing').fail(`Too large to sync (kept local): ${names}`)
         },
         onRemoteChanges,
       })

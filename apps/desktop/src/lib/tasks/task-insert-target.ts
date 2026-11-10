@@ -29,6 +29,7 @@ export function insertedTaskRow(
     noteTitle: target.noteTitle,
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: target.dailyDate,
     isPinned: target.isPinned,
     pinnedOrder: target.pinnedOrder,

@@ -1,4 +1,5 @@
 import { isAttachmentPath } from '../graph/paths'
+import { extractBlockSection, withoutBlockIds } from './block-ids'
 import { parseNote } from './extract'
 import { foldKey } from './keys'
 import { splitFrontmatter } from './frontmatter'
@@ -126,11 +127,19 @@ export function extractHeadingSection(source: string, heading: string): string |
   return slice === '' ? null : slice
 }
 
-/** Body markdown for a transclusion: a heading section, or the whole body. */
+/**
+ * Body markdown for a transclusion: a `^id` block (`![[Note#^id]]`, Plan 33
+ * C3), a heading section, or the whole body. Block-id markers never show in
+ * the embed.
+ */
 export function transclusionMarkdown(source: string, heading: string | null): string | null {
   if (heading === null) {
-    const body = splitFrontmatter(source).body.trim()
+    const body = withoutBlockIds(splitFrontmatter(source).body).trim()
     return body === '' ? '' : body
   }
-  return extractHeadingSection(source, heading)
+  if (heading.startsWith('^')) {
+    return extractBlockSection(splitFrontmatter(source).body, heading.slice(1))
+  }
+  const section = extractHeadingSection(source, heading)
+  return section === null ? null : withoutBlockIds(section)
 }

@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
+
 - Two quick edits to a note from outside Kore (another device, an agent,
   iCloud) no longer leave the editor on the older one, so your next keystroke
   can't write it back over the newer text.

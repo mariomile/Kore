@@ -7,8 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Sync keeps a note you save while it is pulling another device's
-  changes. Before, that save could be silently reverted.
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
 
 - The notes folder is called a vault everywhere in Kore, and Graph means only
   the graph view. Sync is GitHub and iCloud, Backup is the zip file you

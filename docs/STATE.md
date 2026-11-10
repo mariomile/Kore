@@ -1,5 +1,18 @@
 # Kore working state
 
+## Pasted links & files settings, 2026-11-10
+
+Ask: Mario, "se incolliamo un link, questo va in una collection. Facciamole
+impostare da qualche parte, magari non tutti la vorrebbero". Default chosen
+on his decision card: everything off.
+
+- [x] Settings → Notes → Pasted links & files: one switch each for links,
+  images, PDFs and other files (`pasteCollect*`, off by default), plus
+  "Keep the page text" under links (`pasteSaveLinkText`, on). Off means the
+  paste lands in the note with no `notes/resource-….md` card.
+- [x] Gate lives in `useResourceCollection`; deliberate captures (share
+  sheet, extension, `kore capture`) still save; existing cards untouched.
+
 ## Project cleanup pass, 2026-11-09
 
 Ask: Mario, "find everything that's broken, inconsistent, inefficient, or no

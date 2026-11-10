@@ -319,6 +319,7 @@ export {
   browserSearchHomeUrl,
   browserSearchUrl,
   browserOpenLinksInAppSchema,
+  pasteCollects,
   weekStartDow,
   allNotesFilterTagsSchema,
   savedSearchSchema,

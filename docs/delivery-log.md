@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Pasting a link or a file no longer files it in a collection unless you
+  ask: Settings → Notes → Pasted links & files has a switch for links,
+  images, PDFs and other files, all off to start, and links can keep or
+  skip the page text.
+
 - Settings → Agents: the Automations description no longer collapses into
   a narrow column next to its buttons. The agent skill for Kore markdown
   names the `.kore/` folder.

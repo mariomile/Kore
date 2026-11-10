@@ -19,6 +19,7 @@ import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
+import { PastedResourcesSection } from './settings/pasted-resources-section'
 import { ObsidianImportSection } from './settings/obsidian-import-section'
 import { SearchSection } from './settings/search-section'
 import type { SettingsSectionId } from './settings/sections'
@@ -37,6 +38,7 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   templates: TemplatesSection,
   'all-notes': AllNotesSection,
   tasks: TasksSection,
+  'pasted-resources': PastedResourcesSection,
   search: SearchSection,
   'ai-providers': AiProvidersSection,
   'ai-chat': AiChatSection,

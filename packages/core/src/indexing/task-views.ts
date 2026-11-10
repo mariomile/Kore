@@ -1,5 +1,11 @@
 import { addDaysIso } from '@reflect/utils'
-import { compareDated, compareNoteGroups, groupTasks, type TaskGroup } from './group-tasks'
+import {
+  compareDated,
+  compareNoteGroups,
+  groupTasks,
+  type TaskGroup,
+  type TaskSection,
+} from './group-tasks'
 import type { OpenTask } from './queries'
 import { compareTaskPriority, taskRawPriority } from './task-priority'
 
@@ -14,14 +20,17 @@ import { compareTaskPriority, taskRawPriority } from './task-priority'
  * - **Inbox**: bare tasks (no due date) left in past daily notes — captures
  *   still waiting for a date or a home.
  * - **Projects**: every task in a regular (non-daily) note, grouped by
- *   project. A project is a folder note (`Projects/Kore/Kore.md` gathers every
- *   note under `Projects/Kore/`), else the task's own note.
+ *   project, plus any task whose own line wiki-links a project (`+ [ ] call
+ *   Andrea [[DeepAgent]]` jotted in a daily note counts under DeepAgent). A
+ *   project is a folder note (`Projects/Kore/Kore.md` gathers every note under
+ *   `Projects/Kore/`), else the task's own note.
  * - **All**: the original bucketed list ({@link groupTasks}).
  *
  * Every open task lands in at least one of Today / Upcoming / Inbox /
  * Projects; a dated task in a project note shows in both its day and its
- * project, as in Todoist. Pure: the caller supplies `today` and the folder
- * notes ({@link getProjectNotePaths}).
+ * project, as in Todoist. Pure: the caller supplies `today`, the folder notes
+ * ({@link getProjectNotePaths}) and the task lines' project links
+ * ({@link getTaskProjectLinks} through {@link linkedProjectsByTask}).
  */
 export type TaskView = 'today' | 'upcoming' | 'inbox' | 'projects' | 'all'
 
@@ -75,8 +84,71 @@ export function projectForNote(
   return { path, title: noteTitle }
 }
 
-/** Which of the Todoist views (not All) a single open task appears in. */
-export function taskViewsFor(task: OpenTask, today: string): TaskView[] {
+/** A task's location key: its note and the marker's offset in that note. */
+export function taskLocationKey(task: Pick<OpenTask, 'notePath' | 'markerOffset'>): string {
+  return `${task.notePath}:${task.markerOffset}`
+}
+
+/** One wiki link on a task's own line ({@link getTaskProjectLinks}). */
+export interface TaskLineLink {
+  readonly notePath: string
+  readonly markerOffset: number
+  readonly targetPath: string
+}
+
+/** Task location key ({@link taskLocationKey}) → the project its line links. */
+export type LinkedTaskProjects = ReadonlyMap<string, TaskProject>
+
+/**
+ * The project each task's own line links, keyed by {@link taskLocationKey}.
+ * Only a link into a project counts (the folder note itself or a note under
+ * its folder): linking a person or a reference note does not turn it into a
+ * project. When a line links several projects, the first link wins. `links`
+ * arrive in line order.
+ */
+export function linkedProjectsByTask(
+  links: readonly TaskLineLink[],
+  projectNotePaths: ReadonlySet<string>,
+): Map<string, TaskProject> {
+  const linked = new Map<string, TaskProject>()
+  for (const link of links) {
+    const key = taskLocationKey(link)
+    if (linked.has(key)) {
+      continue
+    }
+    const project = projectForNote(link.targetPath, link.targetPath, projectNotePaths)
+    if (projectNotePaths.has(project.path)) {
+      linked.set(key, project)
+    }
+  }
+  return linked
+}
+
+/**
+ * The project a task groups under in Projects, or null when it is not in that
+ * view. A task written inside a project's folder belongs there; otherwise a
+ * project its line links wins (a daily note, or a meeting note outside any
+ * project folder); otherwise a regular note is its own project.
+ */
+export function projectForTask(
+  task: OpenTask,
+  projectNotePaths: ReadonlySet<string>,
+  linkedProjects: LinkedTaskProjects = new Map(),
+): TaskProject | null {
+  const own =
+    task.dailyDate === null ? projectForNote(task.notePath, task.noteTitle, projectNotePaths) : null
+  if (own !== null && projectNotePaths.has(own.path)) {
+    return own
+  }
+  return linkedProjects.get(taskLocationKey(task)) ?? own
+}
+
+/**
+ * Which of the Todoist views (not All) a single open task appears in.
+ * `linksProject` says the task's own line links a project
+ * ({@link linkedProjectsByTask}), which puts a daily-note task in Projects too.
+ */
+export function taskViewsFor(task: OpenTask, today: string, linksProject = false): TaskView[] {
   const views: TaskView[] = []
   const date = task.dueDate ?? task.dailyDate
   if (date !== null && (task.dueDate !== null ? date <= today : date === today)) {
@@ -86,7 +158,7 @@ export function taskViewsFor(task: OpenTask, today: string): TaskView[] {
   } else if (task.dueDate === null && task.dailyDate !== null) {
     views.push('inbox')
   }
-  if (task.dailyDate === null) {
+  if (task.dailyDate === null || linksProject) {
     views.push('projects')
   }
   return views
@@ -179,13 +251,14 @@ function groupInbox(tasks: readonly OpenTask[], today: string): TaskGroup[] {
 function groupProjects(
   tasks: readonly OpenTask[],
   projectNotePaths: ReadonlySet<string>,
+  linkedProjects: LinkedTaskProjects,
 ): TaskGroup[] {
   const byProject = new Map<string, { project: TaskProject; tasks: OpenTask[] }>()
   for (const task of tasks) {
-    if (task.dailyDate !== null) {
+    const project = projectForTask(task, projectNotePaths, linkedProjects)
+    if (project === null) {
       continue
     }
-    const project = projectForNote(task.notePath, task.noteTitle, projectNotePaths)
     const entry = byProject.get(project.path)
     if (entry === undefined) {
       byProject.set(project.path, { project, tasks: [task] })
@@ -194,31 +267,80 @@ function groupProjects(
     }
   }
   return [...byProject.values()]
-    .map(({ project, tasks: projectTasks }) => ({
-      kind: 'note' as const,
-      label: project.title,
-      notePath: project.path,
-      // Keep each source note's tasks together, in document order.
-      tasks: projectTasks.sort((left, right) =>
-        left.notePath === right.notePath
-          ? byPriorityThenPosition(left, right)
-          : left.notePath < right.notePath
-            ? -1
-            : 1,
-      ),
-    }))
+    .map(({ project, tasks: projectTasks }) => {
+      // Keep each source note's tasks together, in document order; tasks
+      // linked in from daily notes follow the project's own, newest first.
+      const sections = projectSections(
+        projectTasks.sort(compareProjectTasks),
+        project,
+        projectNotePaths,
+      )
+      return {
+        kind: 'note' as const,
+        label: project.title,
+        notePath: project.path,
+        tasks: sections.flatMap((section) => section.tasks),
+        sections,
+      }
+    })
     .sort(compareNoteGroups)
 }
 
 /**
+ * Split a project's sorted tasks by their headings, Todoist-style: tasks above
+ * every heading (and tasks linked in from elsewhere, whose heading belongs to
+ * another note) come first, unlabeled; then one section per heading, in the
+ * order the headings first appear. Order inside a section is kept.
+ */
+function projectSections(
+  tasks: readonly OpenTask[],
+  project: TaskProject,
+  projectNotePaths: ReadonlySet<string>,
+): TaskSection[] {
+  const bySection = new Map<string | null, OpenTask[]>([[null, []]])
+  for (const task of tasks) {
+    const writtenInProject =
+      task.dailyDate === null &&
+      projectForNote(task.notePath, task.noteTitle, projectNotePaths).path === project.path
+    const label = writtenInProject ? task.section : null
+    const section = bySection.get(label)
+    if (section === undefined) {
+      bySection.set(label, [task])
+    } else {
+      section.push(task)
+    }
+  }
+  return [...bySection]
+    .filter(([, sectionTasks]) => sectionTasks.length > 0)
+    .map(([label, sectionTasks]) => ({ label, tasks: sectionTasks }))
+}
+
+function compareProjectTasks(left: OpenTask, right: OpenTask): number {
+  if (left.notePath === right.notePath) {
+    return byPriorityThenPosition(left, right)
+  }
+  const leftDaily = left.dailyDate !== null
+  const rightDaily = right.dailyDate !== null
+  if (leftDaily !== rightDaily) {
+    return leftDaily ? 1 : -1
+  }
+  if (leftDaily && left.dailyDate !== right.dailyDate) {
+    return left.dailyDate! < right.dailyDate! ? 1 : -1
+  }
+  return left.notePath < right.notePath ? -1 : 1
+}
+
+/**
  * Group open (and struck, just-completed) tasks for one Tasks view. `today` is
- * the app's local ISO day; `projectNotePaths` are the graph's folder notes.
+ * the app's local ISO day; `projectNotePaths` are the graph's folder notes;
+ * `linkedProjects` the projects task lines link ({@link linkedProjectsByTask}).
  */
 export function groupTasksForView(
   view: TaskView,
   tasks: readonly OpenTask[],
   today: string,
   projectNotePaths: ReadonlySet<string> = new Set(),
+  linkedProjects: LinkedTaskProjects = new Map(),
 ): TaskGroup[] {
   switch (view) {
     case 'today':
@@ -228,7 +350,7 @@ export function groupTasksForView(
     case 'inbox':
       return groupInbox(tasks, today)
     case 'projects':
-      return groupProjects(tasks, projectNotePaths)
+      return groupProjects(tasks, projectNotePaths, linkedProjects)
     case 'all':
       return groupTasks(tasks, today)
   }
@@ -238,6 +360,7 @@ export function groupTasksForView(
 export function countTasksByView(
   tasks: readonly OpenTask[],
   today: string,
+  linkedProjects: LinkedTaskProjects = new Map(),
 ): Record<TaskView, number> {
   const counts: Record<TaskView, number> = {
     today: 0,
@@ -247,7 +370,7 @@ export function countTasksByView(
     all: tasks.length,
   }
   for (const task of tasks) {
-    for (const view of taskViewsFor(task, today)) {
+    for (const view of taskViewsFor(task, today, linkedProjects.has(taskLocationKey(task)))) {
       counts[view] += 1
     }
   }

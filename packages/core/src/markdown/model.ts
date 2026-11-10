@@ -218,6 +218,12 @@ export interface ParsedTask extends TaskMarker {
    * Absent when the task is date-only — the daily digest still covers those.
    */
   dueTime: string | null
+  /**
+   * The section the task sits in: the nearest top-level heading above it
+   * (level 2 or deeper; an H1 is the note's title, not a section), or null.
+   * The Projects view lists a project's tasks under these, like Todoist.
+   */
+  section: string | null
 }
 
 /** Version of the extraction contract; bump on breaking shape changes.
@@ -231,8 +237,9 @@ export interface ParsedTask extends TaskMarker {
  * 7 — `tags` also carries the frontmatter `tags:` names, ahead of body
  * hashtags (TDR 0005 amendment).
  * 8 — `previewText`: the plain text without code, comments, and Obsidian
- * plugin syntax, for list-row previews. */
-export const PARSED_NOTE_VERSION = 8
+ * plugin syntax, for list-row previews.
+ * 9 — `tasks[].section`: the nearest top-level heading above the task. */
+export const PARSED_NOTE_VERSION = 9
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

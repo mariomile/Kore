@@ -44,7 +44,7 @@ export class TaskStaleError extends Error {
  * an edit *above* the task is tolerated without risking a wrong-line toggle.
  * Throws {@link TaskStaleError} when `raw` matches no task, or more than one.
  */
-function locateTaskMarker(source: string, markerOffset: number, raw: string): number {
+export function locateTaskMarker(source: string, markerOffset: number, raw: string): number {
   // Re-extract: the recorded offset is trusted only when it still holds a real
   // parsed task with this line — a byte match alone isn't enough, since an edit
   // above could have turned the line into (say) code without changing its bytes.

@@ -143,6 +143,38 @@ describe('composeVisibleTaskGroups', () => {
   })
 })
 
+describe('composeVisibleTaskGroups #tag filter', () => {
+  const open = [
+    task({ text: 'ship', raw: '[ ] ship #kore/release', markerOffset: 0, noteTitle: 'Plan' }),
+    task({ text: 'buy milk', raw: '[ ] buy milk #home', markerOffset: 10, noteTitle: 'Plan' }),
+    task({ text: 'call kore', raw: '[ ] call kore', markerOffset: 20, noteTitle: 'Plan' }),
+  ]
+  const rows = (needle: string, view: 'all' | 'projects' = 'all') =>
+    composeVisibleTaskGroups({
+      open,
+      completed: undefined,
+      recentlyCompleted: [],
+      filters: ALL_ON,
+      needle,
+      today: TODAY,
+      view,
+    })
+      .flatMap((group) => group.tasks)
+      .map((row) => row.text)
+
+  it('keeps the tasks whose line carries the tag or a child of it, in any view', () => {
+    expect(rows('#kore')).toEqual(['ship'])
+    expect(rows('#kore', 'projects')).toEqual(['ship'])
+    // Plain text still matches the words, tag or not.
+    expect(rows('kore')).toEqual(['call kore'])
+  })
+
+  it('combines a tag with free text', () => {
+    expect(rows('#home milk')).toEqual(['buy milk'])
+    expect(rows('#home ship')).toEqual([])
+  })
+})
+
 describe('visibleGroups', () => {
   it('keeps every group with every filter on', () => {
     const groups = composeVisibleTaskGroups({

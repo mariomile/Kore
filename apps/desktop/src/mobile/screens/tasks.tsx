@@ -5,7 +5,6 @@ import {
   countTasksByView,
   getCompletedTasks,
   getOpenTasks,
-  getProjectNotePaths,
   TASK_VIEWS,
   type OpenTask,
 } from '@reflect/core'
@@ -18,12 +17,9 @@ import { useTaskFilters } from '@/lib/tasks/task-filters'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { todaysDailyTarget } from '@/lib/tasks/task-navigation'
 import { composeVisibleTaskGroups } from '@/lib/tasks/task-visibility'
-import {
-  completedTasksQueryKey,
-  projectNotePathsQueryKey,
-  tasksQueryKey,
-} from '@/lib/tasks/tasks-query'
+import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { taskViewLabel } from '@/lib/tasks/task-view-labels'
+import { useTaskProjects } from '@/lib/tasks/use-task-projects'
 import { useTaskView } from '@/lib/tasks/use-task-view'
 import { cn } from '@/lib/utils'
 import { useTaskActions } from '@/lib/tasks/use-task-actions'
@@ -102,13 +98,11 @@ export function MobileTasks({
     queryFn: () => getCompletedTasks(),
     enabled: enabled && filters.archived,
   })
-  const { data: projectNotes } = useQuery({
-    queryKey: projectNotePathsQueryKey(graph?.root),
-    queryFn: () => getProjectNotePaths(),
-    enabled: enabled && view === 'projects',
-  })
-  const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
-  const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
+  const { projectNotePaths, linkedProjects } = useTaskProjects(graph?.root, enabled)
+  const counts = useMemo(
+    () => countTasksByView(open ?? [], today, linkedProjects),
+    [open, today, linkedProjects],
+  )
   const isError = openFailed || (filters.archived && completedFailed)
   const ready = open !== undefined && (!filters.archived || completed !== undefined)
 
@@ -132,8 +126,19 @@ export function MobileTasks({
         today,
         view,
         projectNotePaths,
+        linkedProjects,
       }),
-    [open, completed, recentlyCompleted, filters, needle, today, view, projectNotePaths],
+    [
+      open,
+      completed,
+      recentlyCompleted,
+      filters,
+      needle,
+      today,
+      view,
+      projectNotePaths,
+      linkedProjects,
+    ],
   )
 
   // The sheet edits the task's *live* row, not the snapshot taken when it

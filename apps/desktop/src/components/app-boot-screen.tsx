@@ -17,7 +17,7 @@ export function AppBootScreen(): ReactElement {
   return (
     <div
       role="status"
-      aria-label="Opening your graph"
+      aria-label="Opening your vault"
       className="flex h-screen w-screen items-center justify-center bg-surface-app"
     >
       <span aria-hidden className="reflect-boot-mark">

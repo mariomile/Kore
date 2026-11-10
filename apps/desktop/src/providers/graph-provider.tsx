@@ -176,7 +176,7 @@ export function GraphProvider({
 
   const openRecent = useCallback(
     (root: string): Promise<boolean> => {
-      if (!requireMainWindow('opening a graph')) {
+      if (!requireMainWindow('opening a vault')) {
         return Promise.resolve(false)
       }
       latestOpenRoot.current = root
@@ -332,7 +332,7 @@ export function GraphProvider({
       // Guarded BEFORE createGraph: graph_create activates the shared Rust
       // session, so off-main it would re-root every window even though the
       // openRecent below refuses.
-      if (!requireMainWindow('creating a graph')) {
+      if (!requireMainWindow('creating a vault')) {
         return false
       }
       try {
@@ -352,7 +352,7 @@ export function GraphProvider({
       const result = await open({
         directory: true,
         multiple: false,
-        title: 'Choose a graph folder',
+        title: 'Choose a vault folder',
         ...(await pickerDefaultPath(recents.length > 0)),
       })
       selected = typeof result === 'string' ? result : null
@@ -386,7 +386,7 @@ export function GraphProvider({
   }, [])
 
   const chooseGraph = useCallback(async (): Promise<void> => {
-    if (!requireMainWindow('switching graphs')) {
+    if (!requireMainWindow('switching vaults')) {
       return
     }
     await closeSecondaryWindows(platform) // the session they adopted is ending
@@ -414,7 +414,7 @@ export function GraphProvider({
 
   const deleteGraph = useCallback(async (): Promise<void> => {
     if (!isMainWindow()) {
-      throw new Error('Deleting a graph is only available from the main window.')
+      throw new Error('Deleting a vault is only available from the main window.')
     }
     if (graph === null) {
       return

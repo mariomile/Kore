@@ -23,6 +23,25 @@ releases made them heavier.
 
 # Kore working state
 
+## Edits under a conflict banner survive closing the note, 2026-11-10
+
+Ask: Mario picked "conflict copy" for D2 of the holistic analysis
+(`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`).
+
+- [x] `note-session-state.ts`: new `flushOnClose()` (tab close, note switch,
+  quit via `flushOpenDocuments`, and `dispose`). Under a parked conflict,
+  where saves stay paused, the buffer goes to a new file beside the note and
+  the note keeps the version on disk. Skipped when the buffer equals theirs
+  or was already copied. Blur and other flushes are unchanged.
+- [x] `packages/core/src/graph/conflict-copy.ts`: `Name (conflict).md`, then
+  `(conflict 2)`, ..., through the no-clobber `note_create`, the same names as
+  `conflict_copy_path` in `git/merge.rs` (TS mirror, no new Rust command).
+- [x] Toast "Saved your edits as a copy" naming both notes.
+- [x] Tests: session (copy once, nothing when equal to theirs), the hook
+  (unmount under conflict creates `notes/a (conflict).md`, no write), core
+  naming and collision.
+- Not verified on a real Mac.
+
 ## Editor no longer reverts to an older external version, 2026-11-10
 
 Ask: Mario authorized fixing the critical data-loss bugs from the holistic
@@ -3397,6 +3416,18 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character

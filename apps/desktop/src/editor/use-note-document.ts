@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { readNote, writeNote, type FileChange } from '@reflect/core'
+import { noteFileStem, readNote, saveConflictCopy, writeNote, type FileChange } from '@reflect/core'
+import { startOperation } from '@/lib/operations'
 import { useFileChanges } from '@/lib/use-file-changes'
 import { createDocumentBinding, type DocumentBinding } from './document-binding'
 import { cacheNoteContent, getCachedNoteContent } from './note-content-cache'
@@ -151,6 +152,18 @@ export function useNoteDocument(
                   })
                 }
               : null,
+            writeConflictCopy: canWrite
+              ? async (forPath, contents) => {
+                  const current = generationRef.current
+                  if (current === null) {
+                    throw new Error('no graph generation available for the conflict copy')
+                  }
+                  const copy = await saveConflictCopy(forPath, contents, current)
+                  startOperation('Saved your edits as a copy').warn(
+                    `"${noteFileStem(forPath)}" changed elsewhere while you were writing. It keeps that version; your text is in "${noteFileStem(copy)}".`,
+                  )
+                }
+              : undefined,
           },
           classify: checkRoundTrip,
           onSnapshot: (next) => {

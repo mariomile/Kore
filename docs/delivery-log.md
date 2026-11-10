@@ -10,6 +10,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 - Scrolling the daily notes past link preview cards is smoother: a card no
   longer fades its hover highlight in and out as it passes under the pointer.
 
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
+
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
 - Steadier terminal and chat: accented letters and emoji no longer turn
   into "��" in the terminal, a big paste no longer freezes the app, Stop
   works while a chat turn waits for an automation (which now says it is

@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A Memory view for cyber-brain vaults: what's in NOW, the open loops, the
+  decisions and the latest memory writes from every agent, each opening its
+  file, plus the kit's own health check. The chat with your own API key
+  can now save memory through the kit too.
+
 - In a vault that keeps memory with cyber-brain, Kore's chat (on Claude Code
   or Codex) and `kore mcp` write facts, loops and decisions by running the
   vault's own memory script, so the result matches every other agent. The

@@ -1,6 +1,8 @@
 import { withMemoryTools, type AgentPromptContext } from '../ai/agent-profiles'
 import type { ResolvedMcpServer } from '../ai/mcp'
-import { loadMemoryMcpServer, MEMORY_MCP_SERVER_NAME } from './trust'
+import { loadCyberBrainConfig } from './config'
+import { runBrainCommand, type BrainCommand, type BrainResult } from './script'
+import { loadMemoryMcpServer, MEMORY_CHAT_AGENT, MEMORY_MCP_SERVER_NAME } from './trust'
 
 /**
  * Give an agent CLI chat run the kit's memory tools (Plan 35). In a vault
@@ -31,4 +33,21 @@ export async function attachMemoryTools(options: {
     return { context, servers }
   }
   return { context: withMemoryTools(context), servers: [...servers, server] }
+}
+
+/**
+ * The API-key chat's memory writer (Plan 35): each memory tool call runs the
+ * vault's own kit script through the gated `kit_script_run`, signed as the
+ * Kore chat and pinned to the turn's vault generation. Null when the vault
+ * has no kit (or no vault is open), so the engine leaves the tools out.
+ */
+export async function memoryWriteForChat(
+  context: AgentPromptContext | null,
+  generation: number | null,
+): Promise<((command: BrainCommand) => Promise<BrainResult>) | null> {
+  if (context?.memoryKit == null || generation === null) return null
+  const config = await loadCyberBrainConfig().catch(() => null)
+  if (config === null) return null
+  return async (command) =>
+    await runBrainCommand(config, command, { agent: MEMORY_CHAT_AGENT }, generation)
 }

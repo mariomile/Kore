@@ -24,4 +24,17 @@ export {
   memoryMcpServer,
   type KitScriptStatus,
 } from './trust'
-export { attachMemoryTools } from './chat'
+export { attachMemoryTools, memoryWriteForChat } from './chat'
+export {
+  checkMemoryHealth,
+  loadMemoryOverview,
+  MEMORY_RUNS_LIMIT,
+  parseMemoryLoops,
+  parseMemoryRuns,
+  type MemoryDecision,
+  type MemoryHealth,
+  type MemoryLoop,
+  type MemoryOverview,
+  type MemoryRun,
+  type MemoryRunWrite,
+} from './memory-view'

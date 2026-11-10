@@ -81,10 +81,16 @@ Kore hands them, never the in-process tools of the API-key chat
 `kore mcp --memory-only --agent "Kore chat"` attached
 (`cyber-brain/chat.ts`), and ChatGPT or Grok reach the very same tools.
 "Memory behaves the same whoever writes it" is then literal: one tool, one
-script. The API-key chat says what it would save instead, until it gets
-the same tools.
-3. **Memory view**: NOW, open loops, decisions, run records with undo,
-   `brain.mjs check` health. Read from the kit's files, no new data.
+script. The API-key chat got the same five tools in step 5
+(`ai/chat/memory-tools.ts`): same names and fields, each a `kit_script_run`
+of the vault's `brain.mjs` signed `kore-chat`, listed to the model only in
+a kit vault (`activeTools`) and writing only with "Allow edits" on.
+3. **Memory view** (step 5): a `memory` surface, in the sidebar only in a
+   kit vault, showing NOW, open loops, decisions, the latest run records
+   with each write's file, and `brain.mjs check` health on demand
+   (`cyber-brain/memory-view.ts`). Read from the kit's files, no new data,
+   nothing cached. Undo of a run is not built: it would have to go through
+   the kit to keep "one writer", and the kit has no undo command yet.
 4. **Optional**: `dream` / `weekly` as Kore routines with `brain.mjs check` as
    the script tick, only if the cloud routine is not enough.
 

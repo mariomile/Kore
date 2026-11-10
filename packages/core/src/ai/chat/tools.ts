@@ -42,6 +42,7 @@ import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './rea
 import { applyNoteEdit } from './note-edit'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
 import { buildTagTools } from './tag-tools'
+import { buildMemoryTools, type MemoryToolDeps, type MemoryTools } from './memory-tools'
 import {
   cloudSafeCollectionRows,
   cloudSafeNoteListings,
@@ -139,6 +140,11 @@ export interface NoteToolDeps {
    * with the honest unavailable message; omitted means "attempt".
    */
   browsingAvailable?: boolean
+  /**
+   * Runs one cyber-brain kit command in the open vault (the memory tools);
+   * null or omitted when the vault has no kit, so they refuse honestly.
+   */
+  memoryWriteFn?: MemoryToolDeps['memoryWriteFn']
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -220,7 +226,13 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
     allowEdits: options.allowEdits === true,
   })
 
+  const memoryTools = buildMemoryTools({
+    memoryWriteFn: options.memoryWriteFn ?? null,
+    allowEdits: options.allowEdits === true,
+  })
+
   return {
+    ...memoryTools,
     search_notes: tool({
       description: searchNotesDescription(options.semanticSearchEnabled !== false),
       inputSchema: searchNotesInput,
@@ -468,4 +480,4 @@ export type NoteTools = {
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
   open_web_page: Tool<z.infer<typeof openWebPageInput>, BrowseWebOutput>
   read_web_page: Tool<z.infer<typeof readWebPageInput>, BrowseWebOutput>
-}
+} & MemoryTools

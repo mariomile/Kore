@@ -2,6 +2,7 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   aiApiKeyForConfig,
   attachMemoryTools,
+  memoryWriteForChat,
   appendEvent,
   buildHistory,
   errorMessage,
@@ -469,12 +470,14 @@ export async function deliverChatTurn(
         }
         // The graph overview degrades to null (prompt without the block)
         // rather than blocking the turn — a cold index shouldn't kill chat.
-        const [apiKey, context] = await Promise.all([
+        const [apiKey, context, memoryWriteFn] = await Promise.all([
           aiApiKeyForConfig(config),
           loadChatGraphContext(graph.name).catch((cause: unknown) => {
             console.error('chat graph context failed:', errorMessage(cause))
             return null
           }),
+          // A cyber-brain vault's memory tools write through its own kit.
+          memoryWriteForChat(agentContext, generation),
         ])
         if (apiKey === null) {
           applyEvent({
@@ -503,6 +506,7 @@ export async function deliverChatTurn(
             // answer here is what makes the browse tools refuse honestly
             // on mobile and in the web harness.
             browsingAvailable: isNativeShell() && !isMobileSurface(),
+            memoryWriteFn,
           },
           signal: controller.signal,
           // The engine cuts the leg in flight, keeps its partial output,

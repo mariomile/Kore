@@ -1,6 +1,7 @@
 import type { TypedToolCall, TypedToolResult } from 'ai'
 import type { TagProperty } from '../../tags'
 import type { CloudNoteListing, CloudSearchHit } from '../checkers'
+import { memoryToolLabel, type MemoryToolName } from './memory-tools'
 import type { NoteTools } from './tools'
 import type { SetNotePropertyValue } from './tools-io'
 
@@ -52,6 +53,7 @@ export type NoteToolCall =
   | { tool: 'setNoteType'; toolCallId: string; path: string; tag: string }
   | { tool: 'browse'; toolCallId: string; url: string }
   | { tool: 'readPage'; toolCallId: string }
+  | { tool: 'memory'; toolCallId: string; action: MemoryToolName; label: string }
 
 /** One settled tool invocation. A failed read or listing keeps its refusal. */
 export type NoteToolResult =
@@ -145,6 +147,15 @@ export type NoteToolResult =
       title: string | null
       error: string | null
     }
+  | {
+      tool: 'memory'
+      toolCallId: string
+      action: MemoryToolName
+      label: string
+      /** The kit's own summary of what it wrote, or null on a refusal. */
+      output: string | null
+      error: string | null
+    }
 
 /** Map an SDK tool-call part onto {@link NoteToolCall} (null for dynamic). */
 export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | null {
@@ -197,6 +208,17 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
       return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
     case 'read_web_page':
       return { tool: 'readPage', toolCallId: part.toolCallId }
+    case 'remember':
+    case 'open_loop':
+    case 'update_loop':
+    case 'close_loop':
+    case 'record_decision':
+      return {
+        tool: 'memory',
+        toolCallId: part.toolCallId,
+        action: part.toolName,
+        label: memoryToolLabel(part.toolName, part.input),
+      }
   }
 }
 
@@ -416,6 +438,21 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
             title: null,
             error: output.error,
           }
+    }
+    case 'remember':
+    case 'open_loop':
+    case 'update_loop':
+    case 'close_loop':
+    case 'record_decision': {
+      const output = part.output
+      return {
+        tool: 'memory',
+        toolCallId: part.toolCallId,
+        action: part.toolName,
+        label: memoryToolLabel(part.toolName, part.input),
+        output: output.ok ? output.output : null,
+        error: output.ok ? null : output.error,
+      }
     }
   }
 }

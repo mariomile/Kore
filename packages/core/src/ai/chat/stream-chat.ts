@@ -5,9 +5,10 @@ import { loadAiSdk } from '../load-sdk'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
-import type { AgentPromptContext } from '../agent-profiles'
+import { withMemoryTools, type AgentPromptContext } from '../agent-profiles'
 import type { AgentStep, AgentStepOutcome } from './agent-steps'
 import { fitToContextWindow } from './context-window'
+import { MEMORY_TOOL_NAMES } from './memory-tools'
 import { chatSystemPrompt } from './system-prompt'
 import {
   buildNoteTools,
@@ -16,6 +17,7 @@ import {
   type NoteToolCall,
   type NoteToolDeps,
   type NoteToolResult,
+  type NoteTools,
 } from './tools'
 
 /**
@@ -119,7 +121,7 @@ export async function* streamChat(options: StreamChatOptions): AsyncGenerator<Ch
       context: options.context,
       semanticSearchEnabled: options.semanticSearchEnabled,
       customSystemPrompt: options.customSystemPrompt,
-      agentContext: options.agentContext ?? null,
+      agentContext: turnAgentContext(options.agentContext, options.toolDeps),
       allowEdits: options.allowEdits,
     }),
   })
@@ -198,18 +200,20 @@ export async function* streamChatTurn(
   model: LanguageModel,
   options: ChatTurnOptions,
 ): AsyncGenerator<ChatStreamEvent> {
+  const tools = buildNoteTools({
+    ...options.toolDeps,
+    semanticSearchEnabled: options.semanticSearchEnabled,
+    allowEdits: options.allowEdits,
+  })
   const leg: LegOptions = {
-    tools: buildNoteTools({
-      ...options.toolDeps,
-      semanticSearchEnabled: options.semanticSearchEnabled,
-      allowEdits: options.allowEdits,
-    }),
+    tools,
+    activeTools: activeToolNames(tools, options.toolDeps),
     instructions: chatSystemPrompt({
       today: options.today,
       context: options.context,
       semanticSearchEnabled: options.semanticSearchEnabled,
       customSystemPrompt: options.customSystemPrompt,
-      agentContext: options.agentContext ?? null,
+      agentContext: turnAgentContext(options.agentContext, options.toolDeps),
       allowEdits: options.allowEdits,
     }),
   }
@@ -303,7 +307,34 @@ export async function* streamChatTurn(
 
 interface LegOptions {
   tools: ReturnType<typeof buildNoteTools>
+  /** The tools the model sees: the memory tools only in a kit vault. */
+  activeTools: (keyof NoteTools)[]
   instructions: string
+}
+
+/** Whether this turn can write the vault's cyber-brain memory. */
+function hasMemoryKit(toolDeps: NoteToolDeps | undefined): boolean {
+  return toolDeps?.memoryWriteFn != null
+}
+
+/** Every tool, minus the memory tools outside a kit vault. */
+function activeToolNames(
+  tools: NoteTools,
+  toolDeps: NoteToolDeps | undefined,
+): (keyof NoteTools)[] {
+  const names = Object.keys(tools) as (keyof NoteTools)[]
+  if (hasMemoryKit(toolDeps)) return names
+  const memory = new Set<string>(MEMORY_TOOL_NAMES)
+  return names.filter((name) => !memory.has(name))
+}
+
+/** The prompt context, told the memory tools exist when they do. */
+function turnAgentContext(
+  context: AgentPromptContext | null | undefined,
+  toolDeps: NoteToolDeps | undefined,
+): AgentPromptContext | null {
+  if (context == null) return null
+  return hasMemoryKit(toolDeps) ? withMemoryTools(context) : context
 }
 
 type LegResult =
@@ -339,6 +370,7 @@ async function* streamLeg(
       instructions: leg.instructions,
       messages,
       tools: leg.tools,
+      activeTools: leg.activeTools,
       stopWhen: isStepCount(MAX_STEPS),
       // On the final permitted step, disable tools so the model must answer
       // from what it has already gathered. Without this a turn still calling

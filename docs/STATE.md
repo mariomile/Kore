@@ -1,5 +1,23 @@
 # Kore working state
 
+## cyber-brain Memory view and API-chat memory tools (Plan 35, step 5), 2026-11-10
+
+Ask: Mario, "vai e non fermarti" on Plan 35 after step 4.
+
+- [x] `cyber-brain/memory-view.ts`: `loadMemoryOverview` reads NOW, loops,
+  decisions (private ones skipped) and the last two run files (50 runs);
+  `checkMemoryHealth` runs the kit's `check`. Parsers mirror the kit's.
+- [x] `memory` route and surface (tab, deep link, command `nav.memory`,
+  sidebar row shown only in a kit vault); `components/memory/memory-screen.tsx`
+  with Now, Open loops, Decisions, Recent memory writes, Health.
+- [x] `ai/chat/memory-tools.ts`: the five kit tools for the API-key chat,
+  wired into `buildNoteTools`; `memoryWriteForChat` runs them through
+  `kit_script_run` signed `Kore chat`; the engine lists them only in a kit
+  vault (`activeTools`) and the prompt then tells the model to use them.
+  Chip, stored transcript schema and tests updated.
+- Not done: undo of a run (needs a kit command), slice 4 routines.
+- Not verified on a real Mac.
+
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
 Ask: Mario picked "conflict copy" for D2 of the holistic analysis

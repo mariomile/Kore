@@ -53,7 +53,7 @@ export function useNoteTrash(): NoteTrash {
       const root = graph?.root
       if (generation === undefined || root === undefined) {
         // No graph to trash into — report it; never a silent success.
-        startOperation('Trashing notes').fail('No graph is open.')
+        startOperation('Trashing notes').fail('No vault is open.')
         return false
       }
       const operation = startOperation('Trashing notes')

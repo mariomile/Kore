@@ -29,7 +29,7 @@ export function useVaultCompatReport(
     queryKey: vaultCompatQueryKey(graph?.root, graph?.generation),
     queryFn: () => {
       if (graph === null) {
-        throw new Error('no graph is open')
+        throw new Error('no vault is open')
       }
       return scanVaultCompat(graph.generation)
     },

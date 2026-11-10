@@ -104,7 +104,7 @@ export function ConnectorRow({
             size="sm"
             onClick={() => openUrlSync(connector.tokenUrl)}
           >
-            Get {connector.tokenLabel.toLowerCase()}
+            Get {connector.tokenNoun}
             <ExternalLink aria-hidden />
           </Button>
           <label className="flex w-full cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
@@ -113,7 +113,7 @@ export function ConnectorRow({
               onCheckedChange={(next) => setImportHistory(next === true)}
             />
             Also import items from before today (leave off if another app already wrote them into
-            this graph)
+            this vault)
           </label>
         </form>
       ) : null}

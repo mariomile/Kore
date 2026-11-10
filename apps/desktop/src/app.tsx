@@ -33,7 +33,7 @@ export function App(): ReactElement {
     if (!isMainWindow()) {
       return (
         <div className="flex h-screen w-screen flex-col items-center justify-center gap-1 px-8 text-center text-sm text-text-muted">
-          <p>This window couldn’t open the graph. Close it and reopen from the main window.</p>
+          <p>This window couldn’t open the vault. Close it and reopen from the main window.</p>
           {error !== null ? <p className="text-xs">{error}</p> : null}
         </div>
       )

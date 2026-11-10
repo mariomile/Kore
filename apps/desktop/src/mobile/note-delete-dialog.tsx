@@ -42,7 +42,7 @@ export function NoteDeleteDialog({
       return
     }
     if (graph === null) {
-      setError('No graph is open.')
+      setError('No vault is open.')
       return
     }
     submittingRef.current = true
@@ -73,7 +73,7 @@ export function NoteDeleteDialog({
       <DialogContent>
         <DialogTitle>Delete this note?</DialogTitle>
         <DialogDescription>
-          It moves to the graph’s trash and disappears from your notes. You can recover it on
+          It moves to the vault’s trash and disappears from your notes. You can recover it on
           desktop.
         </DialogDescription>
         {error !== null && <p className="text-sm text-destructive">{error}</p>}

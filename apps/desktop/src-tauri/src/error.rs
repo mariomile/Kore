@@ -59,7 +59,7 @@ impl AppError {
 
     pub fn no_graph() -> Self {
         Self::NoGraph {
-            message: "No graph is open".into(),
+            message: "No vault is open".into(),
         }
     }
 

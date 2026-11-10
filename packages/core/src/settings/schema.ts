@@ -17,6 +17,13 @@ import {
 import { browserSearchEngineSchema, browserOpenLinksInAppSchema } from './schema-browser'
 import { connectorsSchema } from './schema-connectors'
 import {
+  pasteCollectFilesSchema,
+  pasteCollectImagesSchema,
+  pasteCollectLinksSchema,
+  pasteCollectPdfsSchema,
+  pasteSaveLinkTextSchema,
+} from './schema-paste'
+import {
   accentColorSchema,
   chatTextSizeSchema,
   customAccentColorSchema,
@@ -65,6 +72,7 @@ import {
 export * from './schema-ai'
 export * from './schema-appearance'
 export * from './schema-browser'
+export * from './schema-paste'
 export * from './schema-connectors'
 export * from './schema-collections'
 export * from './schema-editor'
@@ -652,6 +660,11 @@ const settingsDocumentSchema = z.looseObject({
   hapticFeedback: hapticFeedbackSchema,
   browserSearchEngine: browserSearchEngineSchema,
   browserOpenLinksInApp: browserOpenLinksInAppSchema,
+  pasteCollectLinks: pasteCollectLinksSchema,
+  pasteCollectImages: pasteCollectImagesSchema,
+  pasteCollectPdfs: pasteCollectPdfsSchema,
+  pasteCollectFiles: pasteCollectFilesSchema,
+  pasteSaveLinkText: pasteSaveLinkTextSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

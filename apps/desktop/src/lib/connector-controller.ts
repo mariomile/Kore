@@ -94,7 +94,7 @@ export function createConnectorController(
       if (token === null || token.trim() === '') {
         record(id, {
           kind: 'failed',
-          message: `Add your ${connector.label} ${connector.tokenLabel.toLowerCase()}.`,
+          message: `Add your ${connector.label} ${connector.tokenNoun}.`,
         })
         return
       }

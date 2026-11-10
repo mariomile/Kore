@@ -58,7 +58,7 @@ export function useApplyNoteEdit(): (path: string, edit: NoteEdit) => Promise<vo
   return useCallback(
     async (path: string, edit: NoteEdit): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       await serializePerPath(path, async () => {
         // A loaded session is the note; otherwise disk has to still have it.

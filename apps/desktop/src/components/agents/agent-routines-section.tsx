@@ -133,7 +133,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
         <div className="min-w-0 flex-1 basis-72">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">
-            Automations run only in {graph?.name ?? 'this graph'}, while it is open in Kore. The
+            Automations run only in {graph?.name ?? 'this vault'}, while it is open in Kore. The
             window can stay closed. Runs and their changes appear here. Suggested templates are
             never added until you choose them.
           </p>
@@ -202,7 +202,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     })
                   }
                 >
-                  Assign to this graph
+                  Assign to this vault
                 </Button>
               ) : null}
               {routine.runs.length > 0 ? (

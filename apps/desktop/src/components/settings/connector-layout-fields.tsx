@@ -29,7 +29,7 @@ export function ConnectorLayoutFields({
       <CommitField
         label="Folder"
         value={settings.folder ?? connector.defaultFolder}
-        placeholder="Graph root"
+        placeholder="Vault root"
         onCommit={(value) => actions.setFolder(connector.id, value)}
         onProblem={onProblem}
       />

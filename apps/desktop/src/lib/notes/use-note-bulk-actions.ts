@@ -129,7 +129,7 @@ export function useNoteBulkActions(): NoteBulkActions {
     async (paths: readonly string[], folder: string): Promise<BulkOutcome> => {
       const target = folder.replaceAll(/^\/+|\/+$/g, '')
       return await run(
-        `Moving notes to ${target === '' ? 'the graph root' : target}`,
+        `Moving notes to ${target === '' ? 'the vault root' : target}`,
         paths,
         async (path, generation) => {
           if (folderOf(path) === target) {

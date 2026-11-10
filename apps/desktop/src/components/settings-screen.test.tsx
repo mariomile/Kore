@@ -309,13 +309,13 @@ describe('SettingsScreen', () => {
     await renderScreen('Application')
 
     const section = page.getByRole('region', { name: 'Danger zone' })
-    await section.getByRole('button', { name: /forget graph/i }).click()
+    await section.getByRole('button', { name: /forget vault/i }).click()
 
-    const dialog = page.getByRole('dialog', { name: /forget graph/i })
+    const dialog = page.getByRole('dialog', { name: /forget vault/i })
     await expect.element(dialog.getByText('/graphs/work')).toBeInTheDocument()
     expect(graph.forget).not.toHaveBeenCalled()
 
-    await dialog.getByRole('button', { name: /forget graph/i }).click()
+    await dialog.getByRole('button', { name: /forget vault/i }).click()
 
     await vi.waitFor(() => expect(graph.forget).toHaveBeenCalledWith('/graphs/work'))
   })
@@ -325,17 +325,17 @@ describe('SettingsScreen', () => {
     await renderScreen('Application')
 
     const section = page.getByRole('region', { name: 'Danger zone' })
-    await section.getByRole('button', { name: /delete graph/i }).click()
+    await section.getByRole('button', { name: /delete vault/i }).click()
 
-    const dialog = page.getByRole('dialog', { name: /delete graph/i })
+    const dialog = page.getByRole('dialog', { name: /delete vault/i })
     await expect.element(dialog.getByText('/graphs/work')).toBeInTheDocument()
     // Deleting an adopted vault trashes the user's own folder — the dialog
     // must say so in as many words.
     await expect.element(dialog.getByText(/everything inside it to Trash/)).toBeInTheDocument()
-    const confirm = dialog.getByRole('button', { name: /delete graph/i })
+    const confirm = dialog.getByRole('button', { name: /delete vault/i })
     await expect.element(confirm).toBeDisabled()
 
-    const nameInput = dialog.getByLabelText('Graph name')
+    const nameInput = dialog.getByLabelText('Vault name')
     await nameInput.fill('Wor')
     await expect.element(confirm).toBeDisabled()
     // Enter with a mismatched name must not delete either.

@@ -1,21 +1,5 @@
 # Kore working state
 
-## Holistic analysis: Stop reaches a CLI run that is still starting, 2026-11-10
-
-Ask: Mario, "find any state machines, any bugs, and any things that could be
-optimized"; critical fixes that need no product decision may ship without
-asking, one PR per fix. The full report is
-`/mnt/project-files/analisi/analisi-olistica-2026-11-10.md`.
-
-- [x] `packages/core/src/ai/agent-cli.ts`: a Stop (or New chat, or a routine's
-  Stop) pressed while the CLI turn was still registering its listener or
-  spawning the child was lost, and the edit-capable run carried on headless.
-  The turn now settles as aborted before spawning when the signal is already
-  aborted, and holds the native stop until `agent_cli_run` has returned (one
-  stop, sent when the child exists). Same in `runAgentCliCommand` (the login
-  flow).
-- Next: the other findings in the report wait for Mario's choice.
-
 ## Edits under a conflict banner survive closing the note, 2026-11-10
 
 Ask: Mario picked "conflict copy" for D2 of the holistic analysis
@@ -3409,6 +3393,18 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character

@@ -55,7 +55,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
     <SidebarSection storageKey="note-history" title="History">
       {versions.length === 0 ? (
         <p className="px-2 text-xs text-text-muted">
-          No versions yet — they appear as backup commits your edits.
+          No versions yet. They appear once Kore syncs your edits.
         </p>
       ) : (
         <ol className="space-y-0.5">

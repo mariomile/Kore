@@ -11,6 +11,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   are kept away from AI and agents exactly like `private: true`. The chat
   now reads up to 20,000 characters of the vault's AGENTS.md, as `kore
   guide` already did.
+- Settings → Agents: the Automations description no longer collapses into
+  a narrow column next to its buttons. The agent skill for Kore markdown
+  names the `.kore/` folder.
 
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in

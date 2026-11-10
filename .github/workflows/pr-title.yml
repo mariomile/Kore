@@ -13,7 +13,7 @@ jobs:
     steps:
       # The repo squash-merges, so the PR title becomes the commit message and,
       # for feat/fix, the user-facing changelog entry. Breaking-change
-      # markers (feat!:) are deliberately not accepted: Reflect is an app, not
+      # markers (feat!:) are deliberately not accepted: Kore is an app, not
       # a library — see CONTRIBUTING.md → PR titles.
       - name: PR title follows conventional commits
         env:

@@ -1,7 +1,7 @@
 [package]
 name = "reflect-cli"
 version = "0.1.0"
-description = "Read/discovery CLI over a Reflect graph (Plan 14)"
+description = "Read/discovery CLI over a Kore graph (Plan 14)"
 edition = "2021"
 
 [[bin]]

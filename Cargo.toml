@@ -1,4 +1,4 @@
-# Workspace for all Rust crates: the Tauri desktop shell, the `reflect` CLI,
+# Workspace for all Rust crates: the Tauri desktop shell, the `kore` CLI,
 # the shared index-schema crate, and first-party mobile plugins. One lockfile
 # pins one SQLite everywhere — the desktop writer and the CLI reader can
 # never skew.

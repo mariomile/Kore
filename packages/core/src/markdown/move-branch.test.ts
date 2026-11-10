@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { followMovedIds, planBranchMove, retargetBlockLinks } from './move-branch'
+import {
+  followMovedIds,
+  planBranchMove,
+  retargetBlockLinks,
+  sourceLinkMatcher,
+} from './move-branch'
 
 const isDaily = (note: string): boolean => note.toLowerCase() === '2026-11-10'
 
@@ -59,5 +64,16 @@ describe('followMovedIds', () => {
     expect(followMovedIds(md, ['idee1'], isDaily, 'DeepAgent')).toBe(
       '[[DeepAgent#^idee1]] [[2026-11-10#^call1]] [[Other#^idee1]] [[#^idee1]]',
     )
+  })
+})
+
+describe('sourceLinkMatcher', () => {
+  it("matches the source title, its backlinks' spellings, and nothing else", () => {
+    const matches = sourceLinkMatcher('Weekly Plan', ['weekly plan#^abcd|x', 'WP alias#^efgh'])
+    expect(matches('Weekly Plan')).toBe(true)
+    expect(matches('WEEKLY PLAN')).toBe(true)
+    expect(matches('WP alias')).toBe(true)
+    expect(matches('Other')).toBe(false)
+    expect(matches('')).toBe(false)
   })
 })

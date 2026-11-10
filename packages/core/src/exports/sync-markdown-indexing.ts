@@ -144,6 +144,7 @@ export {
   followMovedIds,
   planBranchMove,
   retargetBlockLinks,
+  sourceLinkMatcher,
   type BranchMove,
   type BranchMoveResult,
   formatEmbedBlock,

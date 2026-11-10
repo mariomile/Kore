@@ -1,3 +1,4 @@
+import { wikiNoteReference } from '../graph/note-reference'
 import { appendBlock } from './append-section'
 import { blockIdsIn, noteLinkBlockId } from './block-ids'
 import { parseNote } from './extract'
@@ -108,4 +109,37 @@ export function followMovedIds(
   return retargetBlockLinks(markdown, (note, id) =>
     note !== '' && moved.has(id) && pointsAtSource(note) ? destinationTarget : null,
   )
+}
+
+/** The note a link's note half names, as a comparable key; null when it names none. */
+function noteKey(note: string): string | null {
+  const reference = wikiNoteReference(note)
+  if (reference === null || reference.kind === 'self') {
+    return null
+  }
+  return reference.kind === 'path' ? `path:${reference.path}` : `key:${reference.key}`
+}
+
+/**
+ * Whether a link's note half names the source note: the way the source's own
+ * links name it (`sourceTarget`) or the way any indexed backlink to it does
+ * (`backlinkTargets`, the raw targets, fragments and labels included).
+ */
+export function sourceLinkMatcher(
+  sourceTarget: string,
+  backlinkTargets: readonly string[],
+): (note: string) => boolean {
+  const keys = new Set<string>()
+  for (const target of [sourceTarget, ...backlinkTargets]) {
+    const link = target.split('|')[0] ?? ''
+    const hash = link.lastIndexOf('#')
+    const key = noteKey(hash === -1 ? link : link.slice(0, hash))
+    if (key !== null) {
+      keys.add(key)
+    }
+  }
+  return (note) => {
+    const key = noteKey(note)
+    return key !== null && keys.has(key)
+  }
 }

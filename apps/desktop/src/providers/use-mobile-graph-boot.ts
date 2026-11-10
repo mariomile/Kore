@@ -299,7 +299,7 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
         throw new Error(
           kind === 'icloud'
             ? 'iCloud Drive isn’t available on this device.'
-            : 'No graph folder available.',
+            : 'No vault folder available.',
         )
       }
       const shouldCreateIcloudRoot =

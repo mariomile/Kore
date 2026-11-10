@@ -77,7 +77,7 @@ export function MobileGraphs(): ReactElement {
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
         ref={barRef}
-        title="Graphs"
+        title="Vaults"
         onBack={() => (canBack ? back() : navigate({ kind: 'settings' }))}
       />
       <main
@@ -117,7 +117,7 @@ export function MobileGraphs(): ReactElement {
                 ))}
                 {icloudDocumentsRoot !== null ? (
                   <SettingsActionRow
-                    label="New graph"
+                    label="New vault"
                     icon={Plus}
                     disabled={busy}
                     onPress={() => setCreateOpen(true)}

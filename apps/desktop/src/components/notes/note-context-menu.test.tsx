@@ -167,6 +167,6 @@ describe('NoteListContextMenu', () => {
 
     await userEvent.click(page.getByRole('menuitem', { name: /^Pin/ }))
     expect(toggleNotePinned).not.toHaveBeenCalled()
-    expect(operationFail).toHaveBeenCalledWith('No graph is open.')
+    expect(operationFail).toHaveBeenCalledWith('No vault is open.')
   })
 })

@@ -7,7 +7,7 @@ import type { BackupState } from '@/lib/backup-controller'
  * no commits, branches, or merges, just what the user's notes are doing.
  */
 export interface MobileSyncStatus {
-  /** What the user reads: `Backed up`, `Syncing`, `Needs review`, … */
+  /** What the user reads: `Synced`, `Syncing`, `Needs review`, … */
   label: string
   /**
    * Drives the indicator color: calm, working, or wants a look. `ok` is the
@@ -56,5 +56,5 @@ export function mobileSyncStatus(
   if (status.state === 'offline') {
     return { label: 'Offline', tone: 'attention', detail: status.message }
   }
-  return { label: 'Backed up', tone: 'ok', detail: null }
+  return { label: 'Synced', tone: 'ok', detail: null }
 }

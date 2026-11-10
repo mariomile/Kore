@@ -42,7 +42,7 @@ describe('runCopyNotePath', () => {
   it('fails loudly when no graph is open', async () => {
     await runCopyNotePath(null, 'notes/a.md')
     expect(startOperation).toHaveBeenCalledWith('Copying note path')
-    expect(operationFail).toHaveBeenCalledWith('No graph is open')
+    expect(operationFail).toHaveBeenCalledWith('No vault is open')
   })
 
   it('reports a clipboard failure through the operation', async () => {

@@ -221,7 +221,7 @@ export function MobileSettings(): ReactElement {
           />
 
           {showGraph ? (
-            <SettingsGroup header="Graph">
+            <SettingsGroup header="Vault">
               <SettingsNavRow
                 label={graph?.name ?? '—'}
                 value={storageLabel}
@@ -343,7 +343,7 @@ export function MobileSettings(): ReactElement {
 
           {showBackup ? (
             <SettingsGroup
-              header="Backup"
+              header="Sync"
               footer={
                 canConnect
                   ? 'Sync notes with Kore on your other devices.'

@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Scrolling the daily notes stays smooth when the Mac is busy: while the
+  stream moves a day is drawn as plain text, and the days on screen become
+  editors again as soon as the scroll rests. A click on a day gives it its
+  editor at once, with the caret where you clicked.
+
 - A Memory view for cyber-brain vaults: what's in NOW, the open loops, the
   decisions and the latest memory writes from every agent, each opening its
   file, plus the kit's own health check. The chat with your own API key

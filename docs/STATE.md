@@ -1,5 +1,16 @@
 # Kore working state
 
+## Daily stream: static days while scrolling, 2026-11-10
+
+- [x] Every day entering view mounted a full editor; DailyDay now renders
+  markdown as static text (MarkdownView with editor classes) until scroll
+  rests 150 ms. Only days the static view draws identically (staticDayBody);
+  cover/icon, images, embeds, fences, math, tables, callouts, HTML,
+  attachments and conflicts stay editors. Editor swap is a hidden takeover
+  until heights match. 4x CPU: fps 39 → 45, frames >100 ms 67 → 32-35, script
+  10.4 s → 7.6 s. Open step: static images (392/910 of Mario's dailies). Not
+  verified on WebKit/Mac. (#381)
+
 ## cyber-brain Memory view and API-chat memory tools (Plan 35, step 5), 2026-11-10
 
 Ask: Mario, "vai e non fermarti" on Plan 35 after step 4.

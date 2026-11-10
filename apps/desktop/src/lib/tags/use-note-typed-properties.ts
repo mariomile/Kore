@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   deriveCollectionPropertySchema,
@@ -25,6 +25,12 @@ export interface NoteTypedProperties {
   /** Tag-declared fields followed by inferred note-owned fields. */
   properties: TagProperty[]
   values: Record<string, CollectionValue> | undefined
+  /**
+   * The tag (display casing) whose schema declares the field under `key`, or
+   * `null` for a note-owned loose field. The first declaring tag wins, the
+   * same rule that picks the field's definition.
+   */
+  ownerTagOf: (key: string) => string | null
 }
 
 /**
@@ -139,5 +145,18 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     return next
   }, [values, properties, mtime])
 
-  return { tags: tags ?? [], tagTypes, properties, values: overlaid }
+  const ownerTagOf = useCallback(
+    (key: string): string | null => {
+      const owner = tagTypes.find((entry) =>
+        entry.type.properties.some((property) => property.key === key),
+      )
+      if (owner === undefined) {
+        return null
+      }
+      return (tags ?? []).find((entry) => entry.tagKey === owner.tagKey)?.tag ?? owner.tagKey
+    },
+    [tagTypes, tags],
+  )
+
+  return { tags: tags ?? [], tagTypes, properties, values: overlaid, ownerTagOf }
 }

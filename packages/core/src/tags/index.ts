@@ -18,6 +18,8 @@ export {
   relationTarget,
   relationTargetOf,
   relationCreateTarget,
+  withPropertyType,
+  QUICK_PROPERTY_TYPES,
   PERSON_DEFAULT_TARGET,
   rollupAggregationSchema,
   rollupConfigSchema,

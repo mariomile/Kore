@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { NoteTypeField } from '@/components/notes/note-type-field'
+import { PropertyFieldLabel } from '@/components/notes/property-field-label'
 import { PropertyFieldValue } from '@/components/tags/property-field-value'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
@@ -22,7 +23,7 @@ interface NotePropertiesSectionProps {
 export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
-  const { tags, properties, values } = useNoteTypedProperties(path)
+  const { tags, properties, values, ownerTagOf } = useNoteTypedProperties(path)
 
   if (tags.length === 0 && properties.length === 0) {
     return null
@@ -34,9 +35,11 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
         <NoteTypeField path={path} tags={tags} labelClassName="w-24" />
         {properties.map((property) => (
           <li key={property.key} className="flex min-h-7 items-center gap-2">
-            <span className="w-24 shrink-0 truncate text-[13px] text-text-muted">
-              {property.name}
-            </span>
+            <PropertyFieldLabel
+              property={property}
+              ownerTag={ownerTagOf(property.key)}
+              className="w-24"
+            />
             <PropertyValueEditor
               property={property}
               value={values?.[property.key]}

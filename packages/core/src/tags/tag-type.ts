@@ -193,6 +193,49 @@ export function relationCreateTarget(
   return undefined
 }
 
+/**
+ * The types a property can switch to in one gesture from a note's field
+ * label: every type that needs nothing beyond a name. Stamps (`created`,
+ * `updated`) and the computed types (`formula`, `rollup`, `reverse`) need
+ * their configuration, so they stay in the type's schema dialog.
+ */
+export const QUICK_PROPERTY_TYPES = [
+  'text',
+  'number',
+  'checkbox',
+  'date',
+  'select',
+  'multiselect',
+  'status',
+  'url',
+  'email',
+  'phone',
+  'rating',
+  'files',
+  'relation',
+  'relations',
+  'person',
+] as const satisfies readonly TagPropertyType[]
+
+/**
+ * `property` switched to `type`, keeping its name and key (so stored values
+ * stay put and read as a mismatch until edited) and the settings the new type
+ * can still use: options for the select-like types, a target for the
+ * relation-like ones. Computed configuration (`rollup`, `reverse`,
+ * `formula`) drops, since it only means something on its own type.
+ */
+export function withPropertyType(property: TagProperty, type: TagPropertyType): TagProperty {
+  const keepsOptions = type === 'select' || type === 'multiselect' || type === 'status'
+  const keepsTarget = type === 'relation' || type === 'relations' || type === 'person'
+  return {
+    name: property.name,
+    key: property.key,
+    type,
+    ...(keepsOptions && property.options !== undefined ? { options: property.options } : {}),
+    ...(keepsTarget && property.target !== undefined ? { target: property.target } : {}),
+  }
+}
+
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]

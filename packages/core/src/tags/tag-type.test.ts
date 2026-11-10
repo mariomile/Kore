@@ -11,10 +11,12 @@ import {
   relationTarget,
   relationTargetOf,
   relationCreateTarget,
+  withPropertyType,
   relationValue,
   tagDefinitionPath,
   tagDisplayName,
   tagNameForDefinitionPath,
+  type TagProperty,
   type TagType,
 } from './tag-type'
 
@@ -350,6 +352,26 @@ describe('new property types', () => {
       ],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})
+
+describe('withPropertyType', () => {
+  it('keeps name and key, and the settings the new type can use', () => {
+    const status: TagProperty = { name: 'Stage', key: 'stage', type: 'status', options: ['a', 'b'] }
+    expect(withPropertyType(status, 'select')).toEqual({ ...status, type: 'select' })
+    expect(withPropertyType(status, 'text')).toEqual({ name: 'Stage', key: 'stage', type: 'text' })
+    expect(
+      withPropertyType({ name: 'Co', key: 'co', type: 'relation', target: 'company' }, 'relations'),
+    ).toEqual({ name: 'Co', key: 'co', type: 'relations', target: 'company' })
+  })
+
+  it('drops computed configuration', () => {
+    expect(
+      withPropertyType(
+        { name: 'Total', key: 'total', type: 'formula', formula: { expression: '1' } },
+        'number',
+      ),
+    ).toEqual({ name: 'Total', key: 'total', type: 'number' })
   })
 })
 

@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { isTemplatePath } from '@reflect/core'
+import { PropertyFieldLabel } from '@/components/notes/property-field-label'
 import { PropertyFieldValue } from '@/components/tags/property-field-value'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
@@ -35,7 +36,7 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
   const addTag = useAddNoteTag()
-  const { tags, properties, values } = useNoteTypedProperties(path)
+  const { tags, properties, values, ownerTagOf } = useNoteTypedProperties(path)
 
   if (isTemplatePath(path)) {
     return null
@@ -68,9 +69,11 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
         <NoteTypeField path={path} tags={tags} />
         {properties.map((property) => (
           <li key={property.key} className="flex min-h-7 items-center gap-2">
-            <span className="w-32 shrink-0 truncate text-[13px] text-text-muted">
-              {property.name}
-            </span>
+            <PropertyFieldLabel
+              property={property}
+              ownerTag={ownerTagOf(property.key)}
+              className="w-32"
+            />
             <PropertyValueEditor
               property={property}
               value={values?.[property.key]}

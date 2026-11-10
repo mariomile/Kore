@@ -11,6 +11,17 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   the graph view. Sync is GitHub and iCloud, Backup is the zip file you
   export; the History panel and the connector links read correctly.
 
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
 - Two quick edits to a note from outside Kore (another device, an agent,
   iCloud) no longer leave the editor on the older one, so your next keystroke
   can't write it back over the newer text.

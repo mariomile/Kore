@@ -90,7 +90,7 @@ describe('buildIndexedNote', () => {
 
   it('indexes a marked tags/ note as a tag definition with its schema', () => {
     const source =
-      '---\nlore: tag\nproperties:\n  - {name: Author, key: author, type: text}\n---\nBooks.'
+      '---\nkore: tag\nproperties:\n  - {name: Author, key: author, type: text}\n---\nBooks.'
     const indexed = buildIndexedNote(parseNote({ path: 'tags/Book.md', source }), {
       fileHash: 'h',
       mtime: 0,

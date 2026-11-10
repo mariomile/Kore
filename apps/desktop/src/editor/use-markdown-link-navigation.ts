@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage, noteLinkHeading, resolveExistingMarkdownTarget } from '@reflect/core'
+import { errorMessage, noteLinkFragment, resolveExistingMarkdownTarget } from '@reflect/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -37,9 +37,9 @@ export function useMarkdownLinkNavigation(
           }
           if (resolution.kind === 'resolved') {
             navigateNoteLink({ target: routeForPath(resolution.path), openInSplit })
-            const heading = noteLinkHeading(href)
-            if (heading !== null) {
-              revealNoteHeading(resolution.path, heading)
+            const fragment = noteLinkFragment(href)
+            if (fragment !== null) {
+              revealNoteHeading(resolution.path, fragment)
             }
           } else if (resolution.kind === 'ambiguous') {
             reportAmbiguousNoteTitle('Opening link', href)

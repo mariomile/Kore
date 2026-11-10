@@ -160,6 +160,7 @@ export {
   wikiNoteReference,
   markdownNoteReference,
   noteLinkHeading,
+  noteLinkFragment,
   noteBasenameKey,
   type NoteReference,
 } from '../graph/note-reference'

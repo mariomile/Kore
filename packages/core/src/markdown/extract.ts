@@ -5,6 +5,7 @@ import {
   isAttachmentEmbedTarget,
   wikiEmbedAssetPath,
 } from './asset-paths'
+import { blockIdSpans } from './block-ids'
 import { embedSnapshotText } from './embed-snapshot'
 import { parseFrontmatter, splitFrontmatter } from './frontmatter'
 import { parseBody } from './grammar'
@@ -453,6 +454,10 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     }
   }
   collectTags(body, tagExcluded, tags)
+
+  // Obsidian `^id` anchors (Plan 33 C3) are addresses, not words: no task
+  // title, search text or preview carries one.
+  cuts.push(...blockIdSpans(body))
 
   const tasks: ParsedTask[] = []
   for (const taskNode of taskNodes) {

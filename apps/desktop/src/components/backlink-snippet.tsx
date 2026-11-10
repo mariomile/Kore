@@ -2,8 +2,14 @@ import { useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
 import type { WikilinkClickHandler } from '@meowdown/core'
-import { requoteCalloutBlock, separateCalloutTitles, type SnippetTask } from '@reflect/core'
+import {
+  requoteCalloutBlock,
+  separateCalloutTitles,
+  withoutBlockIds,
+  type SnippetTask,
+} from '@reflect/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
+import { resolveWikilink } from '@/editor/resolve-wikilink'
 import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useSnippetTaskToggle } from '@/hooks/use-snippet-task-toggle'
 
@@ -48,7 +54,11 @@ export function BacklinkSnippet({
 }: BacklinkSnippetProps): ReactElement {
   const onTaskClick = useSnippetTaskToggle(notePath, tasks)
   const openExternalLink = useOpenExternalLink()
-  const markdown = useMemo(() => separateCalloutTitles(requoteCalloutBlock(text)), [text])
+  // `^id` markers are Obsidian anchors, never text a reader sees (Plan 33 C3).
+  const markdown = useMemo(
+    () => separateCalloutTitles(requoteCalloutBlock(withoutBlockIds(text))),
+    [text],
+  )
   const hostRef = useRef<HTMLDivElement>(null)
   useCalloutDom(hostRef, false)
   return (
@@ -58,6 +68,7 @@ export function BacklinkSnippet({
         markdown={markdown}
         expandCollapsed
         onWikilinkClick={onWikilinkClick}
+        resolveWikilink={resolveWikilink}
         onLinkClick={openExternalLink}
         {...(onTaskClick ? { onTaskClick } : {})}
         resolveImageUrl={resolveImageUrl}

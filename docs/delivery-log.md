@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
 - Two quick edits to a note from outside Kore (another device, an agent,
   iCloud) no longer leave the editor on the older one, so your next keystroke
   can't write it back over the newer text.

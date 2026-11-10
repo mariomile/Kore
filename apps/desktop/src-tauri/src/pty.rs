@@ -191,17 +191,25 @@ pub fn pty_open(
     let (chunk_sender, chunk_receiver) = mpsc::sync_channel::<String>(OUTPUT_CHANNEL_CAPACITY);
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
+        let mut decoder = Utf8Stream::default();
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(count) => {
-                    let data = String::from_utf8_lossy(&buffer[..count]).into_owned();
+                    let data = decoder.decode(&buffer[..count]);
+                    if data.is_empty() {
+                        continue;
+                    }
                     if chunk_sender.send(data).is_err() {
                         break;
                     }
                 }
                 Err(_) => break,
             }
+        }
+        let tail = decoder.finish();
+        if !tail.is_empty() {
+            let _ = chunk_sender.send(tail);
         }
         // Dropping the sender closes the channel — the emitter's exit signal.
     });
@@ -350,6 +358,59 @@ pub async fn pty_close(state: State<'_, PtyState>, id: String) -> AppResult<()> 
     .await
 }
 
+/// Decodes a byte stream that arrives in arbitrary chunks. A multi-byte
+/// character (an accented letter, an emoji) that straddles two reads is held
+/// back until its last byte arrives, instead of being decoded half at a time
+/// into two U+FFFD replacement characters. Bytes that can never be valid
+/// UTF-8 still become U+FFFD, as before.
+#[derive(Default)]
+struct Utf8Stream {
+    pending: Vec<u8>,
+}
+
+impl Utf8Stream {
+    fn decode(&mut self, bytes: &[u8]) -> String {
+        self.pending.extend_from_slice(bytes);
+        let mut out = String::with_capacity(self.pending.len());
+        let mut start = 0;
+        while start < self.pending.len() {
+            match std::str::from_utf8(&self.pending[start..]) {
+                Ok(valid) => {
+                    out.push_str(valid);
+                    start = self.pending.len();
+                }
+                Err(err) => {
+                    let valid_end = start + err.valid_up_to();
+                    // `valid_up_to` marks a prefix that is valid UTF-8.
+                    out.push_str(
+                        std::str::from_utf8(&self.pending[start..valid_end]).unwrap_or_default(),
+                    );
+                    match err.error_len() {
+                        Some(invalid) => {
+                            out.push(char::REPLACEMENT_CHARACTER);
+                            start = valid_end + invalid;
+                        }
+                        // An incomplete sequence at the end: wait for more.
+                        None => {
+                            start = valid_end;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        self.pending.drain(..start);
+        out
+    }
+
+    /// Whatever is still held back when the stream ends.
+    fn finish(&mut self) -> String {
+        let rest = String::from_utf8_lossy(&self.pending).into_owned();
+        self.pending.clear();
+        rest
+    }
+}
+
 fn lookup(state: &State<'_, PtyState>, id: &str) -> AppResult<Arc<PtySession>> {
     let sessions = state
         .sessions
@@ -359,4 +420,45 @@ fn lookup(state: &State<'_, PtyState>, id: &str) -> AppResult<Arc<PtySession>> {
         .get(id)
         .cloned()
         .ok_or_else(|| AppError::unknown(format!("pty session {id} is gone")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Utf8Stream;
+
+    fn decode_in_chunks(bytes: &[u8], size: usize) -> String {
+        let mut stream = Utf8Stream::default();
+        let mut out: String = bytes
+            .chunks(size)
+            .map(|chunk| stream.decode(chunk))
+            .collect();
+        out.push_str(&stream.finish());
+        out
+    }
+
+    #[test]
+    fn a_character_split_across_reads_is_decoded_whole() {
+        let text = "città → 🦀 perché";
+        for size in 1..=text.len() {
+            assert_eq!(
+                decode_in_chunks(text.as_bytes(), size),
+                text,
+                "chunk size {size}"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_bytes_still_become_replacement_characters() {
+        let bytes = b"a\xffb\xc3(c";
+        assert_eq!(decode_in_chunks(bytes, 1), "a\u{FFFD}b\u{FFFD}(c");
+        assert_eq!(decode_in_chunks(bytes, bytes.len()), "a\u{FFFD}b\u{FFFD}(c");
+    }
+
+    #[test]
+    fn a_truncated_character_at_the_end_of_the_stream_is_flushed() {
+        let mut stream = Utf8Stream::default();
+        assert_eq!(stream.decode(b"ok \xf0\x9f"), "ok ");
+        assert_eq!(stream.finish(), "\u{FFFD}");
+    }
 }

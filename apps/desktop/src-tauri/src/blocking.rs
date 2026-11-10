@@ -228,7 +228,7 @@ mod tests {
         (
             "pty_write",
             "pty.rs",
-            "writes to an already-open PTY handle: a buffered fd write, not a file open",
+            "queues bytes for the session's writer thread; never touches the fd",
         ),
         (
             "pty_write",

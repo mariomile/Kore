@@ -26,7 +26,8 @@ const OUTPUT_CHANNEL_CAPACITY: usize = 256;
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 struct PtySession {
-    writer: Mutex<Box<dyn Write + Send>>,
+    /// Input for the session's writer thread (see `spawn_writer`).
+    input: mpsc::Sender<Vec<u8>>,
     master: Mutex<Box<dyn MasterPty + Send>>,
     child: Mutex<Box<dyn portable_pty::Child + Send + Sync>>,
     output_ack: Mutex<u64>,
@@ -171,7 +172,7 @@ pub fn pty_open(
 
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed).to_string();
     let session = Arc::new(PtySession {
-        writer: Mutex::new(writer),
+        input: spawn_writer(writer),
         master: Mutex::new(pair.master),
         child: Mutex::new(child),
         output_ack: Mutex::new(0),
@@ -276,21 +277,36 @@ pub fn pty_open(
     Ok(PtyOpenResult { id })
 }
 
-/// Write bytes into an open PTY.
+/// Feed a session's input from its own thread, in order.
+///
+/// A PTY write blocks once the kernel buffer (a few KB) is full and the
+/// program inside is not reading, which is what a large paste into vim or a
+/// running agent does. Writing from the command itself ran that wait on the
+/// main thread and froze the whole app until the program caught up. The
+/// queue keeps keystroke order, which concurrent async writes would not.
+fn spawn_writer(mut writer: Box<dyn Write + Send>) -> mpsc::Sender<Vec<u8>> {
+    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
+    thread::spawn(move || {
+        for bytes in receiver {
+            if let Err(err) = writer.write_all(&bytes).and_then(|()| writer.flush()) {
+                tracing::warn!(%err, "pty write failed; dropping further input");
+                break;
+            }
+        }
+        // All senders dropped (the session is gone) or the PTY closed.
+    });
+    sender
+}
+
+/// Queue bytes for an open PTY. Returns at once; the session's writer thread
+/// delivers them (see `spawn_writer`).
 #[tauri::command]
 pub fn pty_write(state: State<'_, PtyState>, id: String, data: String) -> AppResult<()> {
     let session = lookup(&state, &id)?;
-    let mut writer = session
-        .writer
-        .lock()
-        .map_err(|_| AppError::unknown("pty writer lock poisoned"))?;
-    writer
-        .write_all(data.as_bytes())
-        .map_err(|err| AppError::unknown(format!("pty write failed: {err}")))?;
-    writer
-        .flush()
-        .map_err(|err| AppError::unknown(format!("pty flush failed: {err}")))?;
-    Ok(())
+    session
+        .input
+        .send(data.into_bytes())
+        .map_err(|_| AppError::unknown(format!("pty session {id} no longer accepts input")))
 }
 
 fn acknowledge_output(session: &PtySession, sequence: u64) -> AppResult<()> {

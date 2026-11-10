@@ -40,7 +40,7 @@ const SCRIPT_IN_SYSTEM: &str = "scripts/brain.mjs";
 /// Bounds on the scripts folder the digest walks: a kit is a handful of
 /// modules, so anything bigger is not a kit and is refused, not hashed.
 const MAX_DIGEST_FILES: usize = 400;
-const MAX_DIGEST_DEPTH: usize = 4;
+const MAX_DIGEST_DEPTH: usize = 12;
 
 /// Arguments are one memory item each, never documents.
 pub const MAX_ARGS: usize = 64;
@@ -133,72 +133,135 @@ pub fn detect(root: &Path) -> Option<Kit> {
     parse_contract(&source)
 }
 
-/// Whether a file is part of the code the kit runs.
+/// Whether a file outside `node_modules` is code Node could load: a module,
+/// a native addon, WebAssembly, JSON, or an extensionless file `require`
+/// resolves. Notes beside the scripts (`README.md`) are not.
 fn is_code(name: &str) -> bool {
-    [".mjs", ".js", ".cjs", ".json"]
+    let stem = name.trim_start_matches('.');
+    !stem.contains('.')
+        || [
+            ".mjs", ".js", ".cjs", ".json", ".mts", ".cts", ".ts", ".node", ".wasm",
+        ]
         .iter()
         .any(|suffix| name.ends_with(suffix))
 }
 
-/// Every code file under `dir`, as `(relative path, absolute path)`.
-/// Hidden entries and `node_modules` are skipped; a symlink is recorded by
-/// its target so retargeting it changes the digest without following it.
+/// Bytes the digest reads at most: a kit is a few small scripts, so a
+/// folder past this is refused rather than half pinned.
+const MAX_DIGEST_BYTES: u64 = 32 * 1024 * 1024;
+
+struct Collected {
+    /// `(path relative to the vault, absolute path)`.
+    files: Vec<(String, PathBuf)>,
+    bytes: u64,
+}
+
+impl Collected {
+    fn push(&mut self, relative: String, path: PathBuf) -> io::Result<()> {
+        // A symlink counts by what it points at, and by the bytes Node
+        // would load through it; a link to a folder is refused, since
+        // following it could leave the vault or loop.
+        let target = fs::metadata(&path)?;
+        if !target.is_file() {
+            return Err(io::Error::other(format!(
+                "the kit's {relative} links to something that is not a file"
+            )));
+        }
+        self.bytes += target.len();
+        self.files.push((relative, path));
+        if self.files.len() > MAX_DIGEST_FILES || self.bytes > MAX_DIGEST_BYTES {
+            return Err(io::Error::other(format!(
+                "the kit's code is larger than Kore pins ({MAX_DIGEST_FILES} files, {} MB)",
+                MAX_DIGEST_BYTES / (1024 * 1024)
+            )));
+        }
+        Ok(())
+    }
+}
+
+/// Every file under `dir` Node could load, hidden ones included. Inside a
+/// `node_modules` folder every file counts, whatever its name.
 fn collect(
     dir: &Path,
     prefix: &str,
     depth: usize,
-    out: &mut Vec<(String, PathBuf)>,
+    in_modules: bool,
+    out: &mut Collected,
 ) -> io::Result<()> {
     if depth > MAX_DIGEST_DEPTH {
-        return Ok(());
+        return Err(io::Error::other(format!(
+            "the kit's code nests deeper than {MAX_DIGEST_DEPTH} folders"
+        )));
     }
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
+    let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<io::Result<_>>()?;
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with('.') || name == "node_modules" {
-            continue;
-        }
-        let relative = if prefix.is_empty() {
-            name.clone()
-        } else {
-            format!("{prefix}/{name}")
-        };
+        let relative = format!("{prefix}/{name}");
         let kind = entry.file_type()?;
         if kind.is_dir() {
-            collect(&entry.path(), &relative, depth + 1, out)?;
-        } else if (kind.is_file() || kind.is_symlink()) && is_code(&name) {
-            out.push((relative, entry.path()));
-        }
-        if out.len() > MAX_DIGEST_FILES {
-            return Err(io::Error::other(format!(
-                "the kit's scripts folder holds more than {MAX_DIGEST_FILES} files"
-            )));
+            let modules = in_modules || name == "node_modules";
+            collect(&entry.path(), &relative, depth + 1, modules, out)?;
+        } else if (kind.is_symlink() || kind.is_file()) && (in_modules || is_code(&name)) {
+            out.push(relative, entry.path())?;
         }
     }
     Ok(())
 }
 
-/// Lowercase-hex SHA-256 over the kit's scripts folder: each code file's
-/// relative path and bytes, in path order. Any edit, added or removed module
-/// changes it.
+/// Lowercase-hex SHA-256 over the code the kit's script can load: every
+/// code file of the scripts folder (hidden files, `node_modules` and the
+/// files symlinks point at included), plus the `package.json` and
+/// `node_modules` of each folder above it up to the vault root, where Node
+/// resolves packages and module settings. Each entry's vault path and bytes,
+/// in path order: any edit, added or removed module changes it. Code past
+/// the size limits fails, so it can never be allowed half pinned.
 pub fn digest(root: &Path, kit: &Kit) -> io::Result<String> {
-    let dir = root.join(kit.scripts_dir());
-    let mut files = Vec::new();
-    collect(&dir, "", 0, &mut files)?;
-    files.sort_by(|a, b| a.0.cmp(&b.0));
+    let scripts = kit.scripts_dir();
+    let mut out = Collected {
+        files: Vec::new(),
+        bytes: 0,
+    };
+    let label = if scripts.is_empty() { "." } else { &scripts };
+    collect(&root.join(&scripts), label, 0, false, &mut out)?;
+    let mut ancestor = Path::new(&scripts).parent();
+    while let Some(folder) = ancestor {
+        let label = folder.to_string_lossy();
+        let prefix = if label.is_empty() {
+            ".".to_string()
+        } else {
+            label.into_owned()
+        };
+        let path = root.join(folder);
+        let manifest = path.join("package.json");
+        if fs::symlink_metadata(&manifest).is_ok() {
+            out.push(format!("{prefix}/package.json"), manifest)?;
+        }
+        let modules = path.join("node_modules");
+        if fs::symlink_metadata(&modules).is_ok() {
+            collect(
+                &modules,
+                &format!("{prefix}/node_modules"),
+                0,
+                true,
+                &mut out,
+            )?;
+        }
+        ancestor = folder.parent();
+    }
+    out.files.sort_by(|a, b| a.0.cmp(&b.0));
     let mut hasher = Sha256::new();
-    for (relative, path) in files {
-        let meta = fs::symlink_metadata(&path)?;
+    for (relative, path) in out.files {
         hasher.update(relative.as_bytes());
         hasher.update([0]);
-        if meta.file_type().is_symlink() {
+        if fs::symlink_metadata(&path)?.file_type().is_symlink() {
             hasher.update(b"symlink:");
             hasher.update(fs::read_link(&path)?.to_string_lossy().as_bytes());
-        } else {
-            let bytes = fs::read(&path)?;
-            hasher.update((bytes.len() as u64).to_le_bytes());
-            hasher.update(&bytes);
+            hasher.update([0]);
         }
+        let bytes = fs::read(&path)?;
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(&bytes);
         hasher.update([0]);
     }
     let mut hex = String::with_capacity(64);
@@ -418,6 +481,51 @@ mod tests {
         assert!(trust_state(root, &kit).expect("state").is_trusted());
         fs::write(root.join("System/scripts/lib/extra.mjs"), "1").expect("extra");
         assert!(!trust_state(root, &kit).expect("state").is_trusted());
+    }
+
+    #[test]
+    fn hidden_files_packages_and_link_targets_are_pinned() {
+        let (dir, kit) = vault();
+        let root = dir.path();
+        let allow = |root: &Path| {
+            let state = trust_state(root, &kit).expect("state");
+            trust(root, state.digest()).expect("trust");
+        };
+        let pinned = |root: &Path| trust_state(root, &kit).expect("state").is_trusted();
+
+        // A hidden module and a package Node would resolve count.
+        allow(root);
+        fs::write(root.join("System/scripts/.hidden.mjs"), "1").expect("hidden");
+        assert!(!pinned(root));
+        allow(root);
+        fs::create_dir_all(root.join("System/scripts/node_modules/dep")).expect("dep");
+        fs::write(root.join("System/scripts/node_modules/dep/index"), "1").expect("dep file");
+        assert!(!pinned(root));
+        allow(root);
+        // So do a package manifest or packages above the scripts folder.
+        fs::write(root.join("System/package.json"), "{}").expect("manifest");
+        assert!(!pinned(root));
+        allow(root);
+        fs::create_dir_all(root.join("node_modules/up")).expect("root modules");
+        fs::write(root.join("node_modules/up/index.js"), "1").expect("up");
+        assert!(!pinned(root));
+
+        // A symlink pins the bytes it points at, not only its target path.
+        #[cfg(unix)]
+        {
+            let target = root.join("outside.mjs");
+            fs::write(&target, "export const a = 1\n").expect("target");
+            std::os::unix::fs::symlink(&target, root.join("System/scripts/linked.mjs"))
+                .expect("link");
+            allow(root);
+            fs::write(&target, "export const a = 2\n").expect("retarget bytes");
+            assert!(!pinned(root));
+
+            // A link to a folder is refused outright.
+            std::os::unix::fs::symlink(root.join("System"), root.join("System/scripts/loop"))
+                .expect("dir link");
+            assert!(trust_state(root, &kit).is_err());
+        }
     }
 
     fn args(words: &[&str]) -> Vec<String> {

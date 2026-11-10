@@ -35,4 +35,4 @@ pnpm --filter @reflect/db db:codegen   # rebuilds src/schema.gen.ts
 ```
 
 Never hand-edit `schema.gen.ts`; add a migration in
-`apps/desktop/src-tauri/migrations/` and regenerate.
+`crates/index-schema/migrations/` and regenerate.

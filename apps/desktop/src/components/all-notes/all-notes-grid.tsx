@@ -24,6 +24,9 @@ interface AllNotesGridProps {
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
 
+/** A card's footer names this many of the note's tags. */
+const MAX_FOOTER_TAGS = 3
+
 /**
  * The All Notes masonry view (Plan 28, Craft's register): the same notes as
  * the table, as live-preview cards — each note's actual rendered content at
@@ -105,6 +108,7 @@ export function AllNotesGrid({
     >
       {notes.slice(0, visibleCount).map((note) => {
         const entry = type != null ? entryByPath.get(note.path) : undefined
+        const shownTags = note.tags.slice(0, MAX_FOOTER_TAGS)
         return (
           <button
             key={note.path}
@@ -147,17 +151,18 @@ export function AllNotesGrid({
                     path={note.path}
                     mtime={note.mtime}
                     snippet={note.snippet}
+                    shownTags={shownTags}
                     resolveImageUrl={resolvePreviewImageUrl}
                   />
                 </div>
               </div>
               <div className="relative z-[1] mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
-                {note.tags.slice(0, 3).map((noteTag) => (
+                {shownTags.map((noteTag) => (
                   <span
                     key={noteTag}
                     className="rounded-full border border-border px-2 py-0.5 text-2xs font-medium text-text-secondary"
                   >
-                    {noteTag}
+                    #{noteTag}
                   </span>
                 ))}
                 <span className="ml-auto text-2xs text-text-muted">

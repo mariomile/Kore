@@ -20,6 +20,8 @@ function firstTask(source: string): TaskMarker {
 interface Harness {
   snapshots: NoteSessionSnapshot[]
   writes: Array<{ path: string; contents: string }>
+  /** Conflict copies the session asked the host to save on close. */
+  copies: Array<{ path: string; contents: string }>
   applied: string[]
   contents: Array<{ content: string; origin: string }>
   /** `null` deletes the file: subsequent reads throw the notFound AppError. */
@@ -41,6 +43,7 @@ function harness(options?: {
 }): Harness {
   const snapshots: NoteSessionSnapshot[] = []
   const writes: Array<{ path: string; contents: string }> = []
+  const copies: Array<{ path: string; contents: string }> = []
   const applied: string[] = []
   const contents: Array<{ content: string; origin: string }> = []
   let disk = options?.disk === undefined ? '# Hello\n' : options.disk
@@ -65,6 +68,9 @@ function harness(options?: {
               writes.push({ path, contents })
               disk = contents
             },
+      writeConflictCopy: async (path, contents) => {
+        copies.push({ path, contents })
+      },
     },
     classify: options?.classify ?? (() => 'exact'),
     onSnapshot: (snapshot) => {
@@ -86,6 +92,7 @@ function harness(options?: {
   return {
     snapshots,
     writes,
+    copies,
     applied,
     contents,
     setDisk: (contents) => {
@@ -206,6 +213,39 @@ describe('createNoteSession', () => {
     expect(writes).toEqual([{ path: 'notes/a.md', contents: '# Same on both\n' }])
     expect(snapshots.at(-1)?.conflict).toBeNull()
     expect(snapshots.at(-1)?.dirty).toBe(false)
+  })
+
+  it('closing under a parked conflict saves the buffer as a copy and leaves the note alone', async () => {
+    const { session, writes, copies, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Hello mine\n')
+    setDisk('# Hello theirs\n')
+    session.externalChanged()
+    await settled()
+    session.editorChanged('# Hello mine, more typing\n')
+
+    await session.flushOnClose()
+    session.dispose() // the pane's teardown closes again: no second copy
+    await settled()
+
+    expect(writes).toEqual([])
+    expect(copies).toEqual([{ path: 'notes/a.md', contents: '# Hello mine, more typing\n' }])
+  })
+
+  it('closing with a parked conflict but a buffer equal to theirs copies nothing', async () => {
+    const { session, copies, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Same on both\n')
+    setDisk('# Same on both\n')
+    session.externalChanged()
+    await settled()
+
+    session.dispose()
+    await settled()
+
+    expect(copies).toEqual([])
   })
 
   it('re-gates protection when external content stops being representable', async () => {

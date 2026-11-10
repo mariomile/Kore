@@ -96,7 +96,7 @@ export function AllNotesGrid({
   }
   if (notes.length === 0) {
     return (
-      <p className="px-12 py-10 text-sm text-text-muted">
+      <p className="py-10 pl-12 pr-7 text-sm text-text-muted">
         {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
       </p>
     )
@@ -104,7 +104,7 @@ export function AllNotesGrid({
   return (
     <div
       data-testid="all-notes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 px-12 pb-10 pt-2 [grid-template-rows:masonry]"
+      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 pb-10 pl-12 pr-7 pt-2 [grid-template-rows:masonry]"
     >
       {notes.slice(0, visibleCount).map((note) => {
         const entry = type != null ? entryByPath.get(note.path) : undefined

@@ -16,22 +16,16 @@ import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } 
 /** The `kore:` frontmatter value that marks a note as a tag definition. */
 export const TAG_TYPE_MARKER = 'tag'
 
-/** The frontmatter key that carries {@link TAG_TYPE_MARKER}. */
-export const TAG_TYPE_MARKER_KEY = 'kore'
-
 /**
- * The key the marker had before the Kore rename (`lore: tag`). Still read so
- * existing definitions stay typed; every schema write replaces it with
- * {@link TAG_TYPE_MARKER_KEY}, and nothing writes it again.
+ * The marker as every writer applies it (`upsertFrontmatter` deletes an
+ * `undefined` key): `kore: tag`, dropping the `lore: tag` spelling used
+ * before the Kore rename. That old spelling is still read, so existing
+ * definitions stay typed until their next schema save rewrites them.
  */
-export const LEGACY_TAG_TYPE_MARKER_KEY = 'lore'
+export const TAG_DEFINITION_MARKER = { kore: TAG_TYPE_MARKER, lore: undefined } as const
 
-/** Does this frontmatter carry the tag-definition marker, under either key? */
-export function hasTagTypeMarker(frontmatter: Frontmatter): boolean {
-  return (
-    frontmatter[TAG_TYPE_MARKER_KEY] === TAG_TYPE_MARKER ||
-    frontmatter[LEGACY_TAG_TYPE_MARKER_KEY] === TAG_TYPE_MARKER
-  )
+function hasTagTypeMarker(frontmatter: Frontmatter): boolean {
+  return frontmatter['kore'] === TAG_TYPE_MARKER || frontmatter['lore'] === TAG_TYPE_MARKER
 }
 
 /** Property value kinds a tag schema can declare (V1 set). */

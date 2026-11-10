@@ -1,8 +1,6 @@
 import {
   RESERVED_FRONTMATTER_KEYS,
-  LEGACY_TAG_TYPE_MARKER_KEY,
-  TAG_TYPE_MARKER,
-  TAG_TYPE_MARKER_KEY,
+  TAG_DEFINITION_MARKER,
   type GistFrontmatter,
   type TagProperty,
 } from '@reflect/core'
@@ -89,8 +87,7 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
     }
   }
   if (patch.tagSchema !== undefined) {
-    yaml[TAG_TYPE_MARKER_KEY] = TAG_TYPE_MARKER
-    yaml[LEGACY_TAG_TYPE_MARKER_KEY] = undefined
+    Object.assign(yaml, TAG_DEFINITION_MARKER)
     // Spelled out key-by-key so the YAML block's shape (and key order) is
     // this module's contract, not whatever object the caller happened to hold.
     yaml['properties'] = patch.tagSchema.map((property) => ({

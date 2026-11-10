@@ -5,6 +5,7 @@ import { hashContent } from '../indexing/hash'
 import { parseNote } from '../markdown/extract'
 import { upsertFrontmatter } from '../markdown/frontmatter'
 import { wikiLinkSafe } from '../markdown/edit'
+import { TAG_DEFINITION_MARKER } from '../tags/tag-type'
 
 export type ResourceKind = 'link' | 'image' | 'pdf' | 'file'
 
@@ -97,7 +98,7 @@ async function ensureResourceType(kind: ResourceKind, generation: number): Promi
   await createNoteIfAbsent(
     `tags/${kind}.md`,
     upsertFrontmatter(`# ${labels[kind]}\n`, {
-      kore: 'tag',
+      ...TAG_DEFINITION_MARKER,
       properties: [
         kind === 'link'
           ? { name: 'URL', key: 'url', type: 'url' }

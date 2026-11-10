@@ -194,9 +194,7 @@ export {
 } from '../markdown'
 export {
   TAG_TYPE_MARKER,
-  TAG_TYPE_MARKER_KEY,
-  LEGACY_TAG_TYPE_MARKER_KEY,
-  hasTagTypeMarker,
+  TAG_DEFINITION_MARKER,
   EMPTY_TAG_TYPE,
   RESERVED_FRONTMATTER_KEYS,
   missingCreatedStamps,

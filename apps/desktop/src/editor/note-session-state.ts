@@ -67,6 +67,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * keystroke would write v2 back over v3.
    */
   let readSequence = 0
+  /** The buffer last saved as a conflict copy, so a repeat close copies nothing. */
+  let copiedContent: string | null = null
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -156,6 +158,40 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     save()
     // save() extended the chain synchronously (or left it settled when there
     // was nothing to do) — the chain as of now is exactly this flush's write.
+    return saveChain
+  }
+
+  /**
+   * A closing note can't wait for "Keep mine / Load theirs": under a parked
+   * conflict the final flush is a no-op, so the edits made after the banner
+   * would be dropped. Save them beside the note as a conflict copy instead
+   * and leave the note itself on the version from disk. Never blocks.
+   */
+  function preserveParkedConflict(): void {
+    const writeCopy = io.writeConflictCopy
+    if (discarded || !writeCopy || !dirty || isProtected || conflict === null) {
+      return
+    }
+    const content = header + buffer
+    if (content === conflict || content === copiedContent) {
+      return
+    }
+    copiedContent = content
+    const at = path
+    saveChain = saveChain
+      .then(() => writeCopy(at, content))
+      .catch((cause) => {
+        console.error('failed to save conflict copy:', cause)
+        copiedContent = null
+        error = errorMessage(cause)
+        emit()
+      })
+  }
+
+  function flushOnClose(): Promise<void> {
+    void flush()
+    preserveParkedConflict()
+    // Both steps extend the chain synchronously: its tail is this close's work.
     return saveChain
   }
 
@@ -490,7 +526,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     // reads the (now frozen) buffer, so pending edits persist to this
     // session's path even after the UI moves on.
     if (!discarded) {
-      void flush()
+      void flushOnClose()
     }
     disposed = true
   }
@@ -512,6 +548,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     editorChanged,
     externalChanged,
     flush,
+    flushOnClose,
     keepMine,
     loadTheirs,
     content: () => header + buffer,

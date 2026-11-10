@@ -34,7 +34,7 @@ solo `body`. Tutto il resto scende da lì: `parseNote` restituisce
 tabella `tags`, e da quella tabella pescano le collection, i filtri
 `tag:`, la pagina del tag, l'FTS.
 
-Lo schema di un tag sta in `tags/<nome>.md` con marker `lore: tag`; i valori
+Lo schema di un tag sta in `tags/<nome>.md` con marker `kore: tag`; i valori
 delle proprietà stanno nel frontmatter della singola nota come chiavi piatte.
 Quindi oggi **l'appartenenza sta nel corpo e i dati stanno nel frontmatter**:
 una separazione che non ha una ragione di design, ha una ragione storica

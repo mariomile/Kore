@@ -203,6 +203,7 @@ export {
 } from '../markdown'
 export {
   TAG_TYPE_MARKER,
+  TAG_DEFINITION_MARKER,
   EMPTY_TAG_TYPE,
   RESERVED_FRONTMATTER_KEYS,
   missingCreatedStamps,

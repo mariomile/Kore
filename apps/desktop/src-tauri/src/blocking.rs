@@ -278,7 +278,7 @@ mod tests {
         (
             "window_bootstrap",
             "windows.rs",
-            "window and registry state under a mutex; no filesystem or SQLite work",
+            "registry state under a mutex plus an atomic generation read; never the index writer lock",
         ),
     ];
 

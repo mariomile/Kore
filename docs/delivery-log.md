@@ -7,15 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- An agent can get a key that only proposes: `kore keys add "Grok" --propose`.
-  It sees the writing tools, but nothing it writes touches your notes until
-  you accept it, in Activity under "Waiting for you" (with what it would
-  add or remove) or with `kore proposals accept <id>`; then the change is
-  written in its name and shows in the log. Reject drops it. In Settings →
-  Agents each agent is Read-only, Proposes changes (the default for a new
-  one) or Reads and writes, and you can change it without a new key.
-  The preview shows every detail the agent sent, and accepting twice never
-  writes twice.
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
 
 - The notes folder is called a vault everywhere in Kore, and Graph means only
   the graph view. Sync is GitHub and iCloud, Backup is the zip file you

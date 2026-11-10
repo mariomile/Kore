@@ -1,3 +1,26 @@
+## Daily stream scroll: link cards no longer fade on hover, 2026-11-10
+
+Ask: Mario feels lag scrolling the daily notes and asked whether recent
+releases made them heavier.
+
+- Measured (headless Chromium, production build, `?seed=obsidian` with
+  dailies shaped like his: bare X links, wiki links, agent log bullets;
+  60,000 px of wheel scroll): v0.85.0, v0.90.0, v0.93.0, v0.95.0 and master
+  spend the same main-thread time per mounted day (about 45 ms of script).
+  Nothing shipped in 0.93 to 0.95 touches the stream.
+- One regression, since link preview cards (v0.86.0): frames over 33 ms went
+  from 6-15 to 30-40 per run. Cause: `.kore-link-card` had a 120 ms
+  `background-color` transition, and scrolling moves cards under the resting
+  pointer, so each one repaints for the length of the fade twice.
+- [x] `styles/link-cards.css`: transition removed, the hover lift stays.
+  After: 5 frames over 33 ms, 60.4 fps (was 31 and 56.1).
+- Caveat: the container renders in software, so the Mac's GPU likely pays
+  less for the same repaint. Not verified on WebKit.
+- Not done, needs Mario's call: mounting a day costs a whole Meowdown editor
+  (about 105 chrome nodes, 28 state reconfigurations); at 4x CPU slowdown the
+  stream runs at 40 fps on every version. Saves do not run while scrolling,
+  so the index-query invalidation is not part of this.
+
 # Kore working state
 
 ## Edits under a conflict banner survive closing the note, 2026-11-10
@@ -3422,20 +3445,6 @@ screen: Agents then Close lands on today.
   agent-run-lock vitest, chat-provider browser test on Chromium, cargo
   test/clippy for the CLI, the UTF-8 decoder in a standalone crate,
   typecheck, oxfmt, rustfmt. Not run: the desktop crate (CI covers it).
-
-- 2026-11-09 — Plan 33 A2, CLI half (#350): `kore keys add --propose`
-  keeps an agent's writes in `.kore/proposals/` as the tool call it sent,
-  signed by the process; `kore proposals accept/reject`. After a strict
-  review: no stored argv, accept rebuilds through the MCP tool table, one
-  `access` field per key, tool table moved to `mcp/tools.rs`. Activity
-  now lists them under "Waiting for you" with a preview and Accept/Reject
-  (app runs the bundled CLI via `proposals_run`). Settings → Agents picks
-  read / propose / write per agent, changeable without a new key; new
-  agents start at propose. A2 is complete pending Mario's live check.
-  Full-review fixes: the preview lists every argument a tool's own lines
-  leave out (remember's confidence, create_note's properties), accept
-  claims the file by rename first so a double click writes once and a
-  failed write puts it back, and Activity says when proposals can't load.
 
 - 2026-11-09 — Project cleanup pass, no feature change. Ran typecheck,
   lint, the Node vitest projects (3,566), cargo test/clippy/fmt on the

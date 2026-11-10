@@ -48,9 +48,20 @@ C1, C3, C2; one step = one commit, Mario's ok before each next feature).
   `/mnt/project-files/video/zoom-rifinito.mp4`. Verified: `block-zoom.test.tsx`
   15, `block-zoom-target.test.ts` 8, router-store test, 31 browser files
   (editor, routing, palette), palette and Back checked in the dev app.
-- [ ] C3 `^id` line references: resolve, open at the line, transclude,
-  "copy link to line".
-- [ ] C2 move a branch to another note (`⌘⇧M`), updating `^id` links.
+- [x] C3 `^id` line references: resolve, open at the line, transclude,
+  "copy link to line". Markers are hidden in the editor and previews (only
+  ids of four or more characters, Mario 2026-11-10) and links read the note
+  name. See the Session log entries of 2026-11-09 and 2026-11-10.
+- [x] C2 move a branch to another note (`⌘⇧M`, the block menu's "Move to
+  note…", ⌘K "Move block to note…"), Mario's "procedi" 2026-11-10. The block
+  zoom would show at the caret leaves the note in one undoable step and is
+  appended to the picked note (`apps/desktop/src/editor/move-branch.ts`,
+  picker in `move-branch-picker.tsx`); text policy in
+  `packages/core/src/markdown/move-branch.ts`: `[[Note#^id]]` links to a
+  moved line follow it in the two notes and in every note the index lists as
+  linking to it, a same-note link inside the branch to a line left behind
+  names the source. A failed write to the other note puts the branch back.
+  Nothing is left behind (the plan's rule); no cross-note undo yet.
 
 ## Rename visible Reflect leftovers to Kore, 2026-11-09
 
@@ -3378,6 +3389,15 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-10 — Move a branch to another note (Plan 33 C2): ⌘⇧M, the block
+  menu and ⌘K open a "Move to…" picker over note titles (the current note is
+  never offered); the branch lands at the end of the picked note and `^id`
+  links follow it. Verified: `move-branch.test.ts` (6, core),
+  `move-branch.test.tsx` (3, chromium: the move with a link in a third note
+  repointed, the current note not offered, a failed write puts the branch
+  back), block-ids/zoom/toolbar/palette/shortcuts browser tests (61), keymap
+  and command tests (56), typecheck, lint.
 
 - 2026-11-10 — `^id` hiding rule (Plan 33 C3, Mario's card choice "Solo id
   veri (4+ caratteri)"): the editor, previews, backlinks and extracted text

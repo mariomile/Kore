@@ -8,6 +8,7 @@ import { toggleNotePrivate } from '@/lib/note-private'
 import { startOperation } from '@/lib/operations'
 import { zoomLastFocusedEditor } from '@/editor/block-zoom-plugin'
 import { copyLinkToLastFocusedLine } from '@/editor/copy-block-link'
+import { moveBranchFromLastFocused } from '@/editor/move-branch-opener'
 import type { AppCommand } from './types'
 
 /**
@@ -186,6 +187,16 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
     // (only when it has none) and copies [[Note#^id]].
     run: () => {
       copyLinkToLastFocusedLine()
+    },
+  },
+  {
+    id: 'note.moveBranch',
+    title: 'Move block to note…',
+    keywords: ['branch', 'move', 'send', 'refile', 'outline', 'list item'],
+    // ⌘⇧M inside the editor; the palette entry moves the caret's block in
+    // the note editor that last had focus.
+    run: () => {
+      moveBranchFromLastFocused()
     },
   },
   {

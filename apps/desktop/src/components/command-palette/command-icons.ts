@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUturnRight,
   CalendarDays,
   CloudUpload,
   Command,
@@ -39,6 +40,7 @@ export const COMMAND_ICONS: Record<string, Icon> = {
   'history.forward': ArrowRight,
   'note.zoomIn': Locate,
   'note.copyLineLink': Link,
+  'note.moveBranch': ArrowUturnRight,
   'palette.open': Search,
   'note.togglePin': Pin,
   'note.publishGist': CloudUpload,

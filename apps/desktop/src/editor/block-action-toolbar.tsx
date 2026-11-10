@@ -8,6 +8,7 @@ import {
   ArrowUp,
   Checklist,
   Copy,
+  ArrowUturnRight,
   Link,
   List,
   Locate,
@@ -29,6 +30,8 @@ import {
 import { canLinkToBlock } from './block-id-plugin'
 import { canZoom, zoomIntoBlockAt } from './block-zoom-plugin'
 import { copyLinkToBlock } from './copy-block-link'
+import { canMoveBranch } from './move-branch-picker'
+import { openMoveBranch } from './move-branch-opener'
 import { whenEditorMounted } from './when-editor-mounted'
 
 const HANDLE_CLICK_PX = 5
@@ -320,6 +323,12 @@ function BlockActionMenuItems({
         <DropdownMenuItem onClick={() => run(() => void copyLinkToBlock(editor.view, state.from))}>
           <Link aria-hidden />
           Copy link to line
+        </DropdownMenuItem>
+      ) : null}
+      {state.count === 1 && canMoveBranch(editor.view, state.from) ? (
+        <DropdownMenuItem onClick={() => run(() => void openMoveBranch(editor.view, state.from))}>
+          <ArrowUturnRight aria-hidden />
+          Move to note…
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuItem onClick={() => run(() => duplicateRange(editor, state))}>

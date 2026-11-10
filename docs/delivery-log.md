@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Move a block to another note: put the caret on a line and press ⌘⇧M (or
+  use the block menu or ⌘K), pick the note, and the line with everything
+  under it moves to the end of that note. A heading moves with its section.
+  Links to its lines keep working: they now point at the new note.
+
 - Links to a single line, Obsidian-style: `[[Note#^id]]` opens the note on
   the line that ends with `^id` and highlights it for a moment, and
   `![[Note#^id]]` shows that line (with its sub-items) inside another note.

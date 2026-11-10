@@ -31,7 +31,7 @@ pub(super) fn open_or_init(root: &Path) -> AppResult<Repository> {
 /// Open the graph's repository; errors if backup was never set up.
 pub(super) fn open_existing(root: &Path) -> AppResult<Repository> {
     if !root.join(".git").exists() {
-        return Err(AppError::not_found("backup is not set up for this graph"));
+        return Err(AppError::not_found("sync is not set up for this vault"));
     }
     Ok(Repository::open(root)?)
 }

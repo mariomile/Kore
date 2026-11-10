@@ -3394,20 +3394,17 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-10 — Fix (data loss, D4 of the holistic analysis): the capture
-  drain no longer writes over a daily note that is still an iCloud
-  placeholder. On iOS an evicted note is a `.name.md.icloud` stub, so
-  `readNote` answered `notFound` and the drain saved a daily holding only the
-  shared link, forking the Mac's text into an iCloud conflict copy. Now, on
-  `notFound`, `readNoteUnlessMissing` (`capture-note.ts`) asks
-  `readNoteLocal`; an evicted note requests the download and stops the pass
-  with the new silent `ReconcileStop` reason `evicted`, the spool stays, and
-  the capture controller retries on a doubling timer (2 s to 60 s). Same for
-  text captures and for an evicted same-day capture note (no duplicate
-  capture). Enrichment is untouched: it never writes a daily it read as
-  empty. Verified: 5 new drain tests (red without the fix), 2 controller
-  tests on Chromium, core-node actions (318), typecheck and lint. Not run on
-  a device.
+- 2026-11-10 — Copy pass, no behavior change: the notes folder is called
+  "vault" everywhere in the app (desktop, iPhone, error messages from Rust);
+  "Graph" now names only the dot view and the local graph. Sync means GitHub
+  and iCloud ("Sync now", "Stop syncing", "Synced"), Backup means the zip
+  export (the "Graph archive" field is now "Backup"), and "Backed up
+  automatically" is gone from the iCloud card. Fixed the broken History empty
+  state, "Setup graph" and "Get api key" (connectors carry a `tokenNoun`).
+  CLI `--graph` and `$KORE_GRAPH` are unchanged. Verified: typecheck + lint,
+  the 40 affected vitest files on Chromium, rustfmt on the touched Rust
+  files, before/after screenshots on `?seed=obsidian`. Not run: WebKit
+  shard, cargo test (only message strings changed, no Rust test asserts them).
 
 - 2026-11-10 — Robustness fixes from the holistic analysis (section 2),
   one commit each, no product change. Terminal: a multi-byte character

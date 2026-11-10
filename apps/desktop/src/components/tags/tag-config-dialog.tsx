@@ -231,7 +231,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             Properties become columns of the type's collection and fields on every note of this
             type. They are stored in{' '}
             <code className="font-mono text-xs">tags/{foldTag(tag)}.md</code>, a note that syncs
-            with the graph.
+            with the vault.
           </DialogDescription>
         </DialogHeader>
         {needsConversion ? (

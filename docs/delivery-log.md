@@ -7,9 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- iPhone: sharing a link or a note while today's daily is still downloading
-  from iCloud no longer overwrites it. Kore asks iCloud for the file, waits,
-  and adds the capture once the real note is there.
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
 
 - Closing a note while the "changed elsewhere" banner is open no longer
   throws away what you typed: Kore saves it beside the note as

@@ -28,7 +28,7 @@ export function GraphBackupSection(): ReactElement {
           'kore-backup',
           'zip',
         ),
-        filters: [{ name: 'Kore graph backup', extensions: ['zip'] }],
+        filters: [{ name: 'Kore vault backup', extensions: ['zip'] }],
       })
       if (path === null) return
       await flushOpenDocuments()
@@ -42,8 +42,8 @@ export function GraphBackupSection(): ReactElement {
         settings.agentRoutines.filter((routine) => routine.graphRoot === graph.root),
       )
       toast.add({
-        title: 'Graph backup exported',
-        description: 'Notes, saved chats, attachments and automations are in the archive.',
+        title: 'Backup exported',
+        description: 'Notes, saved chats, attachments and automations are in the backup.',
       })
     })
   }
@@ -54,13 +54,13 @@ export function GraphBackupSection(): ReactElement {
         throw new Error('Settings must load before restoring automations.')
       const archive = await open({
         multiple: false,
-        filters: [{ name: 'Kore graph backup', extensions: ['zip'] }],
+        filters: [{ name: 'Kore vault backup', extensions: ['zip'] }],
       })
       if (typeof archive !== 'string') return
       const parent = await open({
         directory: true,
         multiple: false,
-        title: 'Choose where to create the restored graph',
+        title: 'Choose where to create the restored vault',
       })
       if (typeof parent !== 'string') return
       const restored = await restoreGraphBackup(archive, parent)
@@ -77,9 +77,9 @@ export function GraphBackupSection(): ReactElement {
         agentRoutines: [...current.agentRoutines, ...automations],
       }))
       if (!(await openRecent(restored.root)))
-        throw new Error(`Backup restored to ${restored.root}, but the graph could not be opened.`)
+        throw new Error(`Backup restored to ${restored.root}, but the vault could not be opened.`)
       toast.add({
-        title: 'Backup restored as a new graph',
+        title: 'Backup restored as a new vault',
         description:
           'Restored automations are paused. Review them in Settings → Agents before enabling.',
       })
@@ -88,8 +88,8 @@ export function GraphBackupSection(): ReactElement {
 
   return (
     <SettingsField
-      legend="Graph archive"
-      description="Export notes, saved chats, attachments and this graph’s automations. Restore creates a new graph; existing files stay untouched."
+      legend="Backup"
+      description="Export notes, saved chats, attachments and this vault’s automations to a zip file. Restore creates a new vault; existing files stay untouched."
     >
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
@@ -98,7 +98,7 @@ export function GraphBackupSection(): ReactElement {
           disabled={!available || graph === null || action.pending}
           onClick={exportBackup}
         >
-          Export graph backup…
+          Export backup…
         </Button>
         <Button
           variant="outline"
@@ -106,13 +106,13 @@ export function GraphBackupSection(): ReactElement {
           disabled={!available || action.pending}
           onClick={restoreBackup}
         >
-          Restore graph backup…
+          Restore backup…
         </Button>
       </div>
       <p className="mt-2 text-xs text-text-muted">
         {available
-          ? 'Includes private notes. Keep the archive somewhere safe. Provider keys, device settings and Git history are excluded. Finish active chats before exporting.'
-          : 'Archive export and restore are available in the Mac app.'}
+          ? 'Includes private notes. Keep the backup somewhere safe. Provider keys, device settings and Git history are excluded. Finish active chats before exporting.'
+          : 'Backup export and restore are available in the Mac app.'}
       </p>
       {action.error !== null ? (
         <p role="alert" className="mt-2 text-xs text-destructive">

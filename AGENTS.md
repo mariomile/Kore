@@ -268,7 +268,7 @@ retry the notarized **Release** workflow.
    `master` is protected: the Release PR merges only with the `all-green`
    check. release-please dispatches CI on the Release PR branch itself; if the
    PR shows no `all-green` run, start it by hand:
-   `gh workflow run ci.yml --ref release-please--branches--master--components--reflect-open`.
+   `gh workflow run ci.yml --ref release-please--branches--master--components--kore-open`.
 
    Only when there is no Release PR (nothing since the last release carried a
    `feat:`/`fix:` title) bump by hand — and by hand means doing everything the
@@ -364,7 +364,7 @@ shared crates, and the Tauri plugins — see the layout below):
 ```bash
 # Prefer per-crate runs; cargo test --workspace also works
 cargo test -p kore-cli
-cargo test -p reflect-open
+cargo test -p kore-open
 ```
 
 **Before any cargo build/check/test that compiles the desktop crate** (including
@@ -391,7 +391,7 @@ Kore/
 │   │   ├── src/            # React frontend (main.tsx, app.tsx, desktop-root.tsx, platform-root.tsx,
 │   │   │                   #   components/, editor/, hooks/, lib/, mobile/, providers/, routing/,
 │   │   │                   #   styles/, dev/, test-utils/); calls Rust via @tauri-apps/api
-│   │   ├── src-tauri/      # Tauri native shell (Rust crate `reflect-open`)
+│   │   ├── src-tauri/      # Tauri native shell (Rust crate `kore-open`)
 │   │   │   ├── src/        # lib.rs (#[tauri::command] handlers, plugins), db/, fs/, git/,
 │   │   │   │               #   icloud/, conflict/, plus per-feature modules (watcher.rs,
 │   │   │   │               #   embed.rs, secrets.rs, settings.rs, calendar.rs, pty.rs, …)

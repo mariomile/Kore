@@ -118,7 +118,7 @@ class RecordingPlugin: Plugin {
   /// The Siri/App-Intent bridge: intents compiled into the app target run in
   /// this process but in a different module, so they talk to the plugin
   /// through NotificationCenter. Names are duplicated in
-  /// `gen/apple/Sources/reflect-open/` — keep them in sync.
+  /// `gen/apple/Sources/kore-open/` — keep them in sync.
   static let startRequestedNotification = Notification.Name(
     "app.lore.recording.start-requested")
   static let stopRequestedNotification = Notification.Name(

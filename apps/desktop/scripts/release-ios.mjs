@@ -29,7 +29,7 @@ const here = import.meta.dirname
 const appDir = join(here, '..')
 const repoRoot = join(here, '..', '..', '..')
 const iosBuildDir = join(appDir, 'src-tauri', 'gen', 'apple', 'build')
-const iosArchive = join(iosBuildDir, 'reflect-open_iOS.xcarchive')
+const iosArchive = join(iosBuildDir, 'kore-open_iOS.xcarchive')
 const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Kore.app', 'Kore')
 const iosDsymBinary = join(
   iosArchive,

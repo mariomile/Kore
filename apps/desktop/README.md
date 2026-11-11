@@ -1,7 +1,7 @@
 # @kore/desktop
 
 The Tauri 2 app — a React + TypeScript frontend (`src/`, bundled by Vite)
-embedded in a Rust native shell (`src-tauri/`, crate `reflect-open`). The
+embedded in a Rust native shell (`src-tauri/`, crate `kore-open`). The
 same package is also the iOS target; the mobile tree lives under
 `src/mobile/`.
 

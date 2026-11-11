@@ -408,7 +408,7 @@ that observation is not a passive recovery-time guarantee.
   432.83 MB, final footprint 335.50 MB, and the last 20 post-release samples
   ranged from 332.07–335.50 MB. This bounded short run does not certify a
   24-hour session or the timer's real wall-clock delay.
-- `cargo build -p reflect-open --locked --offline`: passed for the native
+- `cargo build -p kore-open --locked --offline`: passed for the native
   desktop executable, after staging sidecars. The executable was not launched
   against the user's graph, installed, signed or published.
 

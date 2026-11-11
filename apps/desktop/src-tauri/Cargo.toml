@@ -1,5 +1,5 @@
 [package]
-name = "reflect-open"
+name = "kore-open"
 # Intentionally frozen: the app version lives in apps/desktop/package.json and
 # tauri.conf.json points at it. The crate is never published, so its version
 # has no consumer — freezing it keeps Cargo.lock out of every release diff.
@@ -14,7 +14,7 @@ edition = "2021"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "reflect_open_lib"
+name = "kore_open_lib"
 # `staticlib` links into the iOS app as `libapp.a`; `rlib` serves the desktop
 # binary. There is no Android target, so no `cdylib`.
 crate-type = ["staticlib", "rlib"]

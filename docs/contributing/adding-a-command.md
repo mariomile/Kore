@@ -83,7 +83,7 @@ desktop crate, then run the crate tests:
 
 ```bash
 pnpm --filter @kore/desktop sidecar
-cargo test -p reflect-open
+cargo test -p kore-open
 ```
 
 ## 2. The TypeScript binding
@@ -146,7 +146,7 @@ it.
       camelCase serde, traversal-guarded paths, generation-pinned if mutating
       (and pinned for background reads that can span a graph switch)
 - [ ] Rust: registered in `lib.rs` `generate_handler!`
-- [ ] Rust: `#[cfg(test)]` tests on the pure helper; `cargo test -p reflect-open`
+- [ ] Rust: `#[cfg(test)]` tests on the pure helper; `cargo test -p kore-open`
       passes after staging sidecars when the desktop crate compiles
 - [ ] TS: zod schema + typed binding through `call()` in the domain module
 - [ ] TS: exported from `packages/core/src/index.ts`

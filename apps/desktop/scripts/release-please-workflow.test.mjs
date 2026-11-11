@@ -29,7 +29,7 @@ test('there is a single release channel', () => {
   }
   expect(workflow).not.toContain('config.beta.json')
   expect(stableConfig.packages['.'].component).toBeUndefined()
-  expect(stableConfig.packages['.']['package-name']).toBe('reflect-open')
+  expect(stableConfig.packages['.']['package-name']).toBe('kore-open')
 })
 
 test('release-please tags nothing and publishes nothing', () => {

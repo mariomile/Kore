@@ -79,7 +79,7 @@
 		069F78703991523CA2662E65 /* blocking.rs */ = {isa = PBXFileReference; path = blocking.rs; sourceTree = "<group>"; };
 		088536D8F462855DCFDA7B06 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		08B3817A23175E584BA6FD8D /* error.rs */ = {isa = PBXFileReference; path = error.rs; sourceTree = "<group>"; };
-		11AB73085CB07EA1B7A3533C /* reflect-open_iOS.dev.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "reflect-open_iOS.dev.entitlements"; sourceTree = "<group>"; };
+		11AB73085CB07EA1B7A3533C /* kore-open_iOS.dev.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "kore-open_iOS.dev.entitlements"; sourceTree = "<group>"; };
 		152767D3A95549268E140D0F /* graph_gitignore.rs */ = {isa = PBXFileReference; path = graph_gitignore.rs; sourceTree = "<group>"; };
 		175B35708E8E9885F5F0D2C9 /* haptics.rs */ = {isa = PBXFileReference; path = haptics.rs; sourceTree = "<group>"; };
 		18A732A38CD75FF514E4CF86 /* settings.rs */ = {isa = PBXFileReference; path = settings.rs; sourceTree = "<group>"; };
@@ -102,7 +102,7 @@
 		383CB9669208178C6B235BE6 /* io.rs */ = {isa = PBXFileReference; path = io.rs; sourceTree = "<group>"; };
 		38829A9D2116D0D324C18C4B /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		39269153EFAD0C2FEFBE6696 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		3AE251E5F7E95CDEFDD3C8B4 /* reflect-open_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "reflect-open_iOS.entitlements"; sourceTree = "<group>"; };
+		3AE251E5F7E95CDEFDD3C8B4 /* kore-open_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "kore-open_iOS.entitlements"; sourceTree = "<group>"; };
 		3B63E3BA904337F6625AA036 /* QuickNoteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickNoteIntent.swift; sourceTree = "<group>"; };
 		3BF10ECC85432AE76A51F4B4 /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
 		3D182B9445129EC2433F8218 /* Contacts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Contacts.framework; path = System/Library/Frameworks/Contacts.framework; sourceTree = SDKROOT; };
@@ -148,7 +148,7 @@
 		ACE1CDF45CDBB8D7B2446E36 /* windows.rs */ = {isa = PBXFileReference; path = windows.rs; sourceTree = "<group>"; };
 		ADB23521181EEB9EF095D4AB /* contacts.rs */ = {isa = PBXFileReference; path = contacts.rs; sourceTree = "<group>"; };
 		B667667E9C6C141128493B00 /* quit.rs */ = {isa = PBXFileReference; path = quit.rs; sourceTree = "<group>"; };
-		BC3901740F3A40252C3750C7 /* reflect-open_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "reflect-open_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC3901740F3A40252C3750C7 /* kore-open_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "kore-open_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE29DCB2F9FA318E5936F05C /* routine_script.rs */ = {isa = PBXFileReference; path = routine_script.rs; sourceTree = "<group>"; };
 		C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingActivityAttributes.swift; sourceTree = "<group>"; };
 		C38A6847351881E6D17A1DC2 /* migrations.rs */ = {isa = PBXFileReference; path = migrations.rs; sourceTree = "<group>"; };
@@ -216,7 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				DB54D6D030C08888E9D17442 /* RecordingWidget.appex */,
-				BC3901740F3A40252C3750C7 /* reflect-open_iOS.app */,
+				BC3901740F3A40252C3750C7 /* kore-open_iOS.app */,
 				51006DE1482D28D9562253A1 /* ShareExtension.appex */,
 			);
 			name = Products;
@@ -245,7 +245,7 @@
 				8D0D6D72E614086946EBF890 /* LaunchScreen.storyboard */,
 				59A902E5FAB9324234886822 /* Externals */,
 				90B73AA2E17A6707CD2373F8 /* RecordingWidget */,
-				D93D4C46C491FF3654305D76 /* reflect-open_iOS */,
+				D93D4C46C491FF3654305D76 /* kore-open_iOS */,
 				064330CA0617C1F023B33371 /* ShareExtension */,
 				3644284E3067EA5E39E59FDA /* Sources */,
 				503727866B7D08BD30A503FF /* Sources */,
@@ -258,7 +258,7 @@
 		3644284E3067EA5E39E59FDA /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				504E678B5FB1E7386811074E /* reflect-open */,
+				504E678B5FB1E7386811074E /* kore-open */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -287,7 +287,7 @@
 			path = "../../../../../plugins/tauri-plugin-recording/ios/Sources";
 			sourceTree = "<group>";
 		};
-		504E678B5FB1E7386811074E /* reflect-open */ = {
+		504E678B5FB1E7386811074E /* kore-open */ = {
 			isa = PBXGroup;
 			children = (
 				38829A9D2116D0D324C18C4B /* main.mm */,
@@ -296,7 +296,7 @@
 				2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */,
 				B04D04114CD26DD4ACE666B0 /* bindings */,
 			);
-			path = "reflect-open";
+			path = "kore-open";
 			sourceTree = "<group>";
 		};
 		55421F1EE94451C6C2F0F2F6 /* src */ = {
@@ -441,14 +441,14 @@
 			path = fs;
 			sourceTree = "<group>";
 		};
-		D93D4C46C491FF3654305D76 /* reflect-open_iOS */ = {
+		D93D4C46C491FF3654305D76 /* kore-open_iOS */ = {
 			isa = PBXGroup;
 			children = (
 				CF582FB0094C95210BE919F7 /* Info.plist */,
-				11AB73085CB07EA1B7A3533C /* reflect-open_iOS.dev.entitlements */,
-				3AE251E5F7E95CDEFDD3C8B4 /* reflect-open_iOS.entitlements */,
+				11AB73085CB07EA1B7A3533C /* kore-open_iOS.dev.entitlements */,
+				3AE251E5F7E95CDEFDD3C8B4 /* kore-open_iOS.entitlements */,
 			);
-			path = "reflect-open_iOS";
+			path = "kore-open_iOS";
 			sourceTree = "<group>";
 		};
 		"TEMP_410161A9-3FAE-4623-BA4A-55E1FB616EF7" /* x86_64 */ = {
@@ -498,9 +498,9 @@
 			productReference = 51006DE1482D28D9562253A1 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		E2CEE6E5CCFA69CBA5F9AA3F /* reflect-open_iOS */ = {
+		E2CEE6E5CCFA69CBA5F9AA3F /* kore-open_iOS */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 10FFF2E018E94EEF95D56337 /* Build configuration list for PBXNativeTarget "reflect-open_iOS" */;
+			buildConfigurationList = 10FFF2E018E94EEF95D56337 /* Build configuration list for PBXNativeTarget "kore-open_iOS" */;
 			buildPhases = (
 				F27159B8EA2BAA999947A4AF /* Build Rust Code */,
 				B34A0474C6B6B9C6508E3011 /* Sources */,
@@ -514,11 +514,11 @@
 				4117F1E82CF9953D0AD38F11 /* PBXTargetDependency */,
 				D540AFE4185360A528491534 /* PBXTargetDependency */,
 			);
-			name = "reflect-open_iOS";
+			name = "kore-open_iOS";
 			packageProductDependencies = (
 			);
-			productName = "reflect-open_iOS";
-			productReference = BC3901740F3A40252C3750C7 /* reflect-open_iOS.app */;
+			productName = "kore-open_iOS";
+			productReference = BC3901740F3A40252C3750C7 /* kore-open_iOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -544,7 +544,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 47E439873CFF570779B9F87C /* Build configuration list for PBXProject "reflect-open" */;
+			buildConfigurationList = 47E439873CFF570779B9F87C /* Build configuration list for PBXProject "kore-open" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -560,7 +560,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				E2CEE6E5CCFA69CBA5F9AA3F /* reflect-open_iOS */,
+				E2CEE6E5CCFA69CBA5F9AA3F /* kore-open_iOS */,
 				85FC564C07724F1F4E282538 /* ShareExtension */,
 				665EB942B5F6FB93F8DF2A57 /* RecordingWidget */,
 			);
@@ -731,7 +731,7 @@
 					arm64,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "reflect-open_iOS/reflect-open_iOS.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "789ULN5MZB";
@@ -741,7 +741,7 @@
 					"$(inherited)",
 					"\".\"",
 				);
-				INFOPLIST_FILE = "reflect-open_iOS/Info.plist";
+				INFOPLIST_FILE = "kore-open_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -894,7 +894,7 @@
 					arm64,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-Dev";
-				CODE_SIGN_ENTITLEMENTS = "reflect-open_iOS/reflect-open_iOS.dev.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.dev.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "789ULN5MZB";
@@ -904,7 +904,7 @@
 					"$(inherited)",
 					"\".\"",
 				);
-				INFOPLIST_FILE = "reflect-open_iOS/Info.plist";
+				INFOPLIST_FILE = "kore-open_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -989,7 +989,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;
 		};
-		10FFF2E018E94EEF95D56337 /* Build configuration list for PBXNativeTarget "reflect-open_iOS" */ = {
+		10FFF2E018E94EEF95D56337 /* Build configuration list for PBXNativeTarget "kore-open_iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CB0922CFF8EEBA69B8A9C2FB /* debug */,
@@ -998,7 +998,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;
 		};
-		47E439873CFF570779B9F87C /* Build configuration list for PBXProject "reflect-open" */ = {
+		47E439873CFF570779B9F87C /* Build configuration list for PBXProject "kore-open" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				335E5B85056C0A6D68E52006 /* debug */,

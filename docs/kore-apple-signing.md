@@ -23,7 +23,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    `bundle.iOS.developmentTeam` to *your* Team ID (upstream's `789ULN5MZB`
    is still in place and will not sign for you).
 3. **iOS: let Xcode do the rest.** The first entitled build with automatic
-   signing (open `gen/apple/reflect-open.xcodeproj`, select your team)
+   signing (open `gen/apple/kore-open.xcodeproj`, select your team)
    registers the App IDs, the `iCloud.app.lore` container, and the
    `group.app.lore` App Group on your team automatically.
 4. **macOS iCloud (optional, for signed distribution builds):** upstream's

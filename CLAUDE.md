@@ -61,7 +61,7 @@ in AGENTS.md. These additional gates are what actually turn CI red:
   checkout first (`pnpm --filter @kore/desktop sidecar`) or anything that
   compiles the desktop crate fails inside tauri-build.
 - **iOS bindings.** Rust touching `apps/desktop/src-tauri` must also pass
-  `cargo check -p reflect-open --lib --target aarch64-apple-ios --no-default-features`.
+  `cargo check -p kore-open --lib --target aarch64-apple-ios --no-default-features`.
   The TestFlight workflow is the only full iOS build and it never runs on PRs.
 - **Both browser engines.** The `browser` Vitest project runs on Chromium *and*
   WebKit (the production Tauri webview engine) on every PR. Verify a `.test.tsx`

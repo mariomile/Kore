@@ -137,7 +137,7 @@ jobs:
       - name: Package the Xcode archive
         if: always()
         run: |
-          archive="apps/desktop/src-tauri/gen/apple/build/reflect-open_iOS.xcarchive"
+          archive="apps/desktop/src-tauri/gen/apple/build/kore-open_iOS.xcarchive"
           if [ ! -d "$archive" ]; then
             echo "::warning::No Xcode archive was produced; skipping symbol packaging"
             exit 0

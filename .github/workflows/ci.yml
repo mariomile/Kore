@@ -187,13 +187,13 @@ jobs:
         run: node apps/desktop/scripts/build-sidecar.mjs
 
       - name: Check desktop library
-        run: cargo check -p reflect-open --lib
+        run: cargo check -p kore-open --lib
 
       # The TestFlight workflow is the only full iOS build and it never runs on
       # pull requests, so type-check the iOS target here with the same feature
       # set `tauri ios` builds with.
       - name: Check iOS library
-        run: cargo check -p reflect-open --lib --target aarch64-apple-ios --no-default-features
+        run: cargo check -p kore-open --lib --target aarch64-apple-ios --no-default-features
 
       # CaptureInbox/ShareState (the share extension's capture-envelope
       # encoder + extraction logic) are hand-written Swift with no Tauri

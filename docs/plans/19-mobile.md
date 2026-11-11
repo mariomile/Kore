@@ -400,7 +400,7 @@ Steps 1 and 2 are the existential gates; nothing else starts until both pass.
 
 - `pnpm tauri ios dev` runs the mobile app in the simulator from a clean
   checkout (see [the simulator runbook](../contributing/mobile-simulator.md));
-  `pnpm tauri dev` (desktop) is unaffected; `cargo test -p reflect-open` and
+  `pnpm tauri dev` (desktop) is unaffected; `cargo test -p kore-open` and
   the TS suites stay green.
 - Fresh install → Start fresh → today's note exists on disk under
   `Documents/`, visible in the Files app; capture appends markdown that

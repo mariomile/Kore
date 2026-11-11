@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { dateFromDailyPath, type DateFormat } from '@reflect/core'
+import { dateFromDailyPath, type DateFormat } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useOverflowing } from '@/hooks/use-overflowing'
 import { formatDayLabel } from '@/lib/dates'

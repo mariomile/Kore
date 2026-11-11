@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import { errorMessage, listChatConversations, loadChatMessages, type ChatTurn } from '@reflect/core'
+import { errorMessage, listChatConversations, loadChatMessages, type ChatTurn } from '@kore/core'
 
 /** Resume the latest conversation within this window; otherwise start fresh. */
 const CHAT_IDLE_CUTOFF_MS = 6 * 60 * 60 * 1000

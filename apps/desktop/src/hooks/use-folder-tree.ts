@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getFolderTree, type FolderTreeFolder } from '@reflect/core'
+import { getFolderTree, type FolderTreeFolder } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'

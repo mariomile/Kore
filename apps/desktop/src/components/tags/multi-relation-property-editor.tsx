@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { relationDisplay, relationTarget, relationTargetOf, relationValue } from '@reflect/core'
+import { relationDisplay, relationTarget, relationTargetOf, relationValue } from '@kore/core'
 import { Check } from '@/components/icons'
 import {
   Command,

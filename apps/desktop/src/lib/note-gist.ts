@@ -11,7 +11,7 @@ import {
   splitFrontmatter,
   updateGist,
   type GistFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { setNoteRowOverlay } from '@/hooks/note-row-overlay'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'

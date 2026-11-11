@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import {
   consumeLegacySemanticOptIn,
   ensureEmbeddingsVisibly,

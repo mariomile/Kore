@@ -6,7 +6,7 @@ import {
   formatCollectionEmbed,
   hasBridge,
   listNoteTags,
-} from '@reflect/core'
+} from '@kore/core'
 import { useGraph } from '@/providers/graph-provider'
 import type { NoteEditorHandle } from './note-editor'
 

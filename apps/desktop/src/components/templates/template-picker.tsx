@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listTemplates } from '@reflect/core'
+import { listTemplates } from '@kore/core'
 import { LayoutTemplate, NotePlus } from '@/components/icons'
 import {
   CommandDialog,

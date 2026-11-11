@@ -10,7 +10,7 @@ import {
   type NoteListEntry,
   type TagProperty,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { Trash } from '@/components/icons'
 import { PropertyFieldValue } from '@/components/tags/property-field-value'
 import { PropertyValueEditor } from '@/components/tags/property-editors'

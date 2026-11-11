@@ -1,7 +1,7 @@
 /* Design-system tokens (the same `:root` / `.dark` variables the desktop app
    themes with), then Tailwind v4. The popup bridges only the tokens it uses —
    the full mapping lives in apps/desktop/src/styles/index.css. */
-@import '@reflect/design-system/styles.css';
+@import '@kore/design-system/styles.css';
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));

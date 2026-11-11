@@ -4,7 +4,7 @@ import {
   TAG_EXTENDS_KEY,
   type GistFrontmatter,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 
 export interface FrontmatterPatch {
   /**

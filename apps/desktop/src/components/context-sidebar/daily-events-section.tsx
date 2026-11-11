@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { Plus } from '@/components/icons'
-import type { CalendarEvent } from '@reflect/core'
+import type { CalendarEvent } from '@kore/core'
 import { formatTimeOfDay } from '@/lib/dates'
 import { useCalendarChangeInvalidation, useDayEvents } from '@/lib/use-calendar'
 import { useSettings } from '@/providers/settings-provider'

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { parseConflictMarkers, type ConflictSide } from '@reflect/core'
+import { parseConflictMarkers, type ConflictSide } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

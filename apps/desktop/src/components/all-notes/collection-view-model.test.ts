@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { SavedCollectionView } from '@reflect/core'
+import type { SavedCollectionView } from '@kore/core'
 import {
   LIVE_COLLECTION_VIEW_ID,
   collectionViewLabel,

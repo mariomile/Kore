@@ -1,5 +1,5 @@
 import { join } from '@tauri-apps/api/path'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 
 /**

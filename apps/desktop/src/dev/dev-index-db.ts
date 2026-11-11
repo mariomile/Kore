@@ -8,7 +8,7 @@ import {
   noteBasenameKey,
   ReflectError,
   type IndexedNote,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * The dev bridge's SQLite index: the real `crates/index-schema` migrations

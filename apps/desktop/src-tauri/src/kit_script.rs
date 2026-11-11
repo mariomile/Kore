@@ -1,7 +1,7 @@
 //! The vault's own kit script (Plan 35): run one Node script that lives in
 //! the open graph — cyber-brain's `System/scripts/brain.mjs` — with an argv
 //! the caller builds, never through a shell. Which script and which
-//! arguments is `@reflect/core`'s policy (`cyber-brain/script.ts`); this
+//! arguments is `@kore/core`'s policy (`cyber-brain/script.ts`); this
 //! module owns only the capability: find `node`, keep the script inside the
 //! graph, run it in the graph root, bound it, and hand back exit code and
 //! capped output.

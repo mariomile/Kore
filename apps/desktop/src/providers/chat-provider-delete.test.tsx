@@ -1,7 +1,7 @@
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { ChatTurn, GraphInfo } from '@reflect/core'
+import type { ChatTurn, GraphInfo } from '@kore/core'
 import { ChatProvider, useChatSession } from './chat-provider'
 
 const mocks = vi.hoisted(() => ({
@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   listChatConversations: async () => [
     { id: 'conv-1', title: 'A saved chat', createdMs: 1, updatedMs: Date.now() },

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { buildIndexedNote, parseNote, setBridge } from '@reflect/core'
+import { buildIndexedNote, parseNote, setBridge } from '@kore/core'
 import { createDevIndexDb, type DevIndexDb } from '@/dev/dev-index-db'
 import '@/test-utils/locator'
 import { BlockZoom } from './block-zoom'

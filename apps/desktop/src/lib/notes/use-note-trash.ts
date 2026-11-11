@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { errorMessage, type NoteListEntry } from '@reflect/core'
+import { errorMessage, type NoteListEntry } from '@kore/core'
 import { deleteOpenNote } from '@/lib/note-delete'
 import { startOperation } from '@/lib/operations'
 import { useGraph } from '@/providers/graph-provider'

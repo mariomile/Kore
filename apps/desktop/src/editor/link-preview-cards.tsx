@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { definePlugin } from '@prosekit/core'
-import { loadLinkPreview } from '@reflect/core'
+import { loadLinkPreview } from '@kore/core'
 import { useExtension } from '@meowdown/react'
 import { openExternalUrl, preferOsBrowser } from '@/editor/open-external-link'
 import { useSettings } from '@/providers/settings-provider'

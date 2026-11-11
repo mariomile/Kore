@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { parseFrontmatter, splitFrontmatter, type EmbedBlock } from '@reflect/core'
+import { parseFrontmatter, splitFrontmatter, type EmbedBlock } from '@kore/core'
 import { Lock } from '@/components/icons'
 import { EmbeddedHtmlFrame } from './embedded-html-frame'
 import { EmbeddedLinkCard } from './embedded-link-card'

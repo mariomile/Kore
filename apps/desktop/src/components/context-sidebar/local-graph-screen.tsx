@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { isModEvent } from '@meowdown/core'
-import { displayNoteTitle, noteFileStem } from '@reflect/core'
+import { displayNoteTitle, noteFileStem } from '@kore/core'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { routeForPath } from '@/routing/route'

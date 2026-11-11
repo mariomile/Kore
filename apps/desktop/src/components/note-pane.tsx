@@ -17,7 +17,7 @@ import {
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   wikiLinkTargetForTitle,
-} from '@reflect/core'
+} from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'

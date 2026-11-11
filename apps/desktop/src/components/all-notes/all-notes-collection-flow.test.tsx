@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { RouterProvider } from '@/routing/router'
 import { AllNotesScreen } from './all-notes-screen'
 

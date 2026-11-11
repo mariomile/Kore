@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getUnlinkedMentions, linkUnlinkedMention, type UnlinkedMention } from '@reflect/core'
+import { getUnlinkedMentions, linkUnlinkedMention, type UnlinkedMention } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE, invalidateIndexQueries } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'

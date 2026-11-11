@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from 'react'
-import { parseCollectionEmbedBody } from '@reflect/core'
+import { parseCollectionEmbedBody } from '@kore/core'
 import { definePlugin } from '@prosekit/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { NodeSelection, Plugin, PluginKey, Selection } from '@prosekit/pm/state'

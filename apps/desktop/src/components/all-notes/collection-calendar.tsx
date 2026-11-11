@@ -6,7 +6,7 @@ import {
   type CollectionValue,
   type TagProperty,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { ChevronLeft, ChevronRight, Plus } from '@/components/icons'
 import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import { todayIso } from '@/lib/dates'

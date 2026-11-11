@@ -1,4 +1,4 @@
-import { parseTaskMarker } from '@reflect/core'
+import { parseTaskMarker } from '@kore/core'
 
 /**
  * A task's content — its source line ({@link OpenTask.raw}) minus the leading

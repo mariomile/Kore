@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { errorMessage, type GraphInfo } from '@reflect/core'
+import { errorMessage, type GraphInfo } from '@kore/core'
 import { useAudioMemoPipeline, type PendingAudioCapture } from '@/hooks/use-audio-memo-pipeline'
 import { isNativeShell } from '@/lib/platform'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'

@@ -70,7 +70,7 @@ contracts. Those docs defer to
   load-bearing rule from the top-level README: **TypeScript owns policy,
   Rust owns capabilities.** New OS integrations arrive as Tauri commands in
   `apps/desktop/src-tauri/src/`, are consumed through the injected bridge
-  (`packages/core/src/ipc/bridge.ts`), and keep `@reflect/core` free of
+  (`packages/core/src/ipc/bridge.ts`), and keep `@kore/core` free of
   Tauri imports.
 - Editor-level UI (menus, selection affordances) belongs upstream in
   [meowdown](https://github.com/prosekit/meowdown); Reflect supplies the

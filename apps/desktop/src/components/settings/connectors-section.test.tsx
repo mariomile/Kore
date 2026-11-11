@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { DEFAULT_SETTINGS, ReflectError, type Settings } from '@reflect/core'
+import { DEFAULT_SETTINGS, ReflectError, type Settings } from '@kore/core'
 
 const updated = vi.hoisted(() => [] as Partial<Settings>[])
 vi.mock('@/providers/settings-provider', () => ({
@@ -17,8 +17,8 @@ vi.mock('@/providers/connector-sync-provider', () => ({
   useConnectorSync: () => ({ snapshot: { running: null, statuses: {} }, syncNow }),
 }))
 const connectConnector = vi.hoisted(() => vi.fn(async () => {}))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   isConnectorConnected: async () => false,
   connectConnector,

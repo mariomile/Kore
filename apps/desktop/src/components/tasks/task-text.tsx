@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
-import type { OpenTask } from '@reflect/core'
-import { stripTaskContentPriority, taskContentPriority } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
+import { stripTaskContentPriority, taskContentPriority } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { taskContent } from '@/lib/tasks/task-content'
 import { cn } from '@/lib/utils'

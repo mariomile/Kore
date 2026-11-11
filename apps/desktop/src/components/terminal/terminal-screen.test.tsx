@@ -48,7 +48,7 @@ const terminal = vi.hoisted(() => ({
 
 const fit = vi.hoisted(() => ({ fit: vi.fn() }))
 
-vi.mock('@reflect/core', () => ({
+vi.mock('@kore/core', () => ({
   ptyOpen: mocks.ptyOpen,
   ptyWrite: mocks.ptyWrite,
   ptyAck: mocks.ptyAck,

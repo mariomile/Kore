@@ -5,7 +5,7 @@ import {
   isDaily,
   newNoteId,
   parseNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { isIsoDate } from '@/lib/dates'
 import { dailyDeepLink, noteDeepLink } from '@/lib/deep-links/format'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'

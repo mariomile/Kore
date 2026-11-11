@@ -7,7 +7,7 @@ import {
   separateCalloutTitles,
   withoutBlockIds,
   type SnippetTask,
-} from '@reflect/core'
+} from '@kore/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
 import { useCalloutDom } from '@/editor/use-callout-dom'

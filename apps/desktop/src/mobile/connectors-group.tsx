@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { ConnectorId } from '@reflect/core'
+import type { ConnectorId } from '@kore/core'
 import { useConnectors } from '@/hooks/use-connectors'
 import { ConnectorDrawer } from '@/mobile/connector-drawer'
 import { SettingsGroup, SettingsNavRow } from '@/mobile/settings-list'

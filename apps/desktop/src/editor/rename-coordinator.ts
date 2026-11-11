@@ -11,7 +11,7 @@ import {
   rewritePathLinksForMove,
   slugPathForTitle,
   writeNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { placeOldTitleAlias } from './alias-placement'
 import { clearDraftTitle, setDraftTitle } from './draft-titles'
 import { moveNoteCarryingSession } from './move-note'

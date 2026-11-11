@@ -5,7 +5,7 @@ import {
   subscribeFileChanges,
   type FileChange,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import { createBackupController, type BackupState } from './backup-controller'

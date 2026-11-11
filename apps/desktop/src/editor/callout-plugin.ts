@@ -1,4 +1,4 @@
-import { calloutLabel, parseCalloutMarker, type CalloutMarker } from '@reflect/core'
+import { calloutLabel, parseCalloutMarker, type CalloutMarker } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'

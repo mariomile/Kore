@@ -173,7 +173,7 @@ name again. Do not add new code that reads an old name outside those
 migrations.
 
 **Reflect** is the upstream project this repo forked from. Its name survives
-only in internal code identifiers (`@reflect/*` packages, `reflect-*` crates,
+only in internal code identifiers (`@kore/*` packages, `reflect-*` crates,
 CSS classes) until the mechanical internal rename lands, and in historical
 docs about the upstream app. Never introduce a new one.
 
@@ -349,7 +349,7 @@ Desktop JS tests are split into Vitest projects (details in
   Playwright (the `browser` project). Chromium by default;
   `REFLECT_TEST_BROWSER=webkit` runs WebKit (the engine of the production
   Tauri webview); `DEBUG=1` opens a headed window. One-time setup:
-  `pnpm --filter @reflect/desktop test:install`.
+  `pnpm --filter @kore/desktop test:install`.
 - `*.test.ts` files are pure logic and run in node (the `node` project). A
   logic test that drives the DOM is named `.test.tsx` so it lands in the
   browser project.
@@ -372,7 +372,7 @@ cargo test -p reflect-open
 `reflect-capture-host` native-messaging host) must be staged once per checkout:
 
 ```bash
-pnpm --filter @reflect/desktop sidecar
+pnpm --filter @kore/desktop sidecar
 ```
 
 Otherwise tauri-build fails with `resource path binaries/<name>-<triple> doesn't exist`
@@ -387,7 +387,7 @@ crates form a single **Cargo workspace** rooted at the repository root.
 ```
 Kore/
 ├── apps/
-│   ├── desktop/            # @reflect/desktop — the Tauri 2 app
+│   ├── desktop/            # @kore/desktop — the Tauri 2 app
 │   │   ├── src/            # React frontend (main.tsx, app.tsx, desktop-root.tsx, platform-root.tsx,
 │   │   │                   #   components/, editor/, hooks/, lib/, mobile/, providers/, routing/,
 │   │   │                   #   styles/, dev/, test-utils/); calls Rust via @tauri-apps/api
@@ -411,13 +411,13 @@ Kore/
 │   │   └── public/         # Static assets served by Vite
 │   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md);
 │   │                       #   `kore index` hosts the core's indexer under Node
-│   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
+│   ├── extension/          # @kore/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/
-│   ├── core/               # @reflect/core — the TS business logic (markdown/, indexing/, graph/,
+│   ├── core/               # @kore/core — the TS business logic (markdown/, indexing/, graph/,
 │   │                       #   embeddings/, ai/, settings/, tags/, sync/, actions/, ipc/, …)
-│   ├── db/                 # @reflect/db — generated Kysely schema + the IPC dialect
-│   └── utils/              # @reflect/utils — small dependency-free helpers (ISO date math)
+│   ├── db/                 # @kore/db — generated Kysely schema + the IPC dialect
+│   └── utils/              # @kore/utils — small dependency-free helpers (ISO date math)
 ├── crates/
 │   ├── index-schema/       # Shared SQLite migrations for <graph>/.kore/index.sqlite
 │   │                       #   (one schema for the desktop writer + CLI reader)

@@ -2,12 +2,12 @@ import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { GraphInsights } from '@reflect/core'
+import type { GraphInsights } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 
 const loadGraphInsights = vi.hoisted(() => vi.fn<() => Promise<GraphInsights>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   loadGraphInsights,
 }))
@@ -15,7 +15,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return {
     useSettings: () => ({ settings: DEFAULT_SETTINGS, updateSettings: () => {} }),
   }

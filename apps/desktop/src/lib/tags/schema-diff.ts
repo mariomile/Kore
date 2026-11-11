@@ -1,4 +1,4 @@
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 
 /**
  * What a proposed tag schema changes, row by row — the reading the chat

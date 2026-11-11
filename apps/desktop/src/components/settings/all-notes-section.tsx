@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { foldTag, isTagName } from '@reflect/core'
+import { foldTag, isTagName } from '@kore/core'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

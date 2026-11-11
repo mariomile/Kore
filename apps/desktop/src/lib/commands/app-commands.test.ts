@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { EmbedStatus, NoteRow, PinnedNote } from '@reflect/core'
+import type { EmbedStatus, NoteRow, PinnedNote } from '@kore/core'
 import { notePathForRoute, type Route } from '@/routing/route'
 import type { NavigateOptions } from '@/routing/router'
 import { resetOperations } from '@/lib/operations'
@@ -51,8 +51,8 @@ vi.mock('@/lib/operations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/operations')>()),
   startOperation,
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   randomNotePath,
   rebuildIndex,
   embedStatus,

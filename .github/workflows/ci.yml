@@ -40,9 +40,9 @@ jobs:
 
       - name: Verify generated DB types are current
         run: |
-          pnpm --filter @reflect/db db:codegen
+          pnpm --filter @kore/db db:codegen
           git diff --exit-code packages/db/src/schema.gen.ts \
-            || (echo "::error::schema.gen.ts is stale — run 'pnpm --filter @reflect/db db:codegen' and commit the result." && exit 1)
+            || (echo "::error::schema.gen.ts is stale — run 'pnpm --filter @kore/db db:codegen' and commit the result." && exit 1)
 
       - name: Lint (oxlint)
         run: pnpm lint
@@ -92,7 +92,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright
-        run: pnpm --filter @reflect/desktop exec playwright install ${{ matrix.config.browser }}
+        run: pnpm --filter @kore/desktop exec playwright install ${{ matrix.config.browser }}
 
       - name: Test
         run: pnpm run test --shard ${{ matrix.shard }} ${{ matrix.config.projects }}

@@ -1,4 +1,4 @@
-import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@reflect/core'
+import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@kore/core'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'

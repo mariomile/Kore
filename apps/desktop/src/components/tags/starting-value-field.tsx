@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { startingValueKinds, type StartingValueKind } from '@reflect/core'
+import { startingValueKinds, type StartingValueKind } from '@kore/core'
 import { Input } from '@/components/ui/input'
 import {
   Select,

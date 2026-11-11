@@ -5,7 +5,7 @@ import {
   errorMessage,
   type BaseDefinition,
   type BaseNewNotePrefill,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { useGraph } from '@/providers/graph-provider'

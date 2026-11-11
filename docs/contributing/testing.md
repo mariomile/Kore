@@ -42,7 +42,7 @@ Firefox is intentionally not part of the matrix.
 
 ```bash
 # one-time: download the browsers
-pnpm --filter @reflect/desktop test:install
+pnpm --filter @kore/desktop test:install
 
 # run the browser project on Chromium
 pnpm exec vitest run --project browser

@@ -4,8 +4,8 @@ import { usePostEmbedResolvers } from '@/editor/use-post-embed-resolvers'
 
 const resolveXPostEmbed = vi.hoisted(() => vi.fn(async () => undefined))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   resolveXPostEmbed,
 }))
 

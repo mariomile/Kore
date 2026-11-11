@@ -4,7 +4,7 @@
 //! marker so a run killed with the app resurfaces as an interrupted attempt
 //! on the next launch, and a native scheduler tick that keeps firing when a
 //! hidden window's JS timers are throttled. Policy — dueness, retries, what
-//! an interrupted run means — stays in `@reflect/core`; this module holds
+//! an interrupted run means — stays in `@kore/core`; this module holds
 //! only the primitives.
 
 use std::collections::VecDeque;

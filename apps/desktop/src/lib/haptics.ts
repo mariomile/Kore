@@ -1,4 +1,4 @@
-import { hapticFeedback, type HapticPattern } from '@reflect/core'
+import { hapticFeedback, type HapticPattern } from '@kore/core'
 import { hapticsEnabled } from '@/lib/haptics-preference'
 import { isMacosDesktop } from '@/lib/platform'
 

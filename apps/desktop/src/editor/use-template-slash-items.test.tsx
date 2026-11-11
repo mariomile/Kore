@@ -10,8 +10,8 @@ const listTemplates = vi.hoisted(() =>
 )
 const hasBridge = vi.hoisted(() => vi.fn(() => true))
 const insertTemplate = vi.hoisted(() => vi.fn(async () => undefined))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listTemplates,
   hasBridge,
 }))

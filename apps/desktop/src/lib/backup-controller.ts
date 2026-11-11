@@ -24,7 +24,7 @@ import {
   type SyncEngine,
   type SyncStatus,
   type Unlisten,
-} from '@reflect/core'
+} from '@kore/core'
 import { setBackupFlusher } from '@/lib/backup-flush'
 import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { startOperation } from '@/lib/operations'

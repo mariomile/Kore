@@ -1,6 +1,6 @@
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WindowBootstrap } from '@reflect/core'
+import type { WindowBootstrap } from '@kore/core'
 
 const windowBootstrap = vi.hoisted(() => vi.fn<() => Promise<WindowBootstrap>>())
 const subscribeIndexWritten = vi.hoisted(() =>
@@ -15,8 +15,8 @@ const throttledInvalidateIndexQueries = vi.hoisted(() => vi.fn())
 const loadVaultLayout = vi.hoisted(() => vi.fn())
 const loadAttachmentIndex = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   windowBootstrap,
   subscribeIndexWritten,
   subscribeWindowNavigate,

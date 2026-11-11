@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { CHAT_SYSTEM_PROMPT_MAX_LENGTH, normalizeChatSystemPrompt } from '@reflect/core'
+import { CHAT_SYSTEM_PROMPT_MAX_LENGTH, normalizeChatSystemPrompt } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Textarea } from '@/components/ui/textarea'

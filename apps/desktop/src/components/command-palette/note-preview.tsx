@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { isAppError, readNote, splitFrontmatter } from '@reflect/core'
+import { isAppError, readNote, splitFrontmatter } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { formatDayLabel } from '@/lib/dates'

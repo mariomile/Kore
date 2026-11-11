@@ -7,7 +7,7 @@ import {
   aiProviderRequiresApiKey,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
-} from '@reflect/core'
+} from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'

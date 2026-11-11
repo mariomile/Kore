@@ -220,7 +220,7 @@ the open PRs (#345 to #365) were listed, not touched.
 
 Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,
 one commit per step. Apple identity (`app.lore.*`, keychain `lore`) is another
-thread; the mechanical internal rename (`@reflect/*`, crates, CSS) is draft #355.
+thread; the mechanical internal rename (`@kore/*`, crates, CSS) is draft #355.
 
 - [x] Vault runtime dir `.reflect/` → `.kore/` (`crates/index-schema/src/runtime_dir.rs`),
   migrated by app and CLI on open, merging without overwrite; git ignores
@@ -397,7 +397,7 @@ survive the page going away. The web clipper (slice 2) stays parked.
 - [x] One article extractor in core: `packages/core/src/actions/article-text.ts`
   (Defuddle + the GFM converter moved from `apps/extension/lib` to
   `packages/core/src/markdown/html-to-markdown*.ts`), exported as
-  `@reflect/core/article-text`. The Kore Capture extension now uses it too,
+  `@kore/core/article-text`. The Kore Capture extension now uses it too,
   so the future web clipper starts from the same code.
 - [x] `saveLinkText` (`actions/link-text.ts`), called after a paste collects
   the card: fetches the page through `capture_meta_fetch`, keeps the text
@@ -883,7 +883,7 @@ backlinks, list, tasks, recent, collection and done (`require_index`, exit
   connection (`query::open_read_connection`) lives there too.
 - [x] `packages/core/src/headless/`: an `IpcBridge` over newline-delimited
   JSON on stdio, and the entry that opens the index and runs `syncIndex`
-  (or `rebuildIndex` with `--rebuild`). `pnpm --filter @reflect/core
+  (or `rebuildIndex` with `--rebuild`). `pnpm --filter @kore/core
   build:indexer` bundles it into `dist/kore-indexer.mjs` (1.15 MB, no
   dependencies beyond Node).
 - [x] `kore index [--rebuild] [--json]`: spawns Node on that script and
@@ -2756,7 +2756,7 @@ and WebKit, split done from the menu in the dev bridge.
 a tag page tab (Open shelf, strip pinned pill, tab list menu). Symbol icons
 now come from their own manifest (`TAG_SYMBOL_ICONS` in
 `scripts/icon-manifest.mjs`, 217 Solar linear glyphs) generated into
-`src/lib/tags/tag-symbol-icons.gen.tsx` by `pnpm --filter @reflect/desktop
+`src/lib/tags/tag-symbol-icons.gen.tsx` by `pnpm --filter @kore/desktop
 icons`; the picker gained a search box and a scrolling grid. Verified:
 `pnpm check` exit 0, sidebar/strip/dialog suites green on Chromium and
 WebKit, rocket icon picked and seen on the Open row in the dev bridge.
@@ -3863,7 +3863,7 @@ screen: Agents then Close lands on today.
   managed `reflect-<slug>` install is removed on install/uninstall),
   `.koreignore`, and `kore://` deep links (registered alongside `reflect://`,
   which still parses so pasted links keep working, but is never written).
-  Kept on purpose, internal only: `reflect-*` crates and `@reflect/*`
+  Kept on purpose, internal only: `reflect-*` crates and `@kore/*`
   packages, the `.reflect/` index directory, the `reflect-managed` skill
   marker, `reflect-capture-host` and its `app.reflect.capture` native
   messaging id (tied to the browser extension), the iOS

@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import { dailyPath } from '@reflect/core'
+import { dailyPath } from '@kore/core'
 import { DailyDay } from '@/components/daily-day'
 import { DailyDatePill } from '@/components/daily-date-pill'
 import { ScrollVeil } from '@/components/scroll-veil'

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { LinkPreview } from '@reflect/core'
+import type { LinkPreview } from '@kore/core'
 import { Schema } from '@prosekit/pm/model'
 import { EditorState } from '@prosekit/pm/state'
 import { EditorView } from '@prosekit/pm/view'

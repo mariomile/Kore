@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isDaily, isTemplatePath, isUntitledNotePath, untitledNoteSeed } from '@reflect/core'
+import { isDaily, isTemplatePath, isUntitledNotePath, untitledNoteSeed } from '@kore/core'
 import { useNoteDocument, type NoteDocument } from '@/editor/use-note-document'
 import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
 

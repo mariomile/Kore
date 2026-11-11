@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import { Command } from 'cmdk'
-import { describeSearchFilters, parseHighlights, parseSearchQuery } from '@reflect/core'
+import { describeSearchFilters, parseHighlights, parseSearchQuery } from '@kore/core'
 import { Bookmark, BookmarkPlus, CalendarDays, Close, Note } from '@/components/icons'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { Kbd } from '@/components/kbd'

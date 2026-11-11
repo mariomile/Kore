@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { resourceUrl, errorMessage, type TimeFormat } from '@reflect/core'
+import { resourceUrl, errorMessage, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {

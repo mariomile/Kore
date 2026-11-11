@@ -21,7 +21,7 @@ The source tree now implements Plans 01–12 and 14–17, with Plan 16 at its V1
 longer deferred: the repo contains the WXT extension (`apps/extension`), the native
 messaging sidecar (`apps/native-host`), desktop capture commands
 (`apps/desktop/src-tauri/src/capture.rs`), and the TS drain/enrichment path in
-`@reflect/core`.
+`@kore/core`.
 
 Plan 13 is **closed by product decision**: the graph folder itself is the portability
 surface, so no dedicated import/export suite is planned. Reflect V1 exports now use a

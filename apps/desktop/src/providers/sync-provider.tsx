@@ -7,7 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { ReflectError, type GithubRepoRef, type GraphInfo } from '@reflect/core'
+import { ReflectError, type GithubRepoRef, type GraphInfo } from '@kore/core'
 import {
   createBackupController,
   type BackupController,

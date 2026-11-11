@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { contactsAuthorizationStatus, type ContactsAuthorization } from '@reflect/core'
+import { contactsAuthorizationStatus, type ContactsAuthorization } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /**

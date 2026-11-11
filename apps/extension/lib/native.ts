@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser'
-import { captureAckSchema, type CaptureWireMessage } from '@reflect/core/capture-envelope'
+import { captureAckSchema, type CaptureWireMessage } from '@kore/core/capture-envelope'
 import type { HoldReason } from './messages'
 
 /**

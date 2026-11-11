@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { User } from '@/components/icons'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { suggestedContactQueryKey, useSuggestedContact } from '@/hooks/use-suggested-contact'
 import { addContactToNote, ignoreContactSuggestion } from '@/lib/note-contact'

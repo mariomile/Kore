@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import type { AiPrompt, AiPromptMode } from '@reflect/core'
+import type { AiPrompt, AiPromptMode } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

@@ -15,8 +15,8 @@ const settingsState = vi.hoisted(() => ({
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(async () => {}),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   openBrowserWindow,
 }))
 

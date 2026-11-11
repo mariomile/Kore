@@ -4,7 +4,7 @@ import {
   errorMessage,
   isCliAgentProvider,
   type AgentProfile,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'

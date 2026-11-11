@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Plus } from '@/components/icons'
-import type { TaskGroup } from '@reflect/core'
+import type { TaskGroup } from '@kore/core'
 import { formatDayLabel } from '@/lib/dates'
 import {
   addTargetForGroup,

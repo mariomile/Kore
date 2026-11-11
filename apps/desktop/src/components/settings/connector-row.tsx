@@ -1,5 +1,5 @@
 import { useId, useState, type ReactElement } from 'react'
-import { errorMessage, type ConnectorId } from '@reflect/core'
+import { errorMessage, type ConnectorId } from '@kore/core'
 import { ExternalLink } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'

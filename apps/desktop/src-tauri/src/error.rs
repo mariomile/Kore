@@ -1,7 +1,7 @@
 //! The shared error contract returned by every `#[tauri::command]`.
 //!
 //! Serializes to `{ "kind": "...", "message": "..." }` — matching the zod
-//! `AppError` discriminated union in `@reflect/core`, so the frontend can branch
+//! `AppError` discriminated union in `@kore/core`, so the frontend can branch
 //! on `kind` with a type guard instead of inspecting opaque strings.
 
 use serde::Serialize;

@@ -40,7 +40,7 @@ import {
   type ChatTurn,
   type GraphInfo,
   type McpServer,
-} from '@reflect/core'
+} from '@kore/core'
 import type { ChatAttachment } from '@/lib/chat-attachments'
 import { todayIso } from '@/lib/dates'
 import { isNativeShell } from '@/lib/platform'

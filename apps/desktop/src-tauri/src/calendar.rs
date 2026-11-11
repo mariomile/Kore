@@ -3,7 +3,7 @@
 //! Rust owns the capability only — requesting access, listing calendars, and
 //! listing events for a date range. Which calendars are enabled, how events
 //! are filtered (declined, all-day), and what markdown an event turns into
-//! are policy in `@reflect/core`. Events are fetched live and never
+//! are policy in `@kore/core`. Events are fetched live and never
 //! persisted; the SQLite index stays a projection of markdown only
 //! (docs/porting/calendar-meetings-integration.md).
 //!

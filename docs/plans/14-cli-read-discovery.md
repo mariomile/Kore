@@ -8,7 +8,7 @@ sidecar.
 **Depends on:** Plan 02 (graph layout), Plan 03 (doc-model contracts), Plan 04 (index
 schema). **Supersedes** the earlier decision (here and in
 [Architecture & Conventions](architecture-conventions.md)) that the CLI would be a Node
-TS app reusing `@reflect/core` — see "Architecture" below for why.
+TS app reusing `@kore/core` — see "Architecture" below for why.
 **Unlocks:** `~/.agents` discovery workflows; terminal/automation access; Plan 15 bundles
 and distributes the binary.
 
@@ -53,7 +53,7 @@ Why Rust here, despite the "business logic lives in TS core" rule
   into distribution.
 
 The cost is deliberate, bounded duplication: the read-side contract exists in TS
-(`@reflect/core`) and now also in Rust. It is guarded by **parity tests** (below) and
+(`@kore/core`) and now also in Rust. It is guarded by **parity tests** (below) and
 documented as a frozen contract; the CLI must never grow its own parser/indexer beyond it.
 
 ### Workspace & crate layout

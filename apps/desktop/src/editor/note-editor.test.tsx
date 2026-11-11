@@ -12,8 +12,8 @@ import { hover, unhover } from '@/test-utils/mouse'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 
 const openBrowserWindow = vi.hoisted(() => vi.fn(async () => {}))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   openBrowserWindow,
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({

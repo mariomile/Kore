@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isTemplatePath } from '@reflect/core'
+import { isTemplatePath } from '@kore/core'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { Plus } from '@/components/icons'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'

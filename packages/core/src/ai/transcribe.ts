@@ -95,7 +95,7 @@ export interface TranscriptionRequest {
   mimeType: string
   /**
    * Host transport — the desktop app passes the Tauri HTTP plugin's fetch
-   * (CORS-free); `@reflect/core` itself stays platform-agnostic.
+   * (CORS-free); `@kore/core` itself stays platform-agnostic.
    */
   fetchFn?: typeof fetch | undefined
   /**

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { NoteMentionPreview } from '@reflect/core'
+import type { NoteMentionPreview } from '@kore/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 /**
@@ -12,8 +12,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 const previewNoteMentions = vi.hoisted(() =>
   vi.fn<(text: string) => Promise<NoteMentionPreview[]>>(),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   previewNoteMentions,
 }))
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))

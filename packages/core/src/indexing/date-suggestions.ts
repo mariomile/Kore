@@ -9,13 +9,13 @@
  *
  * Pure: the clock is injected as `today` (an ISO `YYYY-MM-DD` *local* date,
  * computed at the UI edge) and the calendar arithmetic comes from
- * `@reflect/utils`, which works in UTC so DST can never skip or repeat a day.
+ * `@kore/utils`, which works in UTC so DST can never skip or repeat a day.
  * Each result is an ISO `YYYY-MM-DD` — the canonical daily-note form — paired
  * with the human `phrase` to show in the menu (`null` for a bare ISO query,
  * which needs no friendlier label than the date itself).
  */
 
-import { addDaysIso, addMonthsIso, isCalendarDate, isoFromParts, weekdayIso } from '@reflect/utils'
+import { addDaysIso, addMonthsIso, isCalendarDate, isoFromParts, weekdayIso } from '@kore/utils'
 import { weekStartDow, type DateFormat, type WeekStartDay } from '../settings/schema'
 import { monthNameSuggestions } from './date-suggestions-months'
 

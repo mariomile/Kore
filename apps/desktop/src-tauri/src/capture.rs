@@ -3,7 +3,7 @@
 //! meta-scrape fetch, and the native-messaging plumbing (pointer file +
 //! browser host manifests) that lets the `reflect-capture-host` sidecar spool
 //! captures while this app is closed. Policy — what gets written where, the
-//! privacy gate, enrichment — lives in `@reflect/core` (`actions/capture`);
+//! privacy gate, enrichment — lives in `@kore/core` (`actions/capture`);
 //! this module only moves bytes.
 
 use std::fs;

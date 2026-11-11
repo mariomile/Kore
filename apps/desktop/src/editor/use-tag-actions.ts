@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { bodyHasTag, convertTaggedLineToNote, isDaily, splitFrontmatter } from '@reflect/core'
+import { bodyHasTag, convertTaggedLineToNote, isDaily, splitFrontmatter } from '@kore/core'
 import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
 import { useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'

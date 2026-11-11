@@ -10,9 +10,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const invokeMock = vi.fn<(command: string) => Promise<unknown>>()
 
 async function loadHaptics(): Promise<() => void> {
-  // resetModules gives this test a fresh latch and a fresh @reflect/core —
+  // resetModules gives this test a fresh latch and a fresh @kore/core —
   // install the fake bridge on the same instance the module under test sees.
-  const core = await import('@reflect/core')
+  const core = await import('@kore/core')
   core.setBridge({
     invoke: (command) => invokeMock(command),
     listen: async () => () => {},

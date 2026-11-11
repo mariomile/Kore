@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { parseSearchQuery, retrieve, searchWithFilters, suggestWikiTargets } from '@reflect/core'
+import { parseSearchQuery, retrieve, searchWithFilters, suggestWikiTargets } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { listCommands } from '@/lib/commands/registry'
 import { todayIso } from '@/lib/dates'

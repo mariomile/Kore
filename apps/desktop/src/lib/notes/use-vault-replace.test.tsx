@@ -15,8 +15,8 @@ const startOperation = vi.hoisted(() =>
   vi.fn(() => ({ progress: vi.fn(), done: vi.fn(), fail: operationFail })),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   listNotes,
   readNote,

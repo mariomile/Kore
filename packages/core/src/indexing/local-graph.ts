@@ -1,4 +1,4 @@
-import type { Database } from '@reflect/db'
+import type { Database } from '@kore/db'
 import type { Expression, ExpressionBuilder, SqlBool } from 'kysely'
 import { db } from './db'
 

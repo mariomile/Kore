@@ -52,7 +52,7 @@ filenames — the title-rename machinery rides along with editing).
 - One graph per device, rooted in the app's sandboxed `Documents/` directory,
   visible in the iOS Files app (portability holds on mobile).
 - Onboarding: **Start fresh** (create an empty graph) or **Connect GitHub**
-  (device flow + clone), reusing `@reflect/core`'s sync/github module.
+  (device flow + clone), reusing `@kore/core`'s sync/github module.
 - Mobile UI surfaces, **per the 2026-06-12 product call: re-implement V1
   mobile's feature-set and design** (see the
   [V1 mobile overview](../reflect-v1-mobile-overview.md)): a **Daily / All**
@@ -164,7 +164,7 @@ root.render(platform() === 'ios' || platform() === 'android' ? <MobileApp /> : <
 - New subtree `apps/desktop/src/mobile/` (kebab-case, one component per file):
   `mobile-app.tsx`, `screens/` (onboarding, today, note, notes-list, search,
   capture, settings), `components/` (tab bar, sync status pill, day pager).
-- **Reuses:** providers (graph, theme, query client), `@reflect/core` getters/
+- **Reuses:** providers (graph, theme, query client), `@kore/core` getters/
   setters, the design system tokens, the typed `Route` union (subset: `today`,
   `daily`, `note`, `search`) over a mobile stack/tab navigation — no URL
   router dependency, same as desktop — **and the entire editor/document stack**

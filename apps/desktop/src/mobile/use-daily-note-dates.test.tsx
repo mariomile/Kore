@@ -8,8 +8,8 @@ const dailyDatesInRange = vi.hoisted(() =>
   vi.fn<(start: string, end: string) => Promise<string[]>>(),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   dailyDatesInRange,
   hasBridge: () => true,
 }))

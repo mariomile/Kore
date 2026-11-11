@@ -16,7 +16,7 @@ import {
   subscribeBrowserNavigated,
   type BrowserEmbedRect,
   type BrowserSearchEngine,
-} from '@reflect/core'
+} from '@kore/core'
 import { ArrowLeft, ArrowRight, Bookmark, ExternalLink, Refresh } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { buildBrowserClipEnvelope, BROWSER_CLIP_MAX_CHARS } from '@/lib/browser-clip'

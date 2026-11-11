@@ -8,8 +8,8 @@ import { RouterProvider, useRouter } from '@/routing/router'
 import { NoteContextSidebar } from './note-context-sidebar'
 
 const relatedNotes = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   relatedNotes,
 }))
@@ -17,7 +17,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return {
     useSettings: () => ({
       settings: { ...DEFAULT_SETTINGS, semanticSearchEnabled: true },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { CollectionEntry, NoteListEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, NoteListEntry, TagType } from '@kore/core'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'

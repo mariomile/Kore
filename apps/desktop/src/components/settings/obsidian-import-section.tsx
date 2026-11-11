@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { dailyFormatProblem, type ImportMapping, type ObsidianImportReport } from '@reflect/core'
+import { dailyFormatProblem, type ImportMapping, type ObsidianImportReport } from '@kore/core'
 import { ChevronDown, Refresh } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'

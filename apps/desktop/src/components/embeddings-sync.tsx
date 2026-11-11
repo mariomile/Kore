@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { embedNote, embedRemove, isNotePath, subscribeIndexApplied } from '@reflect/core'
+import { embedNote, embedRemove, isNotePath, subscribeIndexApplied } from '@kore/core'
 import {
   backfillEmbeddingsVisibly,
   consumeLegacySemanticOptIn,

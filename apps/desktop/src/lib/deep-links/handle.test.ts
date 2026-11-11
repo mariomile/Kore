@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { captureInboxSpool, resolveNoteTarget, textCaptureEnvelopeSchema } from '@reflect/core'
+import { captureInboxSpool, resolveNoteTarget, textCaptureEnvelopeSchema } from '@kore/core'
 import { handleDeepLink } from '@/lib/deep-links/handle'
 import { startOperation } from '@/lib/operations'
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   captureInboxSpool: vi.fn(),
   resolveNoteTarget: vi.fn(),
 }))

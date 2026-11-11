@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { dailyPath } from '@reflect/core'
+import { dailyPath } from '@kore/core'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { RouteContent } from '@/components/route-content'

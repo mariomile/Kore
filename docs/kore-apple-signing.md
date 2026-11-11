@@ -49,7 +49,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 
 ## What deliberately did NOT change
 
-- `@reflect/*` package and `reflect-*` crate names (internal; renamed in a
+- `@kore/*` package and `reflect-*` crate names (internal; renamed in a
   separate mechanical pass). The deep-link scheme (`kore://`), the vault
   directory (`.kore/`), the native-messaging host (`app.kore.capture`) and the
   config dir (`kore/`) are Kore since the rename; each old name is migrated

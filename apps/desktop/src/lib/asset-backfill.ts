@@ -3,7 +3,7 @@ import {
   reindexNotesReferencing,
   type AiProvidersState,
   type ReconcileAssetDescriptionsOutcome,
-} from '@reflect/core'
+} from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { providerFetch } from '@/lib/provider-fetch'
 import { invalidateIndexQueries } from '@/lib/query-client'

@@ -1,8 +1,8 @@
-import { GRAPH_COLOR_IDS, type GraphColor } from '@reflect/core'
+import { GRAPH_COLOR_IDS, type GraphColor } from '@kore/core'
 
 /**
  * Presentation for the graph identity colors (`graphColors` in settings).
- * The ids and their order come from `@reflect/core`; this module owns how
+ * The ids and their order come from `@kore/core`; this module owns how
  * each id renders. `indigo` is the default and resolves through the live
  * `--accent` token so it tracks the light/dark theme like the rest of the
  * chrome; the other hues are fixed mid-range values (the design system

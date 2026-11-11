@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AssistantPart, ChatTurn as ChatTurnModel } from '@reflect/core'
+import type { AssistantPart, ChatTurn as ChatTurnModel } from '@kore/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { Message, MessageContent, MessageFooter, MessageGroup } from '@/components/ui/message'

@@ -13,7 +13,7 @@ import {
   toggleTaskMarker,
   writeNote,
   type TaskMarker,
-} from '@reflect/core'
+} from '@kore/core'
 import type { NoteSession } from '@/editor/note-session'
 import { openSession } from '@/editor/open-documents'
 import { todayIso } from '@/lib/dates'

@@ -1,5 +1,5 @@
 import { createContext, use } from 'react'
-import type { AppPlatform, GraphInfo, RecentGraph } from '@reflect/core'
+import type { AppPlatform, GraphInfo, RecentGraph } from '@kore/core'
 import type { MobileGraphBoot } from './use-mobile-graph-boot'
 
 /** Lifecycle of the active graph (Plan 02 loading gate). */

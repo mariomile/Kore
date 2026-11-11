@@ -27,7 +27,7 @@ import {
   type AiPromptMode,
   type ChatModelOption,
   type CloudSafe,
-} from '@reflect/core'
+} from '@kore/core'
 import { AiPreviewActions } from '@/editor/ai-menu/ai-preview-actions'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'

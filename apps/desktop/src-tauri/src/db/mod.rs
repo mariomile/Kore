@@ -2,7 +2,7 @@
 //!
 //! The graph's rebuildable projection lives at `<graph>/.kore/index.sqlite`,
 //! backed by the bundled SQLite (FTS5 compiled in) with sqlite-vec registered for
-//! Plan 09. Parsing/extraction happens in TS (`@reflect/core`, Plan 03); this
+//! Plan 09. Parsing/extraction happens in TS (`@kore/core`, Plan 03); this
 //! module owns the schema/migrations ([`migrations`]), all writes — one
 //! transaction per batch, generation-gated here in the command layer
 //! ([`write`] holds the row logic) — plus a read-only `db_query` bridge

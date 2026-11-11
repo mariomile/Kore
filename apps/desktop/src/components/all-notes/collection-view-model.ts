@@ -1,4 +1,4 @@
-import type { CollectionPageView, SavedCollectionView } from '@reflect/core'
+import type { CollectionPageView, SavedCollectionView } from '@kore/core'
 
 /** Sentinel id for the unpersisted tab a collection shows before any view is added. */
 export const LIVE_COLLECTION_VIEW_ID = '__live'

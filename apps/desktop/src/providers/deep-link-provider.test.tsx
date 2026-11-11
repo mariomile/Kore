@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { render } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import type { DeepLinkIo } from '@/lib/deep-links/handle'
 import { beginLinkNavigationIntent } from '@/lib/windows/link-navigation-intent'
 

@@ -29,7 +29,7 @@ almost verbatim.
 *produces* the descriptions; indexing them is explicitly out of scope.
 
 **Architecture:** all policy (eligibility, privacy, AI calls, description writes)
-lives in `@reflect/core`; the desktop app owns the watcher trigger, the
+lives in `@kore/core`; the desktop app owns the watcher trigger, the
 single-flight controller, and the Settings UI. This mirrors capture
 ([`actions/capture.ts`](../../packages/core/src/actions/capture.ts) +
 [`lib/capture-controller.ts`](../../apps/desktop/src/lib/capture-controller.ts))

@@ -4,7 +4,7 @@ import {
   actionsReady,
   subscribeRecordingNativeAction,
   type PluginSubscription,
-} from '@reflect/core'
+} from '@kore/core'
 import { isNativeShell } from '@/lib/platform'
 import { nativeRecordingStatus, stopActiveRecording } from '@/mobile/use-native-audio-recorder'
 import type { StagedRecordingInput } from '@/mobile/use-staged-recording-ingest'

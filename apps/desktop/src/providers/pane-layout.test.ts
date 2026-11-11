@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { OpenColumn } from '@reflect/core'
+import type { OpenColumn } from '@kore/core'
 import {
   addTabTo,
   emptyPane,

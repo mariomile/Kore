@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULT_VAULT_OBJECTS, parseNote, setBridge, isPinned } from '@reflect/core'
+import { DEFAULT_VAULT_OBJECTS, parseNote, setBridge, isPinned } from '@kore/core'
 import {
   DEFAULT_OBJECTS_SEEDED_META_KEY,
   ensureFirstRunSeeds,

@@ -111,7 +111,7 @@ fresh process; concurrent builds distort latency comparisons.
 Stage the existing sidecars once per checkout, then build the test binary:
 
 ```sh
-pnpm --filter @reflect/desktop sidecar
+pnpm --filter @kore/desktop sidecar
 cargo test -p reflect-open --lib --locked --no-run
 ```
 

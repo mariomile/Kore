@@ -3,7 +3,7 @@
 //! (`kore proposals`, which rebuilds each call through its MCP tool table),
 //! so the app runs it instead of re-implementing that table. One capability:
 //! run `kore proposals <list | accept id | reject id>` on the open graph and
-//! hand back its JSON. What to show and when to ask is `@reflect/core`.
+//! hand back its JSON. What to show and when to ask is `@kore/core`.
 
 use std::ffi::OsString;
 use std::path::Path;

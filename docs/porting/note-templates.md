@@ -162,7 +162,7 @@ title: Company
   user's date format), `{{date:iso}}` (`YYYY-MM-DD`, what daily wiki links
   want), `{{time}}` (the user's time format), and `{{title}}` (the target
   note's display title). Expansion happens at insertion time
-  (`expandTemplatePlaceholders` in `@reflect/core`, values from
+  (`expandTemplatePlaceholders` in `@kore/core`, values from
   `useTemplateValues`); casing and inner whitespace are accepted, unknown
   tokens pass through untouched, and values are never re-scanned.
 

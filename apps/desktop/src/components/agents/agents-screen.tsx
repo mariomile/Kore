@@ -19,7 +19,7 @@ import {
   writeNote,
   type AgentProfile,
   type PendingMemoryProposal,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toast'

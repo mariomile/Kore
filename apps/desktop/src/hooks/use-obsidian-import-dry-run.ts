@@ -9,7 +9,7 @@ import {
   type ImportMapping,
   type ObsidianImportReport,
   type ObsidianImportSource,
-} from '@reflect/core'
+} from '@kore/core'
 import { checkRoundTrip } from '@/editor/roundtrip'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 

@@ -18,7 +18,7 @@ Before writing any Rust, check whether you actually need a new command. Per
 [architecture-conventions](../plans/architecture-conventions.md), Rust owns
 **capabilities** (file IO, SQLite, watching, OS stores) and TypeScript owns
 **policy**. If your feature is a new *rule* over existing primitives — a new
-query shape, a different orchestration — it belongs in `@reflect/core`, built
+query shape, a different orchestration — it belongs in `@kore/core`, built
 on the commands that already exist.
 
 ## 1. The Rust command
@@ -69,7 +69,7 @@ Conventions that matter here:
   `generation`, if the pass always has one) and use the `root_for` pattern
   from `fs::note_read`/`asset_read`.
 - **No product policy.** A command exposes a primitive. If you find yourself
-  encoding "what to do when X", that decision belongs in `@reflect/core`.
+  encoding "what to do when X", that decision belongs in `@kore/core`.
 
 Register it in `apps/desktop/src-tauri/src/lib.rs` inside
 `tauri::generate_handler![...]` — forgetting this compiles fine and fails at
@@ -82,7 +82,7 @@ two-liners over `load_from`/`save_to`, and the tests exercise those with
 desktop crate, then run the crate tests:
 
 ```bash
-pnpm --filter @reflect/desktop sidecar
+pnpm --filter @kore/desktop sidecar
 cargo test -p reflect-open
 ```
 
@@ -122,11 +122,11 @@ export async function noteStat(path: string): Promise<NoteStat> {
 
 ## 3. Tests on the TS side
 
-`@reflect/core` never imports Tauri, so tests install a fake bridge instead of
+`@kore/core` never imports Tauri, so tests install a fake bridge instead of
 module-mocking:
 
 ```ts
-import { setBridge } from '@reflect/core' // or '../ipc/bridge' within core
+import { setBridge } from '@kore/core' // or '../ipc/bridge' within core
 setBridge({
   invoke: vi.fn().mockResolvedValue({ sizeBytes: 12, modifiedMs: 99 }),
   listen: async () => () => {},

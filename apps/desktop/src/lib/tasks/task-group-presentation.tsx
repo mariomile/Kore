@@ -9,7 +9,7 @@ import {
   Pin,
   Star,
 } from '@/components/icons'
-import type { TaskGroup } from '@reflect/core'
+import type { TaskGroup } from '@kore/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { dailyTarget, insertTargetForTask, todaysDailyTarget } from '@/lib/tasks/task-navigation'
 

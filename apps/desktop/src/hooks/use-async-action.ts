@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 
 export interface AsyncAction {
   /**

@@ -10,7 +10,7 @@ Cascade layer order, low to high priority.
 @layer theme, base, components, utilities, design, meowdown;
 
 @import 'tailwindcss';
-@import '@reflect/design-system/styles.css' layer(design);
+@import '@kore/design-system/styles.css' layer(design);
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@meowdown/core/style.css';

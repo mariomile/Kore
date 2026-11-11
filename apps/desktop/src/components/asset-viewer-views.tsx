@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { parseCsv } from '@/lib/csv'
 
 /**

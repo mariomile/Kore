@@ -5,7 +5,7 @@ import {
   type AgentStepNode,
   type AssistantPart,
   type ChatTurn,
-} from '@reflect/core'
+} from '@kore/core'
 import { isModEvent } from '@meowdown/core'
 import {
   Bot,

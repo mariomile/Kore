@@ -1,4 +1,4 @@
-import { splitFrontmatter } from '@reflect/core'
+import { splitFrontmatter } from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 
 /**

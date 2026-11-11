@@ -1,7 +1,7 @@
 //! `kore index` — build or refresh `.kore/index.sqlite` without the app.
 //!
 //! The projection is the desktop app's, not a second implementation: parsing
-//! and extraction run in `@reflect/core` (the bundled `kore-indexer.mjs`,
+//! and extraction run in `@kore/core` (the bundled `kore-indexer.mjs`,
 //! executed by Node), and every row write goes through `reflect-index-store`,
 //! the same crate the app's Tauri commands call. This module is the host in
 //! between: it spawns Node with piped stdio and answers the core's native

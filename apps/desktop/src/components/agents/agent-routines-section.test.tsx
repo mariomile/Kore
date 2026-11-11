@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { AgentRoutine, Settings } from '@reflect/core'
+import type { AgentRoutine, Settings } from '@kore/core'
 
 const settingsState = vi.hoisted(() => ({
   agentRoutines: [] as AgentRoutine[],

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { foldTag, type OpenTab } from '@reflect/core'
+import { foldTag, type OpenTab } from '@kore/core'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useTagIcons } from '@/hooks/use-tag-icons'
 import {

@@ -12,8 +12,8 @@ const tagExtendsLoop = vi.hoisted(() =>
   vi.fn<(tag: string, parents: readonly string[]) => Promise<string | null>>(async () => null),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote,
   writeNote,
   createNoteIfAbsent,

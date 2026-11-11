@@ -5,7 +5,7 @@ import {
   remoteAccessToken,
   rotateRemoteAccessToken,
   type RemoteTunnel,
-} from '@reflect/core'
+} from '@kore/core'
 import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'

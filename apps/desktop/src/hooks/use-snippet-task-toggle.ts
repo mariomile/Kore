@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { errorMessage, withoutBlockIds, type SnippetTask } from '@reflect/core'
+import { errorMessage, withoutBlockIds, type SnippetTask } from '@kore/core'
 import type { TaskClickHandler, TaskClickPayload } from '@meowdown/react'
 import { toggleTask } from '@/lib/note-task'
 import { startOperation } from '@/lib/operations'

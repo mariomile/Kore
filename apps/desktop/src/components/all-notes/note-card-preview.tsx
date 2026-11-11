@@ -5,7 +5,7 @@ import {
   splitFrontmatter,
   stripLeadingHeading,
   stripLeadingTagLine,
-} from '@reflect/core'
+} from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'

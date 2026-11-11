@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { DARK_THEME_IDS, type ThemePreference } from '@reflect/core'
+import { DARK_THEME_IDS, type ThemePreference } from '@kore/core'
 import { deriveAccentTokens } from '@/lib/accent-color'
 import {
   writeCachedAccentColor,

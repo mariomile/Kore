@@ -14,8 +14,8 @@ FROM node:22-bookworm-slim AS indexer
 WORKDIR /src
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile --filter @reflect/core... \
- && pnpm --filter @reflect/core build:indexer
+RUN pnpm install --frozen-lockfile --filter @kore/core... \
+ && pnpm --filter @kore/core build:indexer
 
 FROM node:22-bookworm-slim
 RUN apt-get update \

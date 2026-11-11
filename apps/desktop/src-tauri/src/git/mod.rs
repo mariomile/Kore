@@ -2,7 +2,7 @@
 //!
 //! Rust owns the *capabilities* — init/adopt, commit, fetch, merge, push —
 //! while the sync **policy** (debounce cadence, retry loop, product states,
-//! GitHub specifics) lives in `@reflect/core` `sync/`. Nothing here is
+//! GitHub specifics) lives in `@kore/core` `sync/`. Nothing here is
 //! GitHub-specific: remotes are URLs, credentials arrive per call through a
 //! callback (never embedded in the URL, so never on disk).
 //!

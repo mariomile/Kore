@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { AssistantPart } from '@reflect/core'
+import type { AssistantPart } from '@kore/core'
 import { ChatToolChip } from './chat-tool-chip'
 
 const commitProperty = vi.hoisted(() => vi.fn())

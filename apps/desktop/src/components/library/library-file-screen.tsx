@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { libraryFileTitle, splitFrontmatter } from '@reflect/core'
+import { libraryFileTitle, splitFrontmatter } from '@kore/core'
 import { Lock } from '@/components/icons'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useLibraryFile, useLibraryRoots } from '@/hooks/use-library'

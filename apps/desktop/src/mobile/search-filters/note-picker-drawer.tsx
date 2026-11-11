@@ -1,6 +1,6 @@
 import { useDeferredValue, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { parseSearchQuery, searchWithFilters } from '@reflect/core'
+import { parseSearchQuery, searchWithFilters } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

@@ -8,7 +8,7 @@ import {
   resolveAttachmentSource,
   separateCalloutTitles,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { decorateCallouts } from '@/editor/callout-dom'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'

@@ -1,4 +1,4 @@
-import { hiddenBlockIdTail, lineBlockId, newBlockId } from '@reflect/core'
+import { hiddenBlockIdTail, lineBlockId, newBlockId } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import {
   Plugin,

@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { AiProviderConfig } from '@reflect/core'
+import type { AiProviderConfig } from '@kore/core'
 
 /** The per-provider management sheet: make-default and remove wiring. */
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
-import type { AssistantPart, NoteToolResult } from '@reflect/core'
+import type { AssistantPart, NoteToolResult } from '@kore/core'
 import { createNoteSession } from '@/editor/note-session'
 
 const applyNoteEdit = vi.hoisted(() => vi.fn<() => Promise<void>>())

@@ -11,7 +11,7 @@ import {
   type CalendarInfo,
   type CalendarAuthorizationStatus,
   type Unlisten,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { addDaysIso } from '@/lib/dates'
 import { isMacosDesktop } from '@/lib/platform'

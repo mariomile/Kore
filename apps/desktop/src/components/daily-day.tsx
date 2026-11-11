@@ -9,7 +9,7 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { isAppError, loadLinkPreview, readNote } from '@reflect/core'
+import { isAppError, loadLinkPreview, readNote } from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane, type NotePaneProps } from '@/components/note-pane'

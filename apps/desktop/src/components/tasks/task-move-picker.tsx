@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { OpenTask, TaskProject } from '@reflect/core'
+import type { OpenTask, TaskProject } from '@kore/core'
 import { Folder, Hash } from '@/components/icons'
 import {
   Command,

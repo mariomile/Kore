@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
-import { agentRoutinesSchema, type Settings } from '@reflect/core'
+import { agentRoutinesSchema, type Settings } from '@kore/core'
 
 const effects = vi.hoisted(() => ({
   exportBackup: vi.fn(async () => {}),
@@ -12,8 +12,8 @@ const effects = vi.hoisted(() => ({
   update: vi.fn<(patch: Partial<Settings>) => void>(),
   flush: vi.fn(async () => {}),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   exportGraphBackup: effects.exportBackup,
   restoreGraphBackup: effects.restoreBackup,
 }))
@@ -41,7 +41,7 @@ vi.mock('@/providers/settings-provider', () => ({
 }))
 
 const { GraphBackupSection } = await import('./graph-backup-section')
-const { exportGraphBackup, restoreGraphBackup } = await import('@reflect/core')
+const { exportGraphBackup, restoreGraphBackup } = await import('@kore/core')
 afterEach(async () => {
   await cleanup()
   vi.clearAllMocks()

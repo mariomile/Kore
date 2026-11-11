@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { Chart, Check, FolderOpen, History, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'

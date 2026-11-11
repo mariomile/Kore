@@ -5,7 +5,7 @@ import {
   ReflectError,
   type AppPlatform,
   type IpcBridge,
-} from '@reflect/core'
+} from '@kore/core'
 import { z } from 'zod'
 import type { DevFileStore } from '@/dev/dev-file-store'
 import type { DevIndexDb } from '@/dev/dev-index-db'

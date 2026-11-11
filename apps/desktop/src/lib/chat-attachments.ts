@@ -2,6 +2,7 @@ import {
   assetUrl,
   chatAttachmentMediaType,
   isImageMediaType,
+  isPortableImageType,
   MAX_ATTACHMENT_BYTES,
   type ChatAttachment,
 } from '@kore/core'
@@ -53,9 +54,6 @@ const MAX_IMAGE_EDGE = 1568
 
 const JPEG_QUALITY = 0.85
 
-/** Formats every provider accepts as-is; anything else gets re-encoded. */
-const PROVIDER_SAFE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-
 /** The attachable files in a drop or paste payload; everything else is ignored. */
 export function attachableFilesFrom(data: DataTransfer | null): File[] {
   if (!data) {
@@ -85,7 +83,7 @@ async function downscaledImage(file: File): Promise<{ dataUrl: string; mediaType
   }
   try {
     const scale = Math.min(MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height, 1), 1)
-    if (scale === 1 && PROVIDER_SAFE_TYPES.has(file.type)) {
+    if (scale === 1 && isPortableImageType(file.type)) {
       return null
     }
     const canvas = document.createElement('canvas')

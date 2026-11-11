@@ -7,39 +7,67 @@
  * file channel at all — reads them the same way.
  */
 
-/** On-disk extension for every attachable media type. */
-export const CHAT_ATTACHMENT_EXTENSIONS: Readonly<Record<string, string>> = {
-  'image/jpeg': 'jpeg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-  'application/pdf': 'pdf',
-  'text/plain': 'txt',
-  'text/markdown': 'md',
-  'text/csv': 'csv',
-  'application/json': 'json',
+/**
+ * How an attachment reaches a model: `image` and `document` are binary
+ * channels an engine may read natively, `text` is inlined into the message.
+ */
+export type AttachmentChannel = 'image' | 'document' | 'text'
+
+export interface AttachmentKind {
+  readonly mediaType: string
+  /** File extensions, the first one being the on-disk extension. */
+  readonly extensions: readonly [string, ...string[]]
+  readonly channel: AttachmentChannel
 }
 
-/** Media type by file extension, for files the OS reports with no (or a vague) type. */
-const MEDIA_TYPE_BY_EXTENSION: Readonly<Record<string, string>> = {
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  gif: 'image/gif',
-  pdf: 'application/pdf',
-  txt: 'text/plain',
-  text: 'text/plain',
-  md: 'text/markdown',
-  markdown: 'text/markdown',
-  csv: 'text/csv',
-  json: 'application/json',
+/**
+ * Every attachable media type: the one table the extensions, the picker,
+ * each engine's accepted types and the encoders derive from. The Rust
+ * attachment store keeps its own closed list as the security boundary, and
+ * a test holds it to this table.
+ */
+export const ATTACHMENT_KINDS: readonly AttachmentKind[] = [
+  { mediaType: 'image/jpeg', extensions: ['jpeg', 'jpg'], channel: 'image' },
+  { mediaType: 'image/png', extensions: ['png'], channel: 'image' },
+  { mediaType: 'image/webp', extensions: ['webp'], channel: 'image' },
+  { mediaType: 'image/gif', extensions: ['gif'], channel: 'image' },
+  { mediaType: 'application/pdf', extensions: ['pdf'], channel: 'document' },
+  { mediaType: 'text/plain', extensions: ['txt', 'text'], channel: 'text' },
+  { mediaType: 'text/markdown', extensions: ['md', 'markdown'], channel: 'text' },
+  { mediaType: 'text/csv', extensions: ['csv'], channel: 'text' },
+  { mediaType: 'application/json', extensions: ['json'], channel: 'text' },
+]
+
+const KIND_BY_MEDIA_TYPE = new Map(ATTACHMENT_KINDS.map((kind) => [kind.mediaType, kind]))
+
+const KIND_BY_EXTENSION = new Map(
+  ATTACHMENT_KINDS.flatMap((kind) =>
+    kind.extensions.map((extension) => [extension, kind] as const),
+  ),
+)
+
+/** The channel an attachable media type travels on, or null when the chat cannot carry it. */
+export function attachmentChannel(mediaType: string): AttachmentChannel | null {
+  return KIND_BY_MEDIA_TYPE.get(mediaType)?.channel ?? null
+}
+
+/** The on-disk extension for an attachable media type, or null. */
+export function attachmentExtension(mediaType: string): string | null {
+  return KIND_BY_MEDIA_TYPE.get(mediaType)?.extensions[0] ?? null
+}
+
+/**
+ * Whether an image is in a format every provider reads as-is; any other
+ * image is re-encoded before it is attached.
+ */
+export function isPortableImageType(mediaType: string): boolean {
+  return attachmentChannel(mediaType) === 'image'
 }
 
 /** The `accept` attribute for a file picker offering every attachable kind. */
 export const CHAT_ATTACHMENT_ACCEPT = [
   'image/*',
-  ...Object.keys(MEDIA_TYPE_BY_EXTENSION).map((extension) => `.${extension}`),
+  ...[...KIND_BY_EXTENSION.keys()].map((extension) => `.${extension}`),
 ].join(',')
 
 /** Largest text file inlined into a message, in characters (the rest is cut). */
@@ -61,11 +89,11 @@ export function chatAttachmentMediaType(fileName: string, browserType: string): 
   }
   const dot = fileName.lastIndexOf('.')
   const extension = dot === -1 ? '' : fileName.slice(dot + 1).toLowerCase()
-  const byExtension = MEDIA_TYPE_BY_EXTENSION[extension]
+  const byExtension = KIND_BY_EXTENSION.get(extension)
   if (byExtension !== undefined) {
-    return byExtension
+    return byExtension.mediaType
   }
-  return browserType in CHAT_ATTACHMENT_EXTENSIONS ? browserType : null
+  return KIND_BY_MEDIA_TYPE.has(browserType) ? browserType : null
 }
 
 /** Whether an attachment is an image (thumbnail in the UI, image block for engines). */
@@ -75,13 +103,12 @@ export function isImageMediaType(mediaType: string): boolean {
 
 /** Whether an attachment is a text file inlined into the message as text. */
 export function isTextMediaType(mediaType: string): boolean {
-  return mediaType.startsWith('text/') || mediaType === 'application/json'
+  return attachmentChannel(mediaType) === 'text'
 }
 
 /** A short label for a non-image attachment chip, e.g. `PDF`, `CSV`. */
 export function attachmentKindLabel(mediaType: string): string {
-  const extension = CHAT_ATTACHMENT_EXTENSIONS[mediaType]
-  return extension === undefined ? 'File' : extension.toUpperCase()
+  return attachmentExtension(mediaType)?.toUpperCase() ?? 'File'
 }
 
 /**

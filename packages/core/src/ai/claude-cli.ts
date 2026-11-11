@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { ModelMessage } from 'ai'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
-import { agentCliInput, type AgentCliAttachment } from './agent-cli-input'
+import { agentCliInput, type AgentCliAttachment, type AgentCliChannel } from './agent-cli-input'
 import {
   streamAgentCliTurn,
   noteCardAndMentionRules,
@@ -343,13 +343,8 @@ export interface StreamCliChatOptions {
   steering?: { onSteerReady: (steer: (text: string) => Promise<void>) => void } | undefined
 }
 
-/** Media types Claude Code reads natively from a stream-json user message. */
-const CLAUDE_CLI_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-
-/** Whether Claude Code can take an attachment of this media type as a content block. */
-export function claudeCliAcceptsAttachment(mediaType: string): boolean {
-  return CLAUDE_CLI_IMAGE_TYPES.has(mediaType) || mediaType === 'application/pdf'
-}
+/** The channels Claude Code reads natively from a stream-json user message. */
+export const CLAUDE_CLI_CHANNELS: ReadonlySet<AgentCliChannel> = new Set(['image', 'document'])
 
 /**
  * One `--input-format stream-json` stdin line carrying a user message. The
@@ -371,7 +366,7 @@ export function claudeStreamJsonUserLine(
         ...attachments.flatMap((attachment) => [
           { type: 'text', text: `[${attachment.label}]` },
           {
-            type: attachment.mediaType === 'application/pdf' ? 'document' : 'image',
+            type: attachment.channel,
             source: { type: 'base64', media_type: attachment.mediaType, data: attachment.base64 },
           },
         ]),
@@ -385,7 +380,7 @@ export function streamClaudeCliChat(
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const steering = options.steering
-  const input = agentCliInput(options.messages, claudeCliAcceptsAttachment)
+  const input = agentCliInput(options.messages, CLAUDE_CLI_CHANNELS)
   // Attachments need the stream-json input channel (content blocks); so does
   // steering. A plain question keeps the simple text prompt.
   const streamingInput = steering !== undefined || input.attachments.length > 0

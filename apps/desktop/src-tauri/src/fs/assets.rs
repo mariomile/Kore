@@ -137,7 +137,7 @@ fn assets_dir_for(
 ) -> AppResult<(std::path::PathBuf, String)> {
     ensure_asset_name(name)?;
     let rel_dir = dir.unwrap_or("assets").trim_matches('/').to_string();
-    if !reflect_graph_paths::is_safe_visible(&rel_dir) {
+    if !kore_graph_paths::is_safe_visible(&rel_dir) {
         return Err(AppError::traversal(format!(
             "asset folder must be a visible graph-relative path: {rel_dir:?}"
         )));

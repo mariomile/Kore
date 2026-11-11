@@ -1,4 +1,4 @@
-import { parseNote } from '@reflect/core'
+import { parseNote } from '@kore/core'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 
 /**

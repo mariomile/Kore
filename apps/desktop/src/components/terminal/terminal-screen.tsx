@@ -9,7 +9,7 @@ import {
   subscribePtyExit,
   type PtyDataEvent,
   type PtyExitEvent,
-} from '@reflect/core'
+} from '@kore/core'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'

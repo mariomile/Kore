@@ -3,7 +3,7 @@
 //! Rust owns the capability only — requesting access, listing calendars, and
 //! listing events for a date range. Which calendars are enabled, how events
 //! are filtered (declined, all-day), and what markdown an event turns into
-//! are policy in `@reflect/core`. Events are fetched live and never
+//! are policy in `@kore/core`. Events are fetched live and never
 //! persisted; the SQLite index stays a projection of markdown only
 //! (docs/porting/calendar-meetings-integration.md).
 //!
@@ -69,7 +69,7 @@ pub struct CalendarEvent {
 
 /// Command: the current EventKit authorization state for events, one of
 /// "notDetermined" | "restricted" | "denied" | "fullAccess" | "writeOnly".
-/// Only "fullAccess" lets Reflect read events.
+/// Only "fullAccess" lets Kore read events.
 #[tauri::command]
 pub fn calendar_authorization_status() -> AppResult<String> {
     platform::authorization_status()

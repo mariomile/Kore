@@ -8,7 +8,7 @@
   notes in place, create notes, lexical search, GitHub sync compatible with
   desktop (see [Plan 19](../plans/19-mobile.md)).
 - **Decision driver:** Which shell maximizes reuse of the existing stack
-  (React + Vite frontend, `@reflect/core` actions, Rust primitives: git2 sync,
+  (React + Vite frontend, `@kore/core` actions, Rust primitives: git2 sync,
   rusqlite FTS5 index, keychain) while staying App-Store-viable and
   Android-portable?
 - **Alternatives evaluated:** React Native (bare), Expo, Capacitor, Ionic
@@ -52,7 +52,7 @@ is bundled only by the desktop platform overlays.
 libgit2/OpenSSL — the GitHub HTTPS + device-flow token path is exactly the
 mobile-viable transport; rusqlite with FTS5; keyring's `apple-native` backend,
 which covers the iOS keychain), the Kysely-over-IPC read layer, all of
-`@reflect/core`, the design system, and the Vite toolchain.
+`@kore/core`, the design system, and the Vite toolchain.
 
 **What we pay (verified, mid-2026):**
 
@@ -183,7 +183,7 @@ frontend. We switch (or re-evaluate) if, during Plan 19's gate spikes:
 3. App Store review rejects the Tauri shell on grounds Capacitor demonstrably
    passes (4.2 / process model), after one appeal cycle.
 
-A fallback would keep `@reflect/core` and the frontend, and would require a
+A fallback would keep `@kore/core` and the frontend, and would require a
 Capacitor bridge implementing the same command surface plus a native sync
 plugin — significant, bounded work; not a rewrite.
 

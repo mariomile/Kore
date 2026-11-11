@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { EmbedProgress } from '@reflect/core'
+import type { EmbedProgress } from '@kore/core'
 
 interface ModelDownloadProgressProps {
   /** Byte counts from an active download, once the runtime has reported them. */

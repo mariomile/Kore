@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
-use reflect_index_schema::move_dir_without_overwrite;
+use kore_index_schema::move_dir_without_overwrite;
 
 use crate::error::{AppError, AppResult};
 

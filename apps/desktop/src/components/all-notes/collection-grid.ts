@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { TagProperty, TagType } from '@reflect/core'
+import type { TagProperty, TagType } from '@kore/core'
 
 /**
  * The Collection table's shared column layout, in its own module so the

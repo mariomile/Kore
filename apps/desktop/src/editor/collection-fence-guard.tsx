@@ -1,11 +1,11 @@
 import { useMemo, type ReactElement } from 'react'
-import { parseCollectionEmbedBody } from '@reflect/core'
+import { parseCollectionEmbedBody } from '@kore/core'
 import { definePlugin } from '@prosekit/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { NodeSelection, Plugin, PluginKey, Selection } from '@prosekit/pm/state'
 import { useExtension } from '@meowdown/react'
 
-const guardKey = new PluginKey('reflect-collection-fence-guard')
+const guardKey = new PluginKey('kore-collection-fence-guard')
 
 /** A code block that the live Collection widget renders in place of its source. */
 function isRenderedCollectionFence(node: ProseMirrorNode): boolean {

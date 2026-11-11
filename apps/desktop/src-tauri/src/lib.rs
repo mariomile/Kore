@@ -1,7 +1,7 @@
-//! The Reflect desktop shell: native primitives only.
+//! The Kore desktop shell: native primitives only.
 //!
 //! Per the architecture conventions, Rust owns *capabilities* (file IO, SQLite,
-//! watching, recents) and TypeScript (`@reflect/core`) owns *policy and
+//! watching, recents) and TypeScript (`@kore/core`) owns *policy and
 //! composition* — a command here never encodes product rules beyond the
 //! primitive it exposes. Each module wires one capability:
 //! [`fs`] (graph file IO), [`db`] (SQLite index), [`watcher`] (file events),
@@ -87,7 +87,7 @@ use tauri::{Emitter, Manager};
 /// Returns the application version from Tauri's resolved package metadata.
 ///
 /// The canonical round-trip example for the IPC boundary: the frontend reaches
-/// it only through `@reflect/core`'s typed, zod-validated `getAppVersion`.
+/// it only through `@kore/core`'s typed, zod-validated `getAppVersion`.
 #[tauri::command]
 fn app_version<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> String {
     app.package_info().version.to_string()

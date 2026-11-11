@@ -1,4 +1,4 @@
-import type { Settings, TaskView } from '@reflect/core'
+import type { Settings, TaskView } from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 
 /** How the Tasks view lays its groups out. */

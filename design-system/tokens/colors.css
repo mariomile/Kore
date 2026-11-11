@@ -218,9 +218,9 @@
 
 /* ============================================================
    SPACE theme — the marketing site surface.
-   Apply .reflect-space to a full-bleed wrapper.
+   Apply .kore-space to a full-bleed wrapper.
    ============================================================ */
-.reflect-space {
+.kore-space {
   --surface-app: var(--space-black);
   --text: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.62);

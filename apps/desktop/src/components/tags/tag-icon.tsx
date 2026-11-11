@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isTagSymbolIconName, parseNoteIcon } from '@reflect/core'
+import { isTagSymbolIconName, parseNoteIcon } from '@kore/core'
 import { Hash } from '@/components/icons'
 import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
 import { cn } from '@/lib/utils'

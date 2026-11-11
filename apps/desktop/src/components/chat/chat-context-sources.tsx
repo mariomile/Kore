@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AssistantPart } from '@reflect/core'
+import type { AssistantPart } from '@kore/core'
 import { ChatNoteCard } from './chat-note-card'
 
 interface ChatContextSourcesProps {

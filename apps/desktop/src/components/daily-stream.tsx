@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import { dailyPath } from '@reflect/core'
+import { dailyPath } from '@kore/core'
 import { DailyDay } from '@/components/daily-day'
 import { DailyDatePill } from '@/components/daily-date-pill'
 import { ScrollVeil } from '@/components/scroll-veil'
@@ -46,7 +46,7 @@ interface DailyStreamProps {
 }
 
 /**
- * The reading gutter (`.reflect-content-gutter` in styles/index.css): the old
+ * The reading gutter (`.kore-content-gutter` in styles/index.css): the old
  * scroll-container `px-6` and centered `max-w-2xl` column folded into one
  * `padding-inline` applied *inside* an element instead of around it. The element
  * spans the pane's full width with its content in a centered column, so the side
@@ -55,10 +55,10 @@ interface DailyStreamProps {
  * click anywhere in the note body, even the blank margin, still hits the editor.
  *
  * An ordinary class, not a `px-*` utility: on the editor it must out-cascade the
- * un-layered `.reflect-editor` padding reset, which every `@layer utilities` rule
+ * un-layered `.kore-editor` padding reset, which every `@layer utilities` rule
  * loses to regardless of order.
  */
-const CONTENT_GUTTER = 'reflect-content-gutter'
+const CONTENT_GUTTER = 'kore-content-gutter'
 
 /**
  * The daily stream (Plan 06b): a virtualized chronological run of days — past
@@ -352,7 +352,7 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       <div
         ref={attachScrollElement}
         data-testid="daily-stream"
-        className="reflect-daily-stream h-full overflow-auto"
+        className="kore-daily-stream h-full overflow-auto"
         onScroll={(event) => {
           saveScrollState(event.currentTarget.scrollTop)
           scheduleRest()
@@ -412,7 +412,7 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
                   (the inner span), not the pane edge. */}
                 <h2
                   className={cn(
-                    'reflect-daily-subject mb-4',
+                    'kore-daily-subject mb-4',
                     CONTENT_GUTTER,
                     isToday && 'text-accent',
                   )}

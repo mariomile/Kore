@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { RouterProvider } from '@/routing/router'
 import { TagPageDescription } from './tag-page-description'
 

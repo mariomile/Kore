@@ -9,7 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { OpenColumn, OpenTab } from '@reflect/core'
+import type { OpenColumn, OpenTab } from '@kore/core'
 import { createValueStore, type ValueStore } from '@/lib/value-store'
 import { useGraph } from '@/providers/graph-provider'
 import type { NoteFindActions } from '@/providers/note-find-provider'

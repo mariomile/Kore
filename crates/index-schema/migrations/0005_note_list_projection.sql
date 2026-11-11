@@ -6,7 +6,7 @@
 -- (Unicode-aware) because SQLite's lower() only folds ASCII, so `#Café` and
 -- `#café` would otherwise be different tags. Rows written before this
 -- migration carry the defaults until the projection-version rebuild
--- re-indexes them (see `syncIndex` in @reflect/core).
+-- re-indexes them (see `syncIndex` in @kore/core).
 
 ALTER TABLE notes ADD COLUMN preview TEXT NOT NULL DEFAULT '';
 ALTER TABLE tags ADD COLUMN tag_key TEXT NOT NULL DEFAULT '';

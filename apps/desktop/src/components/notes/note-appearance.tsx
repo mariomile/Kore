@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from 'react'
-import { noteIconValue, parseNoteAppearanceFromSource } from '@reflect/core'
+import { noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
 import { Smile } from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { NoteIconGlyph } from './note-icon-glyph'

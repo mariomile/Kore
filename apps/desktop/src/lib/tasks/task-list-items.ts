@@ -4,7 +4,7 @@ import {
   type OpenTask,
   type TaskContext,
   type TaskGroup,
-} from '@reflect/core'
+} from '@kore/core'
 import { taskKey } from './task-identity'
 
 /**

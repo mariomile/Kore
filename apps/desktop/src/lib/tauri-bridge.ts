@@ -1,11 +1,11 @@
 import { addPluginListener, convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { resetAgentRunLeases, setBridge, type IpcBridge } from '@reflect/core'
+import { resetAgentRunLeases, setBridge, type IpcBridge } from '@kore/core'
 
 /**
- * Adapts Tauri's IPC primitives to the `@reflect/core` bridge contract. This is
+ * Adapts Tauri's IPC primitives to the `@kore/core` bridge contract. This is
  * the only place the desktop app touches `@tauri-apps/api` for command/event
- * transport — everything else goes through the typed `@reflect/core` bindings.
+ * transport — everything else goes through the typed `@kore/core` bindings.
  */
 export const tauriBridge: IpcBridge = {
   invoke: (command, args) => invoke(command, args),

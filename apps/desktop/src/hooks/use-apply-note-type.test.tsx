@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { PRIVATE_NOTE_EDIT_ERROR, type TagType } from '@reflect/core'
+import { PRIVATE_NOTE_EDIT_ERROR, type TagType } from '@kore/core'
 
 const source = vi.hoisted(() => ({ text: '# The Dispossessed\n' }))
 const tagType = vi.hoisted(() => ({ value: null as TagType | null }))
@@ -8,8 +8,8 @@ const commitNoteBodyTransform = vi.hoisted(() =>
   vi.fn(async (_path: string, _transform: (source: string) => string, _generation: number) => {}),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   getTagType: async () => tagType.value,
 }))
 vi.mock('@/providers/graph-provider', () => ({

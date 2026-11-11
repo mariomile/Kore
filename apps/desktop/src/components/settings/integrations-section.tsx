@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { requestContactsAccess } from '@reflect/core'
+import { requestContactsAccess } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import {
   useContactsAuthorization,

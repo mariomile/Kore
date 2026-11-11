@@ -2,7 +2,7 @@ import {
   detectConflictMarkers,
   parseNoteAppearanceFromSource,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { parseBodyEmbeds } from '@/components/body-embeds'
 import { checkRoundTrip } from './roundtrip'
 

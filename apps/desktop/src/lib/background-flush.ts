@@ -1,4 +1,4 @@
-import { beginBackgroundTask, endBackgroundTask, type BackgroundTaskToken } from '@reflect/core'
+import { beginBackgroundTask, endBackgroundTask, type BackgroundTaskToken } from '@kore/core'
 import { flushOpenDocuments } from '@/editor/open-documents'
 import { flushBackup } from '@/lib/backup-flush'
 import { flushSettings } from '@/lib/settings-flush'

@@ -10,7 +10,7 @@ import {
   type EditorTextSize,
   type ThemePreference,
   type UiRadius,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   SettingsChipsRow,
   SettingsGroup,

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { TaskTagCount } from '@reflect/core'
+import type { TaskTagCount } from '@kore/core'
 import { Filter } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

@@ -2,7 +2,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import { MobileNote } from '@/mobile/screens/note'
 import { RouterProvider } from '@/routing/router'
@@ -44,8 +44,8 @@ const NOTE_ROW = {
   gistStale: false,
 }
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getNote: vi.fn(async () => NOTE_ROW),
   getBacklinksWithContext: vi.fn(async () => ({

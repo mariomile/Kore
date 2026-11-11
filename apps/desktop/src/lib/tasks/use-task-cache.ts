@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { errorMessage, type OpenTask } from '@reflect/core'
+import { errorMessage, type OpenTask } from '@kore/core'
 import type { TaskMarkerOffsetChange } from '@/lib/note-task'
 import { startOperation } from '@/lib/operations'
 import { withRelocatedTaskMarkers } from '@/lib/tasks/task-cache'

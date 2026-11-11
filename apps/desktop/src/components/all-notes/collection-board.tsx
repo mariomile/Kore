@@ -1,6 +1,6 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
-import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@kore/core'
 import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'

@@ -2,7 +2,7 @@
  * Id-based move pairing (Plan 17). A note's frontmatter `id` is its durable
  * identity; the filename is a projection of the title. When a row's file
  * vanishes and a new file appears carrying the same id — an external rename,
- * a sync-pulled rename, anything Reflect didn't perform itself — the pair is
+ * a sync-pulled rename, anything Kore didn't perform itself — the pair is
  * a *move*, and treating it as delete+create would silently drop the row's
  * embedding vectors (a re-embed of identical content costs the user BYOK
  * money).

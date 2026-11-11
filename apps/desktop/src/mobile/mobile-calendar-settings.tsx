@@ -1,6 +1,6 @@
 import { useId, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { canReadCalendars, listCalendars, requestCalendarAccess } from '@reflect/core'
+import { canReadCalendars, listCalendars, requestCalendarAccess } from '@kore/core'
 import { openUrlSync } from '@/lib/open-url'
 import {
   CALENDAR_QUERY_PREFIX,

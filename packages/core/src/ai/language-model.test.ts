@@ -239,7 +239,7 @@ describe('languageModel', () => {
     ]) {
       expect(await languageModel(config, APP_REVIEW_STUB_KEY, throwingFetch)).toMatchObject({
         specificationVersion: 'v3',
-        provider: 'reflect-demo',
+        provider: 'kore-demo',
       })
     }
 

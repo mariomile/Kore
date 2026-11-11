@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers } from '@/components/icons'
-import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@reflect/core'
+import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@kore/core'
 import { CONFLICT_SIDE_DOT, ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'

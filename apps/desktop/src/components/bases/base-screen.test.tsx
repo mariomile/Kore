@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import type { ReactNode } from 'react'
-import type { BaseNoteRow } from '@reflect/core'
+import type { BaseNoteRow } from '@kore/core'
 import type { Route } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
 
@@ -11,8 +11,8 @@ const loadBaseRows = vi.hoisted(() => vi.fn<() => Promise<BaseNoteRow[]>>())
 const readBaseFile = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
 const listBaseFiles = vi.hoisted(() => vi.fn<() => Promise<string[]>>())
 const createBaseNote = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   loadBaseRows,
   readBaseFile,

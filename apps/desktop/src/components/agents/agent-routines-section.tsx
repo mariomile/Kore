@@ -8,7 +8,7 @@ import {
   type AgentProfile,
   type AgentRoutine,
   type AgentRoutinePreset,
-} from '@reflect/core'
+} from '@kore/core'
 import { ROUTINE_RUN_NOW_EVENT } from '@/components/agent-routines-runner'
 import { Button } from '@/components/ui/button'
 import {

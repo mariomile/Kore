@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { EmbedStatus } from '@reflect/core'
+import type { EmbedStatus } from '@kore/core'
 import { resetOperations } from '@/lib/operations'
 
 const rebuildIndex = vi.hoisted(() =>
@@ -13,8 +13,8 @@ const rebuildIndex = vi.hoisted(() =>
 const embedStatus = vi.hoisted(() =>
   vi.fn<() => Promise<EmbedStatus>>(async () => ({ status: 'uninitialized' })),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   rebuildIndex,
   embedStatus,
 }))

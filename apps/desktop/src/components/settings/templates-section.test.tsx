@@ -8,8 +8,8 @@ import { TemplatesSection } from './templates-section'
 
 const listTemplates = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listTemplates,
 }))
 vi.mock('@/providers/graph-provider', () => ({

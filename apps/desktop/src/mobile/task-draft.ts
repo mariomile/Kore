@@ -6,7 +6,7 @@ import {
   taskContentPriority,
   withTaskContentPriority,
   type TaskPriority,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * Draft-side due-date reads/writes for the mobile quick-edit sheet. The sheet

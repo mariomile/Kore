@@ -17,12 +17,12 @@ describe('EditorNoteProperties', () => {
   it('places typed fields between the editable title and body', async () => {
     const view = await render(
       <NoteEditor initialContent={'# Project\n\nBody'}>
-        <EditorNoteProperties path="notes/project.md" className="reflect-content-gutter" />
+        <EditorNoteProperties path="notes/project.md" className="kore-content-gutter" />
       </NoteEditor>,
     )
 
     const title = view.container.querySelector<HTMLElement>('.ProseMirror > h1:first-child')
-    const properties = view.container.querySelector<HTMLElement>('.reflect-note-properties-slot')
+    const properties = view.container.querySelector<HTMLElement>('.kore-note-properties-slot')
     const body = view.container.querySelector<HTMLElement>('.ProseMirror > p')
     expect(title).not.toBeNull()
     expect(properties).not.toBeNull()
@@ -39,12 +39,12 @@ describe('EditorNoteProperties', () => {
   it('hides a tag-only membership line and keeps a sentence that mentions the tag', async () => {
     const view = await render(
       <NoteEditor initialContent={'# Project\n\n#project\n\nSee also #project later.'}>
-        <EditorNoteProperties path="notes/project.md" className="reflect-content-gutter" />
+        <EditorNoteProperties path="notes/project.md" className="kore-content-gutter" />
       </NoteEditor>,
     )
 
     await expect
-      .poll(() => view.container.querySelector('.reflect-editor-has-properties'))
+      .poll(() => view.container.querySelector('.kore-editor-has-properties'))
       .not.toBeNull()
     await expect.poll(() => view.container.querySelectorAll('.md-tag').length).toBeGreaterThan(0)
 

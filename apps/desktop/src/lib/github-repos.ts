@@ -1,4 +1,4 @@
-import { parseGithubRemote, type GithubRepoRef } from '@reflect/core'
+import { parseGithubRemote, type GithubRepoRef } from '@kore/core'
 
 /**
  * Parse what a user types into a "which repository" field — `owner/name` or a

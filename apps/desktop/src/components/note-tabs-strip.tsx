@@ -1,4 +1,4 @@
-import type { OpenTab } from '@reflect/core'
+import type { OpenTab } from '@kore/core'
 import { useMemo, type MouseEvent, type ReactElement } from 'react'
 import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'

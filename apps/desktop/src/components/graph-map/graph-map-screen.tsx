@@ -6,7 +6,7 @@ import {
   getGraphMap,
   noteFileStem,
   type GraphMapNode,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { tagColorCss } from '@/lib/graph-colors'

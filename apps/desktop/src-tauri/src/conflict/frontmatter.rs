@@ -3,7 +3,7 @@
 //! line-level merging is too blunt — merge per key instead.
 //!
 //! Deliberately conservative: only **flat** `key: value` headers qualify
-//! (every Reflect-written frontmatter is; Plan 07b holds the exact header
+//! (every Kore-written frontmatter is; Plan 07b holds the exact header
 //! bytes). Anything else — nested YAML, continuation lines — is opaque and
 //! falls through to the rest of the ladder. A key both sides changed to
 //! different values is a real conflict and also falls through.

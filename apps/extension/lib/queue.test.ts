@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CaptureWireMessage } from '@reflect/core/capture-envelope'
+import type { CaptureWireMessage } from '@kore/core/capture-envelope'
 import {
   overCap,
   QUEUE_CAP,

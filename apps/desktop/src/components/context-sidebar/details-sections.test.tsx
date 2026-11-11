@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, type Settings } from '@reflect/core'
+import { DEFAULT_SETTINGS, type Settings } from '@kore/core'
 import { DetailsSections } from './details-sections'
 import { SidebarSection } from './sidebar-section'
 

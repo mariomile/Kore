@@ -5,7 +5,7 @@ import {
   aiProviderRequiresApiKey,
   errorMessage,
   type AiProviderConfig,
-} from '@reflect/core'
+} from '@kore/core'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { SettingsActionRow, SettingsGroup, SettingsSelectRow } from '@/mobile/settings-list'
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { loadGithubAuth } from '@reflect/core'
+import { loadGithubAuth } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { GITHUB_AUTH_QUERY_KEY } from '@/lib/github-auth-state'
 

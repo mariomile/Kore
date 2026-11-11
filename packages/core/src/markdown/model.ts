@@ -211,7 +211,7 @@ export interface TaskMarker {
 }
 
 /**
- * A Reflect task item (`+ [ ] text` / `+ [x] text`) — the unit the Tasks view
+ * A Kore task item (`+ [ ] text` / `+ [x] text`) — the unit the Tasks view
  * (Plan 18) projects across the graph. Square checklist checkboxes stay in the
  * note only and are intentionally excluded from the aggregate Tasks view.
  */
@@ -276,7 +276,7 @@ export interface ParsedNote {
   tags: string[]
   headings: Heading[]
   assets: AssetRef[]
-  /** Reflect task items in document order — the Tasks projection (Plan 18). */
+  /** Kore task items in document order — the Tasks projection (Plan 18). */
   tasks: ParsedTask[]
   /** Plain-text rendering of the body for FTS (Plan 08) + AI context (Plan 10). */
   text: string

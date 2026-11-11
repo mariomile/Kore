@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { FileChange } from '@reflect/core'
+import type { FileChange } from '@kore/core'
 import { useFileChanges } from './use-file-changes'
 
 const subscribeFileChanges = vi.hoisted(() => vi.fn())
 const hasBridge = vi.hoisted(() => vi.fn(() => true))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge,
   subscribeFileChanges,
 }))

@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { dailyFormatProblem, type ImportMapping } from '@reflect/core'
+import { dailyFormatProblem, type ImportMapping } from '@kore/core'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

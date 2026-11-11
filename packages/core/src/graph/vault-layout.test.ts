@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { titleFileStem } from '../markdown/slug'
 import { resolveAttachmentSource, setAttachmentIndex } from './attachment-index'
 import { isUntitledNotePath, untitledNotePath } from './create-note'
-import { isReflectManagedNotePath } from './note-management'
+import { isKoreManagedNotePath } from './note-management'
 import {
   collisionStem,
   dailyPath,
@@ -182,8 +182,8 @@ describe('new notes under an adopted layout', () => {
     const untitled = untitledNotePath()
     expect(untitled.startsWith('_inbox/')).toBe(true)
     expect(isUntitledNotePath(untitled)).toBe(true)
-    expect(isReflectManagedNotePath('_inbox/Meeting Notes.md')).toBe(true)
-    expect(isReflectManagedNotePath('notes/meeting-notes.md')).toBe(false)
+    expect(isKoreManagedNotePath('_inbox/Meeting Notes.md')).toBe(true)
+    expect(isKoreManagedNotePath('notes/meeting-notes.md')).toBe(false)
   })
 
   it('keeps Kore’s slugs in Kore’s layout', () => {

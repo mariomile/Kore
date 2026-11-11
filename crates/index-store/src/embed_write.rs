@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::error::{StoreError, StoreResult};
 
-/// One chunk of a note, built in TS (`@reflect/core` chunker). `vector` is
+/// One chunk of a note, built in TS (`@kore/core` chunker). `vector` is
 /// present only for new/changed chunks — `None` means "this chunk's hash
 /// already has a row; keep its vector, refresh its metadata" (positions and
 /// headings shift when text moves above an unchanged chunk).

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
 import { columnAggregate, CollectionTable } from './collection-table'
 

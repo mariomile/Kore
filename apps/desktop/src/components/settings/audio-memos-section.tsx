@@ -5,7 +5,7 @@ import {
   transcriptionModelFor,
   TRANSCRIPTION_MODEL_OPTIONS,
   type TranscriptionProvider,
-} from '@reflect/core'
+} from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
 import { ModelCombobox } from './model-combobox'

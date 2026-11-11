@@ -1,5 +1,5 @@
 /**
- * `@reflect/core` indexing layer (Plan 04) — the TS pipeline that turns parsed
+ * `@kore/core` indexing layer (Plan 04) — the TS pipeline that turns parsed
  * notes into the SQLite projection, plus the typed read getters over it.
  */
 export {

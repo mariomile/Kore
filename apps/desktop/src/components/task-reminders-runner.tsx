@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification'
-import { getOpenTasks, type OpenTask } from '@reflect/core'
+import { getOpenTasks, type OpenTask } from '@kore/core'
 import { todayIso } from '@/lib/dates'
 import { useFileChanges } from '@/lib/use-file-changes'
 import {

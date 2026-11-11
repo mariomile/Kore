@@ -1,7 +1,7 @@
 /**
  * Reflect V1 subject aliases — the `//` convention inside note titles
  * (`Charlotte MacCaw // Mum`), where every segment matches or is suggested
- * like an alias (see docs/reflect-v1-overview.md, "Backlinks and Aliases").
+ * like an alias (see docs/upstream-v1-overview.md, "Backlinks and Aliases").
  *
  * V2's canonical alias mechanism is `aliases:` frontmatter; this module is a
  * derived compatibility layer for imported or v1-style-authored titles. The

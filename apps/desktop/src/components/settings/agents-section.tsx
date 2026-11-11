@@ -7,7 +7,7 @@ import {
   agentSkillUninstall,
   errorMessage,
   type AgentSkillsStatus,
-} from '@reflect/core'
+} from '@kore/core'
 import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
 import { AgentsMemoryKitField } from '@/components/settings/agents-memory-kit-field'
 import { AgentsRemoteAccessField } from '@/components/settings/agents-remote-access-field'

@@ -94,7 +94,7 @@ export function NoteFindBar(): ReactElement | null {
         ref={inputRef}
         aria-label="Find in note"
         autoComplete="off"
-        className="reflect-find-input w-40 min-w-0 bg-transparent text-xs text-text placeholder:text-text-muted"
+        className="kore-find-input w-40 min-w-0 bg-transparent text-xs text-text placeholder:text-text-muted"
         placeholder="Find in note…"
         spellCheck={false}
         value={find.query}

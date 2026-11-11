@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { relationTarget, relationTargetOf, relationValue } from '@reflect/core'
+import { relationTarget, relationTargetOf, relationValue } from '@kore/core'
 import {
   Command,
   CommandEmpty,

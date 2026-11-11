@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { resourceUrl, errorMessage, type TimeFormat } from '@reflect/core'
+import { resourceUrl, errorMessage, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
@@ -126,10 +126,10 @@ function tagLineIndex(
 }
 
 /**
- * Reflect's note editor: a thin wrapper over `@meowdown/react`'s
+ * Kore's note editor: a thin wrapper over `@meowdown/react`'s
  * `<MeowdownEditor>`. meowdown owns the editing surface (wiki-link clicks,
  * image rendering/persistence, headings, placeholder, the `[[` menu); this
- * wrapper only adapts Reflect's prop shapes and exposes the imperative handle
+ * wrapper only adapts Kore's prop shapes and exposes the imperative handle
  * the document pipeline binds to.
  *
  * The component is **uncontrolled**: `initialContent` is read once. Showing a
@@ -604,7 +604,7 @@ export function NoteEditor({
           spellCheck={isTouchEditorSurface() ? false : spellCheck}
           searchQuery={searchQuery ?? ''}
           {...(onSearchChange !== undefined ? { onSearchChange } : {})}
-          // Reflect's implementation-neutral `12h`/`24h` maps to meowdown's
+          // Kore's implementation-neutral `12h`/`24h` maps to meowdown's
           // `12`/`24` here at the boundary, like `markModeFromSyntax`.
           timeFormat={timeFormat === '24h' ? '24' : '12'}
           caretGlide={smoothCaretAnimation}
@@ -614,7 +614,7 @@ export function NoteEditor({
           // which a touch webview can express. Turning it off also drops the drop
           // indicator, which meowdown gates on the same prop.
           blockHandle={isTouchEditorSurface() ? false : blockHandle}
-          editorClassName={cn('reflect-editor', className)}
+          editorClassName={cn('kore-editor', className)}
           {...(titlePlaceholder !== undefined ? { placeholder: titlePlaceholder } : {})}
           onDocChange={handleDocChange}
           {...(renderCodeBlock !== undefined ? { renderCodeBlock } : {})}
@@ -653,7 +653,7 @@ export function NoteEditor({
             />
           ) : null}
           {renderWikilinkHoverCard !== undefined ? (
-            <WikilinkHoverCard className="reflect-hover-card">
+            <WikilinkHoverCard className="kore-hover-card">
               {renderWikilinkHoverCard}
             </WikilinkHoverCard>
           ) : null}

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { McpServer, Settings } from '@reflect/core'
+import type { McpServer, Settings } from '@kore/core'
 
 const settingsState = vi.hoisted(() => ({
   mcpServers: [] as McpServer[],
@@ -20,8 +20,8 @@ vi.mock('@/providers/settings-provider', () => ({
 }))
 const setSecret = vi.hoisted(() => vi.fn(async () => {}))
 const deleteSecret = vi.hoisted(() => vi.fn(async () => {}))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   setSecret,
   deleteSecret,
 }))

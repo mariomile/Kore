@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render as renderBare } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import { EmbeddedCollection } from './embedded-collection'
 
 const useReusableCollection = vi.hoisted(() => vi.fn())

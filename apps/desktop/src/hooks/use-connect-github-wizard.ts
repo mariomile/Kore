@@ -6,7 +6,7 @@ import {
   newRepoUrl,
   type GithubRepoRef,
   type GithubUser,
-} from '@reflect/core'
+} from '@kore/core'
 import { useAsyncAction } from '@/hooks/use-async-action'
 import { usePoll } from '@/hooks/use-poll'
 import { parseRepoInput } from '@/lib/github-repos'

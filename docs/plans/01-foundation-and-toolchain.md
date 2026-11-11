@@ -23,10 +23,10 @@ skeleton, a Tauri shell sanity check.
 
 1. **Restructure into the monorepo (lightweight).** Move the existing scaffold into
    `apps/desktop/` (its `src/` + `src-tauri/` + `dist/`). Create `packages/core`
-   (`@reflect/core` — the TS actions/business-logic home) and `packages/db` (`@reflect/db`
+   (`@kore/core` — the TS actions/business-logic home) and `packages/db` (`@kore/db`
    — Kysely schema/types + the IPC dialect, wired in Plan 04). Add `pnpm-workspace.yaml`
    (`apps/*`, `packages/*`), `turbo.json` (dev/build/lint/test/typecheck), root `tsconfig`
-   with project references, and `@reflect/*` names. Do **not** pre-create empty `apps/cli`
+   with project references, and `@kore/*` names. Do **not** pre-create empty `apps/cli`
    or `apps/extension` — they arrive at Plans 14 and 11. Confirm `pnpm tauri dev` works
    from `apps/desktop`.
 
@@ -49,7 +49,7 @@ skeleton, a Tauri shell sanity check.
 
 4. **Path aliases.** Configure `@/` → `apps/desktop/src/` in `tsconfig.json`
    (`paths`) and `vite.config.ts` (`resolve.alias`). In-app imports use `@/`;
-   cross-package imports use the workspace names (`@reflect/core`, `@reflect/db`).
+   cross-package imports use the workspace names (`@kore/core`, `@kore/db`).
 
 5. **Design system.** The `design-system/` package ships Inter, indigo `#4F46E5`
    brand tokens, light/dark theme scopes, and React primitives. Decide and document:
@@ -59,7 +59,7 @@ skeleton, a Tauri shell sanity check.
    Build a `ThemeProvider` (light/dark, follows OS) as a provider + `useTheme` hook.
 
 6. **IPC bridge convention (critical, reused everywhere).** This layer lives in
-   `@reflect/core` (per [Architecture & Conventions](architecture-conventions.md)) — the
+   `@kore/core` (per [Architecture & Conventions](architecture-conventions.md)) — the
    actions core, not the app shell, owns it. Establish the single pattern for calling Rust:
    - Rust commands are `#[tauri::command]`, registered in `invoke_handler`, named
      `snake_case`, returning `Result<T, AppError>` with a serializable `AppError`.

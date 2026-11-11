@@ -7,7 +7,7 @@
  * rewrite the file.
  */
 import { checkRoundTrip, docToMarkdown, markdownToDoc } from '@meowdown/core'
-import type { ImportCanonicalizer } from '@reflect/core'
+import type { ImportCanonicalizer } from '@kore/core'
 
 export { checkRoundTrip, type RoundTripFidelity } from '@meowdown/core'
 

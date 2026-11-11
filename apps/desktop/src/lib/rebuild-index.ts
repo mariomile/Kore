@@ -1,4 +1,4 @@
-import { embedStatus, errorMessage, rebuildIndex } from '@reflect/core'
+import { embedStatus, errorMessage, rebuildIndex } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { invalidateIndexQueries } from '@/lib/query-client'
 import { backfillEmbeddingsVisibly, ensureEmbeddingsVisibly } from '@/lib/semantic'

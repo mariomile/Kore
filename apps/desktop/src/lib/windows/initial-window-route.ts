@@ -1,4 +1,4 @@
-import { isDaily, isNotePath } from '@reflect/core'
+import { isDaily, isNotePath } from '@kore/core'
 import { parseDeepLink } from '@/lib/deep-links/parse'
 import { routeForPath, type Route } from '@/routing/route'
 

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listChatConversations } from '@reflect/core'
+import { listChatConversations } from '@kore/core'
 import { Check, Close, History } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

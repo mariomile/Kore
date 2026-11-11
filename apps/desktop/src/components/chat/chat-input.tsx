@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
 import { ArrowUp, Bot, Close, Note, Pencil, Plug, Sparkles, Stop } from '@/components/icons'
-import { cliProviderSupportsMcp, isCliAgentProvider, type ChatMode } from '@reflect/core'
+import { cliProviderSupportsMcp, isCliAgentProvider, type ChatMode } from '@kore/core'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import {
   Attachment,

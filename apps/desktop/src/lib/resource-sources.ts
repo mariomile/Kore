@@ -1,4 +1,4 @@
-import { parseNote, readNote, upsertFrontmatter, writeNote } from '@reflect/core'
+import { parseNote, readNote, upsertFrontmatter, writeNote } from '@kore/core'
 import { z } from 'zod'
 import { openSession } from '@/editor/open-documents'
 import type { NoteSession } from '@/editor/note-session'

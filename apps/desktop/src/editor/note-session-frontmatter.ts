@@ -4,12 +4,12 @@ import {
   TAG_EXTENDS_KEY,
   type GistFrontmatter,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 
 export interface FrontmatterPatch {
   /**
    * The durable note identity (Plan 17's ULID). Only ever *minted* — written
-   * once for a note that predates ids or was created outside Reflect (the
+   * once for a note that predates ids or was created outside Kore (the
    * deep-link copy path) — never changed or removed: links and the index key
    * on it.
    */

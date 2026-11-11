@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { dailyPath } from '@reflect/core'
+import { dailyPath } from '@kore/core'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { RouteContent } from '@/components/route-content'
@@ -48,7 +48,7 @@ export function NoteWindowContent(): ReactElement {
             heading={
               // The stream's day label, standing in for the title a daily
               // note doesn't carry.
-              <h2 className="reflect-daily-subject reflect-content-gutter mb-3">
+              <h2 className="kore-daily-subject kore-content-gutter mb-3">
                 {formatDayLabel(dailyDate, settings.dateFormat)}
               </h2>
             }

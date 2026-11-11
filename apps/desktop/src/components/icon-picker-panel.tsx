@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { parseNoteIcon, symbolIconValue } from '@reflect/core'
+import { parseNoteIcon, symbolIconValue } from '@kore/core'
 import { Input } from '@/components/ui/input'
 import { useTagSymbolIcons } from '@/lib/tags/tag-symbol-icons'
 import { cn } from '@/lib/utils'

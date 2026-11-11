@@ -1,6 +1,6 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { foldTag, isTagName, listTagTypes, suggestTags, type TagType } from '@reflect/core'
+import { foldTag, isTagName, listTagTypes, suggestTags, type TagType } from '@kore/core'
 import { TagIcon } from '@/components/tags/tag-icon'
 import {
   Command,

@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { gitNoteHistory, type NoteVersion } from '@reflect/core'
+import { gitNoteHistory, type NoteVersion } from '@kore/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { formatRecencyLabel } from '@/lib/dates'
 import { useGraph } from '@/providers/graph-provider'

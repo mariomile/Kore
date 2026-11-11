@@ -65,7 +65,7 @@ TestFlight: the physical-device pass — Siri phrase from the lock screen
   graph launch and on every return to foreground
   (`visibilitychange` → visible, armed on mobile by `relaySharedInbox` in
   `capture-provider.tsx`).
-- **Intent precedent.** `Sources/reflect-open/RecordingIntents.swift`:
+- **Intent precedent.** `Sources/kore-open/RecordingIntents.swift`:
   app-target `AppIntent`s (16.0-gated, `#if canImport(AppIntents)`), one
   `ReflectAppShortcuts: AppShortcutsProvider` with Siri phrases, and
   `StopRecordingSiriIntent` proving `openAppWhenRun = false` in-app
@@ -221,7 +221,7 @@ decision) before any real Swift work is invested.
    (`ShareState.swift`) passes `"ios-share"`; the intent passes
    `"ios-intent"`. No other changes — the folding, caps, and atomic spool
    are exactly what the intent needs.
-2. **New `gen/apple/Sources/reflect-open/QuickNoteIntent.swift`** — modeled
+2. **New `gen/apple/Sources/kore-open/QuickNoteIntent.swift`** — modeled
    line-for-line on `RecordingIntents.swift` (`#if canImport(AppIntents)`,
    `@available(iOS 16.0, *)`):
    - `static var title = "Add quick note"`, description "Append a one-line

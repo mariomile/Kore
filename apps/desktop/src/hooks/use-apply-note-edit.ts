@@ -5,7 +5,7 @@ import {
   PRIVATE_NOTE_EDIT_ERROR,
   readNote,
   type NoteEdit,
-} from '@reflect/core'
+} from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'

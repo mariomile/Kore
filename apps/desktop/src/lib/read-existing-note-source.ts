@@ -1,4 +1,4 @@
-import { readNote } from '@reflect/core'
+import { readNote } from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 
 /**

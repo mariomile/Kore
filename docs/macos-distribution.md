@@ -386,7 +386,7 @@ on the runner keychain setup.
 - **Notarization fails (`status: Invalid`)** — the script automatically prints the notary
   log, which lists each offending file. Common cause: a binary that wasn't signed with
   hardened runtime.
-- **Bundled `kore` or `reflect-capture-host` exits `Killed: 9`** — check its
+- **Bundled `kore` or `kore-capture-host` exits `Killed: 9`** — check its
   entitlements with `codesign -d --entitlements :- Kore.app/Contents/MacOS/kore`.
   Sidecars must not carry the app's restricted iCloud entitlements; the release verifier
   launches both sidecars to catch this.

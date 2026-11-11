@@ -1,7 +1,7 @@
 //! Script-mode routine ticks (the silent tick): run one user-authored shell
 //! command in the graph root, bounded by a timeout, and hand the frontend
 //! its exit code and capped output. The *interpretation* — skip, wake the
-//! agent, or count a failure — lives in `@reflect/core`'s `routine-script`;
+//! agent, or count a failure — lives in `@kore/core`'s `routine-script`;
 //! this module only owns the process: spawn, drain, deadline, kill.
 //!
 //! The script runs in its own process group so the timeout can kill the

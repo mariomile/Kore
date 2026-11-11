@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { PublishedUrlSection } from './published-url-section'

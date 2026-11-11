@@ -20,7 +20,7 @@ import {
   toggleQueryTag,
   type OpenTask,
   type QuickAdd,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

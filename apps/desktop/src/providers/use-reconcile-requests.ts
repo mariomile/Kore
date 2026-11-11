@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { subscribeReconcileRequests } from '@reflect/core'
+import { subscribeReconcileRequests } from '@kore/core'
 
 /**
  * A structural vault change (folder created, renamed, or removed) cannot

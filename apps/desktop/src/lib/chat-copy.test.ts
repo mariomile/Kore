@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatTurn } from '@reflect/core'
+import type { ChatTurn } from '@kore/core'
 import { assistantReplyMarkdown } from './chat-copy'
 
 function turnWith(parts: ChatTurn['parts']): ChatTurn {

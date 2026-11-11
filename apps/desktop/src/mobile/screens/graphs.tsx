@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Plus } from '@/components/icons'
-import { errorMessage, mobileStorage, type MobileStorageKind } from '@reflect/core'
+import { errorMessage, mobileStorage, type MobileStorageKind } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

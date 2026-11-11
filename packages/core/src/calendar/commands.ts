@@ -18,7 +18,7 @@ export const calendarAuthorizationStatusSchema = z.enum([
 ])
 
 /**
- * The macOS calendar permission state. Only `fullAccess` lets Reflect read
+ * The macOS calendar permission state. Only `fullAccess` lets Kore read
  * events; `writeOnly` exists in the OS vocabulary but is useless to a
  * read-only integration and renders as "no access".
  */

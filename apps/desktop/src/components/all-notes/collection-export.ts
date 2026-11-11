@@ -1,4 +1,4 @@
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readCellValue } from './collection-cell'
 

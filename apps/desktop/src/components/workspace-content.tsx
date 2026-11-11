@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
+import { subscribeBrowserNavigated, type GraphInfo } from '@kore/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { routeHasDetails } from '@/components/context-sidebar/sidebar-route'

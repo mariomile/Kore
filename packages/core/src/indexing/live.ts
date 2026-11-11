@@ -55,7 +55,7 @@ const logApplyError: ApplyErrorHandler = (error, change) => {
  *
  * Pairs only within a batch: the debouncer groups rename halves in practice,
  * and a split pair degrades to today's delete+create (the orphan row is gone
- * before the arrival shows — nothing left to pair against). Reflect's own
+ * before the arrival shows — nothing left to pair against). Kore's own
  * `note_move_indexed` echo never pairs: its remove side has no row left.
  */
 async function healBatchMoves(

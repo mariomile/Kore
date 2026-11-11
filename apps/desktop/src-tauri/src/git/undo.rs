@@ -4,7 +4,7 @@
 //! other lines survive; a file whose changed lines were edited again (or
 //! that is not text) is a conflict.
 //!
-//! A preview only: nothing is written. `@reflect/core` decides whether to
+//! A preview only: nothing is written. `@kore/core` decides whether to
 //! go ahead (all or nothing) and writes the results through its ordinary
 //! note paths, so the index and open editors follow.
 

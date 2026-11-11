@@ -88,7 +88,7 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
 
     let value = json(&kore(&fixture, &["tag", "Dune", "#Book", "--json"]));
     assert_eq!(value["added"], true);
-    let today = reflect_cli::paths::today_date();
+    let today = kore_cli::paths::today_date();
     assert_eq!(value["stamped"]["added"], today);
     assert_eq!(
         read(&fixture, "notes/dune.md"),
@@ -275,7 +275,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
     ));
     assert_eq!(value["path"], "notes/left-hand.md");
     assert_eq!(value["tags"], serde_json::json!(["book", "idea"]));
-    let today = reflect_cli::paths::today_date();
+    let today = kore_cli::paths::today_date();
     assert_eq!(
         value["properties"],
         serde_json::json!({"rating": 5, "added": today})

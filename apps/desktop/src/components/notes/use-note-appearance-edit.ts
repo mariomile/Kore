@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'
 

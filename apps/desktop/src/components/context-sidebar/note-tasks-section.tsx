@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { errorMessage, getOpenTasksForNote, type NoteTaskRef } from '@reflect/core'
+import { errorMessage, getOpenTasksForNote, type NoteTaskRef } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toggleTask } from '@/lib/note-task'

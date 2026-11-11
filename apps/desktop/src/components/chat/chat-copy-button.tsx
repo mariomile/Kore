@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { Check, Copy } from '@/components/icons'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { startOperation } from '@/lib/operations'

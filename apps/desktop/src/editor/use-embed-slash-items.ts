@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { SlashMenuItem, SlashMenuSearchHandler } from '@meowdown/react'
-import { formatEmbedBlock } from '@reflect/core'
+import { formatEmbedBlock } from '@kore/core'
 import type { NoteEditorHandle } from './note-editor'
 
 /** The URL the `/embed` row seeds, so the fence is valid the moment it lands. */

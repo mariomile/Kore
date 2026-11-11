@@ -7,7 +7,7 @@ import {
   tagDefinitionPath,
   upsertFrontmatter,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 import { frontmatterPatchToYaml } from '@/editor/note-session'
 

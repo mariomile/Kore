@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
   readExistingNoteSource: vi.fn<(path: string) => Promise<string>>(),
   navigateNoteLink: vi.fn(),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readCanvasFile: mocks.readCanvasFile,
   listCanvasFiles: mocks.listCanvasFiles,
 }))

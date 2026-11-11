@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check } from '@/components/icons'
-import { allowKitScript, errorMessage, kitScriptStatus } from '@reflect/core'
+import { allowKitScript, errorMessage, kitScriptStatus } from '@kore/core'
 import { SettingsField } from '@/components/settings/field'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

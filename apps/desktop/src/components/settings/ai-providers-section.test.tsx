@@ -7,7 +7,7 @@ import {
   settingsSchema,
   type HostedAiProviderConfig,
   type Settings,
-} from '@reflect/core'
+} from '@kore/core'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { resetOperations } from '@/lib/operations'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isTagSymbolIconName, type NoteIcon } from '@reflect/core'
+import { isTagSymbolIconName, type NoteIcon } from '@kore/core'
 import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
 import { cn } from '@/lib/utils'
 

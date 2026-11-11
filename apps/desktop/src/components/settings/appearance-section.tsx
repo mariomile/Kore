@@ -9,7 +9,7 @@ import type {
   UiRadius,
   UiTextSize,
   VisualTheme,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   ACCENT_COLOR_IDS,
   ACCENT_SWATCH_HEX,
@@ -19,7 +19,7 @@ import {
   UI_DENSITY_IDS,
   UI_RADIUS_IDS,
   UI_TEXT_SIZE_IDS,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   Book,
   Contrast,

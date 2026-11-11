@@ -27,7 +27,7 @@ describe('isTagOnlyParagraph', () => {
 describe('membershipParagraphCss', () => {
   it('targets a tag-only line after the title, not a sentence with a tag', () => {
     const root = document.createElement('div')
-    root.className = 'reflect-editor reflect-editor-has-properties'
+    root.className = 'kore-editor kore-editor-has-properties'
     root.innerHTML =
       '<h1>Project</h1><p><span class="md-tag">#project</span></p><p>See also <span class="md-tag">#project</span> later</p>'
     const css = membershipParagraphCss(root)

@@ -7,7 +7,7 @@ import {
   icloudAdoptGraph,
   icloudPendingCount,
   icloudStatus,
-} from '@reflect/core'
+} from '@kore/core'
 import { ConflictedNoteLinks } from '@/components/settings/conflicted-note-links'
 import { SettingsField } from '@/components/settings/field'
 import { Button } from '@/components/ui/button'

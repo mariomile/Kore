@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { exportGraphBackup, restoreGraphBackup } from '@reflect/core'
+import { exportGraphBackup, restoreGraphBackup } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { dirtyOpenPaths, flushOpenDocuments } from '@/editor/open-documents'

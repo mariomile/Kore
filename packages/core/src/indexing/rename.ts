@@ -124,10 +124,10 @@ export async function rewriteLinksForTitleChange(
     io.backlinks(path),
   ])
   // Only *whether* a link carries a pipe display is read from the index, never
-  // its text. Reflect rewrites display text itself, so a second retitle can
+  // its text. Kore rewrites display text itself, so a second retitle can
   // arrive before the watcher reprojects the source the first one just wrote,
   // and an alias-equality filter would silently drop exactly those sources. A
-  // pipe's presence is safe to trust: Reflect never adds one to, or removes one
+  // pipe's presence is safe to trust: Kore never adds one to, or removes one
   // from, a link that did not already have one. Whether a display still mirrors
   // the old title is decided on the re-read file, in `retitleWikiLinks`.
   const backlinkSources = new Set<string>()
@@ -196,7 +196,7 @@ export async function rewriteLinksForTitleChange(
 /**
  * The renamed note's `aliases` after a rename, or `null` when nothing changes:
  * the previous auto-added alias (an intermediate title from this session's
- * rename chain) is pruned, and the old title joins so links Reflect couldn't
+ * rename chain) is pruned, and the old title joins so links Kore couldn't
  * rewrite — and external ones — still resolve.
  */
 export function nextAliases(

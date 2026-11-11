@@ -14,7 +14,7 @@ import {
   type FileChange,
   type GraphInfo,
   type IcloudSweepScope,
-} from '@reflect/core'
+} from '@kore/core'
 import { dirtyOpenPaths } from '@/editor/open-documents'
 import { throttledInvalidateIndexQueries } from '@/lib/query-client'
 

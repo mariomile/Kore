@@ -10,7 +10,7 @@ import {
   transclusionMarkdown,
   wikiEmbedKind,
   type CanvasNode,
-} from '@reflect/core'
+} from '@kore/core'
 import { ExternalLink, Link, Paperclip } from '@/components/icons'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useOpenExternalLink } from '@/editor/open-external-link'

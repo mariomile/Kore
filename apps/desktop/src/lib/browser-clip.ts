@@ -1,4 +1,4 @@
-import { captureEnvelopeSchema, type BrowserPageRead, type CaptureEnvelope } from '@reflect/core'
+import { captureEnvelopeSchema, type BrowserPageRead, type CaptureEnvelope } from '@kore/core'
 
 /**
  * How much of the page's visible text a clip carries. Enough for the drain's

@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
-import type { NoteListEntry } from '@reflect/core'
+import type { NoteListEntry } from '@kore/core'
 import { AllNotesGrid } from './all-notes-grid'
 
 vi.mock('@/providers/graph-provider', () => ({

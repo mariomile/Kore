@@ -1,6 +1,6 @@
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { collectResourceFile, collectResourceLink, saveLinkText } from '@reflect/core'
+import { collectResourceFile, collectResourceLink, saveLinkText } from '@kore/core'
 import { useResourceCollection } from '@/editor/use-resource-collection'
 import { act } from '@/test-utils/act'
 
@@ -12,8 +12,8 @@ const settingsState = vi.hoisted(() => ({
   pasteSaveLinkText: true,
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   collectResourceLink: vi.fn(async () => 'notes/resource-link.md'),
   collectResourceFile: vi.fn(
     async (_file: File, _origin: unknown, upload: () => Promise<string | null>) => await upload(),

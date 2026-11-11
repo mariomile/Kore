@@ -5,7 +5,7 @@
 //! user across graphs and survive graph deletion. Rust treats the document as
 //! an opaque JSON object (a capability, per the architecture conventions);
 //! the schema, defaults, and validation are policy and live in
-//! `@reflect/core`'s zod layer.
+//! `@kore/core`'s zod layer.
 
 use std::fs;
 use std::io::Write;

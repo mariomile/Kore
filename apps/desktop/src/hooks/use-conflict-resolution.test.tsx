@@ -7,12 +7,12 @@ import {
   resolveConflictMarkers,
   writeNote,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import { invalidateIndexQueries } from '@/lib/query-client'
 import { useConflictResolution } from './use-conflict-resolution'
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote: vi.fn(),
   writeNote: vi.fn(async () => {}),
   indexNote: vi.fn(async () => {}),

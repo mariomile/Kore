@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NoteListEntry, TagType } from '@reflect/core'
+import type { NoteListEntry, TagType } from '@kore/core'
 import { AllNotesBulkBar } from './all-notes-bulk-bar'
 
 const writeNote = vi.hoisted(() => vi.fn(async () => {}))
@@ -15,8 +15,8 @@ const startOperation = vi.hoisted(() =>
   vi.fn(() => ({ progress: vi.fn(), done: vi.fn(), fail: operationFail })),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   writeNote,
 }))

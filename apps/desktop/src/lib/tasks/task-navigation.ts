@@ -1,4 +1,4 @@
-import { dailyPath, taskDateBucket, type OpenTask, type TaskView } from '@reflect/core'
+import { dailyPath, taskDateBucket, type OpenTask, type TaskView } from '@kore/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 

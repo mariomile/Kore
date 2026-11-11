@@ -6,7 +6,7 @@ import {
   importMappingFromLayout,
   type ObsidianImportReport,
   type ObsidianImportSource,
-} from '@reflect/core'
+} from '@kore/core'
 import type { ObsidianConversionState } from '@/hooks/use-obsidian-conversion'
 import type { ObsidianImportDryRunState } from '@/hooks/use-obsidian-import-dry-run'
 

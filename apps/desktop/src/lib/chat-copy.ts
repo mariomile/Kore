@@ -1,4 +1,4 @@
-import type { ChatTurn } from '@reflect/core'
+import type { ChatTurn } from '@kore/core'
 
 /**
  * The assistant's answer for one turn as markdown, ready for the clipboard:

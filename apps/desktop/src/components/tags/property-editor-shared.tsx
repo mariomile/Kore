@@ -104,6 +104,14 @@ export function EditorTrigger({ name, children }: EditorTriggerProps): ReactElem
   )
 }
 
+/**
+ * How many rows a typed relation's picker lists. A collection is a short,
+ * known set (areas, people, projects): cut it at the editor's six and the
+ * seventh row is unreachable without typing, which reads as "wrong notes".
+ * Matches the candidate query's own cap; the list scrolls.
+ */
+const RELATION_ROWS_LIMIT = 50
+
 /** The relation pickers' shared note suggestions: the same verified `[[`
  * autocomplete the editor uses, fetched only while the popover is open. */
 export function useRelationSuggestions(
@@ -120,7 +128,7 @@ export function useRelationSuggestions(
     queryFn: () =>
       targetKey === null
         ? suggestWikiLinkTargets(query, 6)
-        : suggestRelationTargets(query, targetKey, 6),
+        : suggestRelationTargets(query, targetKey, RELATION_ROWS_LIMIT),
     enabled: open && bridgeReady && graph !== null,
     placeholderData: keepPreviousData,
   })

@@ -289,6 +289,22 @@ describe('commitNoteFrontmatter', () => {
     expect(cleared[1]).not.toContain('icon:')
   })
 
+  it('writes or clears a note cover without touching the body', async () => {
+    readNote.mockResolvedValue('# Trip\n')
+
+    await commitNoteFrontmatter('notes/trip.md', { cover: 'assets/beach.png' }, 3)
+    const written = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(written[1]).toBe('---\ncover: assets/beach.png\n---\n# Trip\n')
+
+    writeNote.mockClear()
+    readNote.mockResolvedValue('---\ncover: assets/beach.png\nicon: 🏖️\n---\n# Trip\n')
+    await commitNoteFrontmatter('notes/trip.md', { cover: null }, 3)
+    const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(cleared[1]).not.toContain('cover:')
+    expect(cleared[1]).toContain('icon: 🏖️')
+    expect(cleared[1].endsWith('# Trip\n')).toBe(true)
+  })
+
   it('leaves unrelated keys and comments untouched around a property write', async () => {
     readNote.mockResolvedValue('---\n# reading log\nstatus: to-read\nid: 01H\n---\n# A\n')
 

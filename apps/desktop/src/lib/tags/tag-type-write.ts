@@ -110,7 +110,7 @@ export async function saveTagType(
   const patch = {
     tagSchema: properties,
     ...(template === undefined ? {} : { tagTemplate: template }),
-    ...(icon === undefined ? {} : { tagIcon: icon }),
+    ...(icon === undefined ? {} : { icon }),
     ...(parents === undefined ? {} : { tagExtends: parents }),
   }
   const path = tagDefinitionPath(tag)

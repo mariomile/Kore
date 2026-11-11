@@ -118,6 +118,7 @@ export const SOLAR_ICONS = {
   Phone: 'phone-linear',
   Plug: 'plug-circle-linear',
   Settings: 'settings-minimalistic-linear',
+  Smile: 'smile-circle-linear',
   Sparkles: 'stars-linear',
   User: 'user-rounded-linear',
 }

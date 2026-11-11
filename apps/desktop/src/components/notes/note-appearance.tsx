@@ -1,7 +1,9 @@
 import { useMemo, type ReactElement } from 'react'
-import { isTagSymbolIconName, parseNoteAppearanceFromSource } from '@kore/core'
-import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
+import { noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
+import { Smile } from '@/components/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconGlyph } from './note-icon-glyph'
+import { NoteIconPicker } from './note-icon-picker'
 
 interface NoteAppearanceProps {
   /** Exact frontmatter bytes (or the full note source). */
@@ -9,6 +11,17 @@ interface NoteAppearanceProps {
   resolveImageUrl: (src: string) => string | null
   /** Aligns the icon with the editor column when there is no cover. */
   gutterClassName?: string | undefined
+  /**
+   * Draw the icon here, above the body. False when the note's `#` title
+   * line draws it instead (`NoteTitleIcon`), left of the title text.
+   */
+  showIcon?: boolean
+  /**
+   * Makes the icon editable: the icon opens a picker, and a note without one
+   * shows "Add icon" while the pointer is over the note (a `group/note`
+   * ancestor) or the control has focus. Omitted, the header only renders.
+   */
+  onIconChange?: ((icon: string | null) => void) | undefined
 }
 
 /**
@@ -19,45 +32,56 @@ export function NoteAppearance({
   source,
   resolveImageUrl,
   gutterClassName,
+  showIcon = true,
+  onIconChange,
 }: NoteAppearanceProps): ReactElement | null {
   const appearance = useMemo(() => parseNoteAppearanceFromSource(source), [source])
   const coverUrl = appearance.coverSrc !== null ? resolveImageUrl(appearance.coverSrc) : null
   const icon = appearance.icon
-  const iconUrl = icon?.kind === 'image' ? resolveImageUrl(icon.src) : null
 
-  // The placeholder holds the glyph's box while the symbol table loads, so
-  // the title does not shift when the icon arrives.
-  const symbolEl =
-    icon?.kind === 'symbol' && isTagSymbolIconName(icon.name) ? (
-      <TagSymbolGlyph
-        name={icon.name}
-        aria-hidden
-        className="size-10 text-text-secondary"
-        fallback={<div aria-hidden className="size-10" />}
-      />
-    ) : null
-  const iconEl =
-    icon === null ? null : icon.kind === 'emoji' ? (
-      <div data-testid="note-icon" className="text-4xl leading-none" aria-label="Note icon">
-        {icon.glyph}
-      </div>
-    ) : icon.kind === 'symbol' ? (
-      symbolEl === null ? null : (
-        <div data-testid="note-icon" aria-label="Note icon">
-          {symbolEl}
-        </div>
+  let iconEl: ReactElement | null = null
+  if (icon !== null && showIcon) {
+    const glyph = <NoteIconGlyph icon={icon} resolveImageUrl={resolveImageUrl} size="block" />
+    iconEl =
+      onIconChange === undefined ? (
+        glyph
+      ) : (
+        <NoteIconPicker
+          value={noteIconValue(icon)}
+          onChange={onIconChange}
+          label="Change icon"
+          className="-m-1 block p-1"
+        >
+          {glyph}
+        </NoteIconPicker>
       )
-    ) : iconUrl !== null ? (
-      <img
-        data-testid="note-icon"
-        src={iconUrl}
-        alt=""
-        className="size-16 rounded-xl object-cover"
-      />
+  }
+
+  // Hidden, not absent, until the note is hovered: the row keeps its height
+  // so the title never jumps under the pointer, and focus reveals it for
+  // keyboard users. An open picker keeps it visible.
+  const addRow =
+    onIconChange !== undefined && icon === null ? (
+      <div
+        className={cn(
+          'flex h-7 items-center opacity-0 transition-opacity duration-100 group-hover/note:opacity-100 focus-within:opacity-100 has-data-popup-open:opacity-100',
+          gutterClassName,
+        )}
+      >
+        <NoteIconPicker
+          value={null}
+          onChange={onIconChange}
+          label="Add icon"
+          className="flex items-center gap-1.5 px-1.5 py-1 text-xs text-text-muted hover:text-text"
+        >
+          <Smile aria-hidden className="size-3.5" />
+          Add icon
+        </NoteIconPicker>
+      </div>
     ) : null
 
   if (coverUrl === null && iconEl === null) {
-    return null
+    return addRow
   }
 
   if (coverUrl !== null) {
@@ -67,6 +91,7 @@ export function NoteAppearance({
         {iconEl !== null ? (
           <div className={cn('absolute -bottom-6', gutterClassName)}>{iconEl}</div>
         ) : null}
+        {addRow}
       </div>
     )
   }

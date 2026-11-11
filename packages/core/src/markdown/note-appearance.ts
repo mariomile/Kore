@@ -28,6 +28,14 @@ export function symbolIconValue(name: string): string {
   return `icon:${name}`
 }
 
+/** The `icon:` frontmatter spelling of a parsed icon (the inverse of {@link parseNoteIcon}). */
+export function noteIconValue(icon: NoteIcon): string {
+  if (icon.kind === 'emoji') {
+    return icon.glyph
+  }
+  return icon.kind === 'symbol' ? symbolIconValue(icon.name) : icon.src
+}
+
 /** Cover and icon parsed from a note's frontmatter. */
 export interface NoteAppearance {
   readonly icon: NoteIcon | null

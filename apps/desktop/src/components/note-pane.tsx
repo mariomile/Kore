@@ -49,6 +49,7 @@ import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { NoteTitleIcon } from '@/editor/note-title-icon'
 import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
 import { MoveBranch } from '@/editor/move-branch-picker'
@@ -63,6 +64,7 @@ import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
+import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -239,6 +241,15 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
+  // The header's "Add icon" is a pointer affordance for regular notes: daily
+  // notes stack in a stream where every day would grow one, and touch has no
+  // hover to reveal it.
+  const setNoteIcon = useNoteAppearanceEdit(path, generation)
+  const onIconChange =
+    setNoteIcon !== null && !dailyNote && !isTouchEditorSurface() ? setNoteIcon : undefined
+  // A note with a `#` title draws its icon on that line, left of the text;
+  // only a title-less note keeps it above the body.
+  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
   const noteLinkTarget =
     noteRow === null
       ? null
@@ -466,7 +477,7 @@ export function NotePaneComponent({
   )
 
   return (
-    <div className={cn('relative', className)} aria-label={`Editing ${path}`}>
+    <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
         <NoteBreadcrumb path={path} />
 
@@ -501,6 +512,8 @@ export function NotePaneComponent({
         source={document.header}
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
+        onIconChange={onIconChange}
       />
 
       <NoteEditor
@@ -579,6 +592,12 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <NoteTitleIcon
+          header={document.header}
+          resolveImageUrl={resolveImageUrl}
+          onIconChange={onIconChange}
+          onTitle={setTitleDrawsIcon}
+        />
         <LineAuthorShading
           enabled={settings.editorLineAuthors}
           path={path}

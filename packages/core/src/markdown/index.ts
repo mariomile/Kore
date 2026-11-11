@@ -86,6 +86,7 @@ export {
 } from './note-transclusion'
 export {
   parseNoteAppearance,
+  noteIconValue,
   parseNoteAppearanceFromSource,
   parseNoteCover,
   parseNoteIcon,

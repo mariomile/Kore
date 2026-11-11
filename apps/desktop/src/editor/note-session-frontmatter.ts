@@ -76,6 +76,11 @@ export interface FrontmatterPatch {
    */
   cover?: string | null
   /**
+   * The cover's vertical position (`cover_y:`, 0 top to 100 bottom). `null`
+   * deletes the key, back to centered; omitted leaves whatever is there.
+   */
+  coverY?: number | null
+  /**
    * The tags this one builds on (`extends:` on the definition, Plan 33 B2),
    * folded keys. An empty list deletes the key; omitted leaves it alone.
    */
@@ -122,6 +127,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.cover !== undefined) {
     yaml['cover'] = patch.cover === null ? undefined : patch.cover
+  }
+  if (patch.coverY !== undefined) {
+    yaml['cover_y'] = patch.coverY === null ? undefined : patch.coverY
   }
   if (patch.tagExtends !== undefined) {
     yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]

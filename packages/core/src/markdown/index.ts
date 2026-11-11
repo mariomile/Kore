@@ -89,6 +89,8 @@ export {
   noteIconValue,
   parseNoteAppearanceFromSource,
   parseNoteCover,
+  parseNoteCoverY,
+  DEFAULT_COVER_Y,
   parseNoteIcon,
   symbolIconValue,
   type NoteAppearance,

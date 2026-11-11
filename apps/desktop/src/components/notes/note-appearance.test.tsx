@@ -2,6 +2,7 @@ import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { NoteAppearance } from './note-appearance'
+import { dragCoverPosition } from './note-cover'
 
 function resolve(src: string): string | null {
   if (src.startsWith('assets/')) {
@@ -165,6 +166,102 @@ describe('NoteAppearance', () => {
     expect(view.container.querySelector('[aria-label="Remove cover"]')).toBeNull()
     expect(view.container.querySelector('[aria-label="Change cover"]')).toBeNull()
     await view.unmount()
+  })
+})
+
+/** A data-URL image taller than wide, so a full-width cover crops it vertically. */
+function tallImage(): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = 40
+  canvas.height = 160
+  const context = canvas.getContext('2d')
+  if (context !== null) {
+    context.fillStyle = '#336699'
+    context.fillRect(0, 0, 40, 160)
+  }
+  return canvas.toDataURL('image/png')
+}
+
+describe('cover position', () => {
+  it('crops the cover at the saved cover_y', async () => {
+    const view = await render(
+      <NoteAppearance
+        source={'---\ncover: assets/old.png\ncover_y: 20\n---\n'}
+        resolveImageUrl={resolve}
+      />,
+    )
+    const cover = view.getByTestId('note-cover').element() as HTMLImageElement
+    expect(cover.style.objectPosition).toBe('50% 20%')
+    await view.unmount()
+  })
+
+  it('moves the cover with the arrow keys and saves only on Save position', async () => {
+    const onCoverPositionChange = vi.fn()
+    const url = tallImage()
+    const view = await render(
+      <NoteAppearance
+        source={'---\ncover: assets/tall.png\n---\n'}
+        resolveImageUrl={() => url}
+        onCoverChange={vi.fn()}
+        uploadCover={vi.fn()}
+        onCoverPositionChange={onCoverPositionChange}
+      />,
+    )
+    await view.getByRole('button', { name: 'Reposition cover' }).click()
+    const image = view.getByLabelText('Cover position')
+    await expect.element(image).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}')
+    expect((image.element() as HTMLImageElement).style.objectPosition).toBe('50% 60%')
+    expect(onCoverPositionChange).not.toHaveBeenCalled()
+    await view.getByRole('button', { name: 'Save position' }).click()
+    expect(onCoverPositionChange).toHaveBeenCalledWith(60)
+    await view.unmount()
+  })
+
+  it('drops the draft position on Cancel', async () => {
+    const onCoverPositionChange = vi.fn()
+    const url = tallImage()
+    const view = await render(
+      <NoteAppearance
+        source={'---\ncover: assets/tall.png\ncover_y: 30\n---\n'}
+        resolveImageUrl={() => url}
+        onCoverChange={vi.fn()}
+        uploadCover={vi.fn()}
+        onCoverPositionChange={onCoverPositionChange}
+      />,
+    )
+    await view.getByRole('button', { name: 'Reposition cover' }).click()
+    await userEvent.keyboard('{ArrowUp}')
+    await view.getByRole('button', { name: 'Cancel' }).click()
+    const cover = view.getByTestId('note-cover').element() as HTMLImageElement
+    expect(cover.style.objectPosition).toBe('50% 30%')
+    expect(onCoverPositionChange).not.toHaveBeenCalled()
+    await view.unmount()
+  })
+
+  it('offers no Reposition for a cover too wide to crop', async () => {
+    const view = await render(
+      <NoteAppearance
+        source={'---\ncover: assets/old.png\n---\n'}
+        resolveImageUrl={resolve}
+        onCoverChange={vi.fn()}
+        uploadCover={vi.fn()}
+        onCoverPositionChange={vi.fn()}
+      />,
+    )
+    await expect.element(view.getByRole('button', { name: 'Remove cover' })).toBeInTheDocument()
+    expect(view.container.querySelector('[aria-label="Reposition cover"]')).toBeNull()
+    await view.unmount()
+  })
+
+  it('maps a vertical drag onto the position, keeping the image under the pointer', () => {
+    expect(dragCoverPosition(50, 0, 200)).toBe(50)
+    // Dragging down reveals more of the top.
+    expect(dragCoverPosition(50, 100, 200)).toBe(0)
+    expect(dragCoverPosition(50, -50, 200)).toBe(75)
+    expect(dragCoverPosition(10, 400, 200)).toBe(0)
+    expect(dragCoverPosition(90, -400, 200)).toBe(100)
+    expect(dragCoverPosition(40, 80, 0)).toBe(40)
   })
 })
 

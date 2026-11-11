@@ -7,11 +7,13 @@ import type { FrontmatterPatch } from '@/editor/note-session-frontmatter'
 /** Setters for the note header's chrome keys; `null` removes the key. */
 export interface NoteAppearanceEdit {
   setIcon: (icon: string | null) => void
+  /** A new or removed cover also drops `cover_y:`: it belonged to the old image. */
   setCover: (cover: string | null) => void
+  setCoverPosition: (coverY: number) => void
 }
 
 /**
- * Writes the note header's chrome keys (`icon:`, `cover:`) through the shared
+ * Writes the note header's chrome keys (`icon:`, `cover:`, `cover_y:`) through the shared
  * frontmatter path, so an open editor takes the patch into its live header.
  * Failures surface on the operations status line. Null when no vault
  * generation is known yet: the header then renders read-only.
@@ -31,7 +33,8 @@ export function useNoteAppearanceEdit(
     }
     return {
       setIcon: (icon) => commit({ icon }, 'Changing the note icon'),
-      setCover: (cover) => commit({ cover }, 'Changing the note cover'),
+      setCover: (cover) => commit({ cover, coverY: null }, 'Changing the note cover'),
+      setCoverPosition: (coverY) => commit({ coverY }, 'Moving the note cover'),
     }
   }, [path, generation])
 }

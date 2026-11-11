@@ -517,6 +517,7 @@ export function NotePaneComponent({
         onIconChange={onIconChange}
         onCoverChange={editableAppearance?.setCover}
         uploadCover={editableAppearance === null ? undefined : saveFile}
+        onCoverPositionChange={editableAppearance?.setCoverPosition}
       />
 
       <NoteEditor

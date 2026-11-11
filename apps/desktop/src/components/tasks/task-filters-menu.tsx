@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { TaskTagCount } from '@reflect/core'
 import { Filter } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,11 +27,20 @@ interface TaskFiltersMenuProps extends TaskFiltersControl {
   onOpenChange: (open: boolean) => void
   /** Show the per-bucket toggles — they only apply to the All view. */
   bucketFilters?: boolean
+  /** The tags the open tasks use; each toggles a `#tag` filter in the search. */
+  tags?: readonly TaskTagCount[]
+  /** The folded tags the search filters by now. */
+  activeTags?: readonly string[]
+  onToggleTag?: (tag: string) => void
 }
 
+/** How many tags the menu lists; the search box takes any other `#tag`. */
+const MENU_TAGS = 12
+
 /**
- * The Tasks view's "Task filters" dropdown (V1): per-bucket toggles plus
- * "Show archived tasks". Toggling keeps the menu open (`preventDefault` on
+ * The Tasks view's "Task filters" dropdown (V1): per-bucket toggles,
+ * "Show archived tasks", and the open tasks' tags (Todoist's labels), which
+ * write `#tag` into the search so the filter stays visible and editable. Toggling keeps the menu open (`preventDefault` on
  * select) so several filters can be flipped at once. Open state is controlled so
  * the ⌘⇧E shortcut can open and close it.
  */
@@ -40,7 +50,12 @@ export function TaskFiltersMenu({
   open,
   onOpenChange,
   bucketFilters = true,
+  tags = [],
+  activeTags = [],
+  onToggleTag,
 }: TaskFiltersMenuProps): ReactElement {
+  // The active tags always show, so one can be turned off even when rarely used.
+  const listed = tags.filter((entry, index) => index < MENU_TAGS || activeTags.includes(entry.key))
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
@@ -78,6 +93,24 @@ export function TaskFiltersMenu({
         >
           Show archived tasks
         </DropdownMenuCheckboxItem>
+        {onToggleTag !== undefined && listed.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Tags</DropdownMenuLabel>
+              {listed.map((entry) => (
+                <DropdownMenuCheckboxItem
+                  key={entry.key}
+                  checked={activeTags.includes(entry.key)}
+                  onCheckedChange={() => onToggleTag(entry.tag)}
+                >
+                  <span className="min-w-0 flex-1 truncate">#{entry.tag}</span>
+                  <span className="text-xs text-text-muted tabular-nums">{entry.count}</span>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )

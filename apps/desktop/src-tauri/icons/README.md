@@ -4,9 +4,9 @@ Three color sets, one per build flavor. Same gradient gem artwork, different hue
 
 | Dir           | Color        | Flavor        | productName  | modulate (B,S,H) |
 | ------------- | ------------ | ------------- | ------------ | ---------------- |
-| `icons/`      | blue/violet  | stable        | Reflect      | none (as shipped) |
-| `icons-beta/` | purple/violet | beta          | Reflect Beta | `104,100,120`    |
-| `icons-dev/`  | green        | dev (local)   | Reflect Dev  | `92,100,231`     |
+| `icons/`      | blue/violet  | stable        | Kore         | none (as shipped) |
+| `icons-beta/` | purple/violet | beta          | Kore Beta    | `104,100,120`    |
+| `icons-dev/`  | green        | dev (local)   | Kore Dev     | `92,100,231`     |
 
 `icons/` is the shipped app icon and the default set Tauri uses with no `--config`;
 the base `tauri.conf.json` points its `bundle.icon` here. The `tauri.beta.conf.json`

@@ -49,7 +49,11 @@ export function chatSystemPrompt({
     `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Kore-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
     'A #name on a note (e.g. #book) is its type: what the note is, and the collection it belongs to. The app calls these types, so say “type” to the user; tool inputs take a type’s name in their “tag” field, without the #.',
     ...graphOverviewLines(context),
-    ...agentContextPromptLines(agentContext, { canEdit: false }),
+    // The API chat writes no files; in a kit vault its memory tools are the
+    // only writes, so "can edit" means exactly that they are listed.
+    ...agentContextPromptLines(agentContext, {
+      canEdit: allowEdits && agentContext?.memoryKit?.tools === true,
+    }),
     '',
     'Grounding rules:',
     '- When a question could be answered by the user’s notes, look them up before answering: search_notes finds notes by topic or keyword, list_daily_notes finds daily notes in a date range (questions like “yesterday” or “last week”), and list_recent_notes shows what was edited lately. Call read_notes when you need notes’ full content.',

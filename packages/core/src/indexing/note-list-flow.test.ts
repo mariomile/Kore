@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { refreshTagTypeResolutions } from './resolved-tag-types'
 import type { DatabaseSync } from 'node:sqlite'
 import { setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
@@ -37,7 +38,7 @@ describe('listNotes against a real index', () => {
     addNote('notes/plain.md', '# Plain', 3000)
     addNote('notes/typed.md', '# Typed\n\n#Project #topic', 2000)
     addNote('daily/2026-09-10.md', '# Daily\n\n#project', 1000)
-    addNote('tags/project.md', '---\nlore: tag\n---\n# Project', 100)
+    addNote('tags/project.md', '---\nkore: tag\n---\n# Project', 100)
     database
       .prepare('INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)')
       .run('project', 'tags/project.md', '[]')
@@ -55,7 +56,7 @@ describe('listNotes against a real index', () => {
 
   it('treats malformed supertag schemas as untyped, like the properties panel', async () => {
     addNote('notes/project.md', '# Project\n\n#project', 1000)
-    addNote('tags/project.md', '---\nlore: tag\n---\n# Project', 100)
+    addNote('tags/project.md', '---\nkore: tag\n---\n# Project', 100)
     database
       .prepare('INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)')
       .run('project', 'tags/project.md', '{"properties":42}')
@@ -158,13 +159,16 @@ describe('tag listings for outbound surfaces against a real index', () => {
     addNote('notes/public-a.md', '# A\n\n#company #decision', 3000)
     addNote('notes/public-b.md', '# B\n\n#company', 2000)
     addNote('notes/secret.md', '---\nprivate: true\n---\n# Secret\n\n#company #diary', 1000)
-    addNote('tags/company.md', '---\nlore: tag\nicon: icon:buildings\n---\n# Company', 100)
-    addNote('tags/diary.md', '---\nlore: tag\nprivate: true\nicon: 🔒\n---\n# Diary', 100)
+    addNote('tags/company.md', '---\nkore: tag\nicon: icon:buildings\n---\n# Company', 100)
+    addNote('tags/diary.md', '---\nkore: tag\nprivate: true\nicon: 🔒\n---\n# Diary', 100)
     const insertType = database.prepare(
       'INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)',
     )
     insertType.run('company', 'tags/company.md', '{"properties":[],"icon":"icon:buildings"}')
     insertType.run('diary', 'tags/diary.md', '{"properties":[],"icon":"🔒"}')
+    // What the index write would do next: the inheritance pass fills the
+    // stored columns every read decodes.
+    await refreshTagTypeResolutions(1)
 
     // The user's own sidebar still sees everything.
     expect(await listNoteTags()).toEqual([

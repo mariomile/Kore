@@ -1,6 +1,6 @@
-# Contributing to Reflect
+# Contributing to Kore
 
-Thanks for helping build Reflect. This is the short version; the full
+Thanks for helping build Kore. This is the short version; the full
 contributor/agent guide lives in [AGENTS.md](AGENTS.md), and the architecture
 decisions in
 [docs/plans/architecture-conventions.md](docs/plans/architecture-conventions.md).
@@ -38,20 +38,20 @@ PR titles must follow [Conventional Commits](https://www.conventionalcommits.org
 — CI enforces the format. The repo squash-merges, so your PR title becomes the
 commit message and, for `feat`/`fix`, the user-facing changelog entry.
 
-- `feat: …` — new behavior; bumps the minor version (of the next beta and stable).
-- `fix: …` — a fix; bumps the patch version (of the next beta and stable).
+- `feat: …` — new behavior; bumps the minor version of the next release.
+- `fix: …` — a fix; bumps the patch version of the next release.
 - `docs:` / `chore:` / `ci:` / `test:` / `refactor:` / `build:` — no release,
   no changelog entry.
-- Reflect is an app, not a library: `feat!:` and `BREAKING CHANGE:` footers are
+- Kore is an app, not a library: `feat!:` and `BREAKING CHANGE:` footers are
   not used (CI rejects `!`). Going 1.0 someday is a product decision: set a
-  one-time `release-as` in the release-please configs so the Release PRs offer
-  `1.0.0-beta.N` and `1.0.0`, then drop it once both have merged.
+  one-time `release-as` in `.github/release-please/config.stable.json` so the
+  Release PR offers `1.0.0`, then drop it once that PR has merged.
 - Write the title as user-visible behavior (`fix: keep the daily caret in view
   on long iOS notes`), not implementation detail.
-- The changelog is scoped to `apps/desktop/`: a change that should appear in it
-  must touch that directory. Core changes usually ship alongside their
-  desktop-side counterpart; a pure `packages/core` fix that lands alone still
-  ships in the next release, it just gets no changelog line.
+- The changelog covers the whole repository except `docs/`, `fixtures/`,
+  `.github/` and `apps/extension/` (`exclude-paths` in
+  `.github/release-please/config.stable.json`): a `feat`/`fix` that touches
+  only those paths ships with no changelog line.
 - GitHub's Revert button writes `Revert "…"`; retitle it to `revert: …`.
 
 ## Where code goes
@@ -86,7 +86,7 @@ commit message and, for `feat`/`fix`, the user-facing changelog entry.
   Enforce at every call site.
 - Markdown files are the source of truth; SQLite under `.kore/` is a
   rebuildable cache. Never make the index durable.
-- No Reflect-hosted APIs, no Electron, secrets only in the OS keychain.
+- No Kore-hosted APIs, no Electron, secrets only in the OS keychain.
 
 ## Guides
 

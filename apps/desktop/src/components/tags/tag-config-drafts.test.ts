@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { relationTargetSelectItems, relationTargetTags } from './tag-config-drafts'
+import {
+  draftsFromSchema,
+  relationTargetSelectItems,
+  relationTargetTags,
+  schemaFromDrafts,
+} from './tag-config-drafts'
 
 describe('relationTargetTags', () => {
   it('includes a tag that exists on notes even without a type definition', () => {
@@ -36,5 +41,20 @@ describe('relationTargetSelectItems', () => {
       person: '#person',
       gone: '#gone',
     })
+  })
+})
+
+describe('starting values in drafts', () => {
+  it('round-trips each kind and drops one the type no longer takes', () => {
+    const schema = [
+      { name: 'Met', key: 'met', type: 'date' as const, default: 'today' },
+      { name: 'Count', key: 'count', type: 'number' as const, default: 3 },
+      { name: 'Done', key: 'done', type: 'checkbox' as const, default: false },
+    ]
+    expect(schemaFromDrafts(draftsFromSchema(schema))).toEqual(schema)
+    const [met] = draftsFromSchema(schema)
+    expect(schemaFromDrafts([{ ...met!, type: 'number' }])).toEqual([
+      { name: 'Met', key: 'met', type: 'number' },
+    ])
   })
 })

@@ -5,6 +5,7 @@ import { call } from '../../ipc/invoke'
 import { tagPropertySchema } from '../../tags'
 import type { AssistantPart, ChatTurn } from './transcript'
 import { upgradeLegacyStep } from './agent-steps'
+import { MEMORY_TOOL_NAMES } from './memory-tools'
 
 /**
  * Chat history persistence (the durable `chat_*` tables in the graph's
@@ -39,12 +40,20 @@ const readNoteSummarySchema = z.object({
   error: z.string().nullable(),
 })
 
+const memoryActionSchema = z.enum(MEMORY_TOOL_NAMES)
+
 const toolCallSchema = z.discriminatedUnion('tool', [
   z.object({ tool: z.literal('search'), toolCallId: z.string(), query: z.string() }),
   z.object({ tool: z.literal('read'), toolCallId: z.string(), paths: z.array(z.string()) }),
   z.object({ tool: z.literal('assets'), toolCallId: z.string(), paths: z.array(z.string()) }),
   z.object({ tool: z.literal('browse'), toolCallId: z.string(), url: z.string() }),
   z.object({ tool: z.literal('readPage'), toolCallId: z.string() }),
+  z.object({
+    tool: z.literal('memory'),
+    toolCallId: z.string(),
+    action: memoryActionSchema,
+    label: z.string(),
+  }),
   z.object({ tool: z.literal('recents'), toolCallId: z.string(), tag: z.string().nullable() }),
   z.object({
     tool: z.literal('dailies'),
@@ -101,6 +110,14 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     toolCallId: z.string(),
     url: z.string().nullable(),
     title: z.string().nullable(),
+    error: z.string().nullable(),
+  }),
+  z.object({
+    tool: z.literal('memory'),
+    toolCallId: z.string(),
+    action: memoryActionSchema,
+    label: z.string(),
+    output: z.string().nullable(),
     error: z.string().nullable(),
   }),
   z.object({

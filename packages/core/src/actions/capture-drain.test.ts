@@ -6,11 +6,15 @@ import {
   describeMock,
   drain,
   envelope,
+  downloadOnRequest,
+  evicted,
   files,
   IDENTITY,
   inboxRemoveMock,
   promoteMock,
+  readNoteMock,
   rejected,
+  requestDownloadsMock,
   scrapeMock,
   spool,
   wireCaptureMocks,
@@ -31,8 +35,12 @@ vi.mock('../graph/commands', () => ({
   promoteCaptureScreenshot: vi.fn(),
   readAsset: vi.fn(),
   readNote: vi.fn(),
+  readNoteLocal: vi.fn(),
   writeAsset: vi.fn(),
   writeNote: vi.fn(),
+}))
+vi.mock('../ipc/commands', () => ({
+  icloudRequestDownloads: vi.fn(),
 }))
 vi.mock('./meta-scrape', () => ({
   scrapePageMeta: vi.fn(),
@@ -655,5 +663,120 @@ describe('drainCaptureInbox (text captures)', () => {
     await drain()
 
     expect([...files.keys()]).toEqual([DAILY])
+  })
+})
+
+describe('drainCaptureInbox (iCloud-evicted notes)', () => {
+  const MAC_DAILY = '# Thursday\n\nWritten on the Mac, not yet downloaded here.\n'
+
+  it('never writes over a daily that is still an iCloud stub: stops, keeps the spool, requests the download', async () => {
+    evicted.set(DAILY, MAC_DAILY)
+    addSpool(envelope())
+
+    const outcome = await drain()
+
+    expect(outcome.stopped).toEqual({
+      reason: 'evicted',
+      message: `${DAILY} is still downloading from iCloud`,
+    })
+    expect(outcome.drained).toBe(0)
+    expect(writeNoteMock).not.toHaveBeenCalledWith(DAILY, expect.anything(), expect.anything())
+    expect(files.has(DAILY)).toBe(false)
+    expect(requestDownloadsMock).toHaveBeenCalledWith([DAILY])
+    expect(spool.size).toBe(2) // envelope + screenshot, both retryable
+  })
+
+  it('the next pass after the download appends under the real daily text', async () => {
+    evicted.set(DAILY, MAC_DAILY)
+    addSpool(envelope())
+    await drain()
+
+    evicted.delete(DAILY)
+    files.set(DAILY, MAC_DAILY)
+    const outcome = await drain()
+
+    expect(outcome.stopped).toBeNull()
+    expect(outcome.drained).toBe(1)
+    const daily = files.get(DAILY) ?? ''
+    expect(daily.startsWith(MAC_DAILY)).toBe(true)
+    expect(daily).toContain(`[[${IDENTITY.base}|An article]]`)
+    expect(spool.size).toBe(0)
+  })
+
+  it('uses the note when the download lands between the two reads', async () => {
+    evicted.set(DAILY, MAC_DAILY)
+    // readNote still sees the stub, readNoteLocal already sees the bytes.
+    readNoteMock.mockImplementationOnce(async () => {
+      evicted.delete(DAILY)
+      files.set(DAILY, MAC_DAILY)
+      throw { kind: 'notFound', message: 'missing' }
+    })
+    addSpool(envelope(), { screenshot: false })
+
+    const outcome = await drain()
+
+    expect(outcome.stopped).toBeNull()
+    expect(files.get(DAILY)?.startsWith(MAC_DAILY)).toBe(true)
+  })
+
+  it('a text capture never writes over an evicted daily either', async () => {
+    evicted.set(DAILY, MAC_DAILY)
+    spool.set('a1b2c3d4-0000-4000-8000-000000000009.json', {
+      contents: JSON.stringify({
+        version: 1,
+        id: 'a1b2c3d4-0000-4000-8000-000000000009',
+        kind: 'append',
+        text: 'call the bank',
+        capturedAt: CAPTURED_AT.toISOString(),
+        source: 'deep-link',
+      }),
+      modifiedMs: 0,
+    })
+
+    const first = await drain()
+    expect(first.stopped?.reason).toBe('evicted')
+    expect(files.has(DAILY)).toBe(false)
+    expect(spool.size).toBe(1)
+
+    downloadOnRequest.enabled = true
+    await drain() // requests again; this time the fake download completes
+    const outcome = await drain()
+
+    expect(outcome.stopped).toBeNull()
+    expect(files.get(DAILY)).toBe(`${MAC_DAILY}\n- call the bank\n`)
+    expect(spool.size).toBe(0)
+  })
+
+  it('an evicted same-day capture note stops the pass instead of capturing the link twice', async () => {
+    addSpool(
+      envelope({
+        id: '00000000-0000-4000-8000-000000000001',
+        capturedAt: new Date(2026, 5, 11, 9, 30, 0, 0).toISOString(),
+      }),
+      { screenshot: false },
+    )
+    await drain()
+    const originalNotePath = 'notes/capture-2026-06-11-093000-000-0000.md'
+    evicted.set(originalNotePath, files.get(originalNotePath) ?? '')
+    files.delete(originalNotePath)
+    const dailyBefore = files.get(DAILY)
+
+    addSpool(envelope(), { screenshot: false }) // same URL, same day, 15:30
+    const outcome = await drain()
+
+    expect(outcome.stopped?.reason).toBe('evicted')
+    expect(files.has(IDENTITY.notePath)).toBe(false)
+    expect(files.get(DAILY)).toBe(dailyBefore)
+    expect(requestDownloadsMock).toHaveBeenCalledWith([originalNotePath])
+  })
+
+  it('a missing daily (no stub) is still created as before', async () => {
+    addSpool(envelope(), { screenshot: false })
+
+    const outcome = await drain()
+
+    expect(outcome.stopped).toBeNull()
+    expect(requestDownloadsMock).not.toHaveBeenCalled()
+    expect(files.get(DAILY)).toContain(`[[${IDENTITY.base}|An article]]`)
   })
 })

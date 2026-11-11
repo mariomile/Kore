@@ -30,6 +30,7 @@ vi.mock('@/providers/settings-provider', async () => {
 })
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
+  invalidateOnNextIndexApply: () => {},
 }))
 const removeTag = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-remove-note-tag', () => ({
@@ -40,6 +41,8 @@ vi.mock('@/lib/tags/use-add-note-tag', () => ({
   useAddNoteTag: () => addTag,
 }))
 vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => vi.fn() }))
+const setTagPropertyType = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/lib/tags/schema-edits', () => ({ setTagPropertyType }))
 
 function Subject({ path = 'notes/dispossessed.md' }: { path?: string }): ReactElement {
   return (
@@ -62,6 +65,7 @@ beforeEach(() => {
   commitProperty.mockClear()
   removeTag.mockClear()
   addTag.mockClear()
+  setTagPropertyType.mockClear()
 })
 
 describe('NotePropertiesHeader', () => {
@@ -129,7 +133,7 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('#book')).toBeInTheDocument()
+    await expect.element(header.getByText('Book', { exact: true })).toBeInTheDocument()
     await expect.element(header.getByText('📚')).toBeInTheDocument()
   })
 
@@ -138,7 +142,9 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('#idea')).toBeInTheDocument()
+    await expect.element(header.getByText('Idea', { exact: true })).toBeInTheDocument()
+    // The chip's glyph is the `#`; the name never repeats it (`# #idea`).
+    expect(header.element().textContent).not.toContain('#')
   })
 
   it('lists Type chips for each tag and unsets one on remove', async () => {
@@ -162,8 +168,8 @@ describe('NotePropertiesHeader', () => {
 
     const header = view.getByRole('region', { name: 'Properties' })
     await expect.element(header.getByText('Type')).toBeInTheDocument()
-    await expect.element(header.getByText('#project')).toBeInTheDocument()
-    await expect.element(header.getByText('#person')).toBeInTheDocument()
+    await expect.element(header.getByText('Project', { exact: true })).toBeInTheDocument()
+    await expect.element(header.getByText('Person', { exact: true })).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Remove #project' }).click()
     expect(removeTag).toHaveBeenCalledWith('notes/dispossessed.md', 'project')
@@ -200,5 +206,36 @@ describe('NotePropertiesHeader', () => {
     await view.getByRole('combobox').fill('idea')
     // Carried already: neither the list nor the "use it" row offers it again.
     await expect.element(view.getByText('No matching type.')).toBeInTheDocument()
+  })
+
+  it('shows each field type on its label and changes it in the owning type', async () => {
+    data.tags = [
+      {
+        tag: 'Meeting',
+        tagKey: 'meeting',
+        definitionPath: 'tags/meeting.md',
+        type: { properties: [{ name: 'Company', key: 'company', type: 'relation' }] },
+      },
+    ]
+    const view = await render(<Subject />)
+
+    await view.getByRole('button', { name: 'Company (Relation)' }).click()
+    await expect.element(view.getByText('Type, for every #Meeting note')).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('menuitemradio', { name: 'Relation', exact: true }))
+      .toHaveAttribute('aria-checked', 'true')
+    await view.getByRole('menuitemradio', { name: 'Text', exact: true }).click()
+    await vi.waitFor(() =>
+      expect(setTagPropertyType).toHaveBeenCalledWith('Meeting', 1, 'company', 'text'),
+    )
+  })
+
+  it('names a loose field type without offering a change', async () => {
+    data.values = { follow_up: { value: 'Call Ada', valueType: 'string', valueNumber: null } }
+    const view = await render(<Subject />)
+
+    await view.getByRole('button', { name: 'follow_up (Text)' }).click()
+    await expect.element(view.getByText('Type: Text')).toBeInTheDocument()
+    expect(view.getByRole('menuitemradio').elements()).toHaveLength(0)
   })
 })

@@ -23,6 +23,7 @@ function task(overrides: Partial<OpenTask> = {}): OpenTask {
     noteTitle: 'N',
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     isPinned: false,
     pinnedOrder: null,

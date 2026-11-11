@@ -16,8 +16,8 @@ interface ConnectGithubDrawerProps {
 }
 
 const STEP_DESCRIPTIONS: Record<ConnectWizardStep, string> = {
-  repo: 'Back up this graph to a private GitHub repository and sync it with Kore on your other devices.',
-  auth: 'Sign in so Kore can push your backups.',
+  repo: 'Sync this vault to a private GitHub repository and with Kore on your other devices.',
+  auth: 'Sign in so Kore can push your changes.',
   finish: 'Connecting your repository…',
 }
 

@@ -118,7 +118,7 @@ describe('MobileGraphs', () => {
   it('creates a graph through the sheet, not an inline form', async () => {
     await mount()
 
-    await userEvent.click(page.getByRole('button', { name: 'New graph' }))
+    await userEvent.click(page.getByRole('button', { name: 'New vault' }))
     await userEvent.fill(page.getByLabelText('Name'), 'Journal')
     await userEvent.click(page.getByRole('button', { name: 'Create' }))
 
@@ -130,7 +130,7 @@ describe('MobileGraphs', () => {
   it('rejects a colliding name before it ever reaches the backend', async () => {
     await mount()
 
-    await userEvent.click(page.getByRole('button', { name: 'New graph' }))
+    await userEvent.click(page.getByRole('button', { name: 'New vault' }))
     await userEvent.fill(page.getByLabelText('Name'), 'Work')
 
     await expect.element(page.getByText(/already exists in iCloud Drive/)).toBeVisible()
@@ -156,6 +156,6 @@ describe('MobileGraphs', () => {
     await mount()
 
     await expect.element(page.getByText(/iCloud Drive isn’t available/)).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'New graph' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'New vault' })).not.toBeInTheDocument()
   })
 })

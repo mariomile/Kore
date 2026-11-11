@@ -9,6 +9,10 @@ packages:
 # patched line; drop the override once a direct dependent requires it.
 overrides:
   esbuild: ^0.28.2
+  # Dev tooling only: oxfmt pins tinypool to exactly 2.1.0, which
+  # GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr flag (fixed in 2.1.2). Drop
+  # the override once oxfmt moves its pin.
+  tinypool@2: ^2.1.2
 
 allowBuilds:
   '@sentry/cli': true

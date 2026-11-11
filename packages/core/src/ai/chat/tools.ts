@@ -16,6 +16,7 @@ import {
   type ListTagTypesOptions,
   type TagTypeEntry,
 } from '../../indexing/collections'
+import type { TagTypeReadOptions } from '../../indexing/resolved-tag-types'
 import { attachRollups } from '../../indexing/rollups'
 import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../indexing/queries'
 import {
@@ -42,6 +43,7 @@ import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './rea
 import { applyNoteEdit } from './note-edit'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
 import { buildTagTools } from './tag-tools'
+import { buildMemoryTools, type MemoryToolDeps, type MemoryTools } from './memory-tools'
 import {
   cloudSafeCollectionRows,
   cloudSafeNoteListings,
@@ -114,7 +116,7 @@ export interface NoteToolDeps {
   listRecentNotesFn?: (options: RecentNotesOptions) => Promise<RecentNoteRow[]>
   listDailyNotesFn?: (range: DailyNotesRange) => Promise<DailyNoteRow[]>
   assetReferencingNotePathsFn?: (assetPath: string) => Promise<string[]>
-  getTagTypeFn?: (tag: string) => Promise<TagType | null>
+  getTagTypeFn?: (tag: string, options?: TagTypeReadOptions) => Promise<TagType | null>
   /** Every tag carried by a note, with counts (list_tags). */
   listNoteTagsFn?: (options: ListNoteTagsOptions) => Promise<NoteTagFacet[]>
   /** Every typed tag with its schema (list_tags). */
@@ -139,6 +141,11 @@ export interface NoteToolDeps {
    * with the honest unavailable message; omitted means "attempt".
    */
   browsingAvailable?: boolean
+  /**
+   * Runs one cyber-brain kit command in the open vault (the memory tools);
+   * null or omitted when the vault has no kit, so they refuse honestly.
+   */
+  memoryWriteFn?: MemoryToolDeps['memoryWriteFn']
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -220,7 +227,13 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
     allowEdits: options.allowEdits === true,
   })
 
+  const memoryTools = buildMemoryTools({
+    memoryWriteFn: options.memoryWriteFn ?? null,
+    allowEdits: options.allowEdits === true,
+  })
+
   return {
+    ...memoryTools,
     search_notes: tool({
       description: searchNotesDescription(options.semanticSearchEnabled !== false),
       inputSchema: searchNotesInput,
@@ -285,7 +298,9 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         if (!isTagName(tag)) {
           return { ok: false, tag, error: INVALID_COLLECTION_TAG_ERROR }
         }
-        const type = await getTagTypeFn(tag)
+        // The public schema: a private definition reads as untyped, and a
+        // private parent's fields never reach the model through a child.
+        const type = await getTagTypeFn(tag, { excludePrivate: true })
         if (type === null) {
           return { ok: false, tag, error: UNTYPED_TAG_ERROR }
         }
@@ -468,4 +483,4 @@ export type NoteTools = {
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
   open_web_page: Tool<z.infer<typeof openWebPageInput>, BrowseWebOutput>
   read_web_page: Tool<z.infer<typeof readWebPageInput>, BrowseWebOutput>
-}
+} & MemoryTools

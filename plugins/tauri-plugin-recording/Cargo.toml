@@ -2,7 +2,7 @@
 name = "tauri-plugin-recording"
 version = "0.1.0"
 authors = ["Reflect"]
-description = "Native audio-memo recording for the Reflect iOS app (AVAudioRecorder capture, staging, Live Activity, and OS entry-point action queue)."
+description = "Native audio-memo recording for the Kore iOS app (AVAudioRecorder capture, staging, Live Activity, and OS entry-point action queue)."
 edition = "2021"
 rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]

@@ -89,6 +89,8 @@ export interface Connector {
   readonly tokenUrl: string
   /** Label for the credential field. */
   readonly tokenLabel: string
+  /** The credential's name mid-sentence ("Get API key", "Add your access token"). */
+  readonly tokenNoun: string
   /**
    * How far a run looks back before the last successful sync, absorbing
    * items the source publishes late (a meeting whose summary finishes after

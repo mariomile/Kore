@@ -26,7 +26,10 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: background-color 120ms var(--ease-swift, ease);
+  /* No transition on the hover lift: while a note scrolls under a resting
+     pointer every card passing it would start a fade, repainting the card
+     for 120ms on the way in and again on the way out. That alone dropped
+     about six times as many frames in the daily stream. */
 }
 .reflect-editor .kore-link-card:hover {
   background-color: var(--surface-hover);

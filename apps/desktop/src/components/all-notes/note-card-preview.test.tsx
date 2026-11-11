@@ -18,13 +18,14 @@ vi.mock('@/editor/open-external-link', () => ({
   useOpenExternalLink: () => undefined,
 }))
 
-function preview(mtime: number) {
+function preview(mtime: number, shownTags?: readonly string[]) {
   return (
     <QueryClientProvider client={queryClient}>
       <NoteCardPreview
         path="notes/preview.md"
         mtime={mtime}
         snippet="Loading preview"
+        shownTags={shownTags}
         resolveImageUrl={() => null}
       />
     </QueryClientProvider>
@@ -75,5 +76,13 @@ describe('NoteCardPreview', () => {
     await view.rerender(preview(2))
     await expect.element(view.getByText('Reopened graph body')).toBeInTheDocument()
     expect(readNote).toHaveBeenCalledWith('notes/preview.md', 8)
+  })
+
+  it("drops a leading tag line the card's footer already shows", async () => {
+    readNote.mockResolvedValue('# Prep\n\n#meeting\n\nScreen di 30 minuti')
+    const view = await render(preview(1, ['meeting']))
+
+    await expect.element(view.getByText('Screen di 30 minuti')).toBeInTheDocument()
+    expect(view.container.textContent).not.toContain('#meeting')
   })
 })

@@ -28,7 +28,7 @@ tags atomically. Edit the file directly only for prose.
 | `.kore/` | The app's index. Never write here. |
 
 Any other `.md` file anywhere in the graph is an ordinary note too;
-hidden folders (`.git`, `.reflect`) and `assets/` are excluded.
+hidden folders (`.git`, `.kore`) and `assets/` are excluded.
 
 ## Titles
 

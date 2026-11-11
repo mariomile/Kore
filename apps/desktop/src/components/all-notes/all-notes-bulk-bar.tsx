@@ -434,7 +434,7 @@ export function AllNotesBulkBar({
             <Input
               autoFocus
               aria-label="Destination folder"
-              placeholder="Graph root"
+              placeholder="Vault root"
               list="all-notes-folders"
               value={folderValue}
               onChange={(event) => setFolderValue(event.target.value)}

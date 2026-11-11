@@ -105,7 +105,7 @@ describe('EmbeddedNote', () => {
 
     const view = await renderEmbed({ target: 'Ghost', heading: null })
     await expect
-      .element(view.getByText('[[Ghost]] doesn’t match a note in this graph.'))
+      .element(view.getByText('[[Ghost]] doesn’t match a note in this vault.'))
       .toBeInTheDocument()
   })
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   markdownNoteReference,
   noteBasenameKey,
+  noteLinkFragment,
   noteLinkHeading,
   wikiNoteReference,
 } from './note-reference'
@@ -184,6 +185,16 @@ describe('noteBasenameKey', () => {
     // NFD filename (as macOS reports it), NFC key: the fold normalizes.
     expect(noteBasenameKey('Cafe\u{301}.md')).toBe('caf\u{E9}')
     expect(noteBasenameKey('Caf\u{E9}.md')).toBe('caf\u{E9}')
+  })
+})
+
+describe('noteLinkFragment', () => {
+  it('returns the heading, or ^id for a block reference', () => {
+    expect(noteLinkFragment('Plan#Next steps')).toBe('Next steps')
+    expect(noteLinkFragment('Plan#^a1b2')).toBe('^a1b2')
+    expect(noteLinkFragment('#^local')).toBe('^local')
+    expect(noteLinkFragment('Plan')).toBeNull()
+    expect(noteLinkFragment('Plan#^bad id')).toBeNull()
   })
 })
 

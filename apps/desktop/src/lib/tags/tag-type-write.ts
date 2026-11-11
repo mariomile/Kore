@@ -1,6 +1,8 @@
 import {
   createNoteIfAbsent,
+  foldTag,
   parseNote,
+  tagExtendsLoop,
   parseTagTypeFrontmatter,
   tagDefinitionPath,
   upsertFrontmatter,
@@ -11,7 +13,7 @@ import { frontmatterPatchToYaml } from '@/editor/note-session'
 
 /**
  * Reading and writing tag definition notes (TDR 0005). The schema lives in
- * `tags/<key>.md` frontmatter (`lore: tag` + `properties`); saves ride the
+ * `tags/<key>.md` frontmatter (`kore: tag` + `properties`); saves ride the
  * typed `tagSchema` patch through the shared session-or-disk channel, so a
  * definition note open with unsaved edits takes the schema into its live
  * header instead of a disk write racing the buffer. Either way the write is
@@ -26,7 +28,7 @@ export interface TagDefinitionState {
   /** A file exists at the path. */
   exists: boolean
   /**
-   * The existing file lacks the `lore: tag` marker — a pre-existing user
+   * The existing file lacks the `kore: tag` marker — a pre-existing user
    * note. Saving over it is a *conversion* the user must confirm.
    */
   needsConversion: boolean
@@ -36,6 +38,8 @@ export interface TagDefinitionState {
   template: string | null
   /** The tag's emoji glyph, or `null` when the definition sets none. */
   icon: string | null
+  /** The tags this one builds on (`extends:`, Plan 33 B2), folded keys. */
+  parents: string[]
 }
 
 /** Read the tag's definition state for the config dialog. */
@@ -52,6 +56,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     }
   }
   const type = parseTagTypeFrontmatter(parseNote({ path, source }).frontmatter)
@@ -62,7 +67,20 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     properties: type?.properties ?? [],
     template: type?.template ?? null,
     icon: type?.icon ?? null,
+    parents: [...(type?.extends ?? [])],
   }
+}
+
+/**
+ * The rest of a definition `saveTagType` can write. Each one is written
+ * only when given (`null` clears it), so a one-gesture edit that knows
+ * nothing about, say, the icon can never wipe it.
+ */
+export interface TagTypeExtras {
+  template?: string | null
+  icon?: string | null
+  /** The `extends:` list (Plan 33 B2). */
+  parents?: readonly string[]
 }
 
 /**
@@ -70,31 +88,40 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
  * the marker + `properties` as a `tagSchema` frontmatter patch (the
  * conversion confirm happens in the dialog, before this runs).
  * `upsertFrontmatter` refuses a file whose YAML is broken — the caller
- * surfaces that instead of destroying anything.
+ * surfaces that instead of destroying anything. Parents that would close a
+ * loop are refused before anything is written.
  */
 export async function saveTagType(
   tag: string,
   properties: readonly TagProperty[],
   generation: number,
-  template: string | null = null,
-  icon: string | null = null,
+  { template, icon, parents }: TagTypeExtras = {},
 ): Promise<void> {
+  if (parents !== undefined) {
+    const loop = await tagExtendsLoop(tag, parents)
+    if (loop !== null) {
+      throw new Error(
+        loop === foldTag(tag)
+          ? `#${foldTag(tag)} can't build on itself.`
+          : `#${foldTag(tag)} can't build on #${loop}: #${loop} already builds on #${foldTag(tag)}.`,
+      )
+    }
+  }
+  const patch = {
+    tagSchema: properties,
+    ...(template === undefined ? {} : { tagTemplate: template }),
+    ...(icon === undefined ? {} : { tagIcon: icon }),
+    ...(parents === undefined ? {} : { tagExtends: parents }),
+  }
   const path = tagDefinitionPath(tag)
   // The seed rides the SAME serializer as the update path below — a schema
   // field spelled in one place only. This exact fork once dropped `target`
   // (and later `formula`) from freshly created collections while updates
   // kept them.
-  const seed = upsertFrontmatter(
-    '',
-    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template, tagIcon: icon }),
-  )
+  const seed = upsertFrontmatter('', frontmatterPatchToYaml(patch))
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return
   }
-  await commitNoteFrontmatter(
-    path,
-    { tagSchema: properties, tagTemplate: template, tagIcon: icon },
-    generation,
-  )
+  await commitNoteFrontmatter(path, patch, generation)
 }

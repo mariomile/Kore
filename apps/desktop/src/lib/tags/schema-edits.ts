@@ -1,4 +1,9 @@
-import { propertyKeyForName, type TagProperty, type TagPropertyType } from '@reflect/core'
+import {
+  propertyKeyForName,
+  withPropertyType,
+  type TagProperty,
+  type TagPropertyType,
+} from '@reflect/core'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 
 /**
@@ -26,13 +31,7 @@ export async function addTagProperty(
     throw new Error(`#${tag} already has a "${trimmed}" property.`)
   }
   const property: TagProperty = { name: trimmed, key, type }
-  await saveTagType(
-    tag,
-    [...definition.properties, property],
-    generation,
-    definition.template,
-    definition.icon,
-  )
+  await saveTagType(tag, [...definition.properties, property], generation)
   return property
 }
 
@@ -47,5 +46,28 @@ export async function removeTagProperty(
   if (remaining.length === definition.properties.length) {
     return
   }
-  await saveTagType(tag, remaining, generation, definition.template, definition.icon)
+  await saveTagType(tag, remaining, generation)
+}
+
+/**
+ * Switch the property under `key` to `type` (`withPropertyType`): the
+ * note's field-label menu. The schema changes for every note of the tag;
+ * stored values stay under the same key. A key the schema no longer has, or
+ * a type it already has, is a no-op.
+ */
+export async function setTagPropertyType(
+  tag: string,
+  generation: number,
+  key: string,
+  type: TagPropertyType,
+): Promise<void> {
+  const definition = await readTagDefinition(tag)
+  const current = definition.properties.find((property) => property.key === key)
+  if (current === undefined || current.type === type) {
+    return
+  }
+  const next = definition.properties.map((property) =>
+    property.key === key ? withPropertyType(property, type) : property,
+  )
+  await saveTagType(tag, next, generation)
 }

@@ -26,7 +26,7 @@ use git2::build::CheckoutBuilder;
 use git2::{Index, IndexEntry, MergeOptions, Repository};
 use serde::Serialize;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 
 use super::repo::{current_branch, ensure_clean_state, open_existing, signature};
 
@@ -128,11 +128,33 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
         let new_tree = repo.find_commit(remote_oid)?.tree()?;
         let mut changed_files = changed_between(&repo, old_tree.as_ref(), &new_tree)?;
         let refname = format!("refs/heads/{branch}");
-        repo.reference(&refname, remote_oid, true, "kore sync: fast-forward")?;
-        repo.set_head(&refname)?;
-        // Force is safe here: the pre-merge invariant is a committed working
-        // tree, so there is nothing uncommitted to clobber.
-        repo.checkout_head(Some(CheckoutBuilder::new().force()))?;
+        if analysis.is_unborn() {
+            // Nothing is tracked yet, so there is no local history to protect:
+            // adopt the remote tree outright.
+            repo.reference(&refname, remote_oid, true, "kore sync: fast-forward")?;
+            repo.set_head(&refname)?;
+            repo.checkout_head(Some(CheckoutBuilder::new().force()))?;
+        } else {
+            // The engine committed before the fetch, but the user (or an
+            // agent) can save again while the fetch is in flight. A forced
+            // checkout would silently revert that save, so write the new tree
+            // in safe mode first and only then move the ref. A save that
+            // touches a file the remote also changed makes the checkout fail
+            // before anything is written; the cycle errors out, and the next
+            // one commits the save and does a real merge instead.
+            if let Err(err) =
+                repo.checkout_tree(new_tree.as_object(), Some(CheckoutBuilder::new().safe()))
+            {
+                if err.code() == git2::ErrorCode::Conflict {
+                    return Err(AppError::io(
+                        "a note changed while syncing; it will be merged on the next sync",
+                    ));
+                }
+                return Err(err.into());
+            }
+            repo.reference(&refname, remote_oid, true, "kore sync: fast-forward")?;
+            repo.set_head(&refname)?;
+        }
         // Stamp mtimes only now — the checkout above is what wrote the files.
         stamp_modified_times(root, &mut changed_files);
         return Ok(MergeOutcome {

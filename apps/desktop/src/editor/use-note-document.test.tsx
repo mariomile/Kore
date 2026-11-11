@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
 import { setBridge, upsertFrontmatter } from '@reflect/core'
 import { onNoteMoved } from '@/lib/note-moves'
+import { getOperations, resetOperations } from '@/lib/operations'
 import { enableNoteContentCache } from './note-content-cache'
 import { flushOpenDocuments } from './open-documents'
 import type { NoteEditorHandle } from './note-editor'
@@ -1169,6 +1170,12 @@ describe('useNoteDocument', () => {
 })
 
 describe('useNoteDocument warm opens', () => {
+  let created: Array<{ path: string; contents: string }> = []
+  beforeEach(() => {
+    created = []
+    resetOperations()
+  })
+
   /** Park every `note_read`; the release resolves them all with `content`. */
   function parkReads() {
     const parked: Array<(content: string) => void> = []
@@ -1183,6 +1190,11 @@ describe('useNoteDocument warm opens', () => {
         disk = contents
         writes.push(contents)
         return null
+      }
+      if (command === 'note_create') {
+        const { path, contents } = args as { path: string; contents: string }
+        created.push({ path, contents })
+        return { kind: 'created', modifiedMs: null }
       }
       return null
     })
@@ -1236,6 +1248,17 @@ describe('useNoteDocument warm opens', () => {
       releaseReads('# Changed elsewhere\n')
       await vi.waitFor(() => expect(hook.result.current.conflict).toBe('# Changed elsewhere\n'))
       await hook.unmount()
+      // Closing can't wait for a choice: the typing lands in a copy beside
+      // the note, and the note itself is never written.
+      await vi.waitFor(() =>
+        expect(created).toEqual([
+          { path: 'notes/a (conflict).md', contents: '# Hello typed on\n' },
+        ]),
+      )
+      expect(writes).toEqual([])
+      expect(getOperations().map((operation) => operation.label)).toContain(
+        'Saved your edits as a copy',
+      )
     } finally {
       disable()
     }

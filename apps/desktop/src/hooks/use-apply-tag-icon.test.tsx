@@ -14,7 +14,7 @@ const definition = vi.hoisted(() => ({
   template: null as string | null,
   icon: null as string | null,
 }))
-const source = vi.hoisted(() => ({ text: '---\nlore: tag\nicon: 🏢\n---\n' }))
+const source = vi.hoisted(() => ({ text: '---\nkore: tag\nicon: 🏢\n---\n' }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
 
 vi.mock('@/providers/graph-provider', () => ({
@@ -36,20 +36,16 @@ beforeEach(() => {
   definition.properties = [{ name: 'Website', key: 'website', type: 'url' }]
   definition.template = 'templates/company.md'
   definition.icon = '🏢'
-  source.text = '---\nlore: tag\nicon: 🏢\n---\n'
+  source.text = '---\nkore: tag\nicon: 🏢\n---\n'
 })
 
 describe('useApplyTagIcon', () => {
   it('writes the icon through the definition writer, keeping schema and template', async () => {
     const { result } = await renderHook(() => useApplyTagIcon())
     await result.current({ tag: 'Company', icon: 'icon:buildings', previousIcon: '🏢' })
-    expect(saveTagType).toHaveBeenCalledWith(
-      'Company',
-      definition.properties,
-      7,
-      'templates/company.md',
-      'icon:buildings',
-    )
+    expect(saveTagType).toHaveBeenCalledWith('Company', definition.properties, 7, {
+      icon: 'icon:buildings',
+    })
   })
 
   it('creates the definition for a tag that has none yet', async () => {
@@ -63,7 +59,7 @@ describe('useApplyTagIcon', () => {
     definition.icon = null
     const { result } = await renderHook(() => useApplyTagIcon())
     await result.current({ tag: 'decision', icon: '✅', previousIcon: null })
-    expect(saveTagType).toHaveBeenCalledWith('decision', [], 7, null, '✅')
+    expect(saveTagType).toHaveBeenCalledWith('decision', [], 7, { icon: '✅' })
   })
 
   it('refuses a stale, private, or unmarked definition without writing', async () => {
@@ -71,7 +67,7 @@ describe('useApplyTagIcon', () => {
     await expect(
       result.current({ tag: 'company', icon: 'icon:buildings', previousIcon: null }),
     ).rejects.toThrow(STALE_TAG_ICON_MESSAGE)
-    source.text = '---\nlore: tag\nprivate: true\n---\n'
+    source.text = '---\nkore: tag\nprivate: true\n---\n'
     await expect(
       result.current({ tag: 'company', icon: 'icon:buildings', previousIcon: '🏢' }),
     ).rejects.toThrow(PRIVATE_NOTE_EDIT_ERROR)

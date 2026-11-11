@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Note icon and cover editable from the note header (#380, #396): "Add icon"
+  and "Add cover" on hover, cover by upload, https link or drop. The file
+  format is unchanged (`icon:`, `cover:`).
+- The relation picker lists every row of the target type (up to 50, scrolling)
+  instead of stopping at 6 (#395).
+- Dropdown menus open below their button with icons centered; the Configure
+  type dialog lines every field up in one column (#394).
 - Plan 33 A3 (#387): "Show who wrote each line" (Settings → Editor, and Note
   actions). Off by default. Shades each block an agent or the Kore host last
   changed, from `git blame` over A1's signed commits (new `git_blame`

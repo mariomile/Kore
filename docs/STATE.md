@@ -1,5 +1,24 @@
 # Kore working state
 
+## Note icon, cover, relation picker and type dialog polish, 2026-11-11
+
+Ask: Mario, Lotion ideas phase 1 and the note properties follow-ups.
+
+- [x] Note icon from the note header (#380): hover shows "Add icon"; the icon
+  sits inline at the start of the title line (`title-icon-plugin.ts`); the
+  picker reopens on click and offers Remove. Picker body shared with tag icons
+  (`IconPickerPanel`); patch field `tagIcon` renamed `icon`.
+- [x] Note cover from the note header (#396): upload, https link or dropped
+  image; uploads reuse `saveFile` and write `cover: assets/…`; Change and
+  Remove on hover. `FrontmatterPatch` gains `cover`.
+- [x] The relation picker lists every row of the target type (up to 50,
+  scrolling) instead of stopping at 6 (#395).
+- [x] Select menus and the Configure type dialog aligned (#394): icons centred
+  on labels, menus open below their trigger, one label column so every control
+  starts at the same x.
+- Not done: cover vertical position (`cover_y`, Lotion step 3).
+- Not verified on a real Mac.
+
 ## Daily stream: static days while scrolling, 2026-11-10
 
 - [x] Every day entering view mounted a full editor; DailyDay now renders

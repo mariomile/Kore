@@ -73,10 +73,7 @@ export async function send(
         (cause.name === 'TimeoutError' || cause.name === 'AbortError')) ||
       (cause instanceof Error && cause.message === 'Request cancelled')
     ) {
-      throw new KoreError(
-        'network',
-        `transcription request timed out after ${timeoutMs / 1000}s`,
-      )
+      throw new KoreError('network', `transcription request timed out after ${timeoutMs / 1000}s`)
     }
     throw new KoreError('network', cause instanceof Error ? cause.message : String(cause))
   }
@@ -164,10 +161,7 @@ export function httpError(
     return new KoreError('auth', `${provider} rejected the API key (${status})`)
   }
   if (provider === 'google' && status === 400 && isInvalidKeyBody(body)) {
-    return new KoreError(
-      'auth',
-      `google rejected the API key (400): ${providerErrorMessage(body)}`,
-    )
+    return new KoreError('auth', `google rejected the API key (400): ${providerErrorMessage(body)}`)
   }
   if (status === 413) {
     return new TranscriptionOversizeError(

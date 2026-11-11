@@ -1362,10 +1362,7 @@ html[data-sidebar-resizing] aside {
 .kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker {
   justify-content: start;
 }
-.kore-editor
-  .prosemirror-flat-list[data-list-kind='task']
-  > .list-marker
-  input[type='checkbox'] {
+.kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
   transform: translateY(-0.06em);
 }
 

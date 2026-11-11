@@ -20,9 +20,10 @@ CLI and `kore mcp`, `$KORE_GRAPH`, the agent skills, `kore://` links, the
 vault's `.kore/` directory, `*.kore.md` asset descriptions, the `kore/` config
 dir, `kore.*` storage keys and `kore-asset://`. The old Reflect-era stored
 names are migrated on first open; never write them again. **Reflect** (the
-upstream project this repo forked from) survives only in internal code
-identifiers (`@kore/*` packages, `reflect-*` crates) until the mechanical
-internal rename lands. Apple identity stays `app.lore.*` and the keychain
+upstream project this repo forked from) survives only where it means that
+upstream app (the Reflect V1 importer, upstream docs) and in history;
+packages are `@kore/*`, crates `kore-*`. `pnpm lint:names` fails when a file
+gains a new "reflect" name. Apple identity stays `app.lore.*` and the keychain
 service stays `"lore"` until their own migration ships. See AGENTS.md, Naming.
 
 ## Layering rules

@@ -2,12 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent, type Locator } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  setBridge,
-  settingsSchema,
-  type HostedAiProviderConfig,
-  type Settings,
-} from '@kore/core'
+import { setBridge, settingsSchema, type HostedAiProviderConfig, type Settings } from '@kore/core'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { resetOperations } from '@/lib/operations'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'

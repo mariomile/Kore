@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  isKoreManagedNote,
-  isKoreManagedNotePath,
-  isValidKoreNoteId,
-} from './note-management'
+import { isKoreManagedNote, isKoreManagedNotePath, isValidKoreNoteId } from './note-management'
 
 const VALID_ID = '01hv3xq7c2dm8k4t9w5e6r1n98'
 

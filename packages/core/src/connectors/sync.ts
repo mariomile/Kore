@@ -192,10 +192,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
         return await mergeInto(path, existing, note, generation)
       }
     }
-    throw new KoreError(
-      'io',
-      `no free filename for "${note.fileStem}" in ${folder || 'the graph'}`,
-    )
+    throw new KoreError('io', `no free filename for "${note.fileStem}" in ${folder || 'the graph'}`)
   }
 
   let created = 0

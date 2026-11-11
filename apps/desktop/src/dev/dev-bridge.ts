@@ -280,10 +280,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'note_create': {
         const { path, contents, generation } = createArgsSchema.parse(args)
         if (generation !== graphInfo.generation) {
-          throw new KoreError(
-            'io',
-            'the graph changed since this command was issued; dropping it',
-          )
+          throw new KoreError('io', 'the graph changed since this command was issued; dropping it')
         }
         return files.create(path, contents)
       }

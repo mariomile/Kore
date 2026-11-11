@@ -55,9 +55,7 @@ export function membershipParagraphCss(root: HTMLElement): string {
     if (childIndex === 0) {
       continue
     }
-    selectors.push(
-      `.kore-editor.kore-editor-has-properties > :nth-child(${String(childIndex)})`,
-    )
+    selectors.push(`.kore-editor.kore-editor-has-properties > :nth-child(${String(childIndex)})`)
   }
   if (selectors.length === 0) {
     return ''

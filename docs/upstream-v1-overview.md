@@ -4,11 +4,11 @@ This document is a handoff for an agent or engineer building a second version of
 
 For deeper implementation notes, see:
 
-- [Mobile app](./reflect-v1-mobile-overview.md)
+- [Mobile app](./upstream-v1-mobile-overview.md)
 - [Search](./search.md)
 - [Note sync](./note-sync.md)
 - [SQLite persistence](./sqlite-persistence.md)
-- [Mobile audio memos](./reflect-v1-mobile-audio-memos.md)
+- [Mobile audio memos](./upstream-v1-mobile-audio-memos.md)
 
 ## Product Summary
 

@@ -6,7 +6,7 @@ Meowdown owns the editor hover lifecycle and overlay; Reflect owns
 side-effect-free resolution, generation-pinned reads, and local-only content.
 
 This is separate from both the `[[` autocomplete menu documented in
-[Reflect v1: Backlink Menu & Date Generator](../reflect-v1-backlink-menu.md)
+[Reflect v1: Backlink Menu & Date Generator](../upstream-v1-backlink-menu.md)
 and the incoming-backlinks panel delivered by
 [Plan 07](../plans/07-backlinks.md). In v1 terminology the inline link itself
 was a "backlink"; this document calls it a **wiki link** where that avoids

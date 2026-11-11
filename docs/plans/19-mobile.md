@@ -55,7 +55,7 @@ filenames — the title-rename machinery rides along with editing).
   (device flow + clone), reusing `@kore/core`'s sync/github module.
 - Mobile UI surfaces, **per the 2026-06-12 product call: re-implement V1
   mobile's feature-set and design** (see the
-  [V1 mobile overview](../reflect-v1-mobile-overview.md)): a **Daily / All**
+  [V1 mobile overview](../upstream-v1-mobile-overview.md)): a **Daily / All**
   tab shell; the Daily tab as V1's signature surface (month header + week
   calendar strip + a touch-swipeable day carousel — Embla Carousel, recorded
   in [libraries](libraries.md)); editable note view; the All tab as a

@@ -55,12 +55,12 @@ designs simply don't survive the move:
 
 The V1 **mobile** app (the separate Capacitor/Ionic `reflect-mobile`
 repo) has its own porting set under
-[`porting/reflect-mobile/`](./reflect-mobile/README.md), covering the
+[`porting/upstream-mobile/`](./upstream-mobile/README.md), covering the
 Daily carousel, the mobile editor/keyboard experience, audio memos, the
 share extension, native entry points, and the mobile sync/offline
 contracts. Those docs defer to
 [Plan 19](../plans/19-mobile.md) and the
-[mobile grounding brief](../reflect-v2-mobile-grounding-brief.md).
+[mobile grounding brief](../upstream-v2-mobile-grounding-brief.md).
 
 ## Conventions
 

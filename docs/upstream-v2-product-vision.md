@@ -11,10 +11,10 @@ This document describes the intended direction for Reflect V2: an open-source, l
 
 It is written for future implementation agents and engineers. It should be read alongside:
 
-- [Reflect V1 Overview](./reflect-v1-overview.md)
-- [Reflect V2 Grounding Brief](./reflect-v2-grounding-brief.md)
-- [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md)
-- [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md)
+- [Reflect V1 Overview](./upstream-v1-overview.md)
+- [Reflect V2 Grounding Brief](./upstream-v2-grounding-brief.md)
+- [Reflect V2 Indexing Strategy](./upstream-v2-indexing-strategy.md)
+- [Reflect V2 Sync Strategy](./upstream-v2-sync-strategy.md)
 
 ## Product Thesis
 
@@ -229,7 +229,7 @@ This local layer can store:
 - File modification state.
 - UI state.
 
-The local database should be treated as a cache/projection unless a specific field cannot safely live in markdown. Any non-rebuildable local state should be deliberately justified. See [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md) for the proposed projection and vector-index model.
+The local database should be treated as a cache/projection unless a specific field cannot safely live in markdown. Any non-rebuildable local state should be deliberately justified. See [Reflect V2 Indexing Strategy](./upstream-v2-indexing-strategy.md) for the proposed projection and vector-index model.
 
 SQLite and other generated local state should live under an ignored `.reflect/` workspace directory. This keeps the workspace self-contained while preventing binary indexes, credentials, and transient state from being committed to GitHub or synced as durable note content.
 
@@ -502,7 +502,7 @@ V2 should explore AI-assisted conflict resolution for markdown notes:
 - Let the user accept, edit, or reject the resolution.
 - Keep the raw conflicting versions recoverable.
 
-AI conflict resolution should be a product layer above the sync adapter. Git may be the first beneficiary, but the same reviewable conflict-resolution flow should be reusable for other adapters. Note-body conflicts should require user review. Automatic resolution should be limited to trivial non-content conflicts unless a later product decision explicitly expands that safety boundary. See [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md) for the proposed adapter and conflict model.
+AI conflict resolution should be a product layer above the sync adapter. Git may be the first beneficiary, but the same reviewable conflict-resolution flow should be reusable for other adapters. Note-body conflicts should require user review. Automatic resolution should be limited to trivial non-content conflicts unless a later product decision explicitly expands that safety boundary. See [Reflect V2 Sync Strategy](./upstream-v2-sync-strategy.md) for the proposed adapter and conflict model.
 
 V2 first wave should commit to backup, local ownership, and a sync adapter boundary. A full sync implementation can remain TBD until the file format, conflict model, and mobile story are clearer.
 

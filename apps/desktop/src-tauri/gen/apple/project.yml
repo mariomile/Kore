@@ -162,7 +162,7 @@ targets:
     # one file onto every configuration (its implicit CODE_SIGN_ENTITLEMENTS
     # beats explicit per-config settings), and without one xcodegen leaves
     # the committed files alone, so regens cannot wipe them (the failure mode
-    # in docs/porting/reflect-mobile/share-extension.md).
+    # in docs/porting/upstream-mobile/share-extension.md).
     scheme:
       environmentVariables:
         RUST_BACKTRACE: full

@@ -6,7 +6,7 @@ host-items API (`insertMarkdown` + `onSlashMenuSearch`, upstream
 with two v1-parity refinements — insert-never-deletes-a-selection and the
 slash-menu `keywords` behind the `/template` affordance — landed in
 meowdown 0.33.0 ([#208](https://github.com/prosekit/meowdown/pull/208)/[#209](https://github.com/prosekit/meowdown/pull/209)).
-The [product vision](../reflect-v2-product-vision.md) deferred templates
+The [product vision](../upstream-v2-product-vision.md) deferred templates
 with "markdown snippets may be enough" — and that is exactly the design:
 templates are markdown files in the graph.
 

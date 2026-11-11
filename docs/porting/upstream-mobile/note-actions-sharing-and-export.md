@@ -41,7 +41,7 @@ export on mobile.
   (`apps/desktop/src/mobile/note-delete.ts`).
 - **Publish is not ported** — publishing conflicts with local-first file
   assumptions and is deferred product-wide (see the desktop
-  [product vision](../../reflect-v2-product-vision.md)).
+  [product vision](../../upstream-v2-product-vision.md)).
 - **JSON export is superseded**, not ported: the workspace is plain
   markdown in `Documents/`, visible in the iOS Files app — the user can
   copy or back up their notes with no export step. (Whole-graph export

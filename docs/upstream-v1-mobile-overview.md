@@ -2,11 +2,11 @@
 
 This document is a handoff for an agent or engineer building the mobile experience for a second version of Reflect. It summarizes what the existing iOS app does, how it shares code with the V1 web app, and which architectural choices shaped the mobile implementation.
 
-It is a companion to the [V1 Overview](./reflect-v1-overview.md), which covers the shared product model (graphs, notes, backlinks, tasks, sync). This document focuses on what is different on mobile.
+It is a companion to the [V1 Overview](./upstream-v1-overview.md), which covers the shared product model (graphs, notes, backlinks, tasks, sync). This document focuses on what is different on mobile.
 
 Source code: the `reflect-mobile` repository (separate from the main V1 `reflect` repo).
 
-Per-feature porting docs — what each V1 mobile feature did in detail and how it maps onto V2 — live in [docs/porting/reflect-mobile/](./porting/reflect-mobile/README.md).
+Per-feature porting docs — what each V1 mobile feature did in detail and how it maps onto V2 — live in [docs/porting/upstream-mobile/](./porting/upstream-mobile/README.md).
 
 ## Product Summary
 

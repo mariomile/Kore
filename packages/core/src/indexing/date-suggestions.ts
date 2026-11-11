@@ -5,7 +5,7 @@
  * ("3 days ago"), natural-language dates ("next friday", "tomorrow"), typed
  * calendar dates ("12/25", "2026-06-19"), and month-name dates ("December 2nd")
  * — then merges them, de-duplicating by resolved day. See
- * `docs/reflect-v1-backlink-menu.md` for the behaviour this ports.
+ * `docs/upstream-v1-backlink-menu.md` for the behaviour this ports.
  *
  * Pure: the clock is injected as `today` (an ISO `YYYY-MM-DD` *local* date,
  * computed at the UI edge) and the calendar arithmetic comes from

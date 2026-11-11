@@ -190,7 +190,7 @@ breaks working installs:
 ### Product Principles
 
 Drawn from the product docs — read these for deeper context:
-[V1 Overview](docs/reflect-v1-overview.md) · [V2 Product Vision](docs/reflect-v2-product-vision.md) · [V2 Grounding Brief](docs/reflect-v2-grounding-brief.md) · [Indexing Strategy](docs/reflect-v2-indexing-strategy.md) · [Sync Strategy](docs/reflect-v2-sync-strategy.md)
+[V1 Overview](docs/upstream-v1-overview.md) · [V2 Product Vision](docs/upstream-v2-product-vision.md) · [V2 Grounding Brief](docs/upstream-v2-grounding-brief.md) · [Indexing Strategy](docs/upstream-v2-indexing-strategy.md) · [Sync Strategy](docs/upstream-v2-sync-strategy.md)
 
 
 - **Daily notes first.** The app opens to today's note. All capture flows into the daily note by default.
@@ -433,7 +433,7 @@ Kore/
 │                           #   frontmatter/index parity — see fixtures/parity/README.txt)
 ├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
-├── Cargo.toml              # Root Cargo workspace: reflect-open, kore-cli, kore-capture-host,
+├── Cargo.toml              # Root Cargo workspace: kore-open, kore-cli, kore-capture-host,
 │                           #   kore-index-schema, kore-index-store, kore-graph-paths,
 │                           #   kore-note-policy, and
 │                           #   the two Tauri plugins

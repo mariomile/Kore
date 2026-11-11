@@ -40,11 +40,11 @@ wave, per the plan's revision note.
 
 Read these alongside the source docs they implement:
 
-- [V2 Product Vision](../reflect-v2-product-vision.md)
-- [V2 Indexing Strategy](../reflect-v2-indexing-strategy.md)
-- [V2 Sync Strategy](../reflect-v2-sync-strategy.md)
-- [V2 Grounding Brief](../reflect-v2-grounding-brief.md)
-- [V1 Overview](../reflect-v1-overview.md)
+- [V2 Product Vision](../upstream-v2-product-vision.md)
+- [V2 Indexing Strategy](../upstream-v2-indexing-strategy.md)
+- [V2 Sync Strategy](../upstream-v2-sync-strategy.md)
+- [V2 Grounding Brief](../upstream-v2-grounding-brief.md)
+- [V1 Overview](../upstream-v1-overview.md)
 - Repo conventions: [AGENTS.md](../../AGENTS.md)
 
 ## How to read this set

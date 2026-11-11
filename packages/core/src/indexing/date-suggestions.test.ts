@@ -5,7 +5,7 @@ import type { DateFormat, WeekStartDay } from '../settings/schema'
 /**
  * The V1 backlink-menu doc's worked examples are the spec here: today is
  * Wednesday, 1 January 2020, date format day/month (`dmy`) and a Monday week
- * start unless a case says otherwise. See `docs/reflect-v1-backlink-menu.md`.
+ * start unless a case says otherwise. See `docs/upstream-v1-backlink-menu.md`.
  */
 const TODAY = '2020-01-01'
 

@@ -4,7 +4,7 @@
 > `ShareExtension` target spools the same envelopes (plus non-URL text as
 > `kind: append` captures) into the App Group inbox, and the mobile app
 > relays + drains them on launch/foreground. See
-> [the porting doc](../porting/reflect-mobile/share-extension.md).
+> [the porting doc](../porting/upstream-mobile/share-extension.md).
 >
 > **Status (2026-06-14): Implemented.** The pipeline below is built end-to-end:
 > `apps/extension` (WXT MV3, popup + queue + ⌘⇧K), `apps/native-host`

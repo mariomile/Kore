@@ -1,5 +1,26 @@
 # Kore working state
 
+## Cover position, daily pictures and tag mentions, 2026-11-11
+
+Ask: Mario, Lotion phase 1 step 3, the daily scroll follow-up and note
+organization step 1.
+
+- [x] Reposition a note's cover by dragging it (#398): Reposition shows only
+  when the image is cropped; drag or arrow keys, Enter saves, Escape cancels.
+  Writes `cover_y:` (0 top to 100 bottom, default 50), a reserved key in core
+  and the CLI; a new or removed cover clears it.
+- [x] Daily days with pictures (markdown images and `[[photo.png]]`) render
+  static while scrolling (#400); `editorImageSize` mirrors Meowdown's box so
+  the row keeps its height at handover. 4x CPU: fps 42-45 → 45-53, frames over
+  100 ms 32-41 → 6-31. Embeds, posts and sized pictures stay editors.
+- [x] Note organization step 1 (#401): one tag, two positions. Frontmatter
+  `tags:` or a paragraph of only tags at the top or bottom makes a note a
+  member of the collection; a #tag inside a sentence is a mention ("Mentioned
+  in" on the tag page). The relation picker lists only members of the type
+  (nested + extends), alphabetically. TDR 0005 Amendment E, migration 0026
+  (full reindex on first launch).
+- Not verified on a real Mac.
+
 ## Apple identity becomes Kore, 2026-11-09
 
 Ask (Mario, 2026-11-08, "Vedi cosa rimane ancora di reflect, ora deve essere

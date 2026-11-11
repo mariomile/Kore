@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { errorMessage, isDaily } from '@reflect/core'
+import { errorMessage, isDaily } from '@kore/core'
 import { Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

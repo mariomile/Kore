@@ -1,4 +1,4 @@
-import { addDaysIso, addMonthsIso, isCalendarDate, isoFromParts, weekdayIso } from '@reflect/utils'
+import { addDaysIso, addMonthsIso, isCalendarDate, isoFromParts, weekdayIso } from '@kore/utils'
 import { formatTaskDue } from '../markdown/task-due'
 import { withTaskContentPriority, type TaskPriority } from './task-priority'
 import { formatTaskRepeat, taskContentRepeat, type TaskRepeat } from './task-repeat'

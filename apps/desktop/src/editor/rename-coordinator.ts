@@ -3,7 +3,7 @@ import {
   getBacklinks,
   getLinkSources,
   getPathLinkSources,
-  isReflectManagedNote,
+  isKoreManagedNote,
   isUntitledNotePath,
   readNote,
   resolveWikiTarget,
@@ -11,7 +11,7 @@ import {
   rewritePathLinksForMove,
   slugPathForTitle,
   writeNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { placeOldTitleAlias } from './alias-placement'
 import { clearDraftTitle, setDraftTitle } from './draft-titles'
 import { moveNoteCarryingSession } from './move-note'
@@ -24,7 +24,7 @@ import type { TitleRename } from './title-rename'
 /**
  * Owns one note's auto-rename lifecycle: the settled-title tracker, serialized
  * link maintenance, old-title alias placement, and the optional **file move**
- * that keeps a Reflect-managed filename a projection of the title
+ * that keeps a Kore-managed filename a projection of the title
  * (`docs/readable-filenames.md`). Adopted and stable-path notes participate in
  * link maintenance but keep their paths.
  *
@@ -37,7 +37,7 @@ import type { TitleRename } from './title-rename'
  * 3. **Move** the file onto the new title's slug (`move-note.ts`).
  *
  * A *birth* (the first authored title on an untitled note) runs phase 3 alone
- * for Reflect-managed notes; other notes already have their permanent path.
+ * for Kore-managed notes; other notes already have their permanent path.
  *
  * Extracted from `useNoteDocument` for the same reason the session was —
  * lifecycle coupling (pane teardown, quit, note switches) belongs to an owned
@@ -126,7 +126,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
   }
 
   // Rewrite inbound links across the graph, record the old title as an alias,
-  // then move only a Reflect-managed file onto the new title's slug. Every
+  // then move only a Kore-managed file onto the new title's slug. Every
   // write carries the generation read at run time (stale → loud rejection in
   // Rust). A rename pending across a graph switch is dropped, never
   // cross-written.
@@ -144,7 +144,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
         return
       }
       if (rename.from === null) {
-        if (!isReflectManagedNote(currentPath, latestSource)) {
+        if (!isKoreManagedNote(currentPath, latestSource)) {
           return
         }
         // A birth: the first authored title on an untitled note. Nothing
@@ -202,7 +202,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
         }
         // Link maintenance applies to every editable note. Filename projection
         // is a separate capability: stable-path and adopted notes stay put.
-        if (isReflectManagedNote(currentPath, latestSource)) {
+        if (isKoreManagedNote(currentPath, latestSource)) {
           try {
             await runMove(rename.to, gen, { rewriteInboundPathLinks: true })
           } catch (cause) {

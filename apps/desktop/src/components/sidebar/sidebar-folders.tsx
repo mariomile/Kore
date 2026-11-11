@@ -5,7 +5,7 @@ import {
   hasOwnFolders,
   type FolderTreeFolder,
   type FolderTreeNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from '@/components/icons'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'

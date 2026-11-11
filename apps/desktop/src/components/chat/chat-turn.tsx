@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AssistantPart, ChatTurn as ChatTurnModel } from '@reflect/core'
+import type { AssistantPart, ChatTurn as ChatTurnModel } from '@kore/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { Message, MessageContent, MessageFooter, MessageGroup } from '@/components/ui/message'
@@ -63,7 +63,7 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
           <ChatUserAttachments attachments={turn.attachments} />
           {turn.userText !== '' ? (
             <Bubble align="end" variant="muted" className="max-w-[85%]">
-              <BubbleContent className="reflect-chat-message !bg-surface-hover px-4 py-2 leading-normal whitespace-pre-wrap !text-text">
+              <BubbleContent className="kore-chat-message !bg-surface-hover px-4 py-2 leading-normal whitespace-pre-wrap !text-text">
                 {turn.userText}
               </BubbleContent>
             </Bubble>

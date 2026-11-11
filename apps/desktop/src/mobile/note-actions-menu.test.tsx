@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { act } from '@/test-utils/act'
 
 const useNoteRowState = vi.hoisted(() => vi.fn())

@@ -1,5 +1,5 @@
 import { differenceInCalendarDays, getDay } from 'date-fns'
-import { weekStartDow, type WeekStartDay } from '@reflect/core'
+import { weekStartDow, type WeekStartDay } from '@kore/core'
 import { addDaysIso, parseIsoDate } from '@/lib/dates'
 import { monthOf } from '@/lib/month-grid'
 

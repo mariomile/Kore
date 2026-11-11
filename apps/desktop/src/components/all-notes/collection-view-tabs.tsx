@@ -12,7 +12,7 @@ import type {
   CollectionPageView,
   CollectionViewMoveDirection,
   SavedCollectionView,
-} from '@reflect/core'
+} from '@kore/core'
 import { Calendar, Close, LayoutGrid, LayoutTemplate, Layers, Plus } from '@/components/icons'
 import {
   DropdownMenu,

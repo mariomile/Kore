@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { baseDisplayName } from '@reflect/core'
+import { baseDisplayName } from '@kore/core'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
 import { routeForPath } from '@/routing/route'

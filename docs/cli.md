@@ -49,7 +49,7 @@ kore sync                  # pull the vault's git clone, push kore's writes, rei
 kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
 
-Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
+Built from `apps/cli` (`cargo build -p kore-cli`); bundled with the desktop
 app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/kore`, Linux
 `.deb`: `/usr/bin/kore`). For local development:
 `cargo install --path apps/cli`.
@@ -442,7 +442,7 @@ Builds or refreshes `.kore/index.sqlite` with no app running, so every
 index-backed command (and `kore mcp`) works on a plain clone of a vault, for
 example on an always-on server that pulls the vault from GitHub. It is the
 app's projection, not a copy: `kore` spawns Node on `kore-indexer.mjs`, the
-`@reflect/core` indexer bundled into one script, and serves its file reads
+`@kore/core` indexer bundled into one script, and serves its file reads
 and index writes with the same Rust code the app uses
 (`crates/index-store`).
 
@@ -452,7 +452,7 @@ and index writes with the same Rust code the app uses
   `git pull && kore index` is cheap. `--rebuild` rewrites every row.
 - Needs Node 22 or later (`KORE_NODE` names another binary) and
   `kore-indexer.mjs` next to the `kore` binary, or its path in
-  `KORE_INDEXER`. Build it with `pnpm --filter @reflect/core build:indexer`
+  `KORE_INDEXER`. Build it with `pnpm --filter @kore/core build:indexer`
   (it lands in `packages/core/dist/`).
 - Not done here: embeddings. Semantic vectors are still computed by the app;
   a headless index answers lexical search, tags, backlinks, lists and tasks.
@@ -1028,7 +1028,7 @@ The design, the Docker image and the systemd unit are in
 
 ## Development notes
 
-- The CLI deliberately duplicates a thin contract from `@reflect/core`
+- The CLI deliberately duplicates a thin contract from `@kore/core`
   (path conventions, fold keys, frontmatter coercions, title derivation,
   SHA-256 hashing, FTS match syntax, the tag grammar, property typing and
   coercion). Each Rust module names its TS counterpart, and the read-side
@@ -1045,4 +1045,4 @@ The design, the Docker image and the systemd unit are in
   `bundle.externalBin` (desktop platform overlay configs) picks up. tauri-build
   requires that file to exist before the desktop crate compiles — `pnpm tauri
   dev`/`build` stage it automatically; before a bare `cargo build/test
-  --workspace`, run `pnpm --filter @reflect/desktop sidecar` once.
+  --workspace`, run `pnpm --filter @kore/desktop sidecar` once.

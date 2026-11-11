@@ -50,7 +50,7 @@ in the user's account; Kore operates nothing.
   on Markdown.
 - **Private notes never enter.** Every write path refuses a source with
   `private: true`; a note made private in the app is pushed as a deletion.
-- **Rules shared with the app** come from `@reflect/core` (parser, slug,
+- **Rules shared with the app** come from `@kore/core` (parser, slug,
   daily paths, layout, frontmatter patching), so a note written in the cloud
   reads exactly as one written on the Mac.
 

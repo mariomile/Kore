@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { parseNoteIcon, symbolIconValue } from '@reflect/core'
+import { parseNoteIcon, symbolIconValue } from '@kore/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useTagSymbolIcons } from '@/lib/tags/tag-symbol-icons'

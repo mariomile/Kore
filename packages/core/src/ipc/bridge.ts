@@ -1,7 +1,7 @@
 /**
- * The pluggable transport between `@reflect/core` and its host backend.
+ * The pluggable transport between `@kore/core` and its host backend.
  *
- * `@reflect/core` is platform-agnostic: nothing in this package imports
+ * `@kore/core` is platform-agnostic: nothing in this package imports
  * `@tauri-apps/*`. A host installs a bridge at startup — the desktop app
  * adapts Tauri's `invoke`/`listen` (see `apps/desktop/src/lib/tauri-bridge.ts`),
  * plain-browser dev installs the in-memory dev bridge
@@ -14,7 +14,7 @@
 /** Tears down a subscription created by {@link IpcBridge.listen}. */
 export type Unlisten = () => void
 
-/** The two native primitives `@reflect/core` needs from its host. */
+/** The two native primitives `@kore/core` needs from its host. */
 export interface IpcBridge {
   /** Invoke a native command, resolving with its raw (untyped) response. */
   invoke: (command: string, args: Record<string, unknown>) => Promise<unknown>

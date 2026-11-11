@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { subscribeFileChanges, type FileChange } from '@reflect/core'
+import { subscribeFileChanges, type FileChange } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /**

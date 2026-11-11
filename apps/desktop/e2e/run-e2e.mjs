@@ -7,7 +7,7 @@
 // Run with `pnpm e2e` from apps/desktop. The script owns its dev server
 // (spawned on E2E_PORT, default 5199) and tears it down; Chromium comes from
 // Playwright's own download (`pnpm test:install`), overridable with
-// REFLECT_E2E_CHROMIUM=/path/to/chromium for prebaked environments.
+// KORE_E2E_CHROMIUM=/path/to/chromium for prebaked environments.
 //
 // The scenario leans on the seed graph fixtures (src/dev/seed-graph.ts):
 // renaming "Kore V2"/"Quarterly Goals" or the "sync over Git." sentence
@@ -72,7 +72,7 @@ function stopServer() {
 }
 
 // ---- browser --------------------------------------------------------------
-const explicitChromium = process.env['REFLECT_E2E_CHROMIUM']
+const explicitChromium = process.env['KORE_E2E_CHROMIUM']
 const prebaked = '/opt/pw-browsers/chromium'
 const executablePath = explicitChromium ?? (existsSync(prebaked) ? prebaked : undefined)
 

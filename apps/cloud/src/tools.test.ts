@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { DEFAULT_VAULT_LAYOUT, setVaultLayout } from '@reflect/core/graph/vault-layout'
+import { DEFAULT_VAULT_LAYOUT, setVaultLayout } from '@kore/core/graph/vault-layout'
 import { fakeD1 } from './d1-fake'
 import { NoteStore } from './store'
 import { callTool } from './tools'

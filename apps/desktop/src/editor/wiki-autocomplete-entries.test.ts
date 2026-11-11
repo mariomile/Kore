@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ContactMatch, WikiLinkSuggestion } from '@reflect/core'
+import type { ContactMatch, WikiLinkSuggestion } from '@kore/core'
 import { buildAutocompleteEntries } from './wiki-autocomplete-entries'
 
 function suggestion(overrides: Partial<WikiLinkSuggestion>): WikiLinkSuggestion {

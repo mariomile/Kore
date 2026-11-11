@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { noteFileStem, readNote, saveConflictCopy, writeNote, type FileChange } from '@reflect/core'
+import { noteFileStem, readNote, saveConflictCopy, writeNote, type FileChange } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { useFileChanges } from '@/lib/use-file-changes'
 import { createDocumentBinding, type DocumentBinding } from './document-binding'
@@ -11,7 +11,7 @@ import { checkRoundTrip } from './roundtrip'
 
 /**
  * React adapter over the {@link createNoteSession} document state machine: one
- * session per open `(path, generation)`, wired to the `@reflect/core` file
+ * session per open `(path, generation)`, wired to the `@kore/core` file
  * commands, the watcher event stream, and the editor's imperative handle. All
  * save/conflict/protection semantics live in `note-session.ts`, and the
  * create/adopt/teardown/hand-off lifecycle (a rename retargets the live
@@ -47,7 +47,7 @@ export interface NoteDocumentOptions {
   /**
    * Maintain inbound `[[links]]` when this note's settled title changes. The
    * coordinator separately requires a direct `notes/*.md` path with valid
-   * Reflect ULID frontmatter before moving a file onto its title's slug, so
+   * Kore ULID frontmatter before moving a file onto its title's slug, so
    * adopted and stable-path notes keep their filenames.
    */
   trackRenames?: boolean

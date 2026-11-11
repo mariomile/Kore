@@ -1,6 +1,6 @@
 import { useDeferredValue, type ReactElement } from 'react'
 import { CornerDownRight } from '@/components/icons'
-import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@reflect/core'
+import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@kore/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { MarkdownPreview } from '@/editor/markdown-preview'
@@ -44,7 +44,7 @@ export function ChatAssistantPart({
                     key={segmentIndex}
                     content={segment.text}
                     onWikiLinkClick={onWikiLinkClick}
-                    className="reflect-chat-message text-sm"
+                    className="kore-chat-message text-sm"
                   />
                 ),
             )}
@@ -63,7 +63,7 @@ export function ChatAssistantPart({
       return (
         <div className="flex max-w-[85%] items-start gap-1.5 self-end rounded-lg bg-surface-hover px-3 py-1.5">
           <CornerDownRight aria-hidden className="mt-0.5 size-3.5 shrink-0 text-text-muted" />
-          <span className="reflect-chat-message text-sm whitespace-pre-wrap text-text">
+          <span className="kore-chat-message text-sm whitespace-pre-wrap text-text">
             {part.text}
           </span>
         </div>
@@ -72,7 +72,7 @@ export function ChatAssistantPart({
       return (
         <Marker
           className={cn(
-            'reflect-chat-message text-sm',
+            'kore-chat-message text-sm',
             part.tone === 'error' ? 'text-destructive' : 'text-text-muted italic',
           )}
         >

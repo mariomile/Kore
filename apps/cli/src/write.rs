@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use reflect_index_schema::KORE_DIR;
+use kore_index_schema::KORE_DIR;
 
 use crate::agent_identity::AgentIdentity;
 use crate::error::CliError;
@@ -187,8 +187,8 @@ fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
         .collect::<Option<Vec<_>>>()?;
     // The runtime directory is local, except its synced part (proposals),
     // which travels like a note so the always-on host's reach the Mac.
-    let runtime = parts.first() == Some(&reflect_index_schema::KORE_DIR)
-        && parts.get(1) != Some(&reflect_index_schema::SYNCED_SUBDIR);
+    let runtime = parts.first() == Some(&kore_index_schema::KORE_DIR)
+        && parts.get(1) != Some(&kore_index_schema::SYNCED_SUBDIR);
     if parts.is_empty() || runtime {
         return None;
     }

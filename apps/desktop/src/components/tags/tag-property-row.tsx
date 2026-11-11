@@ -7,7 +7,7 @@ import {
   rollupAggregationSchema,
   tagPropertyTypeSchema,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 import { ArrowDown, ArrowUp, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

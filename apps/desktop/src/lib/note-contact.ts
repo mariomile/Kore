@@ -8,7 +8,7 @@ import {
   splitFrontmatter,
   writeNote,
   type ContactMatch,
-} from '@reflect/core'
+} from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 

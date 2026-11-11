@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isTemplatePath } from '@reflect/core'
+import { isTemplatePath } from '@kore/core'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { Plus } from '@/components/icons'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
@@ -48,7 +48,7 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
             void addTag(path, tag)
           }}
           triggerLabel="Add a type"
-          triggerClassName="reflect-note-add-type flex min-h-6 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted transition-[opacity,color,background-color] duration-150 hover:bg-surface-hover hover:text-text"
+          triggerClassName="kore-note-add-type flex min-h-6 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted transition-[opacity,color,background-color] duration-150 hover:bg-surface-hover hover:text-text"
         >
           <Plus aria-hidden className="size-3.5" />
           <span>Add a type</span>

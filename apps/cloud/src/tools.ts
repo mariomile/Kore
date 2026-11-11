@@ -1,5 +1,5 @@
 import { OWNER, type Caller } from './caller'
-import { collisionStem, noteFileStemForTitle, notePath } from '@reflect/core/graph/paths'
+import { collisionStem, noteFileStemForTitle, notePath } from '@kore/core/graph/paths'
 import { isTagName, newNoteSource, patchProperties, replacePassage, appendBlock } from './edits'
 import { MAX_SOURCE_BYTES, byteLength, isNotePath, isPrivateSource } from './note'
 import type { NoteStore, StoredNote } from './store'

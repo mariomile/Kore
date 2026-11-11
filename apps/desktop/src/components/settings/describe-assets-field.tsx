@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { AiProvidersState } from '@reflect/core'
+import type { AiProvidersState } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

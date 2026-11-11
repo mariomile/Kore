@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "1.2.4",
-    "@reflect/core": "workspace:*",
+    "@kore/core": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

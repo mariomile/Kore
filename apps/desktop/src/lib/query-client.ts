@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 
 /**
  * The app's one TanStack Query client (adopted in Plan 07 per architecture
- * conventions §5): `queryFn`s are `@reflect/core` getters over the SQLite
+ * conventions §5): `queryFn`s are `@kore/core` getters over the SQLite
  * projection, so freshness is event-driven, not poll-driven — the graph index
  * lifecycle calls {@link invalidateIndexQueries} after rows actually change
  * (initial reconcile, then each applied watcher batch).

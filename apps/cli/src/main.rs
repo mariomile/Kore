@@ -6,8 +6,8 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use reflect_cli::error::CliError;
-use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
+use kore_cli::error::CliError;
+use kore_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -569,7 +569,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
                 Box::new(runner)
             };
             let mut server = mcp::Server::new(runner, *read_only)
-                .with_memory_kit(reflect_kit_script::detect(&graph.root).is_some())
+                .with_memory_kit(kore_kit_script::detect(&graph.root).is_some())
                 .owner_named(agent.clone());
             if *memory_only {
                 server = server.memory_only();

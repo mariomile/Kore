@@ -52,7 +52,7 @@ the original release scope and are **in** scope for the privacy/signing review.
    with the hardened runtime** — notably the ONNX/embedding runtime (Plan 9) and any
    sqlite-vec/native-messaging-host binaries — for both arm64 and x64; an unsigned nested
    binary fails notarization. Bundle the `reflect` CLI (Plan 14) and
-   `reflect-capture-host` (Plan 11) through the macOS Tauri overlay; consider a Homebrew
+   `kore-capture-host` (Plan 11) through the macOS Tauri overlay; consider a Homebrew
    cask. Confirm **first release is notarized non-sandboxed** (security-scoped bookmarks,
    Plan 02, only needed if we later sandbox for the App Store). Native-messaging host
    manifests are rewritten on launch for detected browsers, so packaging must verify both
@@ -74,7 +74,7 @@ the original release scope and are **in** scope for the privacy/signing review.
    compilation, and a release workflow that runs the repo's `pnpm release:macos publish`
    script to build, code-sign + notarize, **updater-sign**, and publish a GitHub Release
    with the DMG, updater artifacts, and `latest.json` manifest. Bundles the `reflect` CLI
-   and `reflect-capture-host` sidecars.
+   and `kore-capture-host` sidecars.
 
 10. **Auto-update (Tauri best practices).** Ship first-class auto-update with the official
     plugin — `tauri-plugin-updater` (Rust) + `@tauri-apps/plugin-updater` (JS), paired with

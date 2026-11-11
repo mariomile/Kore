@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { DEFAULT_VAULT_LAYOUT } from '@reflect/core/graph/vault-layout'
+import { DEFAULT_VAULT_LAYOUT } from '@kore/core/graph/vault-layout'
 import { describe, expect, it } from 'vitest'
 import type { Fetch } from './cloudflare'
 import { KoreCloud, PUSH_BATCH, readVaultLayout, readVaultNotes, uploadNotes } from './upload'

@@ -18,7 +18,7 @@ import {
   errorMessage,
   type AudioMemoIdentity,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   isRecordingSupported,
   useAudioRecorder,

@@ -1,6 +1,6 @@
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { icloudStatus } from '@reflect/core'
+import { icloudStatus } from '@kore/core'
 import { Cloud, Folder, FolderPlus } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
 import { InlineAlert } from '@/components/inline-alert'

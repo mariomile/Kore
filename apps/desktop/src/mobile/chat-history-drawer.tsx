@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listChatConversations } from '@reflect/core'
+import { listChatConversations } from '@kore/core'
 import { Check, Trash } from '@/components/icons'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

@@ -7,7 +7,7 @@
   affordances only — the on-disk delete mechanism (`note_delete` → OS trash) is
   unchanged.
 - **Decision driver:** The V1 reference doc
-  ([reflect-v1-all-notes.md](../reflect-v1-all-notes.md)) recommends two V2
+  ([upstream-v1-all-notes.md](../upstream-v1-all-notes.md)) recommends two V2
   additions — an in-app **restore from trash** action and (carried from V1) an
   inline **delete-tag** affordance. While building selection + bulk-trash for
   All Notes we decided to ship **neither**. This record captures why, so the
@@ -65,7 +65,7 @@ scope for this decision and can be revisited if mobile needs it; it does not
 change the desktop All Notes scope.
 
 This **overrides** the recommendation in
-[reflect-v1-all-notes.md](../reflect-v1-all-notes.md) ("Add a real restore from
+[upstream-v1-all-notes.md](../upstream-v1-all-notes.md) ("Add a real restore from
 trash action; V1 only supports permanent destruction").
 
 ## Decision 2 — No in-app global tag delete/rename from the filter UI

@@ -1,4 +1,4 @@
-import { foldKey, hasAuthoredTitle, parseNote } from '@reflect/core'
+import { foldKey, hasAuthoredTitle, parseNote } from '@kore/core'
 
 /**
  * Settled-title detection for the auto-rename flow. A title change triggers a

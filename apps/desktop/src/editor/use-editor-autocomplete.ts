@@ -17,7 +17,7 @@ import {
   resolvePersonContact,
   suggestTags,
   suggestWikiLinkTargets,
-} from '@reflect/core'
+} from '@kore/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { buildAutocompleteEntries } from '@/editor/wiki-autocomplete-entries'
 import { useContactsAuthorization } from '@/hooks/use-contacts-authorization'

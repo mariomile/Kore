@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import type { FetchFn } from '../sync/github-api'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { getJson } from './http'
@@ -247,10 +247,10 @@ function bookNote(book: ReadwiseBook, tags: readonly string[]): ConnectorNote | 
 async function verify(token: string, fetchFn: FetchFn): Promise<void> {
   const response = await fetchFn(`${API_BASE}/auth/`, { headers: authHeaders(token) })
   if (response.status === 401 || response.status === 403) {
-    throw new ReflectError('auth', 'Readwise rejected the access token')
+    throw new KoreError('auth', 'Readwise rejected the access token')
   }
   if (!response.ok) {
-    throw new ReflectError('network', `Readwise: request failed (${response.status})`)
+    throw new KoreError('network', `Readwise: request failed (${response.status})`)
   }
 }
 

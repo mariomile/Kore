@@ -1,4 +1,4 @@
-# reflect-note-policy
+# kore-note-policy
 
 Shared frontmatter parsing and title-derivation policy for the native
 surfaces (the desktop shell and the `kore` CLI).
@@ -16,4 +16,4 @@ CommonMark semantics (a `# line` inside a code fence is not a heading).
 
 Kept in lockstep with `packages/core/src/markdown/`; the shared parity corpus
 lives in `fixtures/parity/` and pins both native consumers through
-`apps/cli/tests/parity.rs`. Test with `cargo test -p reflect-note-policy`.
+`apps/cli/tests/parity.rs`. Test with `cargo test -p kore-note-policy`.

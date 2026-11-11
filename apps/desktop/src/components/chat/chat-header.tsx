@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { NotePlus, Plus } from '@/components/icons'
-import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
+import { chatToMarkdown, createNoteWithTitle } from '@kore/core'
 import { useState } from 'react'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Button } from '@/components/ui/button'

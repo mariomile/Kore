@@ -1,6 +1,6 @@
-import { dateFromDailyPath } from '@reflect/core/graph/paths'
-import { parseNote } from '@reflect/core/markdown/extract'
-import { parseFrontmatter, splitFrontmatter } from '@reflect/core/markdown/frontmatter'
+import { dateFromDailyPath } from '@kore/core/graph/paths'
+import { parseNote } from '@kore/core/markdown/extract'
+import { parseFrontmatter, splitFrontmatter } from '@kore/core/markdown/frontmatter'
 
 /** What the store keeps beside a note's source so search and lookups work. */
 export interface NoteMeta {

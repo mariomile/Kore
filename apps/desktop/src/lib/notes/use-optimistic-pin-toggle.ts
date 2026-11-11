@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { dateFromDailyPath, type NoteRow, type PinnedNote } from '@reflect/core'
+import { dateFromDailyPath, type NoteRow, type PinnedNote } from '@kore/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidatePinnedNotesCache, updatePinnedNotesCache } from '@/lib/notes/pinned-notes-cache'
 import { useGraph } from '@/providers/graph-provider'

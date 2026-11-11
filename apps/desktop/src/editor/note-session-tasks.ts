@@ -6,7 +6,7 @@ import {
   taskLineToBullet,
   toggleTaskMarker,
   type TaskMarker,
-} from '@reflect/core'
+} from '@kore/core'
 import { todayIso } from '@/lib/dates'
 
 /** The session's transactional body-edit primitive (see note-session-state.ts). */

@@ -9,4 +9,4 @@ interface ImportMetaEnv {
 }
 
 /** App version injected from the canonical Tauri configuration by Vite. */
-declare const __REFLECT_VERSION__: string
+declare const __KORE_VERSION__: string

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 import { personInitials, readCellValue } from './collection-cell'
 
 const relation: TagProperty = { name: 'Series', key: 'series', type: 'relation' }

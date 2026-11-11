@@ -19,7 +19,7 @@ import {
   moveSidebarItem,
   SIDEBAR_NAV_IDS,
   type SidebarNavItem,
-} from '@reflect/core'
+} from '@kore/core'
 import { Checklist, Graph, Note, NoteEdit, Notebook, Pencil } from '@/components/icons'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'

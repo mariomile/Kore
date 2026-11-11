@@ -7,8 +7,8 @@ import { RouterProvider, useRouter } from '@/routing/router'
 import { LocalGraphSection } from './local-graph-section'
 
 const getLocalGraph = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   getLocalGraph,
 }))
 vi.mock('@/providers/graph-provider', () => ({

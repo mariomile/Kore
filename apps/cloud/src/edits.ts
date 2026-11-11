@@ -1,5 +1,5 @@
-import { appendBodyTag } from '@reflect/core/markdown/body-tag'
-import { splitFrontmatter, upsertFrontmatter } from '@reflect/core/markdown/frontmatter'
+import { appendBodyTag } from '@kore/core/markdown/body-tag'
+import { splitFrontmatter, upsertFrontmatter } from '@kore/core/markdown/frontmatter'
 
 /**
  * The structural edits an agent may make, as pure source → source functions

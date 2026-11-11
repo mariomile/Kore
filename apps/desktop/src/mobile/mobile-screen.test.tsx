@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { format } from 'date-fns'
 import { StrictMode, type ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { clearFormattingToolbar, publishFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { RouterProvider, useRouter } from '@/routing/router'
 import type { Route } from '@/routing/route'
@@ -101,8 +101,8 @@ const indexFns = vi.hoisted(() => ({
     indexedLinkCount: 0,
   })),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   dailyDatesInRange: indexFns.dailyDatesInRange,
   getBacklinksWithContext: indexFns.getBacklinksWithContext,

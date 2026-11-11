@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { HtmlEmbed } from '@reflect/core'
+import type { HtmlEmbed } from '@kore/core'
 import { Layers } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 

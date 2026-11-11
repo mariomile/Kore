@@ -49,8 +49,8 @@ const parentCandidates = vi.hoisted(() => ({ current: [] as string[] }))
 const noteTagsRows = vi.hoisted(() => ({
   current: [] as { tag: string; count: number }[],
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   listNotesWithProperty: async () => propertyUses.current,
   listTemplates: async () => templates.current,

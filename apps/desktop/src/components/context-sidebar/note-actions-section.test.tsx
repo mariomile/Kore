@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PinnedNote } from '@reflect/core'
+import type { PinnedNote } from '@kore/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { pinnedNotesQueryKey } from '@/hooks/use-pinned-notes'
 import { RouterProvider } from '@/routing/router'
@@ -18,8 +18,8 @@ const startOperation = vi.hoisted(() =>
   vi.fn(() => ({ progress: vi.fn(), done: vi.fn(), fail: operationFail })),
 )
 const isApplePlatform = vi.hoisted(() => vi.fn(() => false))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getPinnedNotes,
   getNote,

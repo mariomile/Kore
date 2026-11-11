@@ -1,4 +1,4 @@
-import { clearTaskDueDate, setTaskDueDate, type OpenTask } from '@reflect/core'
+import { clearTaskDueDate, setTaskDueDate, type OpenTask } from '@kore/core'
 import { taskContent } from '@/lib/tasks/task-content'
 
 /** Return the task content after setting or clearing its scheduled date link. */

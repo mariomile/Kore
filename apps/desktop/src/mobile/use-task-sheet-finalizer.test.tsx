@@ -1,6 +1,6 @@
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { makeOpenTask } from '@/lib/tasks/open-task-fixture'
 import { useTaskSheetFinalizer, type TaskSheetFinalizerDeps } from './use-task-sheet-finalizer'
 import { act } from '@/test-utils/act'

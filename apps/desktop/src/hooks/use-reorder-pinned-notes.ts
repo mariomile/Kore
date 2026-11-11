@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { arrayMove } from '@dnd-kit/sortable'
-import type { PinnedNote } from '@reflect/core'
+import type { PinnedNote } from '@kore/core'
 import { reorderPinnedNotes } from '@/lib/note-pin'
 import { useGraph } from '@/providers/graph-provider'
 import { invalidatePinnedNotesCache, updatePinnedNotesCache } from '@/lib/notes/pinned-notes-cache'

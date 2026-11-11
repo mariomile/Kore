@@ -16,8 +16,8 @@ const searchWithFilters = vi.hoisted(() => vi.fn())
 const retrieve = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<(route: NoteRoute) => Promise<boolean>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   suggestWikiTargets,
   searchWithFilters,
@@ -49,7 +49,7 @@ const savedSearchesState = vi.hoisted(() => ({
   updates: [] as unknown[],
 }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return {
     useSettings: () => ({
       settings: {

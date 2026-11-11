@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { OpenTask, TaskView } from '@reflect/core'
+import type { OpenTask, TaskView } from '@kore/core'
 import type { TaskNavigate } from '@/components/tasks/task-editor'
 import {
   insertTargetForBucket,

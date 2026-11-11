@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { captureWireMessageSchema } from '@reflect/core/capture-envelope'
+import { captureWireMessageSchema } from '@kore/core/capture-envelope'
 
 /**
  * The pending-capture queue, persisted in `chrome.storage.local` under **one

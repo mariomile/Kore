@@ -6,7 +6,7 @@ Meowdown owns the editor hover lifecycle and overlay; Reflect owns
 side-effect-free resolution, generation-pinned reads, and local-only content.
 
 This is separate from both the `[[` autocomplete menu documented in
-[Reflect v1: Backlink Menu & Date Generator](../reflect-v1-backlink-menu.md)
+[Reflect v1: Backlink Menu & Date Generator](../upstream-v1-backlink-menu.md)
 and the incoming-backlinks panel delivered by
 [Plan 07](../plans/07-backlinks.md). In v1 terminology the inline link itself
 was a "backlink"; this document calls it a **wiki link** where that avoids
@@ -18,7 +18,7 @@ The behavior below was verified against:
 
 - the Reflect v1 repository at
   `a7fa07f6792268f5c15dac35297d39f97e22149c`;
-- the reflect-editor repository at
+- the kore-editor repository at
   `6456d2293879e01420fd7bea1a712f39057eb8dc` (`0.28.1`, the version used by
   that Reflect snapshot).
 
@@ -50,7 +50,7 @@ surface yet.
 
 | Legacy source | Responsibility |
 | --- | --- |
-| `reflect-editor/src/types.ts`, `components/reflect-editor.props.ts`, and `extensions/backlink/backlink-hover-plugin.ts` | Exposed `(event, backlink, hovering)`, delegated editor mouse events, recovered the backlink node, and de-duplicated repeated hits. |
+| `kore-editor/src/types.ts`, `components/kore-editor.props.ts`, and `extensions/backlink/backlink-hover-plugin.ts` | Exposed `(event, backlink, hovering)`, delegated editor mouse events, recovered the backlink node, and de-duplicated repeated hits. |
 | `reflect/client/models/note/note-document-view.ts`, `screens/main/note-edit/note-edit-main.tsx`, and `screens/main/notes-daily/note-item.tsx` | Looked up `backlink.id`, held preview state, and wired the same card into regular/split and daily editors. |
 | `reflect/components/pointer-card/pointer-card-anchor.tsx`, `note-preview/note-preview-popover.tsx`, and `ui/popover.tsx` | Followed the pointer with a virtual Radix anchor, handled collisions, portaled the card, and preserved editor focus. |
 | `reflect/components/note-preview/popover/note-content.tsx`, `note-book.tsx`, and `utils.ts` | Rendered stored `note.documentHtml` in the clipped static editor or selected the ASIN-specific book card. |
@@ -60,7 +60,7 @@ miss:
 
 - `reflect@368869e73` made the preview follow the pointer.
 - `reflect@689c3e957` enabled viewport collision avoidance.
-- `reflect-editor@8453e8f3` moved hover tracking out of per-node listeners so
+- `kore-editor@8453e8f3` moved hover tracking out of per-node listeners so
   deleting the currently hovered link still emitted leave.
 
 The final feature had no meaningful direct tests. Its app handler also had no
@@ -109,7 +109,7 @@ listeners to Meowdown's private `.md-wikilink-*` DOM classes or build a second
 overlay lifecycle around the event.
 
 The Meowdown layer must emit leave when the hovered mark is deleted or
-replaced. That is the regression `reflect-editor@8453e8f3` fixed.
+replaced. That is the regression `kore-editor@8453e8f3` fixed.
 
 ### 2. Supply content from the primary `NotePane`
 

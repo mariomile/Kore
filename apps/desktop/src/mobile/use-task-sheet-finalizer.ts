@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { resolveTaskEdit, taskContent, type TaskEditResult } from '@/lib/tasks/task-content'
 
 /** The two writes the finalizer itself performs; {@link TaskActions} satisfies it. */

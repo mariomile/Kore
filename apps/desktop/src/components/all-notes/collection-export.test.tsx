@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import { collectionCsv } from './collection-export'
 
 const BOOK_TYPE: TagType = {

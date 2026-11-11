@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { baseDisplayName } from '@reflect/core'
+import { baseDisplayName } from '@kore/core'
 import { useRouter } from '@/routing/router'
 import { useBaseFiles } from './use-base-view'
 

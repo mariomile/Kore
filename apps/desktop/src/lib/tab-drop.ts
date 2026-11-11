@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { OpenTab } from '@reflect/core'
+import type { OpenTab } from '@kore/core'
 import { tabsEqual } from '@/providers/open-tab'
 import type { DropZone } from '@/providers/panes-provider'
 
@@ -45,7 +45,7 @@ export function zoneDropId(paneId: string, zone: DropZone): string {
   return `zone:${paneId}:${zone}`
 }
 
-// `@reflect/core` keeps its tab schema internal, so the payload is checked for
+// `@kore/core` keeps its tab schema internal, so the payload is checked for
 // the one thing that makes it a tab, its `kind` discriminant, and typed from
 // the sortable's own declaration.
 const tabShapeSchema = z.object({ kind: z.enum(['note', 'chat', 'surface']) })

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import type { TagType } from '@reflect/core'
+import type { TagType } from '@kore/core'
 
 const tagType = vi.hoisted(() => ({ value: null as TagType | null }))
 const commitNoteBodyTransform = vi.hoisted(() =>
@@ -8,8 +8,8 @@ const commitNoteBodyTransform = vi.hoisted(() =>
 )
 const toastAdd = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => {
-  const core = await importOriginal<typeof import('@reflect/core')>()
+vi.mock('@kore/core', async (importOriginal) => {
+  const core = await importOriginal<typeof import('@kore/core')>()
   return {
     ...core,
     getTagType: async () => tagType.value,

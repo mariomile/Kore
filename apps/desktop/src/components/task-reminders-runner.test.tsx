@@ -22,7 +22,7 @@ const core = vi.hoisted(() => ({
     dueTime?: string | null
   }[],
 }))
-vi.mock('@reflect/core', () => ({
+vi.mock('@kore/core', () => ({
   getOpenTasks: () => Promise.resolve(core.tasks),
 }))
 // The runner subscribes to file changes only to invalidate its task cache;

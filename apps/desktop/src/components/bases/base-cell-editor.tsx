@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactElement, type ReactNode } from 'react'
-import { baseCellEditText, parseBaseCellInput, type BaseCellEdit } from '@reflect/core'
+import { baseCellEditText, parseBaseCellInput, type BaseCellEdit } from '@kore/core'
 
 interface BaseCellEditorProps {
   edit: BaseCellEdit

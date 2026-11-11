@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { errorMessage, listTemplates, type TemplateEntry } from '@reflect/core'
+import { errorMessage, listTemplates, type TemplateEntry } from '@kore/core'
 import { Pencil, Plus, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

@@ -2,15 +2,15 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent, type Locator } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ContactMatch, MeetingAttendee, WikiSuggestion } from '@reflect/core'
+import type { ContactMatch, MeetingAttendee, WikiSuggestion } from '@kore/core'
 import { AttendeeCombobox } from './attendee-combobox'
 
 const suggestWikiTargets = vi.hoisted(() => vi.fn<() => Promise<WikiSuggestion[]>>(async () => []))
 const contactLinkSuggestions = vi.hoisted(() =>
   vi.fn<() => Promise<ContactMatch[]>>(async () => []),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   suggestWikiTargets,
   contactLinkSuggestions,

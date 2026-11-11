@@ -1,5 +1,5 @@
 import type { WikilinkResolver } from '@meowdown/core'
-import { blockLinkLabel } from '@reflect/core'
+import { blockLinkLabel } from '@kore/core'
 
 /**
  * Meowdown's wikilink hook for every Kore surface (editor, previews,

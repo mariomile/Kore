@@ -7,7 +7,7 @@ import type { LightboxTransitionItem } from '@/editor/use-lightbox-transition'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
 
-export const IMAGE_LIGHTBOX_TRANSITION_NAME = 'reflect-image-lightbox'
+export const IMAGE_LIGHTBOX_TRANSITION_NAME = 'kore-image-lightbox'
 
 /** Image data rendered by the editor lightbox. */
 export interface LightboxImage extends LightboxTransitionItem {

@@ -20,7 +20,7 @@ export default defineConfig({
   ],
 
   define: {
-    __REFLECT_VERSION__: JSON.stringify(pkg.version),
+    __KORE_VERSION__: JSON.stringify(pkg.version),
   },
 
   // If the target is below Safari 17.5, Lightning CSS downlevels `light-dark()` to a broken polyfill.

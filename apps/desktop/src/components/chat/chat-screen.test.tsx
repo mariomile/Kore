@@ -14,7 +14,7 @@ import {
   type GraphInfo,
   type Settings,
   type StreamChatOptions,
-} from '@reflect/core'
+} from '@kore/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ChatProvider, useChatSession } from '@/providers/chat-provider'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -51,10 +51,10 @@ const searchNotes = vi.hoisted(() =>
 )
 const listPrivateNotePaths = vi.hoisted(() => vi.fn<() => Promise<string[]>>())
 const resolveNoteMentions = vi.hoisted(() =>
-  vi.fn<(text: string) => Promise<import('@reflect/core').ResolvedNoteMention[]>>(),
+  vi.fn<(text: string) => Promise<import('@kore/core').ResolvedNoteMention[]>>(),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   streamChat,
   aiApiKeyForConfig,
   resolveWikiTarget,

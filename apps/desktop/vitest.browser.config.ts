@@ -3,7 +3,7 @@ import { playwright } from '@vitest/browser-playwright'
 import { playwrightCommands } from 'vitest-browser-commands'
 import { defineDesktopProject } from './vitest.shared'
 
-const browserName = process.env.REFLECT_TEST_BROWSER === 'webkit' ? 'webkit' : 'chromium'
+const browserName = process.env.KORE_TEST_BROWSER === 'webkit' ? 'webkit' : 'chromium'
 
 if (process.env.CI) {
   console.log('Running in CI mode with browser:', browserName)

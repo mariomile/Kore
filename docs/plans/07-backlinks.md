@@ -29,7 +29,7 @@ link UX (create-from-unresolved largely subsumes the failure case).
 
 - **07a — linking while writing** *(delivered 2026-06-09, PR #13)* (steps 1–3 + the TanStack Query adoption):
   `[[` autocomplete (ProseKit autocomplete popover; suggestions ranked in
-  `@reflect/core` over titles + aliases + dailies, exact < prefix < substring,
+  `@kore/core` over titles + aliases + dailies, exact < prefix < substring,
   recency tie-break; a full `YYYY-MM-DD` query always offers that daily — files
   are created lazily); insertion is **literal text** (wiki links are literal
   syntax + decorations in the meowdown model — no node, no serializer surface);
@@ -107,7 +107,7 @@ link UX (create-from-unresolved largely subsumes the failure case).
 - **Adopt TanStack Query here.** This plan is where projection reads multiply
   (backlinks panel, `[[` autocomplete), so it's the agreed point to introduce
   `@tanstack/react-query` per [architecture-conventions §5](architecture-conventions.md):
-  `queryFn`s are `@reflect/core` getters (`getBacklinks`, `searchNotes`), the
+  `queryFn`s are `@kore/core` getters (`getBacklinks`, `searchNotes`), the
   watcher's `index:changed` events drive targeted `queryClient.invalidateQueries`,
   and markdown setters invalidate after writing. Decided during the post-Plan-05
   refactor (June 2026) rather than retrofitting earlier file-only screens.

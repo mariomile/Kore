@@ -3,7 +3,7 @@ import {
   getTaskProjectLinks,
   linkedProjectsByTask,
   type LinkedTaskProjects,
-} from '@reflect/core'
+} from '@kore/core'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { projectNotePathsQueryKey, taskProjectLinksQueryKey } from '@/lib/tasks/tasks-query'

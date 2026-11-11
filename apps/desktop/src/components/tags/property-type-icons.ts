@@ -1,4 +1,4 @@
-import type { TagPropertyType } from '@reflect/core'
+import type { TagPropertyType } from '@kore/core'
 import {
   ArrowUturnRight,
   Calculator,

@@ -106,8 +106,8 @@ fn is_readably_public(path: &Path) -> bool {
     let Ok(source) = std::fs::read_to_string(path) else {
         return false;
     };
-    let split = reflect_note_policy::split_frontmatter(&source);
-    !reflect_note_policy::parse_frontmatter(split.raw).private
+    let split = kore_note_policy::split_frontmatter(&source);
+    !kore_note_policy::parse_frontmatter(split.raw).private
 }
 
 /// `Some(regex)` for a `/…/flags` filter that compiles, `Some(None)` for one

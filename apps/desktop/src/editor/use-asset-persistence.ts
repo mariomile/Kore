@@ -10,7 +10,7 @@ import {
   resolveAttachmentSource,
   revealAsset as revealAssetCommand,
   type FileMeta,
-} from '@reflect/core'
+} from '@kore/core'
 import { formatBytes } from '@/lib/format-bytes'
 import { startOperation } from '@/lib/operations'
 

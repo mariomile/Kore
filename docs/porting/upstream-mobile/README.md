@@ -10,19 +10,19 @@ architecture.
 
 It is the mobile analog of the desktop porting set in
 [`docs/porting/`](../README.md), and the detailed companion to the
-[V1 Mobile Overview](../../reflect-v1-mobile-overview.md). The binding
+[V1 Mobile Overview](../../upstream-v1-mobile-overview.md). The binding
 decisions live here and win over anything in these docs:
 
 - [Plan 19 (mobile companion)](../../plans/19-mobile.md) — scope, steps,
   acceptance criteria; the 2026-06-12 product call is **re-implement V1
   mobile's feature-set and design**.
-- [V2 Mobile Grounding Brief](../../reflect-v2-mobile-grounding-brief.md) —
+- [V2 Mobile Grounding Brief](../../upstream-v2-mobile-grounding-brief.md) —
   product brief and the V1→V2 surface mapping.
 - [TDR 0003 (mobile shell)](../../decisions/0003-mobile-shell.md) — Tauri 2
   mobile chosen; Capacitor is the documented fallback with triggers.
-- [Product Vision](../../reflect-v2-product-vision.md) ·
-  [Sync Strategy](../../reflect-v2-sync-strategy.md) ·
-  [Indexing Strategy](../../reflect-v2-indexing-strategy.md).
+- [Product Vision](../../upstream-v2-product-vision.md) ·
+  [Sync Strategy](../../upstream-v2-sync-strategy.md) ·
+  [Indexing Strategy](../../upstream-v2-indexing-strategy.md).
 
 ## Why features can't be ported directly
 

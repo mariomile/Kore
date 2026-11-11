@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { createWorkspaceStatePublisher, workspaceNotes } from '@reflect/core'
+import { createWorkspaceStatePublisher, workspaceNotes } from '@kore/core'
 import { useToday } from '@/lib/use-today'
 import { useGraph } from '@/providers/graph-provider'
 import { usePanes } from '@/providers/panes-provider'

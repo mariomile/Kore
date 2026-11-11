@@ -10,7 +10,7 @@ import {
   subscribeIndexApplied,
   type AiProvidersState,
   type ReconcileStop,
-} from '@reflect/core'
+} from '@kore/core'
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { providerFetch } from '@/lib/provider-fetch'
 import { invalidateIndexQueries } from '@/lib/query-client'

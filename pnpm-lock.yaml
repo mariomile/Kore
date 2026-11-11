@@ -57,7 +57,7 @@ importers:
       '@cloudflare/workers-oauth-provider':
         specifier: 1.2.4
         version: 1.2.4
-      '@reflect/core':
+      '@kore/core':
         specifier: workspace:*
         version: link:../../packages/core
       zod:
@@ -106,6 +106,15 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.3.0)
+      '@kore/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@kore/design-system':
+        specifier: workspace:*
+        version: link:../../design-system
+      '@kore/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@meowdown/core':
         specifier: ^0.74.1
         version: 0.74.1(patch_hash=7c96e5748c3b3d75c90ed0233409da7aa0b3d03a349d073d70bb3c5581679ca2)(@lezer/common@1.5.2)(@shikijs/types@4.4.3)(@types/hast@3.0.5)(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-transform@1.12.1)(prosemirror-view@1.42.5)(supports-color@10.2.2)(typescript@6.0.3)
@@ -121,15 +130,6 @@ importers:
       '@prosekit/pm':
         specifier: ^0.1.20
         version: 0.1.20
-      '@reflect/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@reflect/design-system':
-        specifier: workspace:*
-        version: link:../../design-system
-      '@reflect/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
       '@shadcn/react':
         specifier: ^0.2.1
         version: 0.2.1(@types/react@19.3.0)(react@19.3.0)
@@ -275,10 +275,10 @@ importers:
 
   apps/extension:
     dependencies:
-      '@reflect/core':
+      '@kore/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@reflect/design-system':
+      '@kore/design-system':
         specifier: workspace:*
         version: link:../../design-system
       react:
@@ -332,6 +332,12 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.40
         version: 3.0.40(zod@4.6.7)
+      '@kore/db':
+        specifier: workspace:*
+        version: link:../db
+      '@kore/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@meowdown/markdown':
         specifier: ^0.72.0
         version: 0.72.0(typescript@6.0.3)
@@ -341,12 +347,6 @@ importers:
       '@post-embed/types':
         specifier: ^0.5.0
         version: 0.5.0
-      '@reflect/db':
-        specifier: workspace:*
-        version: link:../db
-      '@reflect/utils':
-        specifier: workspace:*
-        version: link:../utils
       ai:
         specifier: ^7.0.84
         version: 7.0.84(zod@4.6.7)

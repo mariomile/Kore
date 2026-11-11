@@ -9,7 +9,7 @@ import {
   THEME_PREFERENCE_IDS,
   UI_RADIUS_IDS,
   type ThemePreference,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * The settings schema names the themes, accents and radius steps; the design

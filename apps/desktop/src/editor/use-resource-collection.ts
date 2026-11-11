@@ -8,7 +8,7 @@ import {
   resourceFileKind,
   saveLinkText,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { appendResourceSource } from '@/lib/resource-sources'
 import { useSettings } from '@/providers/settings-provider'

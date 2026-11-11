@@ -4,11 +4,11 @@
 > `ShareExtension` target spools the same envelopes (plus non-URL text as
 > `kind: append` captures) into the App Group inbox, and the mobile app
 > relays + drains them on launch/foreground. See
-> [the porting doc](../porting/reflect-mobile/share-extension.md).
+> [the porting doc](../porting/upstream-mobile/share-extension.md).
 >
 > **Status (2026-06-14): Implemented.** The pipeline below is built end-to-end:
 > `apps/extension` (WXT MV3, popup + queue + ⌘⇧K), `apps/native-host`
-> (`reflect-capture-host`, bundled as a second sidecar), the capture inbox +
+> (`kore-capture-host`, bundled as a second sidecar), the capture inbox +
 > watcher carve-out, `drainCaptureInbox`/`reconcileCaptureEnrichment` in
 > `packages/core/src/actions/capture.ts`, and the desktop controller
 > (`apps/desktop/src/lib/capture-controller.ts`). Two deliberate narrowings for
@@ -20,7 +20,7 @@
 > "enough phase-1 content" condition below is always met) plus the daily
 > `[[Links]]` backlink; enrichment status lives in the capture note's
 > frontmatter (`captureStatus: pending | done | skipped`). The macOS Tauri
-> overlay bundles both sidecars (`binaries/reflect`, `binaries/reflect-capture-host`).
+> overlay bundles both sidecars (`binaries/reflect`, `binaries/kore-capture-host`).
 
 **Goal:** Launch-grade web capture: a Chrome extension hands URL/title/selection/
 screenshot to the **installed desktop app** through a local **capture inbox**; the
@@ -35,7 +35,7 @@ keychain + privacy).
 this plan.
 
 **Architecture:** the extension lives in `apps/extension`; all durable writes, AI
-enrichment, and privacy checks go through `apps/desktop` + `@reflect/core`
+enrichment, and privacy checks go through `apps/desktop` + `@kore/core`
 (`actions/capture`). See [Architecture & Conventions](architecture-conventions.md).
 
 **Libraries:** WXT (Chrome extension framework, TS), `image` (Rust, screenshot
@@ -117,7 +117,7 @@ Every capture lands in two phases so saving never waits on the network or AI:
 2. **Native-messaging host (sidecar) + manifest registration.** Tiny Rust crate built in
    `beforeBuildCommand`, bundled via `externalBin`; pure-stdio discipline (log to
    stderr). Deserializes the capture envelope using typed Rust structs (generated from
-   or manually mirroring the shared `@reflect/core` zod schema — Zod does not run in
+   or manually mirroring the shared `@kore/core` zod schema — Zod does not run in
    Rust; the TS schema is the single source of truth and the Rust structs must match it),
    writes the validated envelope + screenshot into the inbox
    atomically, acks **queued** on success or a typed error on failure. The host never

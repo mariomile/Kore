@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
-import { getAppPlatform, hasBridge, isMobilePlatform, type AppPlatform } from '@reflect/core'
+import { getAppPlatform, hasBridge, isMobilePlatform, type AppPlatform } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { warmMobileStorage } from '@/lib/mobile-boot-warm'
 

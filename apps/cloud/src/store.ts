@@ -1,4 +1,4 @@
-import { dateFromDailyPath } from '@reflect/core/graph/paths'
+import { dateFromDailyPath } from '@kore/core/graph/paths'
 import { describeNote } from './note'
 import { SCHEMA } from './schema'
 

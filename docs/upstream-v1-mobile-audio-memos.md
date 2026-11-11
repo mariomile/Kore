@@ -4,8 +4,8 @@ This document describes how audio memos work in the Reflect V1 mobile app, at a
 high level, as a reference for the V2 rewrite. All file paths in this document
 refer to the V1 mobile codebase (`~/repos/reflect-mobile`), not this repository.
 
-For broader product context, see [Reflect V1 Overview](./reflect-v1-overview.md)
-and [Reflect V1 Mobile Overview](./reflect-v1-mobile-overview.md).
+For broader product context, see [Reflect V1 Overview](./upstream-v1-overview.md)
+and [Reflect V1 Mobile Overview](./upstream-v1-mobile-overview.md).
 
 ## What It Is
 

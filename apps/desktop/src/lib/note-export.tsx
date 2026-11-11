@@ -8,7 +8,7 @@ import {
   resolveAttachmentSource,
   separateCalloutTitles,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { decorateCallouts } from '@/editor/callout-dom'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'
@@ -225,7 +225,7 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
             const attachment = resolveAttachmentSource(src)
             return attachment === null ? undefined : (assetUrl(generation, attachment) ?? undefined)
           },
-          className: 'reflect-editor',
+          className: 'kore-editor',
         }),
       )
     })

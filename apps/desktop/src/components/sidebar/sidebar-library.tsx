@@ -1,6 +1,6 @@
 import { memo, useCallback, type ReactElement } from 'react'
 import { isModEvent } from '@meowdown/core'
-import { libraryFileTitle, type LibraryRoot } from '@reflect/core'
+import { libraryFileTitle, type LibraryRoot } from '@kore/core'
 import { Bot, ChevronDown, ChevronRight, Folder, FolderOpen } from '@/components/icons'
 import { useLibraryDir, useLibraryRoots } from '@/hooks/use-library'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'

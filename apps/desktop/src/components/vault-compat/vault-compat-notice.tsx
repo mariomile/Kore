@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { getVaultLayout, type GraphInfo } from '@reflect/core'
+import { getVaultLayout, type GraphInfo } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useVaultCompatReport } from '@/hooks/use-vault-compat-report'
 import { settingsRoute } from '@/routing/route'

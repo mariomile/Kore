@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import { vaultLayoutFromObsidian, type VaultLayout } from '@reflect/core/graph/vault-layout'
+import { vaultLayoutFromObsidian, type VaultLayout } from '@kore/core/graph/vault-layout'
 import {
   MAX_SOURCE_BYTES,
   byteLength,

@@ -4,7 +4,7 @@ import {
   type CollectionValue,
   type RelationLink,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   CheckboxFace,
   readCellValue,

@@ -6,7 +6,7 @@ import {
   pickTranscriptionConfig,
   type AiProvidersState,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import { startOperation } from '@/lib/operations'
 import {

@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { allNotesListPrefix } from './all-notes-query'
 

@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 
 /**
  * The optimistic read overlay for note index rows (Plan 12 follow-up).

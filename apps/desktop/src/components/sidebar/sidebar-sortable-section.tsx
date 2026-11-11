@@ -1,6 +1,6 @@
 import { createContext, use, type ReactElement, type ReactNode } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import type { SidebarSection } from '@reflect/core'
+import type { SidebarSection } from '@kore/core'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { SidebarDisclosure } from './sidebar-disclosure'

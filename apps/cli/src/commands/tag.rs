@@ -9,7 +9,7 @@
 //! membership too: `tag` leaves such a note alone and `untag` drops the
 //! entry. Both are idempotent and refuse private notes.
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::body_tag::{
     append_body_tag, frontmatter_has_tag, frontmatter_tag_entries, frontmatter_tag_name,

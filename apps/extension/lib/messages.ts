@@ -22,8 +22,8 @@ export function isFlushRequest(message: unknown): message is FlushRequest {
 
 /**
  * Why queued captures are being held for retry. `no-host`: the native host
- * isn't registered (Reflect not installed, or never launched since install);
- * `no-graph`: Reflect has never opened a graph; `io`: the host failed to
+ * isn't registered (Kore not installed, or never launched since install);
+ * `no-graph`: Kore has never opened a graph; `io`: the host failed to
  * spool — all retried on the next flush trigger.
  */
 export const holdReasonSchema = z.enum(['no-host', 'no-graph', 'io'])

@@ -7,7 +7,7 @@ import {
   isContactsReadable,
   suggestWikiTargets,
   type MeetingAttendee,
-} from '@reflect/core'
+} from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { CommandItem, CommandList } from '@/components/ui/command'
 import { INPUT_CLASS_NAME } from '@/components/ui/input'

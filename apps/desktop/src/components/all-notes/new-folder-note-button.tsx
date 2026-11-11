@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
-import { createNoteWithSource, errorMessage, folderDisplayName, newNoteSource } from '@reflect/core'
+import { createNoteWithSource, errorMessage, folderDisplayName, newNoteSource } from '@kore/core'
 import { Plus } from '@/components/icons'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

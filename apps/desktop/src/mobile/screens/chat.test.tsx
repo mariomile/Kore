@@ -9,7 +9,7 @@ import type {
   ChatStreamEvent,
   Settings,
   StreamChatOptions,
-} from '@reflect/core'
+} from '@kore/core'
 import { ChatProvider } from '@/providers/chat-provider'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { fireEvent } from '@/test-utils/fire-event'
@@ -29,8 +29,8 @@ const aiApiKeyForConfig = vi.hoisted(() =>
   vi.fn<(config: AiProviderConfig) => Promise<string | null>>(),
 )
 const loadChatGraphContext = vi.hoisted(() => vi.fn<(graphName: string) => Promise<null>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   streamChat,
   aiApiKeyForConfig,
   loadChatGraphContext,

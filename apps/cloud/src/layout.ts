@@ -2,7 +2,7 @@ import {
   DEFAULT_VAULT_LAYOUT,
   setVaultLayout,
   type VaultLayout,
-} from '@reflect/core/graph/vault-layout'
+} from '@kore/core/graph/vault-layout'
 
 /**
  * The vault's layout (daily-note folder and format, new-note folder, file

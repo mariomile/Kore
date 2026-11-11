@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { tagDisplayName, type NoteTagEntry } from '@reflect/core'
+import { tagDisplayName, type NoteTagEntry } from '@kore/core'
 import { Close, Plus } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'

@@ -4,7 +4,7 @@ import {
   serializeWikiSuggestionAddress,
   type ContactMatch,
   type WikiSuggestion,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * Pure assembly of the `[[` popover's rows (Plan 07): the ranked index

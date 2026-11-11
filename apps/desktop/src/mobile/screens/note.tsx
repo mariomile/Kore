@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isUntitledNotePath } from '@reflect/core'
+import { isUntitledNotePath } from '@kore/core'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'

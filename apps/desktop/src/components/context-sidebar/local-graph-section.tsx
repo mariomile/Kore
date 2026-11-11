@@ -8,7 +8,7 @@ import {
   type LocalGraph,
   type LocalGraphDepth,
   type LocalGraphNode,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   GraphMapCanvas,
   type CanvasEdge,

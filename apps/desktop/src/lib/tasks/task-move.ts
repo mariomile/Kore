@@ -8,7 +8,7 @@ import {
   writeNote,
   type TaskBlock,
   type TaskMarker,
-} from '@reflect/core'
+} from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 import { NoteBusyError, serializeByPath, type TaskRef } from '@/lib/note-task'
 

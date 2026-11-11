@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E2CEE6E5CCFA69CBA5F9AA3F"
-               BuildableName = "reflect-open_iOS.app"
-               BlueprintName = "reflect-open_iOS"
-               ReferencedContainer = "container:reflect-open.xcodeproj">
+               BuildableName = "kore-open_iOS.app"
+               BlueprintName = "kore-open_iOS"
+               ReferencedContainer = "container:kore-open.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E2CEE6E5CCFA69CBA5F9AA3F"
-            BuildableName = "reflect-open_iOS.app"
-            BlueprintName = "reflect-open_iOS"
-            ReferencedContainer = "container:reflect-open.xcodeproj">
+            BuildableName = "kore-open_iOS.app"
+            BlueprintName = "kore-open_iOS"
+            ReferencedContainer = "container:kore-open.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -70,9 +70,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E2CEE6E5CCFA69CBA5F9AA3F"
-            BuildableName = "reflect-open_iOS.app"
-            BlueprintName = "reflect-open_iOS"
-            ReferencedContainer = "container:reflect-open.xcodeproj">
+            BuildableName = "kore-open_iOS.app"
+            BlueprintName = "kore-open_iOS"
+            ReferencedContainer = "container:kore-open.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -101,9 +101,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E2CEE6E5CCFA69CBA5F9AA3F"
-            BuildableName = "reflect-open_iOS.app"
-            BlueprintName = "reflect-open_iOS"
-            ReferencedContainer = "container:reflect-open.xcodeproj">
+            BuildableName = "kore-open_iOS.app"
+            BlueprintName = "kore-open_iOS"
+            ReferencedContainer = "container:kore-open.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>

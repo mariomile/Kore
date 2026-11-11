@@ -1,4 +1,4 @@
-import { TaskStaleError } from '@reflect/core'
+import { TaskStaleError } from '@kore/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { moveTask, projectSections, undoTaskMoves } from './task-move'
 
@@ -8,8 +8,8 @@ vi.mock('@/editor/open-documents', () => ({ openSession }))
 const disk = vi.hoisted(() => new Map<string, string>())
 const readNote = vi.hoisted(() => vi.fn())
 const writeNote = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote,
   writeNote,
 }))

@@ -1,5 +1,5 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import type { OpenTab } from '@reflect/core'
+import type { OpenTab } from '@kore/core'
 import { ArrowDown, ArrowRight, Close, Pin, PinOff } from '@/components/icons'
 import {
   ContextMenu,

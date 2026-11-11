@@ -1,13 +1,13 @@
 import type { ReactElement } from 'react'
-import type { OpenTask } from '@reflect/core'
-import { stripTaskContentPriority, taskContentPriority } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
+import { stripTaskContentPriority, taskContentPriority } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { taskContent } from '@/lib/tasks/task-content'
 import { cn } from '@/lib/utils'
 
 /**
  * Render a task's content (its source line minus the checkbox marker) through
- * Reflect's read-only markdown preview. The focused row swaps this for the
+ * Kore's read-only markdown preview. The focused row swaps this for the
  * inline editor; unfocused rows should look like rendered markdown, not raw
  * source text. A leading priority marker (`!`/`!!`) renders as a colored
  * badge instead of literal bangs — the raw marker stays visible only while
@@ -19,7 +19,7 @@ export function TaskText({ task }: { task: OpenTask }): ReactElement {
   const preview = (
     <MarkdownPreview
       content={priority === null ? content : stripTaskContentPriority(content)}
-      className="reflect-task-preview pointer-events-none text-sm leading-6"
+      className="kore-task-preview pointer-events-none text-sm leading-6"
     />
   )
   if (priority === null) {

@@ -1,4 +1,4 @@
-import { calloutLabel, parseCalloutMarker, type CalloutMarker } from '@reflect/core'
+import { calloutLabel, parseCalloutMarker, type CalloutMarker } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
@@ -15,7 +15,7 @@ interface CalloutState {
 /** Transaction meta: flip one callout's fold, or report a focus change. */
 type CalloutMeta = { readonly toggle: number } | { readonly focused: boolean }
 
-const calloutKey = new PluginKey<CalloutState>('reflect-callouts')
+const calloutKey = new PluginKey<CalloutState>('kore-callouts')
 
 function readMeta(tr: Transaction): CalloutMeta | null {
   const meta: unknown = tr.getMeta(calloutKey)

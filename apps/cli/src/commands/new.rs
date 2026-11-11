@@ -12,7 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::body_tag::{append_body_tag, is_tag_name};
 use crate::commands::open_index_for_resolution;

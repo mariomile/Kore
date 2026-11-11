@@ -1,7 +1,7 @@
 /**
  * The GFM checkbox state marker (Plan 18), shared by extraction ({@link parseNote})
  * and the toggle ({@link toggleTaskMarker}). Extraction decides which list markers
- * are Reflect tasks; this helper decides whether the three-character checkbox
+ * are Kore tasks; this helper decides whether the three-character checkbox
  * marker itself is valid and whether it is checked.
  */
 

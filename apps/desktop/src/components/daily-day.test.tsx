@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, type ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
 import { DailyDay } from './daily-day'
@@ -92,7 +92,7 @@ function Day({
       path={PATH}
       dailyDate="2026-06-27"
       lazy
-      gutterClassName="reflect-content-gutter"
+      gutterClassName="kore-content-gutter"
       editorClassName="min-h-[100px]"
     />
   )

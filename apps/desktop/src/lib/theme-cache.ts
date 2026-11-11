@@ -5,7 +5,7 @@ import type {
   UiDensity,
   UiRadius,
   VisualTheme,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * Where the theme preference is mirrored for the *next* launch.

@@ -1,4 +1,4 @@
-import { moveNoteIndexed } from '@reflect/core'
+import { moveNoteIndexed } from '@kore/core'
 import { emitNoteMoved } from '@/lib/note-moves'
 import { openSession, retargetOpenDocument } from './open-documents'
 

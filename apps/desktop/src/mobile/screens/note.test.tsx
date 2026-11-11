@@ -2,7 +2,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, useRef, type ReactElement } from 'react'
-import { untitledNotePath } from '@reflect/core'
+import { untitledNotePath } from '@kore/core'
 import { RouterProvider, useRouter, type NavigateOptions } from '@/routing/router'
 import { MobileNote } from './note'
 
@@ -95,7 +95,7 @@ describe('MobileNote focus contract', () => {
 
   it('uses the mobile note-body gutter for the editor surface', async () => {
     await renderArrival('notes/target.md')
-    expect(paneProps.gutterClassName).toBe('reflect-mobile-content-gutter')
+    expect(paneProps.gutterClassName).toBe('kore-mobile-content-gutter')
   })
 
   it('gives the pane a top inset (no date header above a plain note)', async () => {

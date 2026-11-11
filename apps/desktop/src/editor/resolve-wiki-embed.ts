@@ -1,5 +1,5 @@
 import type { ParsedWikiEmbed, WikiEmbedResolution } from '@meowdown/core'
-import { wikiEmbedKind } from '@reflect/core'
+import { wikiEmbedKind } from '@kore/core'
 
 function fileOf(target: string): string {
   return target.split('#')[0] ?? target

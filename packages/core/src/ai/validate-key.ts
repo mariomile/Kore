@@ -86,7 +86,7 @@ function keyProbe(input: ApiKeyValidationInput): KeyProbe | null {
 /**
  * Probe `input.provider` with `input.apiKey`. `fetchFn` lets hosts substitute a
  * CORS-free transport (the desktop app passes the Tauri HTTP plugin's fetch;
- * `@reflect/core` itself stays platform-agnostic).
+ * `@kore/core` itself stays platform-agnostic).
  */
 export async function validateApiKey(
   input: ApiKeyValidationInput,

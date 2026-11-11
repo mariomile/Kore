@@ -19,7 +19,7 @@ import { linkCardElement } from '@/editor/link-card-dom'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { cacheNoteContent, getCachedNoteContent } from '@/editor/note-content-cache'
-import { staticDayBody } from '@/editor/static-day'
+import { editorImageSize, staticDayBody } from '@/editor/static-day'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -220,6 +220,23 @@ interface StaticDayProps {
 
 const BARE_URL = /^https?:\/\/\S+$/i
 
+function sizeLikeEditor(image: HTMLImageElement, failed: boolean): void {
+  if (failed) {
+    image.dataset.failed = ''
+    return
+  }
+  const set = Number.parseFloat(image.style.width)
+  const size = editorImageSize(
+    image.naturalWidth,
+    image.naturalHeight,
+    Number.isFinite(set) ? set : null,
+  )
+  if (size !== null) {
+    image.style.width = `${String(size.width)}px`
+    image.style.aspectRatio = String(size.ratio)
+  }
+}
+
 function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayProps): ReactElement {
   const { graph } = useGraph()
   const { resolveImageUrl } = useAssetPersistence(graph?.generation ?? null, path)
@@ -251,6 +268,31 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
       current = false
     }
   }, [cardsAllowed, body])
+  // The editor sizes an image once it loads (`editorImageSize`); the static
+  // picture takes the same box. `load` and `error` do not bubble: capture.
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    if (host === null) {
+      return
+    }
+    const settle = (event: Event): void => {
+      const image = event.target
+      if (image instanceof HTMLImageElement && image.closest('.md-image-view-preview') !== null) {
+        sizeLikeEditor(image, event.type === 'error')
+      }
+    }
+    host.addEventListener('load', settle, { capture: true })
+    host.addEventListener('error', settle, { capture: true })
+    for (const image of host.querySelectorAll<HTMLImageElement>('.md-image-view-preview img')) {
+      if (image.complete) {
+        sizeLikeEditor(image, image.naturalWidth === 0)
+      }
+    }
+    return () => {
+      host.removeEventListener('load', settle, { capture: true })
+      host.removeEventListener('error', settle, { capture: true })
+    }
+  }, [body])
   return (
     <div ref={hostRef} data-static-day="ready" className="relative">
       <MarkdownPreview

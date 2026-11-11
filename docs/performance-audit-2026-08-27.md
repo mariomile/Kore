@@ -259,7 +259,7 @@ pnpm --config.verifyDepsBeforeRun=warn test --run \
 Blocked browser command:
 
 ```sh
-REFLECT_TEST_BROWSER=webkit pnpm --config.verifyDepsBeforeRun=warn test --run \
+KORE_TEST_BROWSER=webkit pnpm --config.verifyDepsBeforeRun=warn test --run \
   apps/desktop/src/components/embeddings-sync.test.tsx \
   apps/desktop/src/components/settings/memory-field.test.tsx \
   apps/desktop/src/lib/semantic.test.tsx --project browser

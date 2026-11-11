@@ -16,7 +16,7 @@ import { startOperation } from '@/lib/operations'
  * durable `kore://` address the note can have. A daily note is addressed
  * by its date. A regular note is addressed by its frontmatter `id` — minted
  * here on first copy for notes that predate Plan 17's ids or were created
- * outside Reflect — so the link survives every rename; the id lands through
+ * outside Kore — so the link survives every rename; the id lands through
  * the session-or-disk frontmatter channel like pin and private do.
  */
 export async function deepLinkForNote(path: string, generation: number): Promise<string> {

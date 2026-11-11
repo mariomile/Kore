@@ -22,7 +22,7 @@ import { useSettings } from '@/providers/settings-provider'
 /**
  * The inline task editor (Plan 18, V1 parity): the sole-selected task swaps its
  * read-only text for a one-line editor seeded with the content after its marker.
- * It reuses Reflect's note editor — so it gets meowdown's built-in `[[` backlink
+ * It reuses Kore's note editor — so it gets meowdown's built-in `[[` backlink
  * and `#` tag menus ({@link useEditorAutocomplete}) — and binds the commit/cancel/
  * complete/delete keymap. The marker (and so the checked state) is never in this
  * editor; the write-back only rewrites the content line. The single-shot rules

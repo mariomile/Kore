@@ -2,7 +2,7 @@ import type { MarkMode } from '@meowdown/core'
 import type { EditorMarkdownSyntax } from '@kore/core'
 
 /**
- * Translate Reflect's implementation-neutral `editorMarkdownSyntax` setting to
+ * Translate Kore's implementation-neutral `editorMarkdownSyntax` setting to
  * meowdown's editor "mark mode". The setting name outlives any one editor
  * library, so the mapping lives here at the boundary: `hide`/`show` pass
  * through, and `hybrid` (reveal syntax only around the caret) is meowdown's

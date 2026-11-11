@@ -57,7 +57,7 @@ pub struct GitStatus {
     pub ahead: usize,
     pub behind: usize,
     /// The repository state is not `Clean` — a merge/rebase the user started
-    /// outside Reflect (e.g. via the git CLI) is in progress. Sync refuses to
+    /// outside Kore (e.g. via the git CLI) is in progress. Sync refuses to
     /// run until it is finished or aborted.
     pub in_progress: bool,
 }

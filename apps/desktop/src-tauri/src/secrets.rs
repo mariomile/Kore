@@ -9,7 +9,7 @@ use keyring::Entry;
 
 use crate::error::{AppError, AppResult};
 
-/// The keychain service every Reflect secret is filed under.
+/// The keychain service every Kore secret is filed under.
 const SERVICE: &str = "lore";
 
 /// The pre-rebrand service name. Reads fall back to it and migrate the entry

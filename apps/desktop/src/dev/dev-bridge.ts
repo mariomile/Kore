@@ -2,7 +2,7 @@ import {
   aiKeySecretName,
   APP_REVIEW_STUB_KEY,
   indexedNoteSchema,
-  ReflectError,
+  KoreError,
   type AppPlatform,
   type IpcBridge,
 } from '@kore/core'
@@ -233,7 +233,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'pty_ack':
       case 'pty_resize':
       case 'pty_close':
-        throw new ReflectError('unknown', 'the in-app terminal is desktop-only')
+        throw new KoreError('unknown', 'the in-app terminal is desktop-only')
       case 'browser_embed_show':
       case 'browser_embed_bounds':
       case 'browser_embed_hide':
@@ -244,7 +244,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'browser_embed_reload':
       case 'browser_embed_open':
       case 'browser_embed_read':
-        throw new ReflectError('unknown', 'the embedded browser is desktop-only')
+        throw new KoreError('unknown', 'the embedded browser is desktop-only')
       case 'open_browser_window': {
         // No secondary Tauri windows in a plain browser — a popup tab is the
         // honest stand-in for the in-app browser window.
@@ -260,7 +260,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { path } = pathArgsSchema.parse(args)
         const contents = files.read(path)
         if (contents === null) {
-          throw new ReflectError('notFound', `no such note: ${path}`)
+          throw new KoreError('notFound', `no such note: ${path}`)
         }
         return contents
       }
@@ -269,7 +269,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { path } = pathArgsSchema.parse(args)
         const contents = files.read(path)
         if (contents === null) {
-          throw new ReflectError('notFound', `no such note: ${path}`)
+          throw new KoreError('notFound', `no such note: ${path}`)
         }
         return { kind: 'content', content: contents }
       }
@@ -280,7 +280,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'note_create': {
         const { path, contents, generation } = createArgsSchema.parse(args)
         if (generation !== graphInfo.generation) {
-          throw new ReflectError(
+          throw new KoreError(
             'io',
             'the graph changed since this command was issued; dropping it',
           )
@@ -302,10 +302,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           request: { from, to },
         } = moveRequestArgsSchema.parse(args)
         if (!files.exists(from)) {
-          throw new ReflectError('notFound', `cannot move note: ${from} does not exist`)
+          throw new KoreError('notFound', `cannot move note: ${from} does not exist`)
         }
         if (files.exists(to)) {
-          throw new ReflectError('io', `cannot move note: ${to} already exists`)
+          throw new KoreError('io', `cannot move note: ${to} already exists`)
         }
         // Index first: it can refuse (occupied path), and a refused move must
         // leave the file untouched — the in-memory stand-in for Rust's
@@ -326,7 +326,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { path } = pathArgsSchema.parse(args)
         const contents = assets.get(path)
         if (contents === undefined) {
-          throw new ReflectError('notFound', `asset not found: ${path}`)
+          throw new KoreError('notFound', `asset not found: ${path}`)
         }
         return contents
       }
@@ -415,7 +415,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         if (args.action === 'list') {
           return []
         }
-        throw new ReflectError('notFound', 'dev bridge: no proposals')
+        throw new KoreError('notFound', 'dev bridge: no proposals')
 
       case 'git_status':
         return {
@@ -450,7 +450,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { commit, path } = z.object({ commit: z.string(), path: z.string() }).parse(args)
         const current = files.read(path)
         if (current === null) {
-          throw new ReflectError('notFound', `${path} is not in version ${commit}`)
+          throw new KoreError('notFound', `${path} is not in version ${commit}`)
         }
         if (commit === 'dev-head') {
           return current
@@ -491,7 +491,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'capture_data_fetch':
         // Video transcripts need YouTube; the harness is offline, which is
         // exactly what a real fetch reports when there is no network.
-        throw new ReflectError('network', 'dev bridge: no network for capture_data_fetch')
+        throw new KoreError('network', 'dev bridge: no network for capture_data_fetch')
 
       case 'kit_script_status':
         // No vault kit script runs in the browser harness (Plan 35).
@@ -499,7 +499,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)
-        throw new ReflectError('unknown', `dev bridge: unimplemented command "${command}"`)
+        throw new KoreError('unknown', `dev bridge: unimplemented command "${command}"`)
     }
   }
 
@@ -585,7 +585,7 @@ function devOEmbedJson(url: string): string {
     })
   }
   if (!url.startsWith('https://cdn.syndication.twimg.com/tweet-result')) {
-    throw new ReflectError('io', `dev bridge: no canned JSON for ${url}`)
+    throw new KoreError('io', `dev bridge: no canned JSON for ${url}`)
   }
   const avatar = new URL('/vite.svg', window.location.origin).href
   const id = new URL(url).searchParams.get('id') ?? '1'

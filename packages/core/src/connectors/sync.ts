@@ -1,4 +1,4 @@
-import { isAppError, ReflectError } from '../errors'
+import { isAppError, KoreError } from '../errors'
 import { createNoteIfAbsent, readNote, writeNote } from '../graph/commands'
 import { classifyGraphPath } from '../graph/paths'
 import { db } from '../indexing/db'
@@ -73,7 +73,7 @@ export function normalizeConnectorFolder(folder: string): string {
     return ''
   }
   if (classifyGraphPath(`${trimmed}/note.md`) !== 'note') {
-    throw new ReflectError('parse', `"${folder}" can’t hold notes; choose another folder`)
+    throw new KoreError('parse', `"${folder}" can’t hold notes; choose another folder`)
   }
   return trimmed
 }
@@ -192,7 +192,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
         return await mergeInto(path, existing, note, generation)
       }
     }
-    throw new ReflectError(
+    throw new KoreError(
       'io',
       `no free filename for "${note.fileStem}" in ${folder || 'the graph'}`,
     )

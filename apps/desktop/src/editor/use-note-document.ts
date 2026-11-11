@@ -47,7 +47,7 @@ export interface NoteDocumentOptions {
   /**
    * Maintain inbound `[[links]]` when this note's settled title changes. The
    * coordinator separately requires a direct `notes/*.md` path with valid
-   * Reflect ULID frontmatter before moving a file onto its title's slug, so
+   * Kore ULID frontmatter before moving a file onto its title's slug, so
    * adopted and stable-path notes keep their filenames.
    */
   trackRenames?: boolean

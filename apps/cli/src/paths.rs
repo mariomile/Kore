@@ -1,4 +1,4 @@
-//! Reflect-authored path conventions — the Rust mirror of
+//! Kore-authored path conventions — the Rust mirror of
 //! `packages/core/src/graph/paths.ts` and `vault-layout.ts`. Dailies live at
 //! `daily/YYYY-MM-DD.md` unless the graph is an Obsidian vault whose
 //! `.obsidian/daily-notes.json` names its own folder and format; new regular

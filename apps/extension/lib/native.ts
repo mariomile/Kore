@@ -23,7 +23,7 @@ export type SendOutcome =
 
 /**
  * Chrome rejects with these strings when the host manifest is missing or
- * doesn't allowlist this extension — the "install / launch Reflect" state.
+ * doesn't allowlist this extension — the "install / launch Kore" state.
  */
 const NO_HOST_PATTERN = /not found|forbidden|not installed/i
 

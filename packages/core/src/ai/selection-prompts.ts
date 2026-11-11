@@ -21,7 +21,7 @@ const FILLER =
 
 /**
  * The curated built-in prompts, shown after the user's saved prompts (old
- * Reflect listed custom templates first). Transformations of the selection
+ * Kore listed custom templates first). Transformations of the selection
  * use `replace`; prompts that produce new text (a summary, action items, a
  * continuation) use `append` so accepting never destroys the source — and
  * either way the preview offers the alternate placement at accept time.

@@ -66,7 +66,7 @@ in AGENTS.md. These additional gates are what actually turn CI red:
 - **Both browser engines.** The `browser` Vitest project runs on Chromium *and*
   WebKit (the production Tauri webview engine) on every PR. Verify a `.test.tsx`
   on both:
-  `REFLECT_TEST_BROWSER=webkit pnpm exec vitest run --project browser <path>`.
+  `KORE_TEST_BROWSER=webkit pnpm exec vitest run --project browser <path>`.
 - The eslint pass runs under `node --max-old-space-size=4096` deliberately — its
   type-aware rules peak just past the default heap on a stock runner, and
   without the flag the job dies with "JavaScript heap out of memory" instead of

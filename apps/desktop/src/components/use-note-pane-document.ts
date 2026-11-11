@@ -52,7 +52,7 @@ export function useNotePaneDocument(
     createIfMissing: lazyCreate,
     // Every editable regular note maintains title-addressed links and
     // title-mirroring backlink displays. The coordinator separately limits
-    // title-derived file moves to Reflect-managed notes.
+    // title-derived file moves to Kore-managed notes.
     trackRenames: !dailyNote && !template,
     // A missing ordinary note opens as a name-me template (old Reflect's
     // new-note flow): the seed — `id:` frontmatter plus an empty H1 the

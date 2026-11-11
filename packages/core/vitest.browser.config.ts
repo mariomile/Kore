@@ -1,7 +1,7 @@
 import { playwright } from '@vitest/browser-playwright'
 import { defineProject } from 'vitest/config'
 
-const browserName = process.env.REFLECT_TEST_BROWSER === 'webkit' ? 'webkit' : 'chromium'
+const browserName = process.env.KORE_TEST_BROWSER === 'webkit' ? 'webkit' : 'chromium'
 
 export default defineProject({
   test: {

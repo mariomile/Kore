@@ -14,7 +14,7 @@ interface WikiLinkHoverPreviewProps {
 }
 
 /**
- * Reflect's passive body for Meowdown's wiki-link hover card. Meowdown owns
+ * Kore's passive body for Meowdown's wiki-link hover card. Meowdown owns
  * the card chrome, sizing, and lifecycle; this renders only the content, from
  * a snapshot read at hover time. The `reflect-hover-preview` class re-scales
  * the editor type ramp to the card's compact size (styles/index.css), and a

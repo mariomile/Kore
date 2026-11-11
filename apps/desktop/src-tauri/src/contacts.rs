@@ -4,7 +4,7 @@
 //! email or name. Which note titles count as person-like, and what contact
 //! details get written into a note, is `@kore/core` policy. The address
 //! book is never mirrored into `.kore/index.sqlite` (the index stays a
-//! pure projection of markdown), and Reflect never writes back to Contacts.
+//! pure projection of markdown), and Kore never writes back to Contacts.
 //!
 //! On platforms without the Contacts framework (Windows, Linux, Android) the
 //! status command answers [`ContactsAuthorization::Unavailable`] so the
@@ -38,7 +38,7 @@ pub enum ContactsAuthorization {
     Unavailable,
 }
 
-/// One matched contact, flattened to the fields Reflect can write into a
+/// One matched contact, flattened to the fields Kore can write into a
 /// note as markdown. Photos are deliberately absent (out of v1 scope).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

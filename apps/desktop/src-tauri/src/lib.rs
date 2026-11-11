@@ -1,4 +1,4 @@
-//! The Reflect desktop shell: native primitives only.
+//! The Kore desktop shell: native primitives only.
 //!
 //! Per the architecture conventions, Rust owns *capabilities* (file IO, SQLite,
 //! watching, recents) and TypeScript (`@kore/core`) owns *policy and

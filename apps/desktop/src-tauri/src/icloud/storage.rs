@@ -2,7 +2,7 @@
 //!
 //! iCloud document sync is the primary way phone + desktop share a graph:
 //! per Plan 21 contract 1 the graph lives at `<container>/Documents/<name>/`
-//! in the app's iCloud Drive container (visible as "Reflect" in the Files
+//! in the app's iCloud Drive container (visible as "Kore" in the Files
 //! app and in Finder's iCloud Drive), and the OS moves the markdown between
 //! devices. Rust owns only the storage primitives — resolving the
 //! container, finding an existing graph inside it, and nudging undownloaded
@@ -23,7 +23,7 @@ use tauri::Manager;
 use crate::error::{AppError, AppResult};
 
 /// The graph directory name used when a nameless root is adopted into the
-/// container. A plain, human name — it reads as `iCloud Drive → Reflect →
+/// container. A plain, human name — it reads as `iCloud Drive → Kore →
 /// Notes` in Files/Finder, and becomes the graph's display name. (The
 /// onboarding default lives frontend-side as `DEFAULT_ICLOUD_GRAPH_NAME`.)
 const DEFAULT_ICLOUD_GRAPH_DIR: &str = "Notes";
@@ -275,7 +275,7 @@ mod platform {
 
     /// The same path **without creating anything** — for pure lookups like
     /// the watch's coverage check. Creating the container's `Documents/` as
-    /// a side effect there would plant an empty, user-visible "Reflect"
+    /// a side effect there would plant an empty, user-visible "Kore"
     /// folder in iCloud Drive just because the user opened a graph kept
     /// elsewhere; only adoption and mobile storage may create it.
     pub fn ubiquity_documents_path() -> Option<PathBuf> {

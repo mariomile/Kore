@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { DEFAULT_SETTINGS, ReflectError, type Settings } from '@kore/core'
+import { DEFAULT_SETTINGS, KoreError, type Settings } from '@kore/core'
 
 const updated = vi.hoisted(() => [] as Partial<Settings>[])
 vi.mock('@/providers/settings-provider', () => ({
@@ -46,7 +46,7 @@ describe('ConnectorsSection', () => {
 
   it('shows why a rejected token was not saved', async () => {
     connectConnector.mockRejectedValueOnce(
-      new ReflectError('auth', 'Readwise rejected the access token'),
+      new KoreError('auth', 'Readwise rejected the access token'),
     )
     const view = await render(<ConnectorsSection />)
 

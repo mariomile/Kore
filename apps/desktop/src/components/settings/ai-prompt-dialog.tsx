@@ -33,7 +33,7 @@ const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 /**
  * The add/edit dialog for a saved AI prompt: a label for the picker, the
  * prompt body (referencing the selection via `{{selectedText}}` — old
- * Reflect's syntax), and whether the accepted result replaces the selection
+ * Kore's syntax), and whether the accepted result replaces the selection
  * or is inserted below it.
  */
 export function AiPromptDialog({ prompt, onSave, onClose }: AiPromptDialogProps): ReactElement {

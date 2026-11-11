@@ -54,7 +54,7 @@ export const DARK_THEME_IDS: readonly ThemePreference[] = [
 /**
  * The app accent color — the one saturated hue used for solid buttons,
  * selection, focus, and today's daily-note heading. `indigo` (the default)
- * keeps the stock Reflect brand ramp; any other id remaps the accent tokens
+ * keeps the stock Kore brand ramp; any other id remaps the accent tokens
  * app-wide via a `data-accent` attribute on the document root. A closed set of
  * named ids — not raw hex — so each id can carry hand-tuned values that read
  * well in both light and dark themes.

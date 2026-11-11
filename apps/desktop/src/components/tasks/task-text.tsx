@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * Render a task's content (its source line minus the checkbox marker) through
- * Reflect's read-only markdown preview. The focused row swaps this for the
+ * Kore's read-only markdown preview. The focused row swaps this for the
  * inline editor; unfocused rows should look like rendered markdown, not raw
  * source text. A leading priority marker (`!`/`!!`) renders as a colored
  * badge instead of literal bangs — the raw marker stays visible only while

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import { captureMetaFetch, captureOEmbedFetch } from '../graph/commands'
 import { scrapePageMeta } from './meta-scrape'
 
@@ -41,8 +41,8 @@ describe('scrapePageMeta', () => {
   })
 
   it('falls back to the HTML scrape when the endpoint refuses the id', async () => {
-    oembedFetchMock.mockRejectedValue(new ReflectError('io', 'answered 400'))
-    metaFetchMock.mockRejectedValue(new ReflectError('parse', 'fallback reached'))
+    oembedFetchMock.mockRejectedValue(new KoreError('io', 'answered 400'))
+    metaFetchMock.mockRejectedValue(new KoreError('parse', 'fallback reached'))
 
     await expect(scrapePageMeta(VIDEO_URL)).rejects.toMatchObject({
       message: 'fallback reached',
@@ -51,7 +51,7 @@ describe('scrapePageMeta', () => {
 
   it('falls back to the HTML scrape when the answer does not parse', async () => {
     oembedFetchMock.mockResolvedValue('not json')
-    metaFetchMock.mockRejectedValue(new ReflectError('parse', 'fallback reached'))
+    metaFetchMock.mockRejectedValue(new KoreError('parse', 'fallback reached'))
 
     await expect(scrapePageMeta(VIDEO_URL)).rejects.toMatchObject({
       message: 'fallback reached',
@@ -60,7 +60,7 @@ describe('scrapePageMeta', () => {
 
   it('falls back to the HTML scrape when the answer has a blank title', async () => {
     oembedFetchMock.mockResolvedValue('{"title":"   "}')
-    metaFetchMock.mockRejectedValue(new ReflectError('parse', 'fallback reached'))
+    metaFetchMock.mockRejectedValue(new KoreError('parse', 'fallback reached'))
 
     await expect(scrapePageMeta(VIDEO_URL)).rejects.toMatchObject({
       message: 'fallback reached',
@@ -68,14 +68,14 @@ describe('scrapePageMeta', () => {
   })
 
   it('propagates a transient oEmbed failure for retry', async () => {
-    oembedFetchMock.mockRejectedValue(new ReflectError('network', 'offline'))
+    oembedFetchMock.mockRejectedValue(new KoreError('network', 'offline'))
 
     await expect(scrapePageMeta(VIDEO_URL)).rejects.toMatchObject({ kind: 'network' })
     expect(metaFetchMock).not.toHaveBeenCalled()
   })
 
   it('sends unclaimed URLs straight to the HTML fetch', async () => {
-    metaFetchMock.mockRejectedValue(new ReflectError('parse', 'fallback reached'))
+    metaFetchMock.mockRejectedValue(new KoreError('parse', 'fallback reached'))
 
     await expect(scrapePageMeta('https://example.com/article')).rejects.toMatchObject({
       message: 'fallback reached',

@@ -3,7 +3,7 @@ import { frontmatterSchema, type Frontmatter } from './model'
 
 /**
  * YAML frontmatter handling (Plan 03). Markdown is the source of truth and files
- * may be edited outside Reflect, so parsing is **tolerant**: broken or non-object
+ * may be edited outside Kore, so parsing is **tolerant**: broken or non-object
  * YAML degrades to "no frontmatter" + a warning, never an unreadable note. The
  * known subset is typed via {@link frontmatterSchema}; unknown keys pass through.
  */

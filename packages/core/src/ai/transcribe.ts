@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { bytesToBase64 } from '../lib/base64'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import type { TranscriptionModels } from '../settings/schema'
 import type { AiModelOption } from './provider-catalog'
 import type { TranscriptionProvider } from './provider-config'
@@ -108,7 +108,7 @@ export interface TranscriptionRequest {
 
 /**
  * Transcribe one recording, returning the trimmed transcript (empty when the
- * provider heard nothing). Throws {@link ReflectError}: `auth` when the key is
+ * provider heard nothing). Throws {@link KoreError}: `auth` when the key is
  * rejected, `network` when the call can't complete, `parse` when the response
  * shape is unrecognizable.
  */
@@ -181,7 +181,7 @@ async function transcribeWithOpenAi(request: TranscriptionRequest): Promise<stri
 
   const parsed = openAiResponseSchema.safeParse(safeJson(body))
   if (!parsed.success) {
-    throw new ReflectError(
+    throw new KoreError(
       'parse',
       `unrecognized openai transcription response: ${body.slice(0, 200)}`,
     )
@@ -258,7 +258,7 @@ async function transcribeWithGemini(request: TranscriptionRequest): Promise<stri
 
   const parsed = geminiResponseSchema.safeParse(safeJson(body))
   if (!parsed.success) {
-    throw new ReflectError('parse', `unrecognized gemini response: ${body.slice(0, 200)}`)
+    throw new KoreError('parse', `unrecognized gemini response: ${body.slice(0, 200)}`)
   }
   const candidate = parsed.data.candidates?.[0]
   const finishReason = candidate?.finishReason

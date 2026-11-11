@@ -7,7 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { ReflectError, type GithubRepoRef, type GraphInfo } from '@kore/core'
+import { KoreError, type GithubRepoRef, type GraphInfo } from '@kore/core'
 import {
   createBackupController,
   type BackupController,
@@ -104,7 +104,7 @@ export function SyncProvider({ graph, children }: SyncProviderProps): ReactEleme
   const value = useMemo<SyncContextValue>(() => {
     const require = (): BackupController => {
       if (controller === null) {
-        throw new ReflectError('io', 'backup is still initializing')
+        throw new KoreError('io', 'backup is still initializing')
       }
       return controller
     }

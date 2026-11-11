@@ -205,10 +205,10 @@ fn root_for(state: &State<GraphState>, generation: Option<u64>) -> AppResult<Pat
 /// Reads and OS opens accept any supported attachment anywhere in the vault:
 /// an adopted vault keeps its images beside its notes. Classification is the
 /// shared `graph-paths` policy, so neither surface can serve a note, a hidden
-/// file, or a traversal path. Writes are deliberately untouched — Reflect
+/// file, or a traversal path. Writes are deliberately untouched — Kore
 /// only ever creates files under `assets/`, `audio-memos/`, or the visible
 /// attachment folder an adopted vault names, and widening reads must not
-/// widen what Reflect will write.
+/// widen what Kore will write.
 fn ensure_readable_attachment_path(path: &str) -> AppResult<()> {
     if kore_graph_paths::is_attachment(path) {
         return Ok(());
@@ -242,7 +242,7 @@ pub async fn graph_create<R: tauri::Runtime>(
 }
 
 /// Open an existing Markdown vault in place, adding only `.kore/` runtime
-/// state. Reflect's authoring directories remain lazy for adopted vaults.
+/// state. Kore's authoring directories remain lazy for adopted vaults.
 ///
 /// Async so the directory check and `initialize_runtime` writes run off the
 /// main thread — on iOS, the thread that delivers touches. `activate` stays

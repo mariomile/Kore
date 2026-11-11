@@ -122,7 +122,7 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
     title: 'Copy note path',
     keywords: ['file', 'absolute', 'filesystem', 'clipboard', 'location'],
     // The OS-path sibling of "Copy deep link": copies the note's absolute
-    // file path (Finder's Copy-as-Pathname chord) for use outside Reflect,
+    // file path (Finder's Copy-as-Pathname chord) for use outside Kore,
     // where a kore:// address cannot resolve. `runCopyNotePath` owns all
     // feedback (the "Note path copied" status line and failure surfaces).
     keybinding: 'Alt-Mod-c',

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Work from `/Users/mariomiletta/.t3/worktrees/Kore/t3code-656cca35`, branch `t3code/side-by-side-notes` (PR #209, not merged). Never bare `git stash`.
-- Test commands: browser `cd apps/desktop && pnpm exec vitest run --config ../../vitest.config.ts --project browser <paths>` (WebKit: prefix `REFLECT_TEST_BROWSER=webkit`); node `... --project node <paths>`; core `pnpm --filter @kore/core test --run <path>`. Typecheck: `pnpm typecheck` at the root (only gate); lint: `pnpm lint`. `console.warn`/`console.error` fail tests.
+- Test commands: browser `cd apps/desktop && pnpm exec vitest run --config ../../vitest.config.ts --project browser <paths>` (WebKit: prefix `KORE_TEST_BROWSER=webkit`); node `... --project node <paths>`; core `pnpm --filter @kore/core test --run <path>`. Typecheck: `pnpm typecheck` at the root (only gate); lint: `pnpm lint`. `console.warn`/`console.error` fail tests.
 - No `any`, no type assertions, named exports, one component per file, `@/` imports, function declarations for named functions, icons from `@/components/icons` only, no em-dashes in any text you write, no migrations or compatibility shims.
 - Keybinding spelling in `app-commands.ts`: `Alt-Mod-<key>` and `Alt-Mod-Shift-<key>` with lowercase key names (`arrowup`, `arrowdown`, `arrowleft`, `arrowright`), matching `pane.focusLeft` = `Alt-Mod-arrowleft`.
 - Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.

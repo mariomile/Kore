@@ -37,7 +37,7 @@ interface BacklinkSnippetProps {
  * `expandCollapsed` renders `+` collapsed items expanded at every depth.
  * Round `+ [ ]` task checkboxes are live — a click writes the
  * toggle through to the source note ({@link useSnippetTaskToggle}), old
- * Reflect's backlink-context behavior — while square GFM boxes stay read-only
+ * Kore's backlink-context behavior — while square GFM boxes stay read-only
  * (the `reflect-backlink-snippet` CSS keeps them inert-looking). The
  * `reflect-editor` class shares the editor's chip styling; the
  * `reflect-backlink-snippet` wrapper keeps it in the panel's compact line box.

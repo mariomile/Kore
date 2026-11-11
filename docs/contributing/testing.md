@@ -48,7 +48,7 @@ pnpm --filter @kore/desktop test:install
 pnpm exec vitest run --project browser
 
 # same, on WebKit
-REFLECT_TEST_BROWSER=webkit pnpm exec vitest run --project browser
+KORE_TEST_BROWSER=webkit pnpm exec vitest run --project browser
 
 # watch a headed browser window while debugging
 DEBUG=1 pnpm exec vitest --project browser path/to/test

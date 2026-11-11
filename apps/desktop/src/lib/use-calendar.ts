@@ -38,7 +38,7 @@ function useCalendarAvailable(): boolean {
 
 /**
  * The Apple calendar permission state (never prompts). The state changes
- * behind Reflect's back in System Settings, so this query opts out of the
+ * behind Kore's back in System Settings, so this query opts out of the
  * app-wide defaults (`staleTime: Infinity`, no focus refetch — right for
  * invalidation-driven index reads, wrong here) and re-checks every time the
  * window regains focus: exactly the "flip it in System Settings and come

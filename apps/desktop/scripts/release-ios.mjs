@@ -1,4 +1,4 @@
-// Build and upload Reflect's iOS app to TestFlight.
+// Build and upload Kore's iOS app to TestFlight.
 //
 // Usage:
 //   pnpm release:ios build --build-number=123

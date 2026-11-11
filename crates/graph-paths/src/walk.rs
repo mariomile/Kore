@@ -27,7 +27,7 @@ pub const KORE_IGNORE_FILE: &str = ".koreignore";
 
 /// The ignore file's pre-rename name, still honored so an existing one keeps
 /// pruning.
-pub const REFLECT_IGNORE_FILE: &str = ".reflectignore";
+pub const LEGACY_IGNORE_FILE: &str = ".reflectignore";
 
 /// Machine-generated trees that are never notes, pruned at any depth. Kept
 /// deliberately narrow: every name here must answer "nobody uses this as a
@@ -73,7 +73,7 @@ pub struct FileCatalog {
 /// as their logical file. Symlinks are never followed and never listed. The
 /// vault's own `.gitignore` files (no repository required, no global or
 /// parent-directory rules) and [`KORE_IGNORE_FILE`] (or legacy
-/// [`REFLECT_IGNORE_FILE`]) files prune subtrees;
+/// [`LEGACY_IGNORE_FILE`]) files prune subtrees;
 /// [`PRUNED_DIR_NAMES`] and `CACHEDIR.TAG`-tagged directories are always
 /// pruned. Notes an Obsidian vault excludes (`userIgnoreFilters`, see
 /// [`ObsidianExclusions`]) are left out; attachments never are. Every refusal
@@ -90,7 +90,7 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
         .git_global(false)
         .require_git(false)
         .follow_links(false)
-        .add_custom_ignore_filename(REFLECT_IGNORE_FILE)
+        .add_custom_ignore_filename(LEGACY_IGNORE_FILE)
         .add_custom_ignore_filename(KORE_IGNORE_FILE);
     let filter_skipped = Arc::clone(&skipped);
     builder.filter_entry(move |entry| {

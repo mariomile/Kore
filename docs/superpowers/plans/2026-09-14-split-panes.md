@@ -1393,7 +1393,7 @@ Run:
 ```bash
 pnpm --filter @kore/desktop typecheck
 pnpm --filter @kore/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx src/routing/router.test.tsx
-REFLECT_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx
+KORE_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx
 ```
 Expected: PASS on both.
 
@@ -1507,7 +1507,7 @@ Expected: typecheck and lint clean. Fix anything reported; do not widen scope.
 ```bash
 pnpm --filter @kore/desktop exec vitest run --project node src/routing src/providers/open-tab.test.ts
 pnpm --filter @kore/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx src/components/note-tabs-strip.test.tsx src/hooks src/lib/deep-links
-REFLECT_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx
+KORE_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx
 pnpm --filter @kore/core test --run src/settings
 ```
 

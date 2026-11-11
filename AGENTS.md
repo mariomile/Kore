@@ -347,7 +347,7 @@ Desktop JS tests are split into Vitest projects (details in
 
 - `*.test.tsx` files run in a real browser via Vitest browser mode +
   Playwright (the `browser` project). Chromium by default;
-  `REFLECT_TEST_BROWSER=webkit` runs WebKit (the engine of the production
+  `KORE_TEST_BROWSER=webkit` runs WebKit (the engine of the production
   Tauri webview); `DEBUG=1` opens a headed window. One-time setup:
   `pnpm --filter @kore/desktop test:install`.
 - `*.test.ts` files are pure logic and run in node (the `node` project). A

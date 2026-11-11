@@ -122,12 +122,12 @@ export async function renameNote(
 // packages/core/src/actions/ai/checkers.ts — the privacy hard-block as a checker
 export function assertCloudAllowed(note: { isPrivate: boolean }): void {
   if (note.isPrivate) {
-    throw new ReflectError({ kind: 'private-blocked', message: 'Note is marked private: true.' })
+    throw new KoreError({ kind: 'private-blocked', message: 'Note is marked private: true.' })
   }
 }
 ```
 
-`ReflectError` is the shared discriminated-union error contract (Plan 01's `AppError`),
+`KoreError` is the shared discriminated-union error contract (Plan 01's `AppError`),
 the analog of picardo's `TRPCError`.
 
 ## 4. Kysely discipline (adopt fully)

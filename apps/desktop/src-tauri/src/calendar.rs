@@ -69,7 +69,7 @@ pub struct CalendarEvent {
 
 /// Command: the current EventKit authorization state for events, one of
 /// "notDetermined" | "restricted" | "denied" | "fullAccess" | "writeOnly".
-/// Only "fullAccess" lets Reflect read events.
+/// Only "fullAccess" lets Kore read events.
 #[tauri::command]
 pub fn calendar_authorization_status() -> AppResult<String> {
     platform::authorization_status()

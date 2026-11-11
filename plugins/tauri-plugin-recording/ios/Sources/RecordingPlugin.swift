@@ -85,7 +85,7 @@ struct StagedPathArgs: Decodable {
   let path: String
 }
 
-/// Reflect's native audio-memo recorder (the mobile leg of the raw-first
+/// Kore's native audio-memo recorder (the mobile leg of the raw-first
 /// pipeline in `packages/core/src/actions/audio-memo.ts`).
 ///
 /// The V1 lesson this preserves: **capture must not depend on the webview.**

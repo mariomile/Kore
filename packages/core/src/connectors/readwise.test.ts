@@ -27,7 +27,7 @@ function book(overrides: Partial<ReadwiseBook> = {}): ReadwiseBook {
 
 describe('renderReadwiseBook', () => {
   it('writes frontmatter, an H1 and live highlights in reading order', () => {
-    expect(renderReadwiseBook(book())).toBe(
+    expect(renderReadwiseBook(book(), readwiseConnector.defaultTags)).toBe(
       [
         '---',
         'readwise_id: "42"',
@@ -55,7 +55,7 @@ describe('renderReadwiseBook', () => {
 
 describe('mergeReadwiseBook', () => {
   it('appends only highlights the note does not carry and keeps user edits', () => {
-    const existing = `${renderReadwiseBook(book())}\nMy own paragraph.\n`
+    const existing = `${renderReadwiseBook(book(), readwiseConnector.defaultTags)}\nMy own paragraph.\n`
     const next = book({
       highlights: [
         { id: 2, text: 'Second' },
@@ -144,8 +144,8 @@ describe('readwiseConnector.fetchNotes', () => {
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z',
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z&pageCursor=7',
     ])
-    expect(notes.map((note) => [note.sourceId, note.fileStem, note.fields])).toEqual([
-      ['42', 'Meditations', { title: 'Meditations', category: 'Books', author: 'Marcus Aurelius' }],
+    expect(notes.map((note) => [note.sourceId, note.fields])).toEqual([
+      ['42', { title: 'Meditations', category: 'Books', author: 'Marcus Aurelius' }],
     ])
   })
 })

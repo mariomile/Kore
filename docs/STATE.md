@@ -3546,6 +3546,12 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-11 — Quality refactor, no behavior change. `ConnectorNote` loses
+  `fileStem`: when the user's pattern renders to nothing, the sync engine
+  names the file with the connector's default pattern (the same names the
+  connectors built by hand), else `<label> <sourceId>`. Tags have one
+  default: the engine resolves them, and the Readwise and Granola renderers
+  no longer default them a second time.
 - 2026-11-11 — Plan 33: A1 ✓ (#343), A2 ✓ (#350), A3 ✓ (#387, who wrote each
   line, off by default). Next: B2 (tags that extend tags).
 - 2026-11-11 — Internal rename merged (#355): `@kore/*` packages, `kore-*`

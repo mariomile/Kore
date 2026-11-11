@@ -86,12 +86,12 @@ in the user's account; Kore operates nothing.
 
 ## Open
 
-- **One key does everything today** (review 2026-11-09): the access key
-  approves agents, drives `/sync/*` and works as a bearer on `/mcp`, and
-  every OAuth grant is the same `owner`, so a write carries no agent name and
-  bypasses Plan 33's activity log and propose-only keys. Proposed: an owner
-  key for sync kept by the app only, per-agent grants named at consent, and
-  the author stored on every write. Waiting on Mario before slice 4.
+- **Access (Mario, 2026-11-10):** the owner key stays in the app and drives
+  `/sync/*` and `/agents`; each agent is approved once at the consent page,
+  under a name and as read-only or read-and-write, and every write stores
+  that name (`author`, null for the owner) so the app's Activity attributes
+  it. Done in slice 2. Propose-only agents (Plan 33 A2) wait for app sync,
+  where proposals live.
 - Open registration is capped at 25 clients a day (counted in D1) so a
   stranger cannot spend the KV free tier (1,000 writes a day) and block
   sign-ins; redirect URIs must be https or loopback.

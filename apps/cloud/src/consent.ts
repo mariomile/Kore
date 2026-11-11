@@ -1,9 +1,11 @@
+import { MAX_AGENT_NAME, cleanAgentName } from './caller'
 import type { Env } from './worker'
 
 /**
  * The one page a person sees in Kore Cloud: when an agent (Claude, ChatGPT)
  * connects, it opens `/authorize`, and the vault's owner approves it by
- * typing the access key Kore showed at setup. There are no accounts: holding
+ * typing the owner key from Kore's Settings, names it and picks what it may
+ * do. There are no accounts: holding
  * the key is being the owner.
  */
 
@@ -63,6 +65,7 @@ h1{font-size:1.4rem;margin:0 0 .5rem}.muted{color:var(--muted);font-size:.9rem}
 input,button{font:inherit;width:100%;padding:.7rem;margin:.35rem 0;border-radius:10px;box-sizing:border-box}
 input{border:1px solid var(--line);background:transparent;color:inherit}
 button{border:0;background:var(--btn);color:var(--btnfg);cursor:pointer}
+label.choice{display:flex;gap:.5rem;align-items:center;margin:.35rem 0}label.choice input{width:auto;margin:0}
 button.secondary{background:transparent;color:var(--fg);border:1px solid var(--line)}
 </style>${inner}</html>`,
     { status, headers: { 'content-type': 'text/html; charset=utf-8' } },
@@ -89,10 +92,14 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
     const details = await oauth.describeConsent(authRequest)
     const consent = await oauth.beginConsent(authRequest)
     const page = consentPage(`<h1>Connect ${escapeHtml(details.clientName)} to Kore</h1>
-<p class="muted">It will be able to search and read your notes and add to them. Private notes are never in Kore Cloud. You will return to ${escapeHtml(details.redirectHost)}.</p>
+<p class="muted">It will be able to search and read your notes, and add to them if you allow it. Every change it makes carries the name below, in Kore's Activity. Private notes are never in Kore Cloud. You will return to ${escapeHtml(details.redirectHost)}.</p>
 <form method="post">
 <input type="hidden" name="handle" value="${escapeHtml(consent.handle)}">
-<input type="password" name="key" placeholder="Kore access key" autocomplete="current-password" required autofocus>
+<label class="muted" for="agent">Name in Activity</label>
+<input id="agent" name="agent" value="${escapeHtml(cleanAgentName(details.clientName, 'Agent'))}" maxlength="${MAX_AGENT_NAME}" required>
+<label class="choice"><input type="radio" name="access" value="write" checked> Read and add to notes</label>
+<label class="choice"><input type="radio" name="access" value="read"> Read only</label>
+<input type="password" name="key" placeholder="Kore owner key" autocomplete="current-password" required autofocus>
 <button name="decision" value="approve">Allow</button>
 <button class="secondary" name="decision" value="deny" formnovalidate>Deny</button>
 </form>`)
@@ -112,19 +119,21 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
     const denied = await oauth.denyConsent(request, handle)
     return new Response(null, { status: 302, headers: denied.headers })
   }
-  if (!(await accessKeyMatches(form.get('key') ?? '', env.KORE_ACCESS_KEY))) {
+  if (!(await accessKeyMatches((form.get('key') ?? ''), env.KORE_OWNER_KEY))) {
     return consentPage(
-      '<h1>That key is not right</h1><p class="muted">Start again from the agent and type the access key Kore showed you.</p>',
+      '<h1>That key is not right</h1><p class="muted">Start again from the agent and type the owner key from Kore\'s Settings.</p>',
       401,
     )
   }
+  const agent = cleanAgentName((form.get('agent') ?? ''), 'Agent')
+  const access = form.get('access') === 'read' ? 'read' : 'write'
   const approved = await oauth.approveConsent(request, handle, { scope: ['mcp', 'offline_access'] })
   const { redirectTo } = await oauth.completeAuthorization({
     request: approved.request,
     userId: 'owner',
-    metadata: {},
+    metadata: { agent, access },
     scope: approved.request.scope,
-    props: { user: 'owner' },
+    props: { agent, access },
   })
   approved.headers.set('location', redirectTo)
   return new Response(null, { status: 302, headers: approved.headers })

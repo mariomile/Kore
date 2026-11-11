@@ -24,7 +24,8 @@ export const SCHEMA: readonly string[] = [
     version INTEGER NOT NULL,
     seq INTEGER NOT NULL,
     updated_at TEXT NOT NULL,
-    deleted INTEGER NOT NULL DEFAULT 0
+    deleted INTEGER NOT NULL DEFAULT 0,
+    author TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS notes_seq ON notes(seq)`,
   `CREATE INDEX IF NOT EXISTS notes_updated ON notes(deleted, updated_at)`,

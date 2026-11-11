@@ -1,3 +1,4 @@
+import { OWNER, type Caller } from './caller'
 import { collisionStem, noteFileStemForTitle, notePath } from '@reflect/core/graph/paths'
 import { isTagName, newNoteSource, patchProperties, replacePassage, appendBlock } from './edits'
 import { MAX_SOURCE_BYTES, byteLength, isNotePath, isPrivateSource } from './note'
@@ -19,7 +20,7 @@ interface Tool {
   description: string
   inputSchema: Record<string, unknown>
   annotations: { readOnlyHint: boolean; destructiveHint: false; idempotentHint: boolean }
-  run: (store: NoteStore, args: Args) => Promise<unknown>
+  run: (store: NoteStore, args: Args, caller: Caller) => Promise<unknown>
 }
 
 /** Vault-root files that hold the user's rules for agents, in priority order. */
@@ -152,12 +153,18 @@ async function rewrite(
   store: NoteStore,
   reference: string,
   edit: (source: string) => string,
+  caller: Caller,
 ): Promise<StoredNote & { written: number }> {
   let note = await resolveNote(store, reference)
   for (let attempt = 1; attempt <= WRITE_ATTEMPTS; attempt += 1) {
     const next = edit(note.source)
     guardSource(next)
-    const outcome = await store.write({ path: note.path, source: next, baseVersion: note.version })
+    const outcome = await store.write({
+      path: note.path,
+      source: next,
+      baseVersion: note.version,
+      author: caller.agent,
+    })
     if (outcome.status === 'ok') {
       return { ...note, source: next, version: outcome.version, written: outcome.version }
     }
@@ -245,10 +252,13 @@ export const TOOLS: readonly Tool[] = [
       required: ['note', 'markdown'],
     },
     annotations: add,
-    run: async (store, args) => {
+    run: async (store, args, caller) => {
       const markdown = required(args, 'markdown')
-      const note = await rewrite(store, required(args, 'note'), (source) =>
-        appendBlock(source, markdown),
+      const note = await rewrite(
+        store,
+        required(args, 'note'),
+        (source) => appendBlock(source, markdown),
+        caller,
       )
       return { path: note.path, appended: true }
     },
@@ -274,23 +284,28 @@ export const TOOLS: readonly Tool[] = [
       required: ['note', 'oldText', 'newText'],
     },
     annotations: add,
-    run: async (store, args) => {
+    run: async (store, args, caller) => {
       const oldText = string(args, 'oldText') ?? ''
       const newText = string(args, 'newText')
       if (newText === undefined) {
         throw new ToolError('`newText` is required')
       }
-      const note = await rewrite(store, required(args, 'note'), (source) => {
-        const edited = replacePassage(source, oldText, newText)
-        if ('refused' in edited) {
-          throw new ToolError(
-            edited.refused === 'missing'
-              ? 'oldText does not occur in the note. Read it again and copy the passage exactly.'
-              : 'oldText occurs more than once. Include more surrounding words so it is unique.',
-          )
-        }
-        return edited.source
-      })
+      const note = await rewrite(
+        store,
+        required(args, 'note'),
+        (source) => {
+          const edited = replacePassage(source, oldText, newText)
+          if ('refused' in edited) {
+            throw new ToolError(
+              edited.refused === 'missing'
+                ? 'oldText does not occur in the note. Read it again and copy the passage exactly.'
+                : 'oldText occurs more than once. Include more surrounding words so it is unique.',
+            )
+          }
+          return edited.source
+        },
+        caller,
+      )
       return { path: note.path, edited: true }
     },
   },
@@ -309,7 +324,7 @@ export const TOOLS: readonly Tool[] = [
       required: ['title'],
     },
     annotations: add,
-    run: async (store, args) => {
+    run: async (store, args, caller) => {
       const title = required(args, 'title').trim()
       const tags = strings(args, 'tags').map((tag) => tag.trim().replace(/^#/, ''))
       const bad = tags.find((tag) => !isTagName(tag))
@@ -333,7 +348,7 @@ export const TOOLS: readonly Tool[] = [
       const stem = noteFileStemForTitle(title)
       for (let ordinal = 1; ordinal <= CREATE_ATTEMPTS; ordinal += 1) {
         const path = notePath(collisionStem(stem, ordinal))
-        const outcome = await store.write({ path, source, baseVersion: 0 })
+        const outcome = await store.write({ path, source, baseVersion: 0, author: caller.agent })
         if (outcome.status === 'ok') {
           return { path, title }
         }
@@ -355,14 +370,17 @@ export const TOOLS: readonly Tool[] = [
       required: ['note'],
     },
     annotations: add,
-    run: async (store, args) => {
+    run: async (store, args, caller) => {
       const set = record(args, 'set')
       const unset = strings(args, 'unset')
       if (Object.keys(set).length === 0 && unset.length === 0) {
         throw new ToolError('Pass `set`, `unset`, or both.')
       }
-      const note = await rewrite(store, required(args, 'note'), (source) =>
-        patchProperties(source, set, unset),
+      const note = await rewrite(
+        store,
+        required(args, 'note'),
+        (source) => patchProperties(source, set, unset),
+        caller,
       )
       return { path: note.path, updated: true }
     },
@@ -381,13 +399,34 @@ export async function vaultContract(store: NoteStore): Promise<StoredNote | null
 }
 
 /** Run one tool; refusals come back as error results, not exceptions. */
-export async function callTool(store: NoteStore, name: string, args: Args): Promise<ToolResult> {
-  const tool = TOOLS.find((candidate) => candidate.name === name)
+/** The tools this caller may see: read-only agents get no write tools. */
+export function toolsFor(caller: Caller): readonly Tool[] {
+  return caller.canWrite ? TOOLS : TOOLS.filter((tool) => tool.annotations.readOnlyHint)
+}
+
+export async function callTool(
+  store: NoteStore,
+  name: string,
+  args: Args,
+  caller: Caller = OWNER,
+): Promise<ToolResult> {
+  const tool = toolsFor(caller).find((candidate) => candidate.name === name)
+  if (tool === undefined && TOOLS.some((candidate) => candidate.name === name)) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'This agent was connected to Kore read-only. Ask the owner to reconnect it with write access.',
+        },
+      ],
+      isError: true,
+    }
+  }
   if (tool === undefined) {
     return { content: [{ type: 'text', text: `Unknown tool ${name}` }], isError: true }
   }
   try {
-    const value = await tool.run(store, args)
+    const value = await tool.run(store, args, caller)
     return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] }
   } catch (error) {
     if (error instanceof ToolError) {

@@ -1,6 +1,7 @@
 import { OAuthProvider, type OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 import { accessKeyMatches, bearer, consentPage, handleAuthorize } from './consent'
 import { installVaultLayout } from './layout'
+import { callerFromProps } from './caller'
 import { handleMcp } from './mcp'
 import { NoteStore } from './store'
 import { handleSync } from './sync'
@@ -9,21 +10,30 @@ import { handleSync } from './sync'
  * Kore Cloud: the user's vault always on, in their own Cloudflare account.
  *
  * - `/mcp` is the agents' endpoint. Claude and ChatGPT connect through OAuth
- *   (dynamic registration or a client metadata document, PKCE), signing in
- *   once with the vault's access key; a CLI or script may instead send the
- *   access key itself as `Authorization: Bearer <key>`.
- * - `/sync/*` is the Kore app's two-way sync, access key only.
+ *   (dynamic registration or a client metadata document, PKCE); the owner
+ *   approves each one once, under a name and with read or write access, and
+ *   every write it makes carries that name. The owner's own tools may send
+ *   the owner key itself as `Authorization: Bearer <key>`.
+ * - `/sync/*` is the Kore app's two-way sync, and `/agents` lists and revokes
+ *   connected agents: owner key only. The owner key stays in the app.
+ * - `/info` is public: the Worker's version, so the app can tell when the
+ *   deployed Worker is older than itself.
  */
 export interface Env {
   DB: D1Database
   OAUTH_KV: KVNamespace
-  /** The vault's access key, a Worker secret setup generates. */
-  KORE_ACCESS_KEY: string
+  /** Published pages (Plan 34, later slice); setup creates it, nothing reads it yet. */
+  PAGES?: KVNamespace
+  /** The vault's owner key, a Worker secret setup generates. */
+  KORE_OWNER_KEY: string
   /** The vault's layout as JSON (see `layout.ts`); absent means Kore's default. */
   KORE_VAULT_LAYOUT?: string
   /** Installed by the OAuth provider on requests it forwards. */
   OAUTH_PROVIDER: OAuthHelpers
 }
+
+/** The Worker's own version, reported on `/info`; bump with any API change. */
+export const WORKER_VERSION = '0.2.0'
 
 let schemaReady: Promise<void> | null = null
 
@@ -95,12 +105,18 @@ function providerFor(origin: string, env: Env): OAuthProvider<Env> {
   if (provider === undefined) {
     provider = new OAuthProvider<Env>({
       apiRoute: '/mcp',
-      apiHandler: { fetch: async (request, env) => await handleMcp(request, await storeFor(env)) },
+      apiHandler: {
+        fetch: async (request, env, ctx) =>
+          await handleMcp(request, await storeFor(env), callerFromProps(ctx.props)),
+      },
       defaultHandler: {
         fetch: async (request, env) => {
           const url = new URL(request.url)
           if (url.pathname === '/authorize') {
             return await handleAuthorize(request, env)
+          }
+          if (url.pathname === '/agents' || url.pathname.startsWith('/agents/')) {
+            return await handleAgents(request, env)
           }
           if (url.pathname === '/') {
             return consentPage(
@@ -125,11 +141,47 @@ function providerFor(origin: string, env: Env): OAuthProvider<Env> {
   return provider
 }
 
+/** `GET /agents` lists connected agents; `DELETE /agents/<grant>` disconnects one. */
+async function handleAgents(request: Request, env: Env): Promise<Response> {
+  if (!(await accessKeyMatches(bearer(request), env.KORE_OWNER_KEY))) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  const url = new URL(request.url)
+  const oauth = env.OAUTH_PROVIDER
+  if (url.pathname === '/agents' && request.method === 'GET') {
+    const { items } = await oauth.listUserGrants('owner')
+    return Response.json({
+      agents: items.map((grant) => {
+        const caller = callerFromProps(grant.metadata)
+        return {
+          id: grant.id,
+          name: caller.agent,
+          access: caller.canWrite ? 'write' : 'read',
+          createdAt: new Date(grant.createdAt * 1000).toISOString(),
+        }
+      }),
+    })
+  }
+  const id = url.pathname.slice('/agents/'.length)
+  if (id !== '' && !id.includes('/') && request.method === 'DELETE') {
+    await oauth.revokeGrant(decodeURIComponent(id), 'owner')
+    return new Response(null, { status: 204 })
+  }
+  return Response.json({ error: 'not found' }, { status: 404 })
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
+    if (url.pathname === '/info' && request.method === 'GET') {
+      return Response.json({
+        name: 'kore-cloud',
+        version: WORKER_VERSION,
+        pages: env.PAGES !== undefined,
+      })
+    }
     if (url.pathname.startsWith('/sync/')) {
-      if (!(await accessKeyMatches(bearer(request), env.KORE_ACCESS_KEY))) {
+      if (!(await accessKeyMatches(bearer(request), env.KORE_OWNER_KEY))) {
         return Response.json({ error: 'unauthorized' }, { status: 401 })
       }
       return await handleSync(request, await storeFor(env))
@@ -138,7 +190,7 @@ export default {
     if (
       url.pathname === '/mcp' &&
       key !== null &&
-      (await accessKeyMatches(key, env.KORE_ACCESS_KEY))
+      (await accessKeyMatches(key, env.KORE_OWNER_KEY))
     ) {
       return await handleMcp(request, await storeFor(env))
     }

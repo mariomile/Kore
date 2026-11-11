@@ -4,7 +4,7 @@ import type { NoteStore, WriteOutcome, WriteRequest } from './store'
 
 /**
  * The Kore app's two-way sync over plain HTTP, authenticated with the vault's
- * access key (never an agent's OAuth token):
+ * owner key (never an agent's OAuth token):
  *
  * - `GET /sync/changes?since=<seq>&limit=<n>`: every write after `since`,
  *   oldest first, deletions as `source: null`. The client stores the last
@@ -154,7 +154,7 @@ async function push(request: Request, store: NoteStore): Promise<Response> {
   })
 }
 
-/** Handle `/sync/*` (already authenticated with the access key). */
+/** Handle `/sync/*` (already authenticated with the owner key). */
 export async function handleSync(request: Request, store: NoteStore): Promise<Response> {
   const url = new URL(request.url)
   if (url.pathname === '/sync/changes' && request.method === 'GET') {

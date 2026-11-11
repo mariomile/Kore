@@ -60,7 +60,14 @@ describe('NoteStore', () => {
     expect(await store.search('gone', 5)).toEqual([])
     const feed = await store.changes(1, 10)
     expect(feed).toEqual([
-      { path: 'n.md', source: null, version: 2, seq: 2, updatedAt: expect.any(String) },
+      {
+        path: 'n.md',
+        source: null,
+        version: 2,
+        seq: 2,
+        updatedAt: expect.any(String),
+        author: null,
+      },
     ])
     expect(await store.write({ path: 'n.md', source: '# Back\n', baseVersion: 0 })).toMatchObject({
       status: 'ok',

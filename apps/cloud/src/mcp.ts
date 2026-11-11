@@ -1,9 +1,10 @@
 import { z } from 'zod'
+import { OWNER, type Caller } from './caller'
 import type { NoteStore } from './store'
 import {
   INSTRUCTIONS,
   INSTRUCTIONS_CONTRACT_MAX_CHARS,
-  TOOLS,
+  toolsFor,
   callTool,
   vaultContract,
 } from './tools'
@@ -61,7 +62,11 @@ function error(id: RpcRequest['id'], code: number, message: string): RpcResponse
   return { jsonrpc: '2.0', id: id ?? null, error: { code, message } }
 }
 
-async function answer(store: NoteStore, request: RpcRequest): Promise<RpcResponse | null> {
+async function answer(
+  store: NoteStore,
+  request: RpcRequest,
+  caller: Caller,
+): Promise<RpcResponse | null> {
   const { id, method, params } = request
   const isNotification = id === undefined
   if (method.startsWith('notifications/')) {
@@ -86,7 +91,7 @@ async function answer(store: NoteStore, request: RpcRequest): Promise<RpcRespons
       break
     case 'tools/list':
       result = {
-        tools: TOOLS.map(({ name, description, inputSchema, annotations }) => ({
+        tools: toolsFor(caller).map(({ name, description, inputSchema, annotations }) => ({
           name,
           description,
           inputSchema,
@@ -99,7 +104,7 @@ async function answer(store: NoteStore, request: RpcRequest): Promise<RpcRespons
       if (!call.success) {
         return error(id, INVALID_REQUEST, 'tools/call needs a name and object arguments')
       }
-      result = await callTool(store, call.data.name, call.data.arguments ?? {})
+      result = await callTool(store, call.data.name, call.data.arguments ?? {}, caller)
       break
     }
     default:
@@ -108,14 +113,18 @@ async function answer(store: NoteStore, request: RpcRequest): Promise<RpcRespons
   return isNotification ? null : { jsonrpc: '2.0', id: id ?? null, result }
 }
 
-async function safeAnswer(store: NoteStore, request: unknown): Promise<RpcResponse | null> {
+async function safeAnswer(
+  store: NoteStore,
+  request: unknown,
+  caller: Caller,
+): Promise<RpcResponse | null> {
   const parsed = rpcRequestSchema.safeParse(request)
   if (!parsed.success) {
     return error(null, INVALID_REQUEST, 'Expected a JSON-RPC request object with a method')
   }
   const rpc = parsed.data
   try {
-    return await answer(store, rpc)
+    return await answer(store, rpc, caller)
   } catch (cause) {
     console.error('mcp: request failed', cause)
     return error(rpc.id, INTERNAL_ERROR, 'Kore Cloud could not complete the request')
@@ -130,7 +139,11 @@ function json(body: unknown, status = 200): Response {
 }
 
 /** Handle one HTTP request to `/mcp` (already authenticated). */
-export async function handleMcp(request: Request, store: NoteStore): Promise<Response> {
+export async function handleMcp(
+  request: Request,
+  store: NoteStore,
+  caller: Caller = OWNER,
+): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(null, { status: 405, headers: { allow: 'POST' } })
   }
@@ -144,11 +157,11 @@ export async function handleMcp(request: Request, store: NoteStore): Promise<Res
     if (body.length > MAX_BATCH) {
       return json(error(null, INVALID_REQUEST, `At most ${MAX_BATCH} calls per batch`), 400)
     }
-    const responses = (await Promise.all(body.map((item) => safeAnswer(store, item)))).filter(
-      (response) => response !== null,
-    )
+    const responses = (
+      await Promise.all(body.map((item) => safeAnswer(store, item, caller)))
+    ).filter((response) => response !== null)
     return responses.length === 0 ? new Response(null, { status: 202 }) : json(responses)
   }
-  const response = await safeAnswer(store, body)
+  const response = await safeAnswer(store, body, caller)
   return response === null ? new Response(null, { status: 202 }) : json(response)
 }

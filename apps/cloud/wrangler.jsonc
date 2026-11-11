@@ -2,12 +2,15 @@
 // install never uses this file: `kore cloud setup` creates the D1 database,
 // the KV namespace and the Worker in the user's own Cloudflare account
 // through the API, with the same bindings. For local dev put
-// KORE_ACCESS_KEY=<any string> in apps/cloud/.dev.vars.
+// KORE_OWNER_KEY=<any string> in apps/cloud/.dev.vars.
 {
   "name": "kore-cloud",
   "main": "src/worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "d1_databases": [{ "binding": "DB", "database_name": "kore", "database_id": "local-dev" }],
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "local-dev" }],
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "local-dev" },
+    { "binding": "PAGES", "id": "local-dev-pages" },
+  ],
 }

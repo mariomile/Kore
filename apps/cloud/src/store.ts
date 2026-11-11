@@ -20,6 +20,8 @@ export interface Change {
   version: number
   seq: number
   updatedAt: string
+  /** The agent that made this write, or null for the owner (the Kore app, the CLI). */
+  author: string | null
 }
 
 /** A search hit: where it is, what it is called, and the matching passage. */
@@ -51,6 +53,8 @@ export interface WriteRequest {
    * store parses the source itself.
    */
   meta?: NoteText | undefined
+  /** The agent making the write; null or absent for the owner. */
+  author?: string | null | undefined
 }
 
 /** The parsed parts of a note the search index needs. */
@@ -69,6 +73,7 @@ interface NoteRow {
   seq: number
   updated_at: string
   deleted: number
+  author: string | null
 }
 
 /**
@@ -87,18 +92,18 @@ function seqAt(offsetParam: string): string {
  * writer saw, or when it is a tombstone and the writer believes it is new.
  * No row comes back on a mismatch, which is how a conflict is detected.
  */
-const UPSERT = `INSERT INTO notes(path, source, title, tags, text, daily, version, seq, updated_at, deleted)
-  VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ${seqAt('?9')}, ?7, 0)
+const UPSERT = `INSERT INTO notes(path, source, title, tags, text, daily, version, seq, updated_at, deleted, author)
+  VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ${seqAt('?9')}, ?7, 0, ?10)
   ON CONFLICT(path) DO UPDATE SET
     source = excluded.source, title = excluded.title, tags = excluded.tags, text = excluded.text,
     daily = excluded.daily, version = notes.version + 1, seq = excluded.seq,
-    updated_at = excluded.updated_at, deleted = 0
+    updated_at = excluded.updated_at, deleted = 0, author = excluded.author
   WHERE notes.version = ?8 OR (notes.deleted = 1 AND ?8 = 0)
   RETURNING version, seq`
 
 /** Tombstone guarded the same way; a note already gone is left alone. */
 const TOMBSTONE = `UPDATE notes SET source = '', title = '', tags = '', text = '', daily = NULL,
-    deleted = 1, version = version + 1, seq = ${seqAt('?4')}, updated_at = ?3
+    deleted = 1, version = version + 1, seq = ${seqAt('?4')}, updated_at = ?3, author = ?5
   WHERE path = ?1 AND version = ?2 AND deleted = 0
   RETURNING version, seq`
 
@@ -120,7 +125,7 @@ function toStored(row: NoteRow): StoredNote {
   }
 }
 
-const ROW_COLUMNS = 'path, source, title, daily, version, seq, updated_at, deleted'
+const ROW_COLUMNS = 'path, source, title, daily, version, seq, updated_at, deleted, author'
 
 /**
  * The vault in D1: reads, full-text search, the change feed, and the only
@@ -241,6 +246,7 @@ export class NoteStore {
       version: row.version,
       seq: row.seq,
       updatedAt: row.updated_at,
+      author: row.author,
     }))
   }
 
@@ -269,7 +275,9 @@ export class NoteStore {
       const offset = requests.length - 1 - index
       if (request.source === null) {
         statements.push(
-          this.#db.prepare(TOMBSTONE).bind(request.path, request.baseVersion, now, offset),
+          this.#db
+            .prepare(TOMBSTONE)
+            .bind(request.path, request.baseVersion, now, offset, request.author ?? null),
         )
       } else {
         const meta = {
@@ -289,6 +297,7 @@ export class NoteStore {
               now,
               request.baseVersion,
               offset,
+              request.author ?? null,
             ),
         )
       }

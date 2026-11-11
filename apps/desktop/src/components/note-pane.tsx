@@ -241,12 +241,13 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
-  // The header's "Add icon" is a pointer affordance for regular notes: daily
-  // notes stack in a stream where every day would grow one, and touch has no
-  // hover to reveal it.
-  const setNoteIcon = useNoteAppearanceEdit(path, generation)
-  const onIconChange =
-    setNoteIcon !== null && !dailyNote && !isTouchEditorSurface() ? setNoteIcon : undefined
+  // The header's "Add icon" and "Add cover" are pointer affordances for
+  // regular notes: daily notes stack in a stream where every day would grow
+  // them, and touch has no hover to reveal them.
+  const appearanceEdit = useNoteAppearanceEdit(path, generation)
+  const editableAppearance =
+    appearanceEdit !== null && !dailyNote && !isTouchEditorSurface() ? appearanceEdit : null
+  const onIconChange = editableAppearance?.setIcon
   // A note with a `#` title draws its icon on that line, left of the text;
   // only a title-less note keeps it above the body.
   const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
@@ -514,6 +515,8 @@ export function NotePaneComponent({
         gutterClassName={gutterClassName}
         showIcon={!titleDrawsIcon}
         onIconChange={onIconChange}
+        onCoverChange={editableAppearance?.setCover}
+        uploadCover={editableAppearance === null ? undefined : saveFile}
       />
 
       <NoteEditor

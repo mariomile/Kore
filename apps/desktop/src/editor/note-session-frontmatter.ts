@@ -71,6 +71,11 @@ export interface FrontmatterPatch {
    */
   icon?: string | null
   /**
+   * The note's cover image (`cover:`: a vault-relative image path or an
+   * https link). `null` deletes the key; omitted leaves whatever is there.
+   */
+  cover?: string | null
+  /**
    * The tags this one builds on (`extends:` on the definition, Plan 33 B2),
    * folded keys. An empty list deletes the key; omitted leaves it alone.
    */
@@ -114,6 +119,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.icon !== undefined) {
     yaml['icon'] = patch.icon === null ? undefined : patch.icon
+  }
+  if (patch.cover !== undefined) {
+    yaml['cover'] = patch.cover === null ? undefined : patch.cover
   }
   if (patch.tagExtends !== undefined) {
     yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]

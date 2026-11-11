@@ -1,6 +1,6 @@
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 import {
   applyNoteRowOverlay,
   getNoteRowOverlay,

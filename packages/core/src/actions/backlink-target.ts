@@ -1,4 +1,4 @@
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import { readNote } from '../graph/commands'
 import { resolveOrCreateNoteWithTitle } from '../graph/create-note'
 import { wikiLinkSafe } from '../markdown/edit'
@@ -21,7 +21,7 @@ export async function ensureBacklinkTarget(title: string, generation: number): P
   }
   const path = outcome.kind === 'ambiguous' ? [...outcome.paths].sort().at(0) : outcome.path
   if (path === undefined) {
-    throw new ReflectError('unknown', `The [[${title}]] backlink target could not be resolved.`)
+    throw new KoreError('unknown', `The [[${title}]] backlink target could not be resolved.`)
   }
   const source = await readNote(path, generation)
   const currentTitle = parseNote({ path, source }).title

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import type { TranscriptionProvider } from './provider-config'
 
 /**
@@ -56,7 +56,7 @@ export async function send(
   options: SendOptions = {},
 ): Promise<Response> {
   if (options.isStale?.() === true) {
-    throw new ReflectError('network', 'the graph session ended mid-transcription')
+    throw new KoreError('network', 'the graph session ended mid-transcription')
   }
   const timeoutMs = options.timeoutMs ?? TRANSCRIPTION_TIMEOUT_MS
   try {
@@ -73,12 +73,9 @@ export async function send(
         (cause.name === 'TimeoutError' || cause.name === 'AbortError')) ||
       (cause instanceof Error && cause.message === 'Request cancelled')
     ) {
-      throw new ReflectError(
-        'network',
-        `transcription request timed out after ${timeoutMs / 1000}s`,
-      )
+      throw new KoreError('network', `transcription request timed out after ${timeoutMs / 1000}s`)
     }
-    throw new ReflectError('network', cause instanceof Error ? cause.message : String(cause))
+    throw new KoreError('network', cause instanceof Error ? cause.message : String(cause))
   }
 }
 
@@ -90,7 +87,7 @@ export async function send(
  * limits, and retired-model 404s stay plain `network` errors; those heal on
  * a later attempt.
  */
-export class TranscriptionRejectedError extends ReflectError {
+export class TranscriptionRejectedError extends KoreError {
   constructor(message: string) {
     super('parse', message)
     this.name = 'TranscriptionRejectedError'
@@ -109,7 +106,7 @@ export function isTranscriptionRejected(value: unknown): value is TranscriptionR
  * With segment-sized uploads this should never fire; it is a guard against
  * budget drift, not a mechanism.
  */
-export class TranscriptionOversizeError extends ReflectError {
+export class TranscriptionOversizeError extends KoreError {
   constructor(message: string) {
     super('parse', message)
     this.name = 'TranscriptionOversizeError'
@@ -159,15 +156,12 @@ export function httpError(
   provider: TranscriptionProvider,
   status: number,
   body: string,
-): ReflectError {
+): KoreError {
   if (status === 401 || status === 403) {
-    return new ReflectError('auth', `${provider} rejected the API key (${status})`)
+    return new KoreError('auth', `${provider} rejected the API key (${status})`)
   }
   if (provider === 'google' && status === 400 && isInvalidKeyBody(body)) {
-    return new ReflectError(
-      'auth',
-      `google rejected the API key (400): ${providerErrorMessage(body)}`,
-    )
+    return new KoreError('auth', `google rejected the API key (400): ${providerErrorMessage(body)}`)
   }
   if (status === 413) {
     return new TranscriptionOversizeError(
@@ -179,7 +173,7 @@ export function httpError(
       `${provider} rejected the recording (${status}): ${providerErrorMessage(body)}`,
     )
   }
-  return new ReflectError(
+  return new KoreError(
     'network',
     `${provider} transcription failed (${status}): ${providerErrorMessage(body)}`,
   )

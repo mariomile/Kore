@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { setBridge, upsertFrontmatter } from '@reflect/core'
+import { setBridge, upsertFrontmatter } from '@kore/core'
 import { onNoteMoved } from '@/lib/note-moves'
 import { getOperations, resetOperations } from '@/lib/operations'
 import { enableNoteContentCache } from './note-content-cache'

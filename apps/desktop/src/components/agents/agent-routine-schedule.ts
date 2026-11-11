@@ -1,4 +1,4 @@
-import type { RoutineSchedule } from '@reflect/core'
+import type { RoutineSchedule } from '@kore/core'
 
 export const WEEKDAY_LABELS = [
   'Sunday',

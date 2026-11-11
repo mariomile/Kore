@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { previewNoteMentions } from '@reflect/core'
+import { previewNoteMentions } from '@kore/core'
 import { AlertTriangle, Lock, Note } from '@/components/icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppCommand } from '@/lib/commands/types'
-import type { WikiSuggestion } from '@reflect/core'
+import type { WikiSuggestion } from '@kore/core'
 import { buildPaletteSections, type PaletteHit } from './entries'
 
 function suggestion(path: string, title: string, date: string | null = null): WikiSuggestion {

@@ -2,14 +2,14 @@
 //!
 //! Per the product principles, credentials never touch markdown, Git, or
 //! `.kore/`. Rust exposes the keychain as an opaque name → value store (a
-//! capability); which names exist and what they hold is `@reflect/core`
+//! capability); which names exist and what they hold is `@kore/core`
 //! policy (see `ai/secrets.ts`).
 
 use keyring::Entry;
 
 use crate::error::{AppError, AppResult};
 
-/// The keychain service every Reflect secret is filed under.
+/// The keychain service every Kore secret is filed under.
 const SERVICE: &str = "lore";
 
 /// The pre-rebrand service name. Reads fall back to it and migrate the entry

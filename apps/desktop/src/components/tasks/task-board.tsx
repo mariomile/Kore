@@ -1,6 +1,6 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
-import type { OpenTask, TaskGroup } from '@reflect/core'
+import type { OpenTask, TaskGroup } from '@kore/core'
 import { CheckCircle, Circle, Plus } from '@/components/icons'
 import { applyBoardMoves, boardDropDate, pendingBoardMoves } from '@/lib/tasks/task-board-moves'
 import {

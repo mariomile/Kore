@@ -12,7 +12,7 @@
 use std::fs;
 use std::path::Path;
 
-use reflect_graph_paths::is_dataless;
+use kore_graph_paths::is_dataless;
 
 use super::io::atomic_write;
 

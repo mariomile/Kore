@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { emitFileChanges, setBridge, writeNote } from '@reflect/core'
+import { emitFileChanges, setBridge, writeNote } from '@kore/core'
 import { createIcloudController, isICloudRoot } from './icloud-controller'
 
 /**

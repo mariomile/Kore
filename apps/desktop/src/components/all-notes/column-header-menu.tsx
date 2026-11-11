@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 import { ArrowDown, ArrowUp, Close, MoreHorizontal, Settings, Trash } from '@/components/icons'
 import {
   DropdownMenu,

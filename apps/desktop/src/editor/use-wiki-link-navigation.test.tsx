@@ -14,8 +14,8 @@ const resolveExistingWikiTarget = vi.hoisted(() => vi.fn())
 const resolveOrCreateNoteWithTitle = vi.hoisted(() => vi.fn())
 const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() => vi.fn(() => ({ fail: operationFail })))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   resolveWikiTarget,
   resolveExistingWikiTarget,
   resolveOrCreateNoteWithTitle,

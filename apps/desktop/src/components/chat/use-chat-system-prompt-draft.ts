@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { normalizeChatSystemPrompt } from '@reflect/core'
+import { normalizeChatSystemPrompt } from '@kore/core'
 
 interface UseChatSystemPromptDraftOptions {
   persistedPrompt: string

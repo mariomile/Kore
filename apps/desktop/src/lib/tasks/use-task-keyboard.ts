@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import type { OpenTask, TaskView } from '@reflect/core'
+import type { OpenTask, TaskView } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { taskKey } from '@/lib/tasks/task-identity'
 import {

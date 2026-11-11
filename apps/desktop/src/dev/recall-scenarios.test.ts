@@ -6,7 +6,7 @@ import {
   recallSearchHits,
   setBridge,
   type IndexedNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { createDevIndexDb, type DevIndexDb } from '@/dev/dev-index-db'
 
 /**

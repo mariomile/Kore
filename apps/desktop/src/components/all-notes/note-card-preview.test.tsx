@@ -7,8 +7,8 @@ import { NoteCardPreview } from './note-card-preview'
 const readNote = vi.hoisted(() => vi.fn())
 const graph = vi.hoisted(() => ({ root: '/g', name: 'g', generation: 7 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote,
 }))
 vi.mock('@/providers/graph-provider', () => ({

@@ -16,7 +16,7 @@ import {
   type CollectionValue,
   type TagProperty,
   type WikiLinkSuggestion,
-} from '@reflect/core'
+} from '@kore/core'
 import { PopoverTrigger } from '@/components/ui/popover'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'

@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser'
-import { extractArticle, htmlToMarkdown } from '@reflect/core/article-text'
+import { extractArticle, htmlToMarkdown } from '@kore/core/article-text'
 import {
   extractPageTextRequestSchema,
   formatParagraphs,

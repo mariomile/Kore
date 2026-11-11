@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { confirmQuit, subscribeQuitRequested } from '@reflect/core'
+import { confirmQuit, subscribeQuitRequested } from '@kore/core'
 import { flushOpenDocuments } from '@/editor/open-documents'
 import { flushBackup } from '@/lib/backup-flush'
 import { isMacosDesktop, isNativeShell } from '@/lib/platform'

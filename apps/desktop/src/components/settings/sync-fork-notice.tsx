@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { DuplicateIdGroup } from '@reflect/core'
+import type { DuplicateIdGroup } from '@kore/core'
 
 interface SyncForkNoticeProps {
   groups: DuplicateIdGroup[]

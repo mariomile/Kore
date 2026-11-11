@@ -1,5 +1,5 @@
 [package]
-name = "reflect-open"
+name = "kore-open"
 # Intentionally frozen: the app version lives in apps/desktop/package.json and
 # tauri.conf.json points at it. The crate is never published, so its version
 # has no consumer — freezing it keeps Cargo.lock out of every release diff.
@@ -14,7 +14,7 @@ edition = "2021"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "reflect_open_lib"
+name = "kore_open_lib"
 # `staticlib` links into the iOS app as `libapp.a`; `rlib` serves the desktop
 # binary. There is no Android target, so no `cdylib`.
 crate-type = ["staticlib", "rlib"]
@@ -44,11 +44,11 @@ serde_json = { workspace = true }
 # `hooks` adds the authorizer API used to lock the read-only `db_query` bridge
 # down to pure reads (deny ATTACH/DETACH/PRAGMA); see `db/query.rs`.
 rusqlite = { workspace = true, features = ["hooks"] }
-reflect-index-schema = { path = "../../../crates/index-schema" }
-reflect-graph-paths = { workspace = true }
-reflect-index-store = { workspace = true }
-reflect-note-policy = { workspace = true }
-reflect-kit-script = { workspace = true }
+kore-index-schema = { path = "../../../crates/index-schema" }
+kore-graph-paths = { workspace = true }
+kore-index-store = { workspace = true }
+kore-note-policy = { workspace = true }
+kore-kit-script = { workspace = true }
 tempfile = { workspace = true }
 sha2 = { workspace = true }
 dirs = "6.0.0"

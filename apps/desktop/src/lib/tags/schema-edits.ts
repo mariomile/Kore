@@ -3,7 +3,7 @@ import {
   withPropertyType,
   type TagProperty,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 
 /**

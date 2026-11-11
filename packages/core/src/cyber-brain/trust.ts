@@ -8,7 +8,7 @@ import type { ResolvedMcpServer } from '../ai/mcp'
  * arrives with the vault, and a synced vault can change it from another
  * machine, so Kore runs it only once the user allowed its exact content.
  * The native side hashes the whole scripts folder and keeps the allowed
- * digest beside the index (`reflect-kit-script`); the same answer gates the
+ * digest beside the index (`kore-kit-script`); the same answer gates the
  * app, `kore brain` and `kore mcp`.
  */
 

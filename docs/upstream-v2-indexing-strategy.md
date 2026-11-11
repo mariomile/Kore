@@ -9,7 +9,7 @@
 
 This document captures the current V2 indexing direction. It focuses on using a local database for fast lookup, search, backlinks, semantic search, and AI context while keeping markdown files as the durable source of truth.
 
-It complements [Reflect V2 Product Vision](./reflect-v2-product-vision.md).
+It complements [Reflect V2 Product Vision](./upstream-v2-product-vision.md).
 
 > **Status (2026-06-12) — shipped as designed**, with these specifics:
 >
@@ -197,7 +197,7 @@ Notes with `private: true` may remain in local lexical and semantic indexes, but
 
 The indexing layer and sync layer should be separate but coordinated.
 
-Sync adapters should write or update markdown files, then notify the indexer. The indexer should parse changed files and update projections. Conflicts should be recorded in the local database using the normalized conflict model described in [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md).
+Sync adapters should write or update markdown files, then notify the indexer. The indexer should parse changed files and update projections. Conflicts should be recorded in the local database using the normalized conflict model described in [Reflect V2 Sync Strategy](./upstream-v2-sync-strategy.md).
 
 The local database should not become the sync source of truth unless a future decision explicitly changes the architecture.
 

@@ -19,7 +19,7 @@ export function ProtectedNoteView({ content }: ProtectedNoteViewProps): ReactEle
         This note contains markdown the editor can’t yet reproduce faithfully (for example task
         lists), so it’s open read-only to protect your file. Edit it in another tool for now.
       </InlineAlert>
-      <pre className="reflect-protected-note whitespace-pre-wrap text-sm leading-relaxed">
+      <pre className="kore-protected-note whitespace-pre-wrap text-sm leading-relaxed">
         {content}
       </pre>
     </div>

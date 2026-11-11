@@ -12,7 +12,7 @@ import {
   CONTEXT_SIDEBAR_WIDTH_RANGE,
   SIDEBAR_WIDTH_RANGE,
   type SidebarWidthRange,
-} from '@reflect/core'
+} from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { useSettings } from '@/providers/settings-provider'
 

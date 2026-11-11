@@ -1,5 +1,5 @@
 import { Fragment, type ReactElement } from 'react'
-import { folderDisplayName } from '@reflect/core'
+import { folderDisplayName } from '@kore/core'
 import { Folder } from '@/components/icons'
 import { useRouter } from '@/routing/router'
 

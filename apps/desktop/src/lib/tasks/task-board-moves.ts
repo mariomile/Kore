@@ -1,4 +1,4 @@
-import type { OpenTask, TaskGroup } from '@reflect/core'
+import type { OpenTask, TaskGroup } from '@kore/core'
 import { taskKey } from './task-identity'
 
 /** The day a board group accepts drops for: an Upcoming day, or Today. */

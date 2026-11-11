@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement } from 'react'
-import { subscribeNoteMoved } from '@reflect/core'
+import { subscribeNoteMoved } from '@kore/core'
 import { App } from '@/app'
 import { QuickCaptureRoot } from '@/components/quick-capture-root'
 import { followHealedMove } from '@/editor/move-note'

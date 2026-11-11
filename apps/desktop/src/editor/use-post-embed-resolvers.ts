@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { resolveXPostEmbed, resolveYouTubeEmbed } from '@reflect/core'
+import { resolveXPostEmbed, resolveYouTubeEmbed } from '@kore/core'
 
 /** The card data resolvers meowdown's post-embed cards call. */
 export interface PostEmbedResolvers {

@@ -5,7 +5,7 @@
 //! file, the watcher fires, and the frontend re-indexes that file. The index
 //! lives under `.kore/`, which is filtered out here, so index writes can't
 //! loop back. The watcher reports eligible markdown notes and supported
-//! attachments anywhere in the vault (the shared `reflect-graph-paths`
+//! attachments anywhere in the vault (the shared `kore-graph-paths`
 //! policy), plus anything under `audio-memos/` (recordings feed the sync
 //! debounce and the transcription reconciler, not the index) and capture
 //! envelopes under `.kore/inbox/`. Non-note consumers filter by path. The
@@ -23,12 +23,12 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use file_id::{get_file_id, FileId};
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, FileIdCache};
-use reflect_graph_paths::{
+use kore_graph_paths::{
     classify, evicted_logical_path, eviction_placeholder, has_pruned_component, is_pruned_dir_name,
     wire_path, GraphPathKind, ObsidianExclusions,
 };
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, FileIdCache};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use walkdir::WalkDir;

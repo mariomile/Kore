@@ -3,7 +3,7 @@
 **v2 status: replaced.** Nothing in V1 mobile's Firestore/Yjs/encrypted-
 SQLite stack survives — v2 mobile runs the same markdown + libgit2 +
 rebuildable-index architecture as desktop, unchanged
-([sync strategy](../../reflect-v2-sync-strategy.md), Plan 19 decisions
+([sync strategy](../../upstream-v2-sync-strategy.md), Plan 19 decisions
 5–6). What ports is the set of **behavioral contracts** V1 proved matter
 on a phone. This doc records those, and enough of the V1 mechanism to
 explain where each contract came from.

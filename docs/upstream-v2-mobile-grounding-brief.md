@@ -9,9 +9,9 @@
 
 **Purpose:** Provide a broad, product-oriented overview of what the Reflect V2 mobile app should be, so a mobile-implementation agent understands the product model, the inherited V2 constraints, the lessons from V1 mobile, and the shape of the later waves — before and while working through the implementation plan.
 
-**Decision status:** This brief is grounding material, not the source of truth. The implementation plan is [Plan 19 (mobile companion)](./plans/19-mobile.md) and the shell decision is [TDR 0003 (Tauri 2 mobile)](./decisions/0003-mobile-shell.md) — when this brief conflicts with either, they win, along with [Reflect V2 Product Vision](./reflect-v2-product-vision.md), [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md), [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md), and — for storage and sync — [Plan 21 (iCloud Drive sync)](./plans/21-icloud-drive-sync.md) with its user contract in [iCloud Drive Sync](./icloud-sync.md). First-release scope calls recorded in section 3 were confirmed with the product owner on 2026-06-12; the brief was last trued up on 2026-07-05, after Plan 21 shipped iCloud Drive as the primary sync backend.
+**Decision status:** This brief is grounding material, not the source of truth. The implementation plan is [Plan 19 (mobile companion)](./plans/19-mobile.md) and the shell decision is [TDR 0003 (Tauri 2 mobile)](./decisions/0003-mobile-shell.md) — when this brief conflicts with either, they win, along with [Reflect V2 Product Vision](./upstream-v2-product-vision.md), [Reflect V2 Indexing Strategy](./upstream-v2-indexing-strategy.md), [Reflect V2 Sync Strategy](./upstream-v2-sync-strategy.md), and — for storage and sync — [Plan 21 (iCloud Drive sync)](./plans/21-icloud-drive-sync.md) with its user contract in [iCloud Drive Sync](./icloud-sync.md). First-release scope calls recorded in section 3 were confirmed with the product owner on 2026-06-12; the brief was last trued up on 2026-07-05, after Plan 21 shipped iCloud Drive as the primary sync backend.
 
-**Primary sources:** [Reflect V1 Mobile Overview](./reflect-v1-mobile-overview.md) (from exploration of the `reflect-mobile` repo), Plan 19 and TDR 0003, and the V2 decision docs above.
+**Primary sources:** [Reflect V1 Mobile Overview](./upstream-v1-mobile-overview.md) (from exploration of the `reflect-mobile` repo), Plan 19 and TDR 0003, and the V2 decision docs above.
 
 ---
 
@@ -19,7 +19,7 @@
 
 Reflect V2 mobile is **the same app as desktop, on a phone** — not a second product.
 
-- **One codebase, three platforms.** V2 mobile is a build target of the existing Tauri 2 app (`apps/desktop`): the same Rust core (git2 sync, rusqlite/FTS5 index, keychain), the same `@reflect/core` business logic, the same React frontend behind a lazy platform gate with a mobile surface tree (`src/mobile/`). This is the single largest improvement over V1, where mobile was a separate Capacitor repo kept alive by rsyncing code from the web app. TDR 0003 records why (the Rust core is the deciding asset) and names Capacitor as the documented fallback with explicit triggers.
+- **One codebase, three platforms.** V2 mobile is a build target of the existing Tauri 2 app (`apps/desktop`): the same Rust core (git2 sync, rusqlite/FTS5 index, keychain), the same `@kore/core` business logic, the same React frontend behind a lazy platform gate with a mobile surface tree (`src/mobile/`). This is the single largest improvement over V1, where mobile was a separate Capacitor repo kept alive by rsyncing code from the web app. TDR 0003 records why (the Rust core is the deciding asset) and names Capacitor as the documented fallback with explicit triggers.
 - **Same graph, same files.** The phone holds a real markdown workspace (`daily/`, `notes/`, `assets/`, ignored `.reflect/`) — visible in the iOS Files app, so portability holds on mobile. The primary home is the app's iCloud Drive container (**iCloud Drive → Reflect → <graph>** in Files/Finder, Plan 21), where the OS itself moves the markdown between iPhone and Mac; the app-sandbox `Documents/` root (device-only, optionally GitHub-synced through the same device-flow + libgit2 layer) is the self-managed alternative. There is no server, no account, no encryption password: onboarding is iCloud-first — open a graph already in the container, or store fresh notes there — with keep-on-device and Connect-GitHub behind it.
 - **Capture-and-edit product scope, deliberately narrow.** Open to today's daily note, swipe through days, **edit notes in place with the real editor**, quick-capture into today, create notes, lexical search, minimal settings. Editing is a hard requirement — Plan 19 is explicit that a read-only browser is not a shippable v1.
 - **The V1 reliability lesson carries over, re-solved locally.** V1 mobile's defining design was that critical capture paths survived webview death — but it achieved that by POSTing to Reflect servers, which V2 forbids. V2's equivalents are local: flush-on-background with a local commit, raw-first artifacts, and (in later waves) an App Group capture inbox instead of a server.
@@ -121,7 +121,7 @@ The heart of the mobile product, and where mobile differs most from desktop in d
 
 ## 7. Lessons Carried from V1 Mobile
 
-From the [V1 Mobile Overview](./reflect-v1-mobile-overview.md), translated into V2 guidance:
+From the [V1 Mobile Overview](./upstream-v1-mobile-overview.md), translated into V2 guidance:
 
 ### 7.1 Preserved (and already reflected in Plan 19)
 

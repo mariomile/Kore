@@ -14,7 +14,7 @@ import {
   parseQuickAdd,
   QUICK_ADD_MAX_ADDED,
   windowBootstrap,
-} from '@reflect/core'
+} from '@kore/core'
 import { QuickAddChips } from '@/components/tasks/task-quick-add'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -1,7 +1,7 @@
-# @reflect/desktop
+# @kore/desktop
 
 The Tauri 2 app — a React + TypeScript frontend (`src/`, bundled by Vite)
-embedded in a Rust native shell (`src-tauri/`, crate `reflect-open`). The
+embedded in a Rust native shell (`src-tauri/`, crate `kore-open`). The
 same package is also the iOS target; the mobile tree lives under
 `src/mobile/`.
 
@@ -14,7 +14,7 @@ Common entry points (run from the repo root):
 pnpm tauri dev        # full app with hot reload (stages the CLI sidecar)
 pnpm tauri:dev        # the Dev flavor — coexists with an installed build
 pnpm dev              # Vite only on http://localhost:1420
-pnpm --filter @reflect/desktop e2e   # Chromium smoke, no Tauri shell
+pnpm --filter @kore/desktop e2e   # Chromium smoke, no Tauri shell
 ```
 
 Start with [AGENTS.md](../../AGENTS.md) for layout, conventions, and the

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
 import { FolderMove, Hash, Layers, Trash } from '@/components/icons'
-import { errorMessage, relationValue, type NoteListEntry, type TagType } from '@reflect/core'
+import { errorMessage, relationValue, type NoteListEntry, type TagType } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

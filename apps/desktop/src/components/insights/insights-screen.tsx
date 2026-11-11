@@ -1,7 +1,7 @@
 import { useMemo, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { addDays, format, subDays } from 'date-fns'
-import { loadGraphInsights, weekStartDow, type GraphInsights } from '@reflect/core'
+import { loadGraphInsights, weekStartDow, type GraphInsights } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'

@@ -1,4 +1,4 @@
-import { mobileStorage, type MobileStorageInfo } from '@reflect/core'
+import { mobileStorage, type MobileStorageInfo } from '@kore/core'
 
 /**
  * Boot-time head start for the mobile storage resolve (Plan 21). Resolving

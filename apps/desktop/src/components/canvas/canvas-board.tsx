@@ -16,7 +16,7 @@ import {
   layoutCanvasEdges,
   type CanvasDocument,
   type CanvasNode,
-} from '@reflect/core'
+} from '@kore/core'
 import { Locate, Plus } from '@/components/icons'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'

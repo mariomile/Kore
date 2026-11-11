@@ -1,6 +1,6 @@
-import { dailyPath, parseSearchQuery } from '@reflect/core'
+import { dailyPath, parseSearchQuery } from '@kore/core'
 import type { AppCommand } from '@/lib/commands/types'
-import type { FilteredSearchHit, WikiSuggestion } from '@reflect/core'
+import type { FilteredSearchHit, WikiSuggestion } from '@kore/core'
 
 /**
  * What the palette actually reads off a search hit — a subset of

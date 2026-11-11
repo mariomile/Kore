@@ -52,10 +52,10 @@ filenames — the title-rename machinery rides along with editing).
 - One graph per device, rooted in the app's sandboxed `Documents/` directory,
   visible in the iOS Files app (portability holds on mobile).
 - Onboarding: **Start fresh** (create an empty graph) or **Connect GitHub**
-  (device flow + clone), reusing `@reflect/core`'s sync/github module.
+  (device flow + clone), reusing `@kore/core`'s sync/github module.
 - Mobile UI surfaces, **per the 2026-06-12 product call: re-implement V1
   mobile's feature-set and design** (see the
-  [V1 mobile overview](../reflect-v1-mobile-overview.md)): a **Daily / All**
+  [V1 mobile overview](../upstream-v1-mobile-overview.md)): a **Daily / All**
   tab shell; the Daily tab as V1's signature surface (month header + week
   calendar strip + a touch-swipeable day carousel — Embla Carousel, recorded
   in [libraries](libraries.md)); editable note view; the All tab as a
@@ -164,7 +164,7 @@ root.render(platform() === 'ios' || platform() === 'android' ? <MobileApp /> : <
 - New subtree `apps/desktop/src/mobile/` (kebab-case, one component per file):
   `mobile-app.tsx`, `screens/` (onboarding, today, note, notes-list, search,
   capture, settings), `components/` (tab bar, sync status pill, day pager).
-- **Reuses:** providers (graph, theme, query client), `@reflect/core` getters/
+- **Reuses:** providers (graph, theme, query client), `@kore/core` getters/
   setters, the design system tokens, the typed `Route` union (subset: `today`,
   `daily`, `note`, `search`) over a mobile stack/tab navigation — no URL
   router dependency, same as desktop — **and the entire editor/document stack**
@@ -400,7 +400,7 @@ Steps 1 and 2 are the existential gates; nothing else starts until both pass.
 
 - `pnpm tauri ios dev` runs the mobile app in the simulator from a clean
   checkout (see [the simulator runbook](../contributing/mobile-simulator.md));
-  `pnpm tauri dev` (desktop) is unaffected; `cargo test -p reflect-open` and
+  `pnpm tauri dev` (desktop) is unaffected; `cargo test -p kore-open` and
   the TS suites stay green.
 - Fresh install → Start fresh → today's note exists on disk under
   `Documents/`, visible in the Files app; capture appends markdown that

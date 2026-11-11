@@ -3,7 +3,7 @@ import {
   errorMessage,
   resolveNoteTarget,
   textCaptureEnvelopeSchema,
-} from '@reflect/core'
+} from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { routeForPath, type Route } from '@/routing/route'
 import { parseDeepLink } from '@/lib/deep-links/parse'

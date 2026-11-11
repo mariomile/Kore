@@ -1,4 +1,4 @@
-import { upsertFrontmatter, writeNote } from '@reflect/core'
+import { upsertFrontmatter, writeNote } from '@kore/core'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from '@/editor/note-session'
 import { openSession } from '@/editor/open-documents'
 import { readNoteOrEmpty } from '@/lib/note-read'

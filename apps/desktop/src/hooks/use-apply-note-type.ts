@@ -10,7 +10,7 @@ import {
   removeNoteTag,
   splitFrontmatter,
   upsertFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { commitNoteBodyTransform, readNoteSource } from '@/lib/note-frontmatter'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { useGraph } from '@/providers/graph-provider'

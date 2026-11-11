@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { embedStatus, subscribeEmbedStatus, type EmbedStatus } from '@reflect/core'
+import { embedStatus, subscribeEmbedStatus, type EmbedStatus } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /**

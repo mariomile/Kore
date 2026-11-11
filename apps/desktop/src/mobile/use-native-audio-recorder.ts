@@ -11,7 +11,7 @@ import {
   subscribeRecordingLevel,
   subscribeRecordingStopped,
   type RecordingStoppedEvent,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * The mobile counterpart of `use-audio-recorder.ts`: the same

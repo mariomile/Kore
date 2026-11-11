@@ -1,4 +1,4 @@
-import { errorMessage, openNoteWindow } from '@reflect/core'
+import { errorMessage, openNoteWindow } from '@kore/core'
 import { deepLinkForRoute } from '@/lib/deep-links/format'
 import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'

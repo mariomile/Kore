@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@reflect/core', () => ({
+vi.mock('@kore/core', () => ({
   openIndex: vi.fn(),
   syncIndex: vi.fn(),
   subscribeIndexChanges: vi.fn(),
@@ -8,7 +8,7 @@ vi.mock('@reflect/core', () => ({
   watchStop: vi.fn(),
 }))
 
-import { openIndex, syncIndex, subscribeIndexChanges, watchStart, watchStop } from '@reflect/core'
+import { openIndex, syncIndex, subscribeIndexChanges, watchStart, watchStop } from '@kore/core'
 import { createGraphIndex, type GraphIndexProgress } from './graph-index'
 
 const mockOpen = vi.mocked(openIndex)

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, CollectionValue, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagType } from '@kore/core'
 import {
   applyCollectionFilters,
   CollectionFilterMenu,

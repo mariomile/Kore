@@ -35,7 +35,7 @@
  * A malformed token (impossible date, empty value) stays search text — typing
  * never makes results vanish behind a filter the user didn't form yet.
  */
-import { isCalendarDate } from '@reflect/utils'
+import { isCalendarDate } from '@kore/utils'
 import { foldTag } from '../markdown'
 import { isTokenizable } from './search-query'
 

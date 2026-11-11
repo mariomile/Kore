@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { scanVaultCompat, type GraphInfo, type VaultCompatReport } from '@reflect/core'
+import { scanVaultCompat, type GraphInfo, type VaultCompatReport } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /** The query key of the open vault's compatibility report (see {@link useVaultCompatReport}). */

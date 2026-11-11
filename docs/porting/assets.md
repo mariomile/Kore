@@ -16,7 +16,7 @@ over **chunked raw-binary IPC** rather than arriving as OS paths — see
 Uploading was a genuine *upload*, with all the machinery that implies:
 
 - **Entry points.** Drag-and-drop and clipboard paste in the editor
-  (`image-extension.ts`, `copy-paste-extension.ts` in reflect-editor),
+  (`image-extension.ts`, `copy-paste-extension.ts` in kore-editor),
   plus a programmatic `uploadImages` command.
 - **Two node types.** Images became resizable inline nodes (spinner while
   uploading, `settled` flag, retry-on-error). Every other file type — the

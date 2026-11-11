@@ -1,6 +1,6 @@
 import { useCallback, useMemo, type ReactNode } from 'react'
 import type { WikilinkHoverHit } from '@meowdown/core'
-import { resolveExistingWikiTarget, splitFrontmatter, type DateFormat } from '@reflect/core'
+import { resolveExistingWikiTarget, splitFrontmatter, type DateFormat } from '@kore/core'
 import { WikiLinkHoverPreview } from '@/components/wiki-link-hover-preview'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'

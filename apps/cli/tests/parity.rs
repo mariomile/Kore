@@ -11,11 +11,11 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use reflect_cli::hash::hash_content;
-use reflect_cli::keys::fold_key;
-use reflect_cli::note_file::{parse_note_meta, walk_notes};
-use reflect_cli::search::build_fts_match;
-use reflect_note_policy::{parse_frontmatter, split_frontmatter};
+use kore_cli::hash::hash_content;
+use kore_cli::keys::fold_key;
+use kore_cli::note_file::{parse_note_meta, walk_notes};
+use kore_cli::search::build_fts_match;
+use kore_note_policy::{parse_frontmatter, split_frontmatter};
 
 fn corpus_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/parity")
@@ -99,8 +99,8 @@ fn note_derivations_match_the_ts_pipeline() {
 }
 
 /// `note_derivations_match_the_ts_pipeline` above already covers `private`
-/// through `parse_note_meta`, which calls `reflect_note_policy` internally.
-/// This test calls `reflect_note_policy::parse_frontmatter` directly instead
+/// through `parse_note_meta`, which calls `kore_note_policy` internally.
+/// This test calls `kore_note_policy::parse_frontmatter` directly instead
 /// — the same entry point `apps/desktop/src-tauri/src/git/commit_message.rs`
 /// calls for its own privacy check on a staged blob. Pinning it here against
 /// the same corpus means the desktop backup path shares this test with the
@@ -115,7 +115,7 @@ fn frontmatter_private_matches_the_ts_pipeline_via_the_shared_crate_directly() {
         assert_eq!(
             private,
             want["private"].as_bool().unwrap(),
-            "{rel_path}: private (reflect_note_policy, called directly)"
+            "{rel_path}: private (kore_note_policy, called directly)"
         );
     }
 }

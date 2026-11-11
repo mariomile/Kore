@@ -1,4 +1,4 @@
-import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@reflect/core'
+import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@kore/core'
 import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'

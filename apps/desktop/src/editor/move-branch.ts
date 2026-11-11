@@ -1,7 +1,7 @@
 import { docToMarkdown } from '@meowdown/core'
 import type { EditorState } from '@prosekit/pm/state'
 import type { EditorView } from '@prosekit/pm/view'
-import { errorMessage, getBacklinks, planBranchMove, type SourceBacklink } from '@reflect/core'
+import { errorMessage, getBacklinks, planBranchMove, type SourceBacklink } from '@kore/core'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'
 import { clearZoom } from './block-zoom-plugin'

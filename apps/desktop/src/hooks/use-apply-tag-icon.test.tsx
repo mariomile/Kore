@@ -4,7 +4,7 @@ import {
   PRIVATE_NOTE_EDIT_ERROR,
   TAG_DEFINITION_UNMARKED_ERROR,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 
 const definition = vi.hoisted(() => ({
   path: 'tags/company.md',

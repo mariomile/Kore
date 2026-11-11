@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { mouse } from 'vitest-browser-commands/playwright'
-import type { SavedCollectionView } from '@reflect/core'
+import type { SavedCollectionView } from '@kore/core'
 import { CollectionViewTabs } from './collection-view-tabs'
 
 const TABLE: SavedCollectionView = {

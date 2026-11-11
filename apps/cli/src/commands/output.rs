@@ -1,6 +1,6 @@
 //! The `--json` output contracts (documented in `docs/cli.md`, locked by the
 //! integration tests) plus the human print helpers. Field names are camelCase
-//! to match the rest of Reflect's external JSON shapes.
+//! to match the rest of Kore's external JSON shapes.
 
 use serde::Serialize;
 

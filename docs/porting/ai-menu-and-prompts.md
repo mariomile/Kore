@@ -67,7 +67,7 @@ The work splits cleanly along the existing seams:
     preview decoration over the selection, with accept (apply as a single
     ProseMirror transaction) / discard (no-op) — this is also the natural
     home for future copilot-driven edits.
-- **`@reflect/core`** owns policy: the prompt library schema (zod, in
+- **`@kore/core`** owns policy: the prompt library schema (zod, in
   `settings/schema.ts` per
   [adding-a-setting](../contributing/adding-a-setting.md)), placeholder
   substitution, and the provider call — reusing the existing AI layer

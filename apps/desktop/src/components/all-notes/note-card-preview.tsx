@@ -5,7 +5,7 @@ import {
   splitFrontmatter,
   stripLeadingHeading,
   stripLeadingTagLine,
-} from '@reflect/core'
+} from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
@@ -113,8 +113,8 @@ export function NoteCardPreview({
       className={cn(
         // Fill the grid's definite preview slot so the hover-card mask
         // fades at the visible edge instead of shearing a line in half.
-        'reflect-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
-        overflowing && 'reflect-hover-preview-overflowing',
+        'kore-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        overflowing && 'kore-hover-preview-overflowing',
       )}
     >
       <div>

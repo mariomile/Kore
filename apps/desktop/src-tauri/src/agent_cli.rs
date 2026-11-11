@@ -3,7 +3,7 @@
 //! Runs a locally installed coding-agent CLI — Claude Code (`claude`),
 //! Codex (`codex`), or Cursor (`cursor-agent`) — in headless mode so AI
 //! chat can bill the user's subscription instead of a BYOK API key. The
-//! frontend engines (`@reflect/core`'s `ai/claude-cli`, `ai/codex-cli`, and
+//! frontend engines (`@kore/core`'s `ai/claude-cli`, `ai/codex-cli`, and
 //! `ai/cursor-cli`) own the protocol: they build each binary's arguments
 //! (including the sandbox/permission lockdown that keeps `private: true`
 //! notes unreadable) and parse the emitted JSON lines. This module only

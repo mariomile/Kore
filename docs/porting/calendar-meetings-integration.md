@@ -80,7 +80,7 @@ is added to [docs/privacy.md](../privacy.md)'s inventory.
   `objc2-event-kit` crates (the codebase is pure Rust today and stays that
   way — no Swift). Commands: request access, list calendars, list events
   for a date range.
-- **TypeScript owns policy.** `@reflect/core` gets bridge methods (via
+- **TypeScript owns policy.** `@kore/core` gets bridge methods (via
   `packages/core/src/ipc/bridge.ts`) and the note-writing action for "add
   meeting"; the daily-note panel consumes them. Events are **fetched live,
   not indexed** — EventKit is fast and local, the SQLite index stays a

@@ -7,7 +7,7 @@ import {
   listProposals,
   rejectProposal,
   type Proposal,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatTimeOfDay } from '@/lib/dates'

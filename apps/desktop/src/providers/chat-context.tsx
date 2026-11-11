@@ -5,7 +5,7 @@ import type {
   ChatModelSelection,
   ChatTurn,
   NoteEditDecision,
-} from '@reflect/core'
+} from '@kore/core'
 import type { ChatAttachment } from '@/lib/chat-attachments'
 
 /**

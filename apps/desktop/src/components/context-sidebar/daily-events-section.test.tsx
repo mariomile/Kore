@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import { DailyEventsSection } from './daily-events-section'
@@ -16,7 +16,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/graph', generation: 3 } }),
 }))
 
-// The action itself is covered in @reflect/core; here it is the seam the
+// The action itself is covered in @kore/core; here it is the seam the
 // dialog submits through. The attendee combobox's suggestion sources are
 // stubbed empty — the combobox itself is covered by its own test file.
 const addMeetingToDaily = vi.hoisted(() =>
@@ -25,12 +25,12 @@ const addMeetingToDaily = vi.hoisted(() =>
 const suggestWikiTargets = vi.hoisted(() => vi.fn(async () => []))
 const contactLinkSuggestions = vi.hoisted(() => vi.fn(async () => []))
 // Identity by default: the email → note-title canonicalization is covered in
-// @reflect/core; here it is the seam the chip-upgrade effect renders through.
+// @kore/core; here it is the seam the chip-upgrade effect renders through.
 const resolveMeetingAttendees = vi.hoisted(() =>
   vi.fn(async (attendees: readonly unknown[]) => [...attendees]),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   addMeetingToDaily,
   suggestWikiTargets,
   contactLinkSuggestions,

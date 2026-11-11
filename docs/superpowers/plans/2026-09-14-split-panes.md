@@ -6,14 +6,14 @@
 
 **Architecture:** The router's history state moves out of React into a plain external store (`createRouterStore`) so one `RouterProvider` can be mounted per pane and again, bound to the *active* pane's store, around the workspace chrome. A new `PanesProvider` owns the pane list (persisted per graph in settings as per-pane tab lists) and the active pane. `WorkspaceFrame` renders a row of `WorkspacePane`s.
 
-**Tech Stack:** React 19 (`use`, `useSyncExternalStore`), zod settings schema in `@reflect/core`, Vitest browser project (Chromium + WebKit), Tailwind.
+**Tech Stack:** React 19 (`use`, `useSyncExternalStore`), zod settings schema in `@kore/core`, Vitest browser project (Chromium + WebKit), Tailwind.
 
 **Spec:** `docs/superpowers/specs/2026-09-14-split-panes-design.md`
 
 ## Global Constraints
 
 - Run every command from the repo root `/Users/mariomiletta/.t3/worktrees/Kore/t3code-656cca35`. Do not `cd` into the main checkout.
-- `.test.tsx` runs in the browser project: `pnpm --filter @reflect/desktop exec vitest run --project browser <path>`; `.test.ts` runs in node: `pnpm --filter @reflect/desktop exec vitest run --project node <path>`. Core tests: `pnpm --filter @reflect/core test --run <path>`.
+- `.test.tsx` runs in the browser project: `pnpm --filter @kore/desktop exec vitest run --project browser <path>`; `.test.ts` runs in node: `pnpm --filter @kore/desktop exec vitest run --project node <path>`. Core tests: `pnpm --filter @kore/core test --run <path>`.
 - `console.warn` / `console.error` fail tests.
 - No `any`, no type assertions, named exports, kebab-case files, `@/` imports, function declarations for named functions.
 - Icons only from `@/components/icons`. UI primitives from `apps/desktop/src/components/ui/`.
@@ -98,7 +98,7 @@ describe('createRouterStore', () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project node src/routing/router-store.test.ts`
+Run: `pnpm --filter @kore/desktop exec vitest run --project node src/routing/router-store.test.ts`
 Expected: FAIL, module `./router-store` not found.
 
 - [ ] **Step 3: Write the store**
@@ -398,12 +398,12 @@ Keep the doc comments from the old `RouterValue` fields (copy them over). Delete
 
 - [ ] **Step 5: Run both router tests**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project node src/routing/router-store.test.ts && pnpm --filter @reflect/desktop exec vitest run --project browser src/routing/router.test.tsx src/providers/focused-daily-provider.test.tsx src/providers/deep-link-provider.test.tsx`
+Run: `pnpm --filter @kore/desktop exec vitest run --project node src/routing/router-store.test.ts && pnpm --filter @kore/desktop exec vitest run --project browser src/routing/router.test.tsx src/providers/focused-daily-provider.test.tsx src/providers/deep-link-provider.test.tsx`
 Expected: all PASS with no changes to `router.test.tsx`.
 
 - [ ] **Step 6: Typecheck and commit**
 
-Run: `pnpm --filter @reflect/desktop typecheck`
+Run: `pnpm --filter @kore/desktop typecheck`
 
 ```bash
 git add apps/desktop/src/routing/router-store.ts apps/desktop/src/routing/router-store.test.ts apps/desktop/src/routing/router.tsx
@@ -485,7 +485,7 @@ Add the imports (`useState`, `useSyncExternalStore`, `createValueStore`, `ValueS
 
 - [ ] **Step 3: Run the existing test**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser src/providers/focused-daily-provider.test.tsx`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser src/providers/focused-daily-provider.test.tsx`
 Expected: PASS.
 
 - [ ] **Step 4: Commit**
@@ -537,7 +537,7 @@ Use whichever parse helper the file already uses for the other `openTabs` tests 
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @reflect/core test --run src/settings/schema.test.ts`
+Run: `pnpm --filter @kore/core test --run src/settings/schema.test.ts`
 Expected: FAIL on the changed expectations.
 
 - [ ] **Step 3: Change the schema**
@@ -578,7 +578,7 @@ Export `OpenPane` from wherever `OpenTab` is re-exported (check `packages/core/s
 
 - [ ] **Step 4: Run core tests and typecheck**
 
-Run: `pnpm --filter @reflect/core test --run src/settings/schema.test.ts && pnpm --filter @reflect/core typecheck`
+Run: `pnpm --filter @kore/core test --run src/settings/schema.test.ts && pnpm --filter @kore/core typecheck`
 Expected: PASS. The desktop typecheck will now fail in `open-tabs-provider.tsx`; Task 5 fixes it.
 
 - [ ] **Step 5: Commit**
@@ -697,7 +697,7 @@ Before writing, open `apps/desktop/src/providers/sidebar-width.test.tsx` and `ap
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser src/providers/panes-provider.test.tsx`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser src/providers/panes-provider.test.tsx`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Write the provider**
@@ -716,7 +716,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { OpenPane } from '@reflect/core'
+import type { OpenPane } from '@kore/core'
 import { createValueStore, type ValueStore } from '@/lib/value-store'
 import { useGraph } from '@/providers/graph-provider'
 import type { NoteFindActions } from '@/providers/note-find-provider'
@@ -980,7 +980,7 @@ Notes for the implementer:
 
 - [ ] **Step 4: Run the test**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser src/providers/panes-provider.test.tsx`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser src/providers/panes-provider.test.tsx`
 Expected: PASS (4 tests). If the "reuses it" case fails because `stored` lags the write, confirm `updateSettingsWith` updates local state synchronously (it does for the tab strip); if not, read the fresh value inside `writePanes` instead of `stored` for the holder lookup.
 
 - [ ] **Step 5: Commit**
@@ -1066,12 +1066,12 @@ with `const panes = usePanes()` at the top. Keep the existing "else Daily" fallb
 
 - [ ] **Step 2: Fix the existing tests' wrappers and run them**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser $(grep -rl 'OpenTabsProvider' apps/desktop/src --include='*.test.tsx' | sed 's|apps/desktop/||')`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser $(grep -rl 'OpenTabsProvider' apps/desktop/src --include='*.test.tsx' | sed 's|apps/desktop/||')`
 Expected: PASS after wrapping with `PanesProvider` and passing `paneId="main"`.
 
 - [ ] **Step 3: Typecheck**
 
-Run: `pnpm --filter @reflect/desktop typecheck`
+Run: `pnpm --filter @kore/desktop typecheck`
 Expected: errors only where `OpenTabsProvider` is mounted without `paneId` (`graph-workspace.tsx`), fixed in Task 7.
 
 - [ ] **Step 4: Commit**
@@ -1141,12 +1141,12 @@ The `scopeKey` parameter and `useLinkIntentGuard` were only there for the async 
 
 - [ ] **Step 3: Run the affected tests**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser src/hooks src/lib/deep-links src/editor/use-wiki-link-navigation.test.tsx src/components/command-palette`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser src/hooks src/lib/deep-links src/editor/use-wiki-link-navigation.test.tsx src/components/command-palette`
 Expected: PASS (adjust assertions that expected a window open on a modifier click to expect in-place or split navigation; keep the count of changed tests minimal).
 
 - [ ] **Step 4: Typecheck and commit**
 
-Run: `pnpm --filter @reflect/desktop typecheck` (remaining errors must be only in `graph-workspace.tsx`).
+Run: `pnpm --filter @kore/desktop typecheck` (remaining errors must be only in `graph-workspace.tsx`).
 
 ```bash
 git add -A apps/desktop/src
@@ -1391,9 +1391,9 @@ Fill `Harness` and `stubCommandContext` from what `note-tabs-strip.test.tsx` (or
 
 Run:
 ```bash
-pnpm --filter @reflect/desktop typecheck
-pnpm --filter @reflect/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx src/routing/router.test.tsx
-REFLECT_TEST_BROWSER=webkit pnpm --filter @reflect/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx
+pnpm --filter @kore/desktop typecheck
+pnpm --filter @kore/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx src/routing/router.test.tsx
+KORE_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/components/workspace-pane.test.tsx src/providers/panes-provider.test.tsx
 ```
 Expected: PASS on both.
 
@@ -1486,7 +1486,7 @@ In `app-shortcuts.test.tsx`, following the pattern of an existing keybinding cas
 
 - [ ] **Step 5: Run and commit**
 
-Run: `pnpm --filter @reflect/desktop exec vitest run --project browser src/routing/app-shortcuts.test.tsx src/routing/app-shortcuts-macos.test.tsx && pnpm --filter @reflect/desktop typecheck`
+Run: `pnpm --filter @kore/desktop exec vitest run --project browser src/routing/app-shortcuts.test.tsx src/routing/app-shortcuts-macos.test.tsx && pnpm --filter @kore/desktop typecheck`
 
 ```bash
 git add apps/desktop/src/lib/commands apps/desktop/src/routing
@@ -1505,10 +1505,10 @@ Expected: typecheck and lint clean. Fix anything reported; do not widen scope.
 - [ ] **Step 2: Targeted suites on both engines**
 
 ```bash
-pnpm --filter @reflect/desktop exec vitest run --project node src/routing src/providers/open-tab.test.ts
-pnpm --filter @reflect/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx src/components/note-tabs-strip.test.tsx src/hooks src/lib/deep-links
-REFLECT_TEST_BROWSER=webkit pnpm --filter @reflect/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx
-pnpm --filter @reflect/core test --run src/settings
+pnpm --filter @kore/desktop exec vitest run --project node src/routing src/providers/open-tab.test.ts
+pnpm --filter @kore/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx src/components/note-tabs-strip.test.tsx src/hooks src/lib/deep-links
+KORE_TEST_BROWSER=webkit pnpm --filter @kore/desktop exec vitest run --project browser src/routing src/providers src/components/workspace-pane.test.tsx
+pnpm --filter @kore/core test --run src/settings
 ```
 
 Record exact counts (files, tests, failures) for the final report.

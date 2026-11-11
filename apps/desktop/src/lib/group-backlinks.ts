@@ -1,4 +1,4 @@
-import type { BacklinkContext, SnippetTask } from '@reflect/core'
+import type { BacklinkContext, SnippetTask } from '@kore/core'
 
 /** One rendered reference: the snippet Markdown plus its checkbox anchors. */
 export interface BacklinkSnippetData {

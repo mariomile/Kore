@@ -2,7 +2,7 @@
 //!
 //! The graph's rebuildable projection lives at `<graph>/.kore/index.sqlite`,
 //! backed by the bundled SQLite (FTS5 compiled in) with sqlite-vec registered for
-//! Plan 09. Parsing/extraction happens in TS (`@reflect/core`, Plan 03); this
+//! Plan 09. Parsing/extraction happens in TS (`@kore/core`, Plan 03); this
 //! module owns the schema/migrations ([`migrations`]), all writes — one
 //! transaction per batch, generation-gated here in the command layer
 //! ([`write`] holds the row logic) — plus a read-only `db_query` bridge
@@ -17,7 +17,7 @@ mod migrations;
 #[cfg(test)]
 mod tests;
 
-use reflect_index_store::{embed_write, query, scan, write};
+use kore_index_store::{embed_write, query, scan, write};
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
@@ -526,7 +526,7 @@ pub async fn index_tag_types_resolve<R: tauri::Runtime>(
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task =
-        background_task::scoped(&background_tasks, "Reflect index tag type resolve");
+        background_task::scoped(&background_tasks, "Kore index tag type resolve");
     let applied = crate::blocking::run_blocking({
         let app = app.clone();
         move || {

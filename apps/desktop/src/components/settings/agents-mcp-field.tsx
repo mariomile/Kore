@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { errorMessage, mcpClientSetup } from '@reflect/core'
+import { errorMessage, mcpClientSetup } from '@kore/core'
 import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'

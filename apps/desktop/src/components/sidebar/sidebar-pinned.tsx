@@ -10,7 +10,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { displayNoteTitle } from '@reflect/core'
+import { displayNoteTitle } from '@kore/core'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { useReorderPinnedNotes } from '@/hooks/use-reorder-pinned-notes'
 import { formatDayLabel } from '@/lib/dates'

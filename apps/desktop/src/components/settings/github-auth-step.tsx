@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { isDeviceFlowConfigured, saveGithubAuth, type GithubUser } from '@reflect/core'
+import { isDeviceFlowConfigured, saveGithubAuth, type GithubUser } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

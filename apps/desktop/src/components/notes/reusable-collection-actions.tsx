@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactElement } from 'react'
-import { errorMessage, isPropertyKey, type NoteListEntry } from '@reflect/core'
+import { errorMessage, isPropertyKey, type NoteListEntry } from '@kore/core'
 import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

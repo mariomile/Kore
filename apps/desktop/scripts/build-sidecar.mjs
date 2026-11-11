@@ -1,5 +1,5 @@
 // Build the sidecar binaries — the `reflect` CLI (apps/cli, Plan 14) and the
-// `reflect-capture-host` native-messaging host (apps/native-host, Plan 11) —
+// `kore-capture-host` native-messaging host (apps/native-host, Plan 11) —
 // and stage them where Tauri's sidecar bundling expects them:
 // src-tauri/binaries/<name>-<target-triple>[.exe].
 //
@@ -34,8 +34,8 @@ if (!triple) {
 // crate → binary name, mirroring the `externalBin` entries in the platform
 // tauri.*.conf.json overlays.
 const SIDECARS = [
-  { crate: 'reflect-cli', binary: 'kore' },
-  { crate: 'reflect-capture-host', binary: 'reflect-capture-host' },
+  { crate: 'kore-cli', binary: 'kore' },
+  { crate: 'kore-capture-host', binary: 'kore-capture-host' },
 ]
 
 // The explicit --target keeps the artifacts in target/<triple>/release/ — away

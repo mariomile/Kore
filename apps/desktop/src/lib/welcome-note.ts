@@ -8,7 +8,7 @@ import {
   vaultScanStats,
   writeDefaultVaultObjects,
   writeNote,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * The first-run seeds (Plan 15 step 1 + TDR 0005's default objects): a

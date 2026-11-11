@@ -1,4 +1,4 @@
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 
 /**
  * Which collection views a tag schema unlocks (TDR 0005) — the single source

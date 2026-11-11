@@ -1,4 +1,4 @@
-import { isNotePath, type FileMeta, type NoteCreateOutcome } from '@reflect/core'
+import { isNotePath, type FileMeta, type NoteCreateOutcome } from '@kore/core'
 
 /** One in-memory markdown file: contents plus a last-modified stamp. */
 interface DevFile {

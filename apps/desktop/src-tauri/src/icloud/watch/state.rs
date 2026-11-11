@@ -229,7 +229,7 @@ pub(super) fn apply_update_delta(
 
 /// The watcher's note-tracking rule, over absolute metadata paths: an
 /// eligible Markdown note anywhere visible (the shared
-/// `reflect-graph-paths` policy), graph-relative. Tries every root
+/// `kore-graph-paths` policy), graph-relative. Tries every root
 /// variant — Spotlight may report either side of the
 /// `/var` ↔ `/private/var` symlink. Variants are slash-terminated
 /// ([`root_variants`]), so the strip is a path boundary, not a string
@@ -238,7 +238,7 @@ pub(super) fn tracked_note_relpath(path: &str, roots: &[String]) -> Option<Strin
     let rel = roots
         .iter()
         .find_map(|root| path.strip_prefix(root.as_str()))?;
-    reflect_graph_paths::is_note(rel).then(|| rel.to_string())
+    kore_graph_paths::is_note(rel).then(|| rel.to_string())
 }
 
 #[cfg(test)]

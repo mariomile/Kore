@@ -1,5 +1,5 @@
 import { use, useState, type ReactElement } from 'react'
-import { revealAsset } from '@reflect/core'
+import { revealAsset } from '@kore/core'
 import { AlertTriangle, Check, Copy, Locate, Refresh } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { isNativeShell } from '@/lib/platform'

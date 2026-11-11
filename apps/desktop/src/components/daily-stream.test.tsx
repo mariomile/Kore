@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { FocusedDailyProvider, useFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { formatDayLabel, todayIso } from '@/lib/dates'
@@ -238,12 +238,12 @@ describe('DailyStream', () => {
     )
 
     await vi.waitFor(() =>
-      expect(document.querySelectorAll('.reflect-note-loading').length).toBeGreaterThan(0),
+      expect(document.querySelectorAll('.kore-note-loading').length).toBeGreaterThan(0),
     )
-    const placeholders = document.querySelectorAll('.reflect-note-loading')
+    const placeholders = document.querySelectorAll('.kore-note-loading')
     expect(placeholders.length).toBeGreaterThan(0)
     for (const placeholder of placeholders) {
-      expect(placeholder.className).toContain('reflect-note-loading')
+      expect(placeholder.className).toContain('kore-note-loading')
       expect(placeholder.className).toMatch(/min-h-/)
     }
     await view.unmount()

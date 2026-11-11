@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { Button } from '@/components/ui/button'
 import {

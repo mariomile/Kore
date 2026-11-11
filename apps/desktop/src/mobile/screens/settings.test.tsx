@@ -9,7 +9,7 @@ import {
   type AppPlatform,
   type GraphInfo,
   type Settings,
-} from '@reflect/core'
+} from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import '@/test-utils/locator'
@@ -23,8 +23,8 @@ import { MobileSettings } from './settings'
  * graceful degradation where no SyncProvider is mounted.
  */
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   listNotes: vi.fn(async () => [{ path: 'notes/a.md' }, { path: 'notes/b.md' }]),
   getConflictedNotes: vi.fn(async () => []),

@@ -12,7 +12,7 @@ import {
   type AiPrompt,
   type AiProviderConfig,
   type TranscriptionProvider,
-} from '@reflect/core'
+} from '@kore/core'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
 import { useAiProviders } from '@/hooks/use-ai-providers'
 import { useAppVersion } from '@/hooks/use-app-version'

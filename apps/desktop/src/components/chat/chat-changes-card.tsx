@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { History, Note } from '@/components/icons'
-import { displayNoteTitle, noteFileStem } from '@reflect/core'
+import { displayNoteTitle, noteFileStem } from '@kore/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { Button } from '@/components/ui/button'
 import { useNoteRow } from '@/hooks/use-note-row'

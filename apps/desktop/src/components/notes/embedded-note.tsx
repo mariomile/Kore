@@ -6,7 +6,7 @@ import {
   resolveExistingWikiTarget,
   transclusionMarkdown,
   type NoteTransclusion,
-} from '@reflect/core'
+} from '@kore/core'
 import { ExternalLink } from '@/components/icons'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'

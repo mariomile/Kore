@@ -12,7 +12,7 @@ import {
   upsertFrontmatter,
   writeNote,
   type TemplatePlaceholderValues,
-} from '@reflect/core'
+} from '@kore/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { openSession } from '@/editor/open-documents'

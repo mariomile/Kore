@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { Note } from '@/components/icons'
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'

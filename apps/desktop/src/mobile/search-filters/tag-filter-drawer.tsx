@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Check } from '@/components/icons'
-import { foldTag, type NoteTagFacet } from '@reflect/core'
+import { foldTag, type NoteTagFacet } from '@kore/core'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
 

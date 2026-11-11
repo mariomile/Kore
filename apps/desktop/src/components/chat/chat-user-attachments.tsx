@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { attachmentKindLabel, isImageMediaType, type ChatAttachment } from '@reflect/core'
+import { attachmentKindLabel, isImageMediaType, type ChatAttachment } from '@kore/core'
 import { Paperclip } from '@/components/icons'
 import {
   Attachment,

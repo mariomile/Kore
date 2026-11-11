@@ -5,7 +5,7 @@ import {
   type BacklinkContext,
   type BacklinkContextPage,
   type BacklinkSourceCursor,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { groupBacklinksBySource, type BacklinkSource } from '@/lib/group-backlinks'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'

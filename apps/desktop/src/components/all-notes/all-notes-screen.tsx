@@ -12,7 +12,7 @@ import {
   type NoteListFilter,
   type NoteListFolder,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 import { Check, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'

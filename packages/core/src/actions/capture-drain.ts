@@ -329,7 +329,7 @@ function parseEnvelope(raw: string): InboxEnvelope | null {
 async function drainTextCapture(envelope: TextCaptureEnvelope, generation: number): Promise<void> {
   const daily = dailyPath(captureLocalDate(new Date(envelope.capturedAt)))
   const dailySource = await localNoteSource(daily, generation)
-  // `task` is Reflect's round `+` checkbox, the only marker the Tasks
+  // `task` is Kore's round `+` checkbox, the only marker the Tasks
   // projection reads; `checkbox` is the square `- [ ]`, an inert daily item.
   const kind: ListItemKind = envelope.kind === 'append' ? 'bullet' : envelope.kind
   await writeNote(daily, appendListItem(dailySource, envelope.text, kind), generation)

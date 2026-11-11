@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Plus } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { useTemplateValues } from '@/hooks/use-template-values'

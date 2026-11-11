@@ -1,4 +1,4 @@
-import type { Database } from '@reflect/db'
+import type { Database } from '@kore/db'
 import { sql, type RawBuilder, type Selectable } from 'kysely'
 import { db } from './db'
 import { literalSearchQuery, type ParsedSearchQuery, type PropertyFilter } from './filter-query'

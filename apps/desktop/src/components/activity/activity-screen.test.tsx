@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { ActivityCommit, ActivityPage, Proposal } from '@reflect/core'
+import type { ActivityCommit, ActivityPage, Proposal } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 
 const gitActivity = vi.hoisted(() => vi.fn<() => Promise<ActivityPage>>())
@@ -11,8 +11,8 @@ const undoSitting = vi.hoisted(() => vi.fn())
 const listProposals = vi.hoisted(() => vi.fn<() => Promise<Proposal[]>>())
 const acceptProposal = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const rejectProposal = vi.hoisted(() => vi.fn<() => Promise<void>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   gitActivity,
   gitNoteHistory,
@@ -25,7 +25,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexGeneration: 1 }),
 }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return {
     useSettings: () => ({ settings: DEFAULT_SETTINGS, updateSettings: () => {} }),
   }

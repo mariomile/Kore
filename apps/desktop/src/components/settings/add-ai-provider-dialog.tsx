@@ -8,7 +8,7 @@ import {
   isHttpBaseUrl,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

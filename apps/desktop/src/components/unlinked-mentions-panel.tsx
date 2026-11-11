@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { UnlinkedMention } from '@reflect/core'
+import type { UnlinkedMention } from '@kore/core'
 import { ChevronRight, Link as LinkIcon } from '@/components/icons'
 import { useBacklinkNavigation } from '@/hooks/use-backlink-navigation'
 import { useUnlinkedMentions } from '@/hooks/use-unlinked-mentions'

@@ -4,17 +4,17 @@ import {
   isImageMediaType,
   MAX_ATTACHMENT_BYTES,
   type ChatAttachment,
-} from '@reflect/core'
+} from '@kore/core'
 import { base64Of } from '@/lib/base64'
 
 /**
  * File attachments for the chat composer: images, PDFs, and text files
- * (markdown, plain text, CSV, JSON — the closed set in `@reflect/core`'s
+ * (markdown, plain text, CSV, JSON — the closed set in `@kore/core`'s
  * attachment types). A dropped, pasted, or picked file is read once into a
  * {@link ChatAttachment} whose `data:` URL serves double duty — for an image
  * it is the `<img src>` for the composer preview and the transcript bubble —
  * and is the payload every engine receives. The type
- * itself lives in `@reflect/core` (it is part of the persisted conversation
+ * itself lives in `@kore/core` (it is part of the persisted conversation
  * model); this module owns only the browser side — reading `File`s into it.
  *
  * Oversized images are downscaled before they enter the attachment (Plan 23):
@@ -22,7 +22,7 @@ import { base64Of } from '@/lib/base64'
  * payload, the saved conversation row, and webview memory at full resolution.
  */
 
-export type { ChatAttachment } from '@reflect/core'
+export type { ChatAttachment } from '@kore/core'
 
 /**
  * The `<img src>` for an attachment: the in-memory `data:` URL while it has

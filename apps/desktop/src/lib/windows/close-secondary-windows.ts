@@ -1,4 +1,4 @@
-import { closeNoteWindows, errorMessage, isMobilePlatform, type AppPlatform } from '@reflect/core'
+import { closeNoteWindows, errorMessage, isMobilePlatform, type AppPlatform } from '@kore/core'
 import { isNativeShell } from '@/lib/platform'
 
 /**

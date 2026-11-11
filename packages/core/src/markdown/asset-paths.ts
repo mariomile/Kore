@@ -11,7 +11,7 @@ function isAssetHref(href: string): boolean {
  * Every graph-relative path an authored attachment reference can mean, in
  * resolution order.
  *
- * `assets/x.png` is genuinely two things: Reflect has always written it
+ * `assets/x.png` is genuinely two things: Kore has always written it
  * vault-root relative, while CommonMark and Obsidian read it as
  * source-relative. Both spellings are kept so neither an old Reflect note nor
  * an imported vault loses its images. The index stores both, which is inert

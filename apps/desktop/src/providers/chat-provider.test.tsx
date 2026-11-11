@@ -11,8 +11,8 @@ import type {
   McpServer,
   Settings,
   StreamChatOptions,
-} from '@reflect/core'
-import { NO_REPLY_NOTICE } from '@reflect/core'
+} from '@kore/core'
+import { NO_REPLY_NOTICE } from '@kore/core'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import { ChatProvider, useChatSession } from '@/providers/chat-provider'
 
@@ -40,8 +40,8 @@ const core = vi.hoisted(() => ({
   saveChatMessage: vi.fn<(input: unknown) => Promise<void>>(),
   deleteChatConversation: vi.fn<(id: string, generation: number) => Promise<void>>(),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   ...core,
 }))
 

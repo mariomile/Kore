@@ -23,7 +23,7 @@ import {
   type MemoryToolName,
   type NoteToolCall,
   type NoteToolResult,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'

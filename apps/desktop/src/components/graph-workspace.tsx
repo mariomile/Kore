@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { PaletteProvider } from '@/components/command-palette/palette-provider'
 import { EnableLocalSyncDialog } from '@/components/enable-local-sync-dialog'
 import { NoteWindowContent } from '@/components/note-window-content'

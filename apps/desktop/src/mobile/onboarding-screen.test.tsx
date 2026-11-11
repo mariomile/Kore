@@ -1,7 +1,7 @@
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { MobileStorageInfo } from '@reflect/core'
+import type { MobileStorageInfo } from '@kore/core'
 import { fireEvent } from '@/test-utils/fire-event'
 import { MobileOnboardingScreen } from './onboarding-screen'
 import { MobileApp } from './mobile-app'

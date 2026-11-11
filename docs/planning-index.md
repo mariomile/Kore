@@ -97,16 +97,16 @@ present then plus the entries added since; it is not re-derived on every update.
 
 | File | Title / purpose | Planning role / status |
 |---|---|---|
-| [reflect-v1-all-notes.md](reflect-v1-all-notes.md) | Reflect V1: "All Notes" Behavior | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v1-backlink-menu.md](reflect-v1-backlink-menu.md) | Reflect V1: Backlink Menu & Date Generator | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v1-mobile-audio-memos.md](reflect-v1-mobile-audio-memos.md) | Reflect V1 Mobile: Audio Memos Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v1-mobile-overview.md](reflect-v1-mobile-overview.md) | Reflect V1 Mobile Overview | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v1-overview.md](reflect-v1-overview.md) | Reflect V1 Overview | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v2-grounding-brief.md](reflect-v2-grounding-brief.md) | Reflect V2 Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v2-indexing-strategy.md](reflect-v2-indexing-strategy.md) | Reflect V2 Indexing Strategy | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v2-mobile-grounding-brief.md](reflect-v2-mobile-grounding-brief.md) | Reflect V2 Mobile Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v2-product-vision.md](reflect-v2-product-vision.md) | Reflect V2 Product Vision | Historical product/grounding reference; not a current implementation checklist. |
-| [reflect-v2-sync-strategy.md](reflect-v2-sync-strategy.md) | Reflect V2 Sync Strategy | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v1-all-notes.md](upstream-v1-all-notes.md) | Reflect V1: "All Notes" Behavior | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v1-backlink-menu.md](upstream-v1-backlink-menu.md) | Reflect V1: Backlink Menu & Date Generator | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v1-mobile-audio-memos.md](upstream-v1-mobile-audio-memos.md) | Reflect V1 Mobile: Audio Memos Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v1-mobile-overview.md](upstream-v1-mobile-overview.md) | Reflect V1 Mobile Overview | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v1-overview.md](upstream-v1-overview.md) | Reflect V1 Overview | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v2-grounding-brief.md](upstream-v2-grounding-brief.md) | Reflect V2 Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v2-indexing-strategy.md](upstream-v2-indexing-strategy.md) | Reflect V2 Indexing Strategy | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v2-mobile-grounding-brief.md](upstream-v2-mobile-grounding-brief.md) | Reflect V2 Mobile Grounding Brief | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v2-product-vision.md](upstream-v2-product-vision.md) | Reflect V2 Product Vision | Historical product/grounding reference; not a current implementation checklist. |
+| [upstream-v2-sync-strategy.md](upstream-v2-sync-strategy.md) | Reflect V2 Sync Strategy | Historical product/grounding reference; not a current implementation checklist. |
 
 ### Desktop feature porting plans
 
@@ -128,19 +128,19 @@ present then plus the entries added since; it is not re-derived on every update.
 
 | File | Title / purpose | Planning role / status |
 |---|---|---|
-| [porting/reflect-mobile/README.md](porting/reflect-mobile/README.md) | Porting Reflect V1 Mobile features to Reflect v2 mobile | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/app-shell-and-navigation.md](porting/reflect-mobile/app-shell-and-navigation.md) | Porting the app shell and navigation | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/assets-and-images.md](porting/reflect-mobile/assets-and-images.md) | Porting assets and images | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/audio-memos.md](porting/reflect-mobile/audio-memos.md) | Porting audio memos (mobile) | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/auth-encryption-and-accounts.md](porting/reflect-mobile/auth-encryption-and-accounts.md) | Porting auth, encryption, and accounts | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/daily-notes.md](porting/reflect-mobile/daily-notes.md) | Porting daily notes | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/editor-and-keyboard.md](porting/reflect-mobile/editor-and-keyboard.md) | Porting the editor and keyboard experience | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/native-entry-points.md](porting/reflect-mobile/native-entry-points.md) | Porting native entry points | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/note-actions-sharing-and-export.md](porting/reflect-mobile/note-actions-sharing-and-export.md) | Porting note actions, sharing, and export | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/search-and-all-notes.md](porting/reflect-mobile/search-and-all-notes.md) | Porting search and All Notes | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/share-extension.md](porting/reflect-mobile/share-extension.md) | Porting the share extension | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/sync-offline-and-data.md](porting/reflect-mobile/sync-offline-and-data.md) | Porting sync, offline, and the data layer | Mobile porting reference/checklist; validate against current Tauri client. |
-| [porting/reflect-mobile/tasks.md](porting/reflect-mobile/tasks.md) | Porting the Tasks tab | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/README.md](porting/upstream-mobile/README.md) | Porting Reflect V1 Mobile features to Reflect v2 mobile | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/app-shell-and-navigation.md](porting/upstream-mobile/app-shell-and-navigation.md) | Porting the app shell and navigation | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/assets-and-images.md](porting/upstream-mobile/assets-and-images.md) | Porting assets and images | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/audio-memos.md](porting/upstream-mobile/audio-memos.md) | Porting audio memos (mobile) | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/auth-encryption-and-accounts.md](porting/upstream-mobile/auth-encryption-and-accounts.md) | Porting auth, encryption, and accounts | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/daily-notes.md](porting/upstream-mobile/daily-notes.md) | Porting daily notes | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/editor-and-keyboard.md](porting/upstream-mobile/editor-and-keyboard.md) | Porting the editor and keyboard experience | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/native-entry-points.md](porting/upstream-mobile/native-entry-points.md) | Porting native entry points | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/note-actions-sharing-and-export.md](porting/upstream-mobile/note-actions-sharing-and-export.md) | Porting note actions, sharing, and export | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/search-and-all-notes.md](porting/upstream-mobile/search-and-all-notes.md) | Porting search and All Notes | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/share-extension.md](porting/upstream-mobile/share-extension.md) | Porting the share extension | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/sync-offline-and-data.md](porting/upstream-mobile/sync-offline-and-data.md) | Porting sync, offline, and the data layer | Mobile porting reference/checklist; validate against current Tauri client. |
+| [porting/upstream-mobile/tasks.md](porting/upstream-mobile/tasks.md) | Porting the Tasks tab | Mobile porting reference/checklist; validate against current Tauri client. |
 
 ### Historical security work
 

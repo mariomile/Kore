@@ -13,7 +13,7 @@ import {
   openNoteTabTitle,
   type OpenTab,
   tagDisplayName,
-} from '@reflect/core'
+} from '@kore/core'
 import { useDraftTitles } from '@/editor/draft-titles'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { CHAT_QUERY_SCOPE, INDEX_QUERY_SCOPE } from '@/lib/query-client'

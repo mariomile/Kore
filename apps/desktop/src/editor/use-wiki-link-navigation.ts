@@ -10,7 +10,7 @@ import {
   resolveOrCreateNoteWithTitle,
   resolveWikiTarget,
   wikiNoteReference,
-} from '@reflect/core'
+} from '@kore/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'

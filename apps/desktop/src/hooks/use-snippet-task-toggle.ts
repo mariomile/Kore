@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { errorMessage, withoutBlockIds, type SnippetTask } from '@reflect/core'
+import { errorMessage, withoutBlockIds, type SnippetTask } from '@kore/core'
 import type { TaskClickHandler, TaskClickPayload } from '@meowdown/react'
 import { toggleTask } from '@/lib/note-task'
 import { startOperation } from '@/lib/operations'
@@ -34,7 +34,7 @@ function anchorFor(tasks: readonly SnippetTask[], payload: TaskClickPayload): Sn
 
 /**
  * Write a backlink-snippet checkbox click through to the source note — old
- * Reflect's `toggleListChecked` behavior for checkboxes in a backlink's
+ * Kore's `toggleListChecked` behavior for checkboxes in a backlink's
  * context. Routes through {@link toggleTask}: the same session-aware,
  * per-note-serialized, staleness-guarded path the Tasks view uses, so an open
  * source note keeps its live buffer and a drifted note refuses instead of

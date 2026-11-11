@@ -144,7 +144,7 @@ export function wikiNoteReference(target: string): NoteReference | null {
 /**
  * Reduce a Markdown href. `/x` is vault-root relative; everything else is
  * source-relative, which is what CommonMark says and what every tool that
- * wrote these files assumed. Reflect has never emitted a Markdown note link,
+ * wrote these files assumed. Kore has never emitted a Markdown note link,
  * so there is no legacy root-relative spelling to keep working here.
  */
 export function markdownNoteReference(sourcePath: string, href: string): NoteReference | null {

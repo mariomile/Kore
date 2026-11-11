@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { isModEvent } from '@meowdown/core'
-import type { VaultCompatGroup } from '@reflect/core'
+import type { VaultCompatGroup } from '@kore/core'
 import { CheckCircle, ChevronDown, Refresh } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'

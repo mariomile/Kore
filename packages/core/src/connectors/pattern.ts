@@ -1,4 +1,4 @@
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import { cleanStem } from './markdown'
 import type { Connector } from './types'
 
@@ -26,19 +26,19 @@ export interface NotePlacement {
 export function normalizeConnectorPattern(pattern: string, connector: Connector): string {
   const trimmed = pattern.trim().replaceAll(/^\/+|\/+$/g, '')
   if (trimmed === '') {
-    throw new ReflectError('parse', 'The file name pattern can’t be empty')
+    throw new KoreError('parse', 'The file name pattern can’t be empty')
   }
   const tokens = Array.from(trimmed.matchAll(TOKEN_RE), (match) => match[1] ?? '')
   for (const name of tokens) {
     if (!connector.patternFields.includes(name)) {
-      throw new ReflectError(
+      throw new KoreError(
         'parse',
         `{${name}} isn’t a ${connector.label} field; use ${connector.patternFields.map((field) => `{${field}}`).join(', ')}`,
       )
     }
   }
   if (tokens.length === 0) {
-    throw new ReflectError(
+    throw new KoreError(
       'parse',
       'Use at least one field, like {title}, or every note gets the same name',
     )

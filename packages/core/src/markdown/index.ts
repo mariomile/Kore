@@ -1,5 +1,5 @@
 /**
- * `@reflect/core` markdown document model (Plan 03) — the one canonical
+ * `@kore/core` markdown document model (Plan 03) — the one canonical
  * parse/extract/edit layer over `@meowdown/markdown` + `yaml`, shared by the
  * indexer (Plan 04), editor (Plan 05), backlinks (Plan 07), and CLI (Plan 14).
  */

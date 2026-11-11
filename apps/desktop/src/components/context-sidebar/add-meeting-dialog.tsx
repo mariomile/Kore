@@ -9,7 +9,7 @@ import {
   resolveMeetingAttendees,
   type CalendarEvent,
   type MeetingAttendee,
-} from '@reflect/core'
+} from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'

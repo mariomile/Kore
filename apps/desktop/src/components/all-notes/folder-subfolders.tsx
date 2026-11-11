@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { FolderTreeFolder } from '@reflect/core'
+import type { FolderTreeFolder } from '@kore/core'
 import { Folder } from '@/components/icons'
 import { useRouter } from '@/routing/router'
 

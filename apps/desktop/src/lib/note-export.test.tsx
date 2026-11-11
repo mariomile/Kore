@@ -17,8 +17,8 @@ describe('needsTitleHeading', () => {
 describe('buildExportDocument', () => {
   const base = {
     title: 'Project <Atlas> & "Co"',
-    bodyHtml: '<div class="reflect-editor"><p>Hello</p></div>',
-    css: '.reflect-editor { color: red; }',
+    bodyHtml: '<div class="kore-editor"><p>Hello</p></div>',
+    css: '.kore-editor { color: red; }',
     addTitleHeading: false,
     rootAttributes: { class: 'dark', 'data-theme': '', 'data-accent': 'purple' },
   }
@@ -29,7 +29,7 @@ describe('buildExportDocument', () => {
     expect(html).toContain('<html class="dark" data-accent="purple">')
     expect(html).not.toContain('data-theme')
     expect(html).toContain('<title>Project &lt;Atlas&gt; &amp; &quot;Co&quot;</title>')
-    expect(html).toContain('.reflect-editor { color: red; }')
+    expect(html).toContain('.kore-editor { color: red; }')
     expect(html).toContain(base.bodyHtml)
     expect(html).toContain('window.print()')
     expect(html).toContain('@media print')
@@ -50,12 +50,12 @@ describe('renderNoteBodyHtml', () => {
       '# Title\n\nSee [[Project Atlas]].\n\n+ [ ] call the bank\n',
       1,
     )
-    expect(html).toContain('reflect-editor')
+    expect(html).toContain('kore-editor')
     expect(html).toContain('Title')
     expect(html).toContain('Project Atlas')
     expect(html).toContain('call the bank')
     // The off-screen host is cleaned up.
-    expect(document.querySelectorAll('.reflect-editor')).toHaveLength(0)
+    expect(document.querySelectorAll('.kore-editor')).toHaveLength(0)
   })
 
   it('draws callouts with their title and prints folded ones open', async () => {

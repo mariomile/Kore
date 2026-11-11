@@ -7,7 +7,7 @@ import {
   type CyberBrainConfig,
   type MemoryHealth,
   type MemoryOverview,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'

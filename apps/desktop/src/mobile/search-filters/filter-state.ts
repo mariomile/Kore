@@ -4,7 +4,7 @@ import {
   parseSearchQuery,
   type FilteredSearchOptions,
   type ParsedSearchQuery,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * The All tab's badge-filter model (Plan 19, V1 parity): AND-composed filters

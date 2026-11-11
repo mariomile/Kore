@@ -2,9 +2,9 @@
 //!
 //! Rust owns the primitive only — authorization and on-demand lookups by
 //! email or name. Which note titles count as person-like, and what contact
-//! details get written into a note, is `@reflect/core` policy. The address
+//! details get written into a note, is `@kore/core` policy. The address
 //! book is never mirrored into `.kore/index.sqlite` (the index stays a
-//! pure projection of markdown), and Reflect never writes back to Contacts.
+//! pure projection of markdown), and Kore never writes back to Contacts.
 //!
 //! On platforms without the Contacts framework (Windows, Linux, Android) the
 //! status command answers [`ContactsAuthorization::Unavailable`] so the
@@ -38,7 +38,7 @@ pub enum ContactsAuthorization {
     Unavailable,
 }
 
-/// One matched contact, flattened to the fields Reflect can write into a
+/// One matched contact, flattened to the fields Kore can write into a
 /// note as markdown. Photos are deliberately absent (out of v1 scope).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -84,7 +84,7 @@ pub async fn contacts_lookup_by_email(email: String) -> AppResult<Vec<ContactMat
 
 /// Command: unified contacts matching `name`, using the framework's own name
 /// matching (case- and diacritic-insensitive, word-prefix based). Exact-match
-/// policy is applied in `@reflect/core`, not here.
+/// policy is applied in `@kore/core`, not here.
 #[tauri::command]
 pub async fn contacts_lookup_by_name(name: String) -> AppResult<Vec<ContactMatch>> {
     run_blocking(move || platform::lookup_by_name(&name)).await
@@ -239,7 +239,7 @@ mod platform {
 mod tests {
     use super::*;
 
-    /// The wire contract the zod schemas in `@reflect/core` parse against:
+    /// The wire contract the zod schemas in `@kore/core` parse against:
     /// camelCase variants and camelCase DTO fields.
     #[test]
     fn authorization_serializes_to_camel_case() {

@@ -4,8 +4,8 @@ import { render } from 'vitest-browser-react'
 import { RouterProvider } from '@/routing/router'
 
 const getGraphMap = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   getGraphMap,
 }))
 vi.mock('@/providers/graph-provider', () => ({

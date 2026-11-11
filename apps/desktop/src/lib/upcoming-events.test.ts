@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CalendarEvent } from '@reflect/core'
+import type { CalendarEvent } from '@kore/core'
 import { eventDay, groupEventsByDay, upcomingDayLabel } from './upcoming-events'
 
 function event(overrides: Partial<CalendarEvent> & Pick<CalendarEvent, 'startsAt'>): CalendarEvent {

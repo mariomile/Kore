@@ -43,8 +43,8 @@ const DEMO_USAGE: LanguageModelV3Usage = {
 export function createDemoModel(): LanguageModelV3 {
   return {
     specificationVersion: 'v3',
-    provider: 'reflect-demo',
-    modelId: 'reflect-demo',
+    provider: 'kore-demo',
+    modelId: 'kore-demo',
     supportedUrls: {},
     doGenerate: () =>
       Promise.resolve({

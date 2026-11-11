@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { ArrowRight, Hash } from '@/components/icons'
-import { parseNoteIcon, tagDisplayName, type ChatTurn, type NoteToolResult } from '@reflect/core'
+import { parseNoteIcon, tagDisplayName, type ChatTurn, type NoteToolResult } from '@kore/core'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useApplyTagIcon } from '@/hooks/use-apply-tag-icon'
 import { cn } from '@/lib/utils'

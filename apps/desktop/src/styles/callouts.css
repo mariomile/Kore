@@ -44,7 +44,7 @@
   --callout-icon-fold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M9 5L15 12L9 19'/%3E%3C/svg%3E");
 }
 
-.reflect-editor blockquote[data-callout] {
+.kore-editor blockquote[data-callout] {
   /* Note, info and todo are the accent (the `--info` status); success,
      warning and the failure family read the status inks, so their titles
      pass 4.5:1 and follow Paper and Ink. The rest are category hues. */
@@ -57,62 +57,62 @@
   padding: 0.6em 1em;
 }
 
-.reflect-editor blockquote[data-callout='abstract'] {
+.kore-editor blockquote[data-callout='abstract'] {
   --callout-color: var(--cyan-500);
   --callout-icon: var(--callout-icon-abstract);
 }
-.reflect-editor blockquote[data-callout='info'] {
+.kore-editor blockquote[data-callout='info'] {
   --callout-icon: var(--callout-icon-info);
 }
-.reflect-editor blockquote[data-callout='todo'] {
+.kore-editor blockquote[data-callout='todo'] {
   --callout-icon: var(--callout-icon-todo);
 }
-.reflect-editor blockquote[data-callout='tip'] {
+.kore-editor blockquote[data-callout='tip'] {
   --callout-color: var(--cyan-500);
   --callout-icon: var(--callout-icon-tip);
 }
-.reflect-editor blockquote[data-callout='success'] {
+.kore-editor blockquote[data-callout='success'] {
   --callout-color: var(--success);
   --callout-icon: var(--callout-icon-success);
 }
-.reflect-editor blockquote[data-callout='question'] {
+.kore-editor blockquote[data-callout='question'] {
   --callout-color: var(--amber-500);
   --callout-icon: var(--callout-icon-question);
 }
-.reflect-editor blockquote[data-callout='warning'] {
+.kore-editor blockquote[data-callout='warning'] {
   --callout-color: var(--warning);
   --callout-icon: var(--callout-icon-warning);
 }
-.reflect-editor blockquote[data-callout='failure'] {
+.kore-editor blockquote[data-callout='failure'] {
   --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-failure);
 }
-.reflect-editor blockquote[data-callout='danger'] {
+.kore-editor blockquote[data-callout='danger'] {
   --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-danger);
 }
-.reflect-editor blockquote[data-callout='bug'] {
+.kore-editor blockquote[data-callout='bug'] {
   --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-bug);
 }
-.reflect-editor blockquote[data-callout='example'] {
+.kore-editor blockquote[data-callout='example'] {
   --callout-color: var(--purple-500);
   --callout-icon: var(--callout-icon-example);
 }
-.reflect-editor blockquote[data-callout='quote'] {
+.kore-editor blockquote[data-callout='quote'] {
   --callout-color: var(--coolgray-400);
   --callout-icon: var(--callout-icon-quote);
 }
 
 /* The title: the editor's first line, or a read-only view's first paragraph. */
-.reflect-editor blockquote[data-callout] :is(.kore-callout-title, .kore-callout-label),
-.reflect-editor blockquote[data-callout] > [data-callout-title] {
+.kore-editor blockquote[data-callout] :is(.kore-callout-title, .kore-callout-label),
+.kore-editor blockquote[data-callout] > [data-callout-title] {
   color: var(--callout-color);
   font-weight: 600;
 }
 
-.reflect-editor blockquote[data-callout] .kore-callout-icon,
-.reflect-editor blockquote[data-callout] > [data-callout-title]::before {
+.kore-editor blockquote[data-callout] .kore-callout-icon,
+.kore-editor blockquote[data-callout] > [data-callout-title]::before {
   content: '';
   display: inline-block;
   width: 1.05em;
@@ -123,8 +123,8 @@
   mask: var(--callout-icon) center / contain no-repeat;
 }
 
-.reflect-editor blockquote[data-callout] .kore-callout-fold,
-.reflect-editor
+.kore-editor blockquote[data-callout] .kore-callout-fold,
+.kore-editor
   blockquote[data-callout]:not([data-callout-fold='none'])
   > [data-callout-title]::after {
   content: '';
@@ -142,18 +142,18 @@
   cursor: pointer;
 }
 
-.reflect-editor blockquote[data-callout][data-callout-folded] .kore-callout-fold,
-.reflect-editor blockquote[data-callout][data-callout-folded] > [data-callout-title]::after {
+.kore-editor blockquote[data-callout][data-callout-folded] .kore-callout-fold,
+.kore-editor blockquote[data-callout][data-callout-folded] > [data-callout-title]::after {
   transform: none;
 }
 
-.reflect-editor blockquote[data-callout]:not([data-callout-fold='none']) > [data-callout-title] {
+.kore-editor blockquote[data-callout]:not([data-callout-fold='none']) > [data-callout-title] {
   cursor: pointer;
 }
 
 /* The `[!type]±` token, hidden while the caret is off the title line. */
-.reflect-editor blockquote[data-callout] .kore-callout-marker,
-.reflect-editor blockquote[data-callout] .kore-callout-hidden,
-.reflect-editor blockquote[data-callout][data-callout-folded] > :not(:first-child) {
+.kore-editor blockquote[data-callout] .kore-callout-marker,
+.kore-editor blockquote[data-callout] .kore-callout-hidden,
+.kore-editor blockquote[data-callout][data-callout-folded] > :not(:first-child) {
   display: none;
 }

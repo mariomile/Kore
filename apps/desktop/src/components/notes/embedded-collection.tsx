@@ -8,7 +8,7 @@ import {
   type CollectionEntry,
   type NoteListEntry,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { isModEvent } from '@meowdown/core'
 import {
   Calendar,

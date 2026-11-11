@@ -4,7 +4,7 @@ import {
   captureSharedInboxRelay,
   type AiProvidersState,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import { createCaptureController } from '@/lib/capture-controller'

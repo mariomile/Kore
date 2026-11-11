@@ -2,7 +2,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { AiPrompt } from '@reflect/core'
+import type { AiPrompt } from '@kore/core'
 import '@/test-utils/locator'
 
 /**

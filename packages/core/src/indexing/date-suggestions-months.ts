@@ -1,4 +1,4 @@
-import { isCalendarDate, isoFromParts } from '@reflect/utils'
+import { isCalendarDate, isoFromParts } from '@kore/utils'
 import type { DateSuggestion, DateSuggestionContext } from './date-suggestions'
 
 const MIN_PHRASE_CHARS = 3

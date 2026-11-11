@@ -91,7 +91,7 @@ entries or more than 20 GiB of uncompressed data are refused.
 ## Browser capture (the Chrome extension)
 
 - **Where:** nowhere on the network. The **Kore Capture** extension hands each
-  capture to a local native-messaging host (`reflect-capture-host`) that the desktop
+  capture to a local native-messaging host (`kore-capture-host`) that the desktop
   app registers on your machine; the host spools it to the capture inbox on disk
   (`<graph>/.kore/inbox/`) and the app drains it on next launch. **No Kore-hosted
   server, no third party, and no other destination is ever contacted** — the extension

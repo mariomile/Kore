@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactElement } from 'react'
-import { aiModelLabel, CHAT_ATTACHMENT_ACCEPT } from '@reflect/core'
+import { aiModelLabel, CHAT_ATTACHMENT_ACCEPT } from '@kore/core'
 import { ArrowUp, ChevronDown, Close, Plus, Stop } from '@/components/icons'
 import {
   Attachment,

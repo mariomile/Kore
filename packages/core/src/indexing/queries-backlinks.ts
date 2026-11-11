@@ -1,4 +1,4 @@
-import type { Database } from '@reflect/db'
+import type { Database } from '@kore/db'
 import { sql, type Selectable } from 'kysely'
 import { readNote } from '../graph/commands'
 import { blockContextLinesAt, prepareBlockContext, type BlockContextSource } from './block-context'

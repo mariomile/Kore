@@ -7,7 +7,7 @@ import {
   type ActivitySitting,
   type UndoConflictReason,
   type UndoSittingResult,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

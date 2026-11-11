@@ -33,7 +33,7 @@ const CHAT_ATTACHMENTS_DIR: &str = ".kore/chat-attachments";
 const RASTER_EXTENSIONS: [&str; 5] = ["jpeg", "jpg", "png", "webp", "gif"];
 
 /// Document extensions the app writes beside images (see the media-type map
-/// in `@reflect/core`'s attachment types).
+/// in `@kore/core`'s attachment types).
 const DOCUMENT_EXTENSIONS: [&str; 5] = ["pdf", "txt", "md", "csv", "json"];
 
 fn is_allowed_extension(ext: &str) -> bool {

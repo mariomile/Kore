@@ -1,4 +1,4 @@
-import { errorMessage, exportWrite } from '@reflect/core'
+import { errorMessage, exportWrite } from '@kore/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { startOperation } from '@/lib/operations'
 

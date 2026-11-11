@@ -6,8 +6,8 @@ import {
   type ReactElement,
 } from 'react'
 import { CheckCircle, Circle, Flag } from '@/components/icons'
-import type { OpenTask } from '@reflect/core'
-import { taskContentPriority } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
+import { taskContentPriority } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { taskContent } from '@/lib/tasks/task-content'
 import { taskKey } from '@/lib/tasks/task-identity'

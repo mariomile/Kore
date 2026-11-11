@@ -3,7 +3,7 @@ import type { SyntaxNode } from '@meowdown/markdown'
 /**
  * Task-list bullets. Every GFM checkbox in a bullet list is a task the Tasks
  * view projects — a note's checklist belongs on the Tasks page wherever it was
- * written. The *round* `+` bullet is Reflect's own task syntax and stays what
+ * written. The *round* `+` bullet is Kore's own task syntax and stays what
  * the app writes for new tasks; `-`/`*` checkboxes are the same task written
  * in ordinary markdown (by hand, by paste, by another editor). The two still
  * render differently in the editor (round vs square), but both project.

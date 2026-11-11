@@ -92,7 +92,7 @@ function Day({
       path={PATH}
       dailyDate="2026-06-27"
       lazy
-      gutterClassName="reflect-content-gutter"
+      gutterClassName="kore-content-gutter"
       editorClassName="min-h-[100px]"
     />
   )

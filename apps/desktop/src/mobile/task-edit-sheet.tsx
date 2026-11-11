@@ -258,7 +258,7 @@ export function MobileTaskEditSheet({
               onTagClick={openTag}
               onWikilinkSearch={onWikilinkSearch}
               onTagSearch={onTagSearch}
-              className="reflect-task-editor min-h-12 text-base leading-6"
+              className="kore-task-editor min-h-12 text-base leading-6"
               handleRef={handleEditorRef}
             >
               <TaskSheetKeymap onDone={finishEdit} />

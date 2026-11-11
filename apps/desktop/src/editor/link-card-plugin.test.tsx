@@ -74,7 +74,7 @@ function mount(blocks: ReturnType<typeof plainParagraph>[]) {
   const request = vi.fn<(url: string, view: EditorView) => void>()
   const open = vi.fn<(url: string, event: MouseEvent) => void>()
   const host = document.createElement('div')
-  host.className = 'reflect-editor'
+  host.className = 'kore-editor'
   document.body.append(host)
   view = new EditorView(host, {
     state: EditorState.create({

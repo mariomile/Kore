@@ -15,7 +15,7 @@ interface CalloutState {
 /** Transaction meta: flip one callout's fold, or report a focus change. */
 type CalloutMeta = { readonly toggle: number } | { readonly focused: boolean }
 
-const calloutKey = new PluginKey<CalloutState>('reflect-callouts')
+const calloutKey = new PluginKey<CalloutState>('kore-callouts')
 
 function readMeta(tr: Transaction): CalloutMeta | null {
   const meta: unknown = tr.getMeta(calloutKey)

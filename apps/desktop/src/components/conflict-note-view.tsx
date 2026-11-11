@@ -56,7 +56,7 @@ export function ConflictNoteView({
 }: ConflictNoteViewProps): ReactElement {
   const segments = parseConflictMarkers(content)
   return (
-    <div className="reflect-protected-note text-sm leading-relaxed">
+    <div className="kore-protected-note text-sm leading-relaxed">
       {segments.map((segment, index) =>
         segment.kind === 'text' ? (
           <pre key={index} className="whitespace-pre-wrap">

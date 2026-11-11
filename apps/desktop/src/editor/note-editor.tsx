@@ -614,7 +614,7 @@ export function NoteEditor({
           // which a touch webview can express. Turning it off also drops the drop
           // indicator, which meowdown gates on the same prop.
           blockHandle={isTouchEditorSurface() ? false : blockHandle}
-          editorClassName={cn('reflect-editor', className)}
+          editorClassName={cn('kore-editor', className)}
           {...(titlePlaceholder !== undefined ? { placeholder: titlePlaceholder } : {})}
           onDocChange={handleDocChange}
           {...(renderCodeBlock !== undefined ? { renderCodeBlock } : {})}
@@ -653,7 +653,7 @@ export function NoteEditor({
             />
           ) : null}
           {renderWikilinkHoverCard !== undefined ? (
-            <WikilinkHoverCard className="reflect-hover-card">
+            <WikilinkHoverCard className="kore-hover-card">
               {renderWikilinkHoverCard}
             </WikilinkHoverCard>
           ) : null}

@@ -19,7 +19,7 @@ export function TaskText({ task }: { task: OpenTask }): ReactElement {
   const preview = (
     <MarkdownPreview
       content={priority === null ? content : stripTaskContentPriority(content)}
-      className="reflect-task-preview pointer-events-none text-sm leading-6"
+      className="kore-task-preview pointer-events-none text-sm leading-6"
     />
   )
   if (priority === null) {

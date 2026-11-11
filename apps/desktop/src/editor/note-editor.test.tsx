@@ -113,11 +113,11 @@ describe('NoteEditor wiki-link hover card', () => {
     await render(
       <NoteEditor
         initialContent="see [[Note]] here"
-        renderWikilinkHoverCard={() => <div data-testid="reflect-hover-body">Preview</div>}
+        renderWikilinkHoverCard={() => <div data-testid="kore-hover-body">Preview</div>}
       />,
     )
     await pmRoot.getByTestId('wikilink').hover()
-    await expect.element(page.getByTestId('reflect-hover-body'), { timeout: 5_000 }).toBeVisible()
+    await expect.element(page.getByTestId('kore-hover-body'), { timeout: 5_000 }).toBeVisible()
   })
 })
 

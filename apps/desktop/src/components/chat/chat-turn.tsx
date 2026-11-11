@@ -63,7 +63,7 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
           <ChatUserAttachments attachments={turn.attachments} />
           {turn.userText !== '' ? (
             <Bubble align="end" variant="muted" className="max-w-[85%]">
-              <BubbleContent className="reflect-chat-message !bg-surface-hover px-4 py-2 leading-normal whitespace-pre-wrap !text-text">
+              <BubbleContent className="kore-chat-message !bg-surface-hover px-4 py-2 leading-normal whitespace-pre-wrap !text-text">
                 {turn.userText}
               </BubbleContent>
             </Bubble>

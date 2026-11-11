@@ -125,7 +125,7 @@ export function MarkdownPreview({
           resolveWikilink={resolveWikilink}
           {...(interactive ? { onLinkClick: openExternalLink } : {})}
           {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-          className={cn('reflect-editor', className)}
+          className={cn('kore-editor', className)}
         />
       </div>
     </PaneErrorBoundary>

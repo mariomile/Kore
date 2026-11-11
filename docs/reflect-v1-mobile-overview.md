@@ -92,7 +92,7 @@ No graph map, no note history UI, no imports, no command palette (search is a ta
 
 ## The Editor on Mobile
 
-The same `@team-reflect/reflect-editor` (ProseMirror + Yjs) is embedded with mobile-specific configuration: `mobile` mode on, inline toolbar off, merge menu off, backlinks and tags open on tap instead of becoming selectable.
+The same `@team-reflect/kore-editor` (ProseMirror + Yjs) is embedded with mobile-specific configuration: `mobile` mode on, inline toolbar off, merge menu off, backlinks and tags open on tap instead of becoming selectable.
 
 The signature mobile piece is the **native keyboard accessory toolbar**:
 

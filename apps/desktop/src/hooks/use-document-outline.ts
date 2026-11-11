@@ -10,7 +10,7 @@ export interface OutlineEntry {
 }
 
 /** The editor surface whose headings the outline describes. */
-const SURFACE = '.reflect-note-surface .ProseMirror'
+const SURFACE = '.kore-note-surface .ProseMirror'
 
 /**
  * Only *direct* children of the editor root. A `## Meetings` nested in a

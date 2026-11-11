@@ -116,7 +116,7 @@ export function DaySlide({
             tinted on today. Shares the note body's gutter. */}
         <h2
           className={cn(
-            'reflect-daily-subject pt-4 pb-1',
+            'kore-daily-subject pt-4 pb-1',
             MOBILE_CONTENT_GUTTER,
             day === today && 'text-accent',
           )}

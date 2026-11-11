@@ -48,7 +48,7 @@ export function NoteWindowContent(): ReactElement {
             heading={
               // The stream's day label, standing in for the title a daily
               // note doesn't carry.
-              <h2 className="reflect-daily-subject reflect-content-gutter mb-3">
+              <h2 className="kore-daily-subject kore-content-gutter mb-3">
                 {formatDayLabel(dailyDate, settings.dateFormat)}
               </h2>
             }

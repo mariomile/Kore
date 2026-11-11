@@ -1,7 +1,7 @@
 # Porting editor keyboard shortcuts
 
 **Status: planned (incremental).** This doc catalogs the keyboard behaviors
-of the v1 editor (`@team-reflect/reflect-editor`, Remirror/ProseMirror-based)
+of the v1 editor (`@team-reflect/kore-editor`, Remirror/ProseMirror-based)
 against what v2 already has, and calls out which gaps are worth porting.
 Editor-level bindings belong upstream in meowdown; note-to-note navigation
 belongs in the app.

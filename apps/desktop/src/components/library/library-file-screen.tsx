@@ -25,7 +25,7 @@ export function LibraryFileScreen({ root, path }: LibraryFileScreenProps): React
 
   return (
     <ScrollRestored className="h-full overflow-auto">
-      <article className="reflect-content-gutter mx-auto flex w-full flex-col pt-14 pb-8">
+      <article className="kore-content-gutter mx-auto flex w-full flex-col pt-14 pb-8">
         <header className="mb-6 flex flex-col gap-1">
           <h1 className="text-2xl font-semibold text-text">{libraryFileTitle(path)}</h1>
           <p className="flex min-w-0 items-center gap-1.5 text-xs text-text-muted">

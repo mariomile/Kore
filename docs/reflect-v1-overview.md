@@ -89,7 +89,7 @@ The list is backed by virtualized placeholder rows from the local model pool. Th
 
 ### Note Editor
 
-The editor is built on `@team-reflect/reflect-editor` and ProseMirror/Yjs document state. It is the core interaction surface of the app.
+The editor is built on `@team-reflect/kore-editor` and ProseMirror/Yjs document state. It is the core interaction surface of the app.
 
 Important editor capabilities:
 

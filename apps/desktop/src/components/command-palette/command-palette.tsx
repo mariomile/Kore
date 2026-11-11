@@ -192,38 +192,38 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
               closePalette()
             }
           }}
-          className="reflect-palette"
+          className="kore-palette"
         >
           <Command.Input
             autoFocus
             value={query}
             onValueChange={setQuery}
             placeholder="Search notes, or > for commands…"
-            className="reflect-palette-input"
+            className="kore-palette-input"
           />
           {splitLayout ? (
             <SearchFilterChips chips={describeSearchFilters(parsedQuery.filters)} />
           ) : null}
           <div className={cn(splitLayout && 'flex h-[min(60vh,36rem)]')}>
             <Command.List
-              className={cn('reflect-palette-list', splitLayout && 'reflect-palette-list-split')}
+              className={cn('kore-palette-list', splitLayout && 'kore-palette-list-split')}
             >
               {searchFailed ? (
-                <div role="alert" className="reflect-palette-empty">
+                <div role="alert" className="kore-palette-empty">
                   Search unavailable — the index didn’t answer.
                 </div>
               ) : null}
               {resultsSettled && !searchFailed ? (
-                <Command.Empty className="reflect-palette-empty">No results</Command.Empty>
+                <Command.Empty className="kore-palette-empty">No results</Command.Empty>
               ) : null}
               {trimmedQuery === '' && savedSearches.length > 0 ? (
-                <Command.Group heading="Saved searches" className="reflect-palette-group">
+                <Command.Group heading="Saved searches" className="kore-palette-group">
                   {savedSearches.map((saved) => (
                     <Command.Item
                       key={saved.id}
                       value={`saved:${saved.id}`}
                       onSelect={() => setQuery(saved.query)}
-                      className="reflect-palette-item"
+                      className="kore-palette-item"
                     >
                       <span className="flex items-center gap-2.5">
                         <SidebarIconSlot>
@@ -254,7 +254,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
               {sections.notes.length > 0 ? (
                 <Command.Group
                   heading={query.trim() === '' ? 'Recent' : 'Notes'}
-                  className="reflect-palette-group"
+                  className="kore-palette-group"
                 >
                   {sections.notes.map((entry) => {
                     const Icon = entry.date !== null ? CalendarDays : Note
@@ -269,7 +269,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                           }
                         }}
                         onSelect={() => openNote(entry)}
-                        className="reflect-palette-item"
+                        className="kore-palette-item"
                       >
                         <span className="flex items-center gap-2.5">
                           <SidebarIconSlot>
@@ -297,7 +297,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                 </Command.Group>
               ) : null}
               {sections.commands.length > 0 ? (
-                <Command.Group heading="Commands" className="reflect-palette-group">
+                <Command.Group heading="Commands" className="kore-palette-group">
                   {sections.commands.map((command) => {
                     const Icon = COMMAND_ICONS[command.id] ?? FALLBACK_COMMAND_ICON
                     return (
@@ -309,7 +309,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                           closePalette()
                           void runCommand(command.id, context)
                         }}
-                        className="reflect-palette-item"
+                        className="kore-palette-item"
                       >
                         <span className="flex items-center gap-2.5">
                           <SidebarIconSlot>
@@ -326,11 +326,11 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                 </Command.Group>
               ) : null}
               {offerSave ? (
-                <Command.Group heading="Search" className="reflect-palette-group">
+                <Command.Group heading="Search" className="kore-palette-group">
                   <Command.Item
                     value="save-search"
                     onSelect={saveSearch}
-                    className="reflect-palette-item"
+                    className="kore-palette-item"
                   >
                     <span className="flex items-center gap-2.5">
                       <SidebarIconSlot>

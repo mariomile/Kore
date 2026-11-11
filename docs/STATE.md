@@ -3546,6 +3546,15 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-11 — Quality refactor, no behavior change. Link text is a lookup:
+  `LINK_TEXT_SITES` in `actions/link-text.ts` says which sites keep nothing
+  (X, LinkedIn) or a transcript (YouTube), and any other link keeps its
+  article. The card template (`actions/resource-card.ts`) owns both writing
+  a card's title and retitling it, so link text no longer does string
+  surgery on another module's output. The session's tried-cards memo is
+  capped at 500, and the private-note gate lives only in core (a private
+  note's cards are private, and `saveLinkText` skips them).
+
 - 2026-11-11 — Quality refactor, no behavior change. `ConnectorNote` loses
   `fileStem`: when the user's pattern renders to nothing, the sync engine
   names the file with the connector's default pattern (the same names the

@@ -17,6 +17,7 @@
 
 mod activity;
 mod agent_writes;
+mod blame;
 mod commit;
 mod commit_message;
 mod history;
@@ -218,6 +219,20 @@ pub async fn git_activity(
 ) -> AppResult<activity::ActivityPage> {
     let root = crate::fs::root_for_generation(&state, generation)?;
     run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
+}
+
+/// Who last changed each line of `content` (the note as the caller shows
+/// it), blamed against the note's committed history. Lines no commit holds
+/// come back without one. See [`blame::blame`].
+#[tauri::command]
+pub async fn git_blame(
+    path: String,
+    content: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<blame::Blame> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || blame::blame(&root, &path, &content)).await
 }
 
 /// What undoing the commits `oldest..=newest` would leave in each file they

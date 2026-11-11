@@ -171,7 +171,9 @@ describe('DailyDay', () => {
     expect(probe().query()).toBeNull()
     await vi.waitFor(() => {
       const box = staticDay().element().querySelector('img')?.getBoundingClientRect()
-      expect([box?.width, box?.height]).toEqual([200, 500])
+      // WebKit lays out in 1/64 px steps, so the height can land a hair short.
+      expect(box?.width).toBe(200)
+      expect(box?.height).toBeCloseTo(500, 1)
     })
   })
 

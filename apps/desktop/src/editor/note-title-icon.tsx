@@ -50,7 +50,7 @@ export function NoteTitleIcon({
           value={noteIconValue(icon)}
           onChange={onIconChange}
           label="Change icon"
-          className="-m-1 block p-1"
+          className="-m-1 flex p-1"
         >
           {glyph}
         </NoteIconPicker>
@@ -59,7 +59,7 @@ export function NoteTitleIcon({
 
   return createPortal(
     content === null ? null : (
-      <span className="me-[0.3em] inline-block align-[-0.12em]">{content}</span>
+      <span className="me-[0.3em] inline-flex h-[1lh] items-center align-top">{content}</span>
     ),
     mount,
   )

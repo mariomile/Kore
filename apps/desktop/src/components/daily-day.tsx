@@ -9,7 +9,7 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { isAppError, loadLinkPreview, readNote } from '@reflect/core'
+import { isAppError, loadLinkPreview, readNote } from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane, type NotePaneProps } from '@/components/note-pane'
@@ -181,7 +181,7 @@ export const DailyDay = memo(function DailyDay({
             <div
               data-static-day="loading"
               className={cn(
-                'reflect-editor reflect-note-surface',
+                'kore-editor kore-note-surface',
                 pane.gutterClassName,
                 pane.editorClassName,
               )}
@@ -234,7 +234,7 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
       return
     }
     let current = true
-    for (const paragraph of host.querySelectorAll<HTMLElement>('.reflect-editor > p')) {
+    for (const paragraph of host.querySelectorAll<HTMLElement>('.kore-editor > p')) {
       const url = (paragraph.textContent ?? '').trim()
       if (!BARE_URL.test(url) || paragraph.classList.contains('kore-link-card-source')) {
         continue
@@ -257,7 +257,7 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
         content={body}
         resolveImageUrl={resolveImageUrl}
         interactive={false}
-        className={cn('reflect-note-surface', gutterClassName, editorClassName)}
+        className={cn('kore-note-surface', gutterClassName, editorClassName)}
       />
       <div className={gutterClassName}>
         <NoteChildrenPanel key={path} path={path} />

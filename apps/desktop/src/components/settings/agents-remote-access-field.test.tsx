@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, setBridge, type RemoteAccessState } from '@reflect/core'
+import { DEFAULT_SETTINGS, setBridge, type RemoteAccessState } from '@kore/core'
 import { RemoteAccessRunner } from '@/components/remote-access-runner'
 import { remoteAccessPhase, setRemoteAccessPhase } from '@/lib/remote-access-store'
 import { AgentsRemoteAccessField } from './agents-remote-access-field'

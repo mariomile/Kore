@@ -1,4 +1,4 @@
-# reflect-graph-paths
+# kore-graph-paths
 
 Shared graph-relative path classification for the native surfaces (the
 desktop shell and the `kore` CLI).
@@ -12,4 +12,4 @@ vault walker used to catalog a graph.
 
 Kept in lockstep with `packages/core/src/graph/paths.ts`; the shared
 classification corpus lives in `fixtures/graph-path-classification.json` and
-pins both implementations. Test with `cargo test -p reflect-graph-paths`.
+pins both implementations. Test with `cargo test -p kore-graph-paths`.

@@ -1,13 +1,13 @@
 # Uncomment the next line to define a global platform for your project
 
-target 'reflect-open_iOS' do
+target 'kore-open_iOS' do
 platform :ios, '15.0'
-  # Pods for reflect-open_iOS
+  # Pods for kore-open_iOS
 end
 
-target 'reflect-open_macOS' do
+target 'kore-open_macOS' do
 platform :osx, '11.0'
-  # Pods for reflect-open_macOS
+  # Pods for kore-open_macOS
 end
 
 # Delete the deployment target for iOS and macOS, causing it to be inherited from the Podfile

@@ -6,14 +6,14 @@
 
 **Architecture:** The persisted layout becomes `OpenColumn[]` (each a stack of `OpenPane`). `PanesProvider` derives `columns` and the flat `panes` list from it and gains `moveTab` / `moveActiveTab` / 4-way `focusPane`. `WorkspaceFrame` renders columns of panes with two-axis resize handles. One `DndContext` at the frame; strips keep `SortableContext` and handle same-strip reorder through `useDndMonitor`; each pane shows three droppable zones while a tab drags; a pure resolver maps drag-end to a move.
 
-**Tech Stack:** React 19, zod (`@reflect/core` settings), `@dnd-kit/core` 6.3 (`useDroppable`, `useDndMonitor`, `pointerWithin`), Vitest browser (Chromium + WebKit).
+**Tech Stack:** React 19, zod (`@kore/core` settings), `@dnd-kit/core` 6.3 (`useDroppable`, `useDndMonitor`, `pointerWithin`), Vitest browser (Chromium + WebKit).
 
 **Spec:** `docs/superpowers/specs/2026-09-14-split-panes-rows-design.md` (extends `2026-09-14-split-panes-design.md`).
 
 ## Global Constraints
 
 - Work from `/Users/mariomiletta/.t3/worktrees/Kore/t3code-656cca35`, branch `t3code/side-by-side-notes` (PR #209, not merged). Never bare `git stash`.
-- Test commands: browser `cd apps/desktop && pnpm exec vitest run --config ../../vitest.config.ts --project browser <paths>` (WebKit: prefix `REFLECT_TEST_BROWSER=webkit`); node `... --project node <paths>`; core `pnpm --filter @reflect/core test --run <path>`. Typecheck: `pnpm typecheck` at the root (only gate); lint: `pnpm lint`. `console.warn`/`console.error` fail tests.
+- Test commands: browser `cd apps/desktop && pnpm exec vitest run --config ../../vitest.config.ts --project browser <paths>` (WebKit: prefix `KORE_TEST_BROWSER=webkit`); node `... --project node <paths>`; core `pnpm --filter @kore/core test --run <path>`. Typecheck: `pnpm typecheck` at the root (only gate); lint: `pnpm lint`. `console.warn`/`console.error` fail tests.
 - No `any`, no type assertions, named exports, one component per file, `@/` imports, function declarations for named functions, icons from `@/components/icons` only, no em-dashes in any text you write, no migrations or compatibility shims.
 - Keybinding spelling in `app-commands.ts`: `Alt-Mod-<key>` and `Alt-Mod-Shift-<key>` with lowercase key names (`arrowup`, `arrowdown`, `arrowleft`, `arrowright`), matching `pane.focusLeft` = `Alt-Mod-arrowleft`.
 - Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
@@ -32,7 +32,7 @@
 - Produces: `export interface OpenColumn { readonly id: string; readonly panes: OpenPane[] }`; `settings.openTabs: Record<string, OpenColumn[]>`.
 
 - [ ] **Step 1: Update the tests.** Change every `openTabs` fixture and expectation to the column shape, e.g. `{ '/graph': [{ id: 'main', panes: [{ id: 'main', tabs: [...], activeKey: 'note:notes/a.md' }] }] }`. Change the "drops a pre-pane flat tab list" case so the input is the part-1 flat `OpenPane[]` and the expectation is `{ '/graph': [] }`.
-- [ ] **Step 2: Run to see them fail.** `pnpm --filter @reflect/core test --run src/settings/schema.test.ts`.
+- [ ] **Step 2: Run to see them fail.** `pnpm --filter @kore/core test --run src/settings/schema.test.ts`.
 - [ ] **Step 3: Schema.** After `OpenPane` add `OpenColumn`. Add `const openColumnSchema: z.ZodType<OpenColumn> = z.object({ id: z.string().min(1), panes: z.array(openPaneSchema).catch([]) })` and make `openTabsSchema = z.record(z.string(), z.array(openColumnSchema).catch([])).refine((value) => !Array.isArray(value)).catch({})`. Update the doc comment (columns of panes; a malformed column drops the graph's layout). Export `OpenColumn` next to `OpenPane`. The inner `.catch([])` on `panes` was intentionally dropped as built: a malformed pane now fails its whole column rather than silently emptying it, so the graph's layout degrades to `[]` and the workspace relaunches on the synthesized main pane.
 - [ ] **Step 4: Run tests + core typecheck** (`cd packages/core && pnpm exec tsc -b tsconfig.json --force`). Desktop typecheck goes red in `panes-provider.tsx` / `open-tabs-provider.tsx` until Tasks 2 and 3.
 - [ ] **Step 5: Commit** `feat: persist workspace panes as columns of rows`.
@@ -46,7 +46,7 @@
 - Modify: `apps/desktop/src/providers/panes-provider.test.tsx`
 
 **Interfaces:**
-- Consumes: `OpenColumn`, `OpenPane` from `@reflect/core`; `tabKey`, `tabsEqual`, `routeForOpenTab`, `openTabForRoute` from `@/providers/open-tab`.
+- Consumes: `OpenColumn`, `OpenPane` from `@kore/core`; `tabKey`, `tabsEqual`, `routeForOpenTab`, `openTabForRoute` from `@/providers/open-tab`.
 - Produces on `PanesValue`:
 
 ```ts

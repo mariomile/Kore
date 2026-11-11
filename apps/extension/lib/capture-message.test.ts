@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captureWireMessageSchema } from '@reflect/core/capture-envelope'
+import { captureWireMessageSchema } from '@kore/core/capture-envelope'
 import { buildWireMessage, dataUrlToBase64, isCapturableUrl } from './capture-message'
 
 const ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7'

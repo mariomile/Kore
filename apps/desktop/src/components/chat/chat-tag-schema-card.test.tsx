@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
-import type { AssistantPart, NoteToolResult, TagProperty } from '@reflect/core'
+import type { AssistantPart, NoteToolResult, TagProperty } from '@kore/core'
 
 const applyTagSchema = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const recordDecision = vi.hoisted(() => vi.fn())

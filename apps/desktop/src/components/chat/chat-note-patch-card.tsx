@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactElement } from 'react'
 import { Pencil } from '@/components/icons'
-import { displayNoteTitle, noteFileStem, type ChatTurn, type NoteToolResult } from '@reflect/core'
+import { displayNoteTitle, noteFileStem, type ChatTurn, type NoteToolResult } from '@kore/core'
 import { useApplyNoteEdit } from '@/hooks/use-apply-note-edit'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { diffLines } from '@/lib/line-diff'

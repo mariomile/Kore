@@ -33,7 +33,7 @@ touches a Reflect server, because there isn't one.
   segments transcribe while the session is still recording); once the
   session is closed and gap-free, the transcripts are stitched into one
   note. Runs against the user's own OpenAI or Gemini key
-  (chosen by `pickTranscriptionConfig` in `@reflect/core`; keys in the OS
+  (chosen by `pickTranscriptionConfig` in `@kore/core`; keys in the OS
   keychain via `apps/desktop/src-tauri/src/secrets.rs`). By default, the fresh
   transcript receives one best-effort small-model pass that adds punctuation,
   paragraphs, light Markdown, and a title without changing its meaning. With

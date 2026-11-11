@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getTagTree, type TagTreeNode } from '@reflect/core'
+import { getTagTree, type TagTreeNode } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'

@@ -1,4 +1,4 @@
-import { aiProvider, type AiProviderConfig, type ChatModelOption } from '@reflect/core'
+import { aiProvider, type AiProviderConfig, type ChatModelOption } from '@kore/core'
 
 /** One configured provider's models, shaped for a picker. */
 export interface ModelOptionGroup {

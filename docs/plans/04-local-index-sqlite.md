@@ -34,7 +34,7 @@ Resolution:
 - This keeps end-to-end types + the Kysely requirement, while extensions, migrations,
   and write transactions stay in Rust where they belong.
 - **Homes** (per [Architecture & Conventions](architecture-conventions.md)): the schema +
-  IPC dialect live in `@reflect/db`; **getters** live in `@reflect/core` actions
+  IPC dialect live in `@kore/db`; **getters** live in `@kore/core` actions
   (`actions/<domain>/getters.ts`). Adopt full **Kysely discipline** —
   `Selectable/Insertable/Updateable` in every signature (never raw table types), the
   `json()` helper for JSON columns, camelCase normalized at the zod/IPC boundary.
@@ -138,7 +138,7 @@ Mirror the indexing-strategy projection table list:
    query commands in Rust — the getters' public API doesn't change.
 
 3. **Indexing pipeline (TS core, Rust applies the write).** Given a changed file, the
-   `@reflect/core` indexer (TS): read (Plan 02 primitive) → **parse + extract in TS**
+   `@kore/core` indexer (TS): read (Plan 02 primitive) → **parse + extract in TS**
    (Plan 03, Lezer) → compute `fileHash` → if unchanged, skip → else hand a single
    `db_batch` upsert (`notes`/`note_text`/`links`/`tags`/`aliases` + recomputed
    `backlinks` for affected targets) to Rust, which applies it in **one transaction**.

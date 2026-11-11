@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import type { CollectionValue, NoteTagEntry, TagSuggestion, TagTypeEntry } from '@reflect/core'
+import type { CollectionValue, NoteTagEntry, TagSuggestion, TagTypeEntry } from '@kore/core'
 import { NotePropertiesHeader } from './note-properties-header'
 
 const data = vi.hoisted(() => ({
@@ -13,8 +13,8 @@ const data = vi.hoisted(() => ({
 }))
 const commitProperty = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listTagsOnNote: async () => data.tags,
   listTagTypes: async () => data.tagTypes,
   suggestTags: async () => data.suggestions,
@@ -25,7 +25,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return { useSettings: () => ({ settings: DEFAULT_SETTINGS }) }
 })
 vi.mock('@/lib/tags/use-commit-note-property', () => ({

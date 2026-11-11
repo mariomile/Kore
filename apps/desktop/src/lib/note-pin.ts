@@ -1,4 +1,4 @@
-import { isPinned, parseNote, type PinnedNote } from '@reflect/core'
+import { isPinned, parseNote, type PinnedNote } from '@kore/core'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 
 /**

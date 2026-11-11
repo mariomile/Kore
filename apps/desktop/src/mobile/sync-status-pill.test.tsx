@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getConflictedNotes, type GraphInfo } from '@reflect/core'
+import { getConflictedNotes, type GraphInfo } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import { publishKeyboardHeight } from '@/mobile/use-keyboard'
 import { SyncStatusPill } from './sync-status-pill'
@@ -12,8 +12,8 @@ import { SyncStatusPill } from './sync-status-pill'
  * something to say, plain language only, and it yields to the keyboard.
  */
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getConflictedNotes: vi.fn(async () => []),
 }))

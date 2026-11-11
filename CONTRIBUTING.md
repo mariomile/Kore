@@ -22,7 +22,7 @@ pnpm lint
 
 # If you touched Rust: stage the sidecars once per checkout first, or any
 # cargo command that compiles the desktop crate fails in tauri-build.
-pnpm --filter @reflect/desktop sidecar
+pnpm --filter @kore/desktop sidecar
 cargo test --workspace   # from the repo root (the Cargo workspace lives there)
 ```
 
@@ -58,13 +58,13 @@ commit message and, for `feat`/`fix`, the user-facing changelog entry.
 
 - **Business logic → `packages/core`.** No file/DB/AI logic in React
   components, hooks, or Tauri command handlers. Components call typed
-  `@reflect/core` bindings; Rust commands are thin wrappers over native
+  `@kore/core` bindings; Rust commands are thin wrappers over native
   primitives. Tiny dependency-free helpers shared across packages (ISO date
-  math) live in `@reflect/utils`.
+  math) live in `@kore/utils`.
 - **Rust owns capabilities, TypeScript owns policy.** A Rust command never
   encodes a product rule beyond the primitive it exposes (e.g. the watcher
   emits events; *what* to reindex is decided in core).
-- **`@reflect/core` and `@reflect/db` never import Tauri.** Native access goes
+- **`@kore/core` and `@kore/db` never import Tauri.** Native access goes
   through the injected bridge (`setBridge`); tests install fakes instead of
   module mocks.
 

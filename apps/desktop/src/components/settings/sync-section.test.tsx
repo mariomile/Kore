@@ -3,7 +3,7 @@ import { render } from 'vitest-browser-react'
 import { page, type Locator } from 'vitest/browser'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import '@/test-utils/locator'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -32,8 +32,8 @@ const sync = vi.hoisted(() => ({
   backUpNow: vi.fn(async () => {}),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   icloudStatus: vi.fn(async () => core.status),
   icloudPendingCount: vi.fn(async () => core.pendingNotes),

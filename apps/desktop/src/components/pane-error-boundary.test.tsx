@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { PaneErrorBoundary } from './pane-error-boundary'
 
 const crash = { active: false }

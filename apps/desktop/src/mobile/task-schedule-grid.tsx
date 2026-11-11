@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight } from '@/components/icons'
-import { weekStartDow } from '@reflect/core'
+import { weekStartDow } from '@kore/core'
 import { formatDayLabel } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
 import { cn } from '@/lib/utils'

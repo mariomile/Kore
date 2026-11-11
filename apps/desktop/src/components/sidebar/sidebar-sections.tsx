@@ -15,7 +15,7 @@ import {
   SIDEBAR_SECTION_IDS,
   type SidebarHideable,
   type SidebarSection,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -14,7 +14,7 @@ import {
   type CollectionDefinition,
   type CollectionDefinitionConfig,
   type TemplatePlaceholderValues,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   commitNoteBodyTransform,
   commitNoteFrontmatter,

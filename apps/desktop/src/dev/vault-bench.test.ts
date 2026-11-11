@@ -12,7 +12,7 @@ import {
   suggestWikiLinkTargets,
   syncIndex,
   type IpcBridge,
-} from '@reflect/core'
+} from '@kore/core'
 import { createDevBridge } from '@/dev/dev-bridge'
 import { createDevFileStore } from '@/dev/dev-file-store'
 import { createDevIndexDb } from '@/dev/dev-index-db'

@@ -1,4 +1,4 @@
-//! Reflect-authored path conventions — the Rust mirror of
+//! Kore-authored path conventions — the Rust mirror of
 //! `packages/core/src/graph/paths.ts` and `vault-layout.ts`. Dailies live at
 //! `daily/YYYY-MM-DD.md` unless the graph is an Obsidian vault whose
 //! `.obsidian/daily-notes.json` names its own folder and format; new regular
@@ -133,7 +133,7 @@ impl DailyLayout {
 
     /// The layout for the graph at `root`.
     pub fn for_graph(root: &Path) -> Self {
-        match reflect_graph_paths::read_obsidian_file(root, "daily-notes.json") {
+        match kore_graph_paths::read_obsidian_file(root, "daily-notes.json") {
             Some(json) => Self::from_obsidian_json(&json),
             None => Self::default(),
         }

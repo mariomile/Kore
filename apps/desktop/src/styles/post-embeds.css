@@ -8,7 +8,7 @@
    Selectors repeat the theme's own (`[data-meowdown-embed='x'] …`) one class
    deeper, so they win over it without `!important`. */
 
-.reflect-editor [data-meowdown-embed='x'] {
+.kore-editor [data-meowdown-embed='x'] {
   --_media-height: 20rem;
 
   max-width: min(40rem, 100%);
@@ -16,15 +16,15 @@
 
 /* The theme's minimum-width spacer, raised to the full card: a percentage
    width resolves to nothing inside the editor's shrink-to-fit wrapper. */
-.reflect-editor [data-meowdown-embed='x'] [data-root]::before {
+.kore-editor [data-meowdown-embed='x'] [data-root]::before {
   width: calc(40rem - 2 * var(--meowdown-embed-padding, 1rem) - 2px);
 }
 
-.reflect-editor [data-meowdown-embed='x'] [data-root] [data-quoted] {
+.kore-editor [data-meowdown-embed='x'] [data-root] [data-quoted] {
   --_media-height: 10rem;
 }
 
-.reflect-editor [data-meowdown-embed='x'] [data-root] [data-quoted] [data-body] {
+.kore-editor [data-meowdown-embed='x'] [data-root] [data-quoted] [data-body] {
   display: block;
   -webkit-line-clamp: unset;
   line-clamp: none;

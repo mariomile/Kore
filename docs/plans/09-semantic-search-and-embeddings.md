@@ -8,7 +8,7 @@ retrieval to search and AI.
 **Unlocks:** Plan 10 (AI context retrieval rides this layer).
 
 **Architecture:** the embedding runtime (model download + `embed`) is a Rust primitive;
-chunking, the `retrieve()` API, and ranking live in `@reflect/core` (`actions/embeddings`,
+chunking, the `retrieve()` API, and ranking live in `@kore/core` (`actions/embeddings`,
 `actions/search`). See [Architecture & Conventions](architecture-conventions.md).
 
 **Libraries:** `fastembed` (Rust, local embeddings) + `sqlite-vec` (vectors). See

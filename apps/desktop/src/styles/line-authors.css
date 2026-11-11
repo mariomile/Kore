@@ -3,7 +3,7 @@
    its left and a light wash in the agent's hue; the host's blocks get the
    same in a neutral tone. The owner's blocks stay plain. Display-only. */
 
-.reflect-editor .kore-line-author {
+.kore-editor .kore-line-author {
   --kore-line-author-color: hsl(var(--kore-line-author-hue, 210) 65% 50%);
   box-shadow: inset 2px 0 0 var(--kore-line-author-color);
   background: color-mix(in oklab, var(--kore-line-author-color) 8%, transparent);
@@ -12,6 +12,6 @@
   margin-inline-start: -0.5em;
 }
 
-.reflect-editor .kore-line-author[data-line-author='host'] {
+.kore-editor .kore-line-author[data-line-author='host'] {
   --kore-line-author-color: var(--text-muted);
 }

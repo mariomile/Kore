@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ALL_NOTES_SORTS, type AllNotesSort, type AllNotesView } from '@reflect/core'
+import { ALL_NOTES_SORTS, type AllNotesSort, type AllNotesView } from '@kore/core'
 import { LayoutGrid, List } from '@/components/icons'
 import {
   Select,

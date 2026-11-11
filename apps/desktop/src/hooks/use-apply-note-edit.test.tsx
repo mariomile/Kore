@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { PRIVATE_NOTE_EDIT_ERROR } from '@reflect/core'
+import { PRIVATE_NOTE_EDIT_ERROR } from '@kore/core'
 
 /** A stand-in disk: read, yield to the event loop, then write — the real race window. */
 const disk = vi.hoisted(() => ({ content: '', missing: false }))
@@ -17,8 +17,8 @@ vi.mock('@/lib/note-frontmatter', () => ({
     disk.content = transform(snapshot)
   },
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote: async () => {
     if (disk.missing) {
       throw { kind: 'notFound', message: 'gone' }

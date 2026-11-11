@@ -2,12 +2,12 @@ import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getNote, readNote, type GraphInfo } from '@reflect/core'
+import { getNote, readNote, type GraphInfo } from '@kore/core'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import { SyncConflictNotice } from './sync-conflict-notice'
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getNote: vi.fn(),
   readNote: vi.fn(),

@@ -1,5 +1,5 @@
 import { useRef, type ReactElement } from 'react'
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import { Download, Inbox, MoreHorizontal } from '@/components/icons'
 import {
   DropdownMenu,

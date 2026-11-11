@@ -4,7 +4,7 @@ import {
   showQuickCapture,
   toggleDevtools,
   untitledNotePath,
-} from '@reflect/core'
+} from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'

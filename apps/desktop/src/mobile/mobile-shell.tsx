@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { untitledNotePath } from '@reflect/core'
+import { untitledNotePath } from '@kore/core'
 import { useDoubleTap } from '@/hooks/use-double-tap'
 import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
 import { MobileCaptureDrawer } from '@/mobile/capture-drawer'

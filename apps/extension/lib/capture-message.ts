@@ -1,8 +1,8 @@
-import type { CaptureWireMessage } from '@reflect/core/capture-envelope'
+import type { CaptureWireMessage } from '@kore/core/capture-envelope'
 
 /**
  * Build the extension→host wire message from what the popup captured. The
- * envelope mirrors `@reflect/core`'s zod schema — the host validates it
+ * envelope mirrors `@kore/core`'s zod schema — the host validates it
  * again; this builder just shapes honest inputs (empty strings become absent
  * optionals, the data-URL prefix is stripped to raw base64).
  */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { errorMessage, isAppError, ReflectError, toAppError } from './errors'
+import { errorMessage, isAppError, KoreError, toAppError } from './errors'
 
 describe('isAppError', () => {
   it('accepts every contract kind', () => {
@@ -26,17 +26,17 @@ describe('isAppError', () => {
     expect(isAppError(undefined)).toBe(false)
   })
 
-  it('accepts thrown ReflectError instances (load-bearing for sync state mapping)', () => {
+  it('accepts thrown KoreError instances (load-bearing for sync state mapping)', () => {
     // The engine's statusForError branches on isAppError to map a thrown
-    // ReflectError('network') to the `offline` state (and 'auth' to the
+    // KoreError('network') to the `offline` state (and 'auth' to the
     // reconnect affordance). zod's object parser reads the declared shape
     // keys by direct property access, so the Error subclass's own `kind`
     // field and `message` satisfy the union — pinned here because the whole
     // offline/auth UX rests on it.
-    const error = new ReflectError('network', 'unreachable')
+    const error = new KoreError('network', 'unreachable')
     expect(isAppError(error)).toBe(true)
     expect(toAppError(error)).toEqual({ kind: 'network', message: 'unreachable' })
-    expect(isAppError(new ReflectError('auth', 'rejected'))).toBe(true)
+    expect(isAppError(new KoreError('auth', 'rejected'))).toBe(true)
   })
 })
 

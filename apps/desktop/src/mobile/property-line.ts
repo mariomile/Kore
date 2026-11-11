@@ -1,4 +1,4 @@
-import type { CollectionValue, TagType } from '@reflect/core'
+import type { CollectionValue, TagType } from '@kore/core'
 import { readCellValue } from '@/components/all-notes/collection-cell'
 
 /**

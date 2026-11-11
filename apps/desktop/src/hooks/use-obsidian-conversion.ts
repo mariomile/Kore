@@ -8,7 +8,7 @@ import {
   type ConversionResult,
   type GraphInfo,
   type ImportMapping,
-} from '@reflect/core'
+} from '@kore/core'
 import { dirtyOpenPaths, flushOpenDocuments } from '@/editor/open-documents'
 import { canonicalizeImportBody } from '@/editor/roundtrip'
 import { useAsyncAction } from '@/hooks/use-async-action'

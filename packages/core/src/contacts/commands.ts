@@ -31,7 +31,7 @@ export function isContactsReadable(status: ContactsAuthorization): boolean {
 }
 
 /**
- * One matched contact, flattened to the fields Reflect can write into a note.
+ * One matched contact, flattened to the fields Kore can write into a note.
  * Field-level `.catch` keeps a single odd contact from failing a whole lookup.
  */
 export const contactMatchSchema = z.object({

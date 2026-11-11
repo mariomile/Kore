@@ -4,8 +4,8 @@ const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 const openNoteWindow = vi.hoisted(() => vi.fn<(link: string) => Promise<void>>())
 const isMobileSurface = vi.hoisted(() => vi.fn(() => false))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   openNoteWindow,
 }))
 vi.mock('@/lib/platform', async (importOriginal) => ({

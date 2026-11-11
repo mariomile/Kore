@@ -6,7 +6,7 @@ import {
   type StartingValueKind,
   type TagProperty,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 
 /** One schema row under edit; `options` stays comma-text until save. */
 export interface PropertyDraft {

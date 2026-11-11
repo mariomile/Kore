@@ -13,7 +13,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { DETAILS_SECTION_IDS, moveDetailsSection, type DetailsSection } from '@reflect/core'
+import { DETAILS_SECTION_IDS, moveDetailsSection, type DetailsSection } from '@kore/core'
 import {
   DropdownMenu,
   DropdownMenuContent,

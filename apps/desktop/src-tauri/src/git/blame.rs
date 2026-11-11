@@ -1,7 +1,7 @@
 //! Who last changed each line of a note (Plan 33, A3): `git blame` over the
 //! graph's backup repository, run against the text the caller is showing so
 //! line numbers match it exactly. A read-only primitive; naming authors
-//! (agents, the host, the owner) and drawing the shading is `@reflect/core`'s
+//! (agents, the host, the owner) and drawing the shading is `@kore/core`'s
 //! and the editor's policy.
 
 use std::collections::BTreeMap;

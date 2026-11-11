@@ -2,7 +2,7 @@ import { useEffect, useMemo, type ReactElement } from 'react'
 import { definePlugin } from '@prosekit/core'
 import { docToMarkdown } from '@meowdown/core'
 import { useEditor, useExtension } from '@meowdown/react'
-import { gitBlame, lineAuthors } from '@reflect/core'
+import { gitBlame, lineAuthors } from '@kore/core'
 import {
   LINE_AUTHORS_DOC_CHANGED,
   LINE_AUTHORS_READY,

@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import type { CalendarEvent } from '@reflect/core'
+import type { CalendarEvent } from '@kore/core'
 import { addDaysIso, parseIsoDate } from '@/lib/dates'
 
 /**

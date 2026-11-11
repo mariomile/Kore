@@ -51,16 +51,16 @@ pub(crate) use self::resolve::ensure_relative;
 pub(crate) use self::resolve::resolve as resolve_in_graph;
 /// iCloud eviction-placeholder path construction, shared with note deletion
 /// and the desktop watcher (which treats an evicted note as present, not
-/// deleted — Plan 21). The grammar now lives in `reflect-graph-paths`.
-pub(crate) use reflect_graph_paths::eviction_placeholder;
+/// deleted — Plan 21). The grammar now lives in `kore-graph-paths`.
+pub(crate) use kore_graph_paths::eviction_placeholder;
 /// iCloud eviction-placeholder name mapping, shared with the iCloud
 /// container discovery (`icloud::storage`) — Apple-only, like its callers.
 #[cfg(any(target_os = "ios", target_os = "macos"))]
-pub(crate) use reflect_graph_paths::icloud_placeholder_target;
+pub(crate) use kore_graph_paths::icloud_placeholder_target;
 /// Dataless-file probe (modern macOS eviction: bytes remote, real path
 /// intact), shared with the desktop watcher and the iCloud pending walk —
 /// every place that must not mistake an evicted note for a readable one.
-pub(crate) use reflect_graph_paths::is_dataless;
+pub(crate) use kore_graph_paths::is_dataless;
 
 /// The open graph root plus a monotonic generation, kept **under one lock** so
 /// they swap atomically (the same pattern as the index's `IndexState`, Plan 04b).
@@ -97,7 +97,7 @@ pub struct GraphInfo {
 }
 
 /// Metadata for a file inside the graph (shared with the CLI indexer).
-pub use reflect_index_store::FileMeta;
+pub use kore_index_store::FileMeta;
 
 /// Result of claiming a note path without overwriting an existing file.
 #[derive(Debug, Serialize)]
@@ -205,12 +205,12 @@ fn root_for(state: &State<GraphState>, generation: Option<u64>) -> AppResult<Pat
 /// Reads and OS opens accept any supported attachment anywhere in the vault:
 /// an adopted vault keeps its images beside its notes. Classification is the
 /// shared `graph-paths` policy, so neither surface can serve a note, a hidden
-/// file, or a traversal path. Writes are deliberately untouched — Reflect
+/// file, or a traversal path. Writes are deliberately untouched — Kore
 /// only ever creates files under `assets/`, `audio-memos/`, or the visible
 /// attachment folder an adopted vault names, and widening reads must not
-/// widen what Reflect will write.
+/// widen what Kore will write.
 fn ensure_readable_attachment_path(path: &str) -> AppResult<()> {
-    if reflect_graph_paths::is_attachment(path) {
+    if kore_graph_paths::is_attachment(path) {
         return Ok(());
     }
     Err(AppError::traversal(format!(
@@ -242,7 +242,7 @@ pub async fn graph_create<R: tauri::Runtime>(
 }
 
 /// Open an existing Markdown vault in place, adding only `.kore/` runtime
-/// state. Reflect's authoring directories remain lazy for adopted vaults.
+/// state. Kore's authoring directories remain lazy for adopted vaults.
 ///
 /// Async so the directory check and `initialize_runtime` writes run off the
 /// main thread — on iOS, the thread that delivers touches. `activate` stays
@@ -657,7 +657,7 @@ pub async fn asset_reveal(path: String, generation: u64, app: tauri::AppHandle) 
 }
 
 fn ensure_revealable_path(path: &str) -> AppResult<()> {
-    if reflect_graph_paths::is_safe_visible(path) {
+    if kore_graph_paths::is_safe_visible(path) {
         return Ok(());
     }
     Err(AppError::traversal(format!(
@@ -1054,13 +1054,13 @@ pub struct ObsidianConfig {
 
 /// Read `.obsidian/daily-notes.json`, `app.json` and `templates.json` from `root`.
 /// Fixed names only, never a caller-supplied path, and never through a
-/// symlinked `.obsidian` (see `reflect_graph_paths::read_obsidian_file`), so
+/// symlinked `.obsidian` (see `kore_graph_paths::read_obsidian_file`), so
 /// this cannot become a way to read files outside the graph.
 pub(crate) fn read_obsidian_config(root: &Path) -> ObsidianConfig {
     ObsidianConfig {
-        daily_notes: reflect_graph_paths::read_obsidian_file(root, "daily-notes.json"),
-        app: reflect_graph_paths::read_obsidian_file(root, "app.json"),
-        templates: reflect_graph_paths::read_obsidian_file(root, "templates.json"),
+        daily_notes: kore_graph_paths::read_obsidian_file(root, "daily-notes.json"),
+        app: kore_graph_paths::read_obsidian_file(root, "app.json"),
+        templates: kore_graph_paths::read_obsidian_file(root, "templates.json"),
     }
 }
 

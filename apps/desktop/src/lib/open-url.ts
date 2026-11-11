@@ -1,5 +1,5 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 
 /**
  * Fire-and-forget `openUrl` for sync UI handlers that have no use for the

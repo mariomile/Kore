@@ -1,4 +1,4 @@
-import { AUDIO_MEMO_MAX_DURATION_MS } from '@reflect/core'
+import { AUDIO_MEMO_MAX_DURATION_MS } from '@kore/core'
 
 /**
  * How close to the cap the recording UI starts warning that the recording

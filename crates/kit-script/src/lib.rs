@@ -21,7 +21,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use reflect_note_policy::{parse_frontmatter, split_frontmatter};
+use kore_note_policy::{parse_frontmatter, split_frontmatter};
 use saphyr::{LoadableYamlNode, Scalar, Yaml};
 use sha2::{Digest, Sha256};
 

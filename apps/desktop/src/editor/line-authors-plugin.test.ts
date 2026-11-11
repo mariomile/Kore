@@ -1,5 +1,5 @@
 import { markdownToDoc } from '@meowdown/core'
-import type { LineAuthor } from '@reflect/core'
+import type { LineAuthor } from '@kore/core'
 import { describe, expect, it } from 'vitest'
 import { agentHue, lineAuthorDecorations, textblockLines } from './line-authors-plugin'
 

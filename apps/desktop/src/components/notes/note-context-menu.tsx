@@ -1,5 +1,5 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { isDaily } from '@reflect/core'
+import { isDaily } from '@kore/core'
 import {
   ExternalLink,
   FolderOpen,

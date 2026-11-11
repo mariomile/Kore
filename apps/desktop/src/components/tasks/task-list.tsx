@@ -7,7 +7,7 @@ import {
   type ReactElement,
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { taskListItemKey, type TaskListItem } from '@/lib/tasks/task-list-items'
@@ -52,7 +52,7 @@ interface TaskListProps {
 /**
  * The Tasks list: every group's header, breadcrumb, and task row flattened
  * into one virtualized column, so a graph's full completed history (no LIMIT
- * on {@link import('@reflect/core').getCompletedTasks}, by design — the Cmd+A
+ * on {@link import('@kore/core').getCompletedTasks}, by design — the Cmd+A
  * select-all must act on every row) renders as cheaply as a handful of tasks —
  * only the rows the viewport (plus buffer) actually shows ever mount. Rows are
  * variable height (the inline editor swaps a row for a taller one), so the

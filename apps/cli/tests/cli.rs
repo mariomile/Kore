@@ -10,7 +10,7 @@ use rusqlite::params;
 use tempfile::TempDir;
 
 use common::*;
-use reflect_cli::paths::{daily_path, today_date};
+use kore_cli::paths::{daily_path, today_date};
 
 /// A graph with the standard layout but no index file.
 

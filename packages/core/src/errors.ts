@@ -27,12 +27,12 @@ export type AppError = z.infer<typeof appErrorSchema>
  * {@link isAppError}, so `catch` sites branch on it exactly like a
  * Rust-originated error.
  */
-export class ReflectError extends Error {
+export class KoreError extends Error {
   readonly kind: AppError['kind']
 
   constructor(kind: AppError['kind'], message: string) {
     super(message)
-    this.name = 'ReflectError'
+    this.name = 'KoreError'
     this.kind = kind
   }
 }

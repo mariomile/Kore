@@ -6,7 +6,7 @@ import {
   startingValuesFor,
   valuesMissingFrom,
   upsertFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { useGraph } from '@/providers/graph-provider'

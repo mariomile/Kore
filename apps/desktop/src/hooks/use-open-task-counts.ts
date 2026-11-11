@@ -1,6 +1,6 @@
 import { use, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { countOpenTasksForNotes } from '@reflect/core'
+import { countOpenTasksForNotes } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { GraphContext } from '@/providers/graph-context'

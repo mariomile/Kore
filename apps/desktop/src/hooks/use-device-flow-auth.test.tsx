@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { runDeviceFlow, ReflectError, type GithubAuth } from '@reflect/core'
+import { runDeviceFlow, KoreError, type GithubAuth } from '@kore/core'
 import { useDeviceFlowAuth } from './use-device-flow-auth'
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   runDeviceFlow: vi.fn(),
 }))
 
@@ -43,7 +43,7 @@ describe('useDeviceFlowAuth', () => {
   it('returns to the idle view with a message when the flow fails', async () => {
     mockFlow.mockImplementation(async (options) => {
       options.onCode({ userCode: 'ABCD-1234', verificationUri: 'https://github.com/login/device' })
-      throw new ReflectError('auth', 'GitHub sign-in was denied.')
+      throw new KoreError('auth', 'GitHub sign-in was denied.')
     })
     const { result, act } = await renderHook(() => useDeviceFlowAuth())
 

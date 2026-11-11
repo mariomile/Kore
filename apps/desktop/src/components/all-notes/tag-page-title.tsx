@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { tagDisplayName } from '@reflect/core'
+import { tagDisplayName } from '@kore/core'
 import { Settings } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 

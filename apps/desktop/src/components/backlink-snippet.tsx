@@ -7,7 +7,7 @@ import {
   separateCalloutTitles,
   withoutBlockIds,
   type SnippetTask,
-} from '@reflect/core'
+} from '@kore/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
 import { useCalloutDom } from '@/editor/use-callout-dom'
@@ -37,10 +37,10 @@ interface BacklinkSnippetProps {
  * `expandCollapsed` renders `+` collapsed items expanded at every depth.
  * Round `+ [ ]` task checkboxes are live — a click writes the
  * toggle through to the source note ({@link useSnippetTaskToggle}), old
- * Reflect's backlink-context behavior — while square GFM boxes stay read-only
- * (the `reflect-backlink-snippet` CSS keeps them inert-looking). The
- * `reflect-editor` class shares the editor's chip styling; the
- * `reflect-backlink-snippet` wrapper keeps it in the panel's compact line box.
+ * Kore's backlink-context behavior — while square GFM boxes stay read-only
+ * (the `kore-backlink-snippet` CSS keeps them inert-looking). The
+ * `kore-editor` class shares the editor's chip styling; the
+ * `kore-backlink-snippet` wrapper keeps it in the panel's compact line box.
  * A context lifted out of a callout arrives dedented, so it is quoted again
  * (`requoteCalloutBlock`) and drawn like any preview's callout, always open
  * for the same reason collapsed bullets are.
@@ -62,9 +62,9 @@ export function BacklinkSnippet({
   const hostRef = useRef<HTMLDivElement>(null)
   useCalloutDom(hostRef, false)
   return (
-    <div ref={hostRef} className="reflect-backlink-snippet select-text text-xs text-text">
+    <div ref={hostRef} className="kore-backlink-snippet select-text text-xs text-text">
       <MarkdownView
-        className="reflect-editor"
+        className="kore-editor"
         markdown={markdown}
         expandCollapsed
         onWikilinkClick={onWikilinkClick}

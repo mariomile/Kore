@@ -4,7 +4,7 @@ import type {
   EditorLineSpacing,
   EditorMarkdownSyntax,
   EditorTextSize,
-} from '@reflect/core'
+} from '@kore/core'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'

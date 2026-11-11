@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { errorMessage, runDeviceFlow } from '@reflect/core'
+import { errorMessage, runDeviceFlow } from '@kore/core'
 import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { providerFetch } from '@/lib/provider-fetch'
 

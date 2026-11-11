@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
-import { separateCalloutTitles, withoutBlockIds } from '@reflect/core'
+import { separateCalloutTitles, withoutBlockIds } from '@kore/core'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useCalloutDom } from '@/editor/use-callout-dom'
@@ -125,7 +125,7 @@ export function MarkdownPreview({
           resolveWikilink={resolveWikilink}
           {...(interactive ? { onLinkClick: openExternalLink } : {})}
           {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-          className={cn('reflect-editor', className)}
+          className={cn('kore-editor', className)}
         />
       </div>
     </PaneErrorBoundary>

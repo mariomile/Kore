@@ -110,7 +110,7 @@ export function zoomLastFocusedEditor(direction: 'in' | 'out'): boolean {
   return ran
 }
 
-/** The editor keymap the zoom installs (see `REFLECT_EDITOR_BINDINGS`). */
+/** The editor keymap the zoom installs (see `KORE_EDITOR_BINDINGS`). */
 export const ZOOM_IN_BINDING = 'Mod-Shift-.'
 export const ZOOM_OUT_BINDING = 'Mod-Shift-,'
 

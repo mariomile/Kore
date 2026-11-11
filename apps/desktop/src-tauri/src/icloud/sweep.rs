@@ -540,7 +540,7 @@ fn apply_file_resolution(
 /// Fold creation-collision duplicates back into their canonical note. iCloud
 /// renames the losing side of a same-name creation to `name 2.md` — with
 /// deterministic daily filenames that is the *most common* conflict shape.
-/// Reflect's own collision suffixes are hyphenated (Plan 17), so the
+/// Kore's own collision suffixes are hyphenated (Plan 17), so the
 /// space-digit shape is unambiguously iCloud's.
 fn fold_collision_duplicates(
     root: &Path,

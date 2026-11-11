@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 import { Calendar, Layers, LayoutTemplate, type Icon } from '@/components/icons'
 import { boardGroupablePropertiesOf, calendarPropertyOf } from '@/lib/tags/schema-views'
 import { FIELD_LABEL_CLASS } from './tag-config-drafts'

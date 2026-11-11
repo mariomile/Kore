@@ -324,7 +324,7 @@ export const indexedNoteSchema = z.object({
   /** Emails the note owns via `- Email:` contact-field bullets. */
   emails: z.array(indexedEmailSchema),
   assets: z.array(z.string()),
-  /** Reflect task rows for the Tasks projection (Plan 18). */
+  /** Kore task rows for the Tasks projection (Plan 18). */
   tasks: z.array(indexedTaskSchema),
   /** Non-reserved frontmatter keys for the `note_properties` projection (TDR 0005). */
   properties: z.array(indexedPropertySchema),

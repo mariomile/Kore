@@ -1,4 +1,4 @@
-import { foldTag, type NoteListFolder } from '@reflect/core'
+import { foldTag, type NoteListFolder } from '@kore/core'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 
 /**

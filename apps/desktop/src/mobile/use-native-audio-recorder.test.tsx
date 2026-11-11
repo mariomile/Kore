@@ -1,6 +1,6 @@
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import {
   isStagedPathClaimed,
   releaseStagedPath,

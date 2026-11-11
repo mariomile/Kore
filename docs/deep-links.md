@@ -82,7 +82,7 @@ exactly, so a crashed drain re-runs cleanly.
   only for one **mobile-native verb**: `kore://record-audio`, the
   lock-screen widget's start-recording entry point. It is handled in the Rust
   shell (queued into the recording plugin's native action handshake — see
-  `docs/porting/reflect-mobile/audio-memos.md`) and deliberately absent from
+  `docs/porting/upstream-mobile/audio-memos.md`) and deliberately absent from
   the desktop JS grammar: desktop parses it as unknown. The route-shaped
   navigation grammar is not a mobile surface yet.
 

@@ -1,5 +1,5 @@
 //! The wire message and capture envelope, mirroring the zod schemas in
-//! `@reflect/core` (`actions/capture-envelope.ts` — the source of truth).
+//! `@kore/core` (`actions/capture-envelope.ts` — the source of truth).
 //! Serde tolerates unknown fields (a newer extension must not break an older
 //! host); the checks here are the ones the host *must* enforce before the
 //! envelope id names files on disk.

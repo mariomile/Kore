@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listChatConversations } from '@reflect/core'
+import { listChatConversations } from '@kore/core'
 import { Chat, Close, NoteEdit } from '@/components/icons'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { keybindingFor } from '@/lib/commands/app-commands'

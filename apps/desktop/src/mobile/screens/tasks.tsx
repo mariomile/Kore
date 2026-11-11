@@ -7,7 +7,7 @@ import {
   getOpenTasks,
   TASK_VIEWS,
   type OpenTask,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'

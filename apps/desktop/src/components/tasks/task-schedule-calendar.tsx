@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight, Close } from '@/components/icons'
-import { weekStartDow } from '@reflect/core'
+import { weekStartDow } from '@kore/core'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { formatDayLabel } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'

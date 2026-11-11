@@ -9,11 +9,11 @@ import {
   withAgentRunLock,
   runRoutineScriptTick,
   type AgentRoutine,
-} from '@reflect/core'
+} from '@kore/core'
 import { AgentRoutinesRunner } from './agent-routines-runner'
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   inflightRoutineRun: vi.fn(),
   markRoutineRunStarted: vi.fn(),
   markRoutineRunFinished: vi.fn(),

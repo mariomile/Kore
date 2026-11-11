@@ -7,7 +7,7 @@
  * note route carries `path` — the reserved frontmatter `id` can join it later
  * without breaking the shape.
  */
-import { dailyPath, dateFromDailyPath, isDaily, type NoteListFilter } from '@reflect/core'
+import { dailyPath, dateFromDailyPath, isDaily, type NoteListFilter } from '@kore/core'
 import { isIsoDate } from '@/lib/dates'
 
 /**

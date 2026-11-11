@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { codexLoginStatus, codexLogout, errorMessage, runCodexLogin } from '@reflect/core'
+import { codexLoginStatus, codexLogout, errorMessage, runCodexLogin } from '@kore/core'
 import { CheckCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { openUrlSync } from '@/lib/open-url'

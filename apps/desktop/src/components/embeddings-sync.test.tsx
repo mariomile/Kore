@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { EmbedStatus, IndexAppliedListener } from '@reflect/core'
+import type { EmbedStatus, IndexAppliedListener } from '@kore/core'
 import { EmbeddingsSync } from './embeddings-sync'
 
 const core = vi.hoisted(() => ({
@@ -12,8 +12,8 @@ const graphState = vi.hoisted(() => ({ indexReady: true }))
 const modelState = vi.hoisted((): { current: EmbedStatus } => ({
   current: { status: 'ready', model: 'all-MiniLM-L6-v2' },
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   embedNote: core.embedNote,
   embedRemove: core.embedRemove,
   subscribeIndexApplied: core.subscribeIndexApplied,

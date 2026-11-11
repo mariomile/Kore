@@ -2,14 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
-import type { RetrievalHit } from '@reflect/core'
+import type { RetrievalHit } from '@kore/core'
 import { INDEX_QUERY_SCOPE, SIMILAR_QUERY_SCOPE } from './query-client'
 import { useSimilarNotes } from './use-similar-notes'
 
 const relatedNotes = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   readNote,
   relatedNotes,

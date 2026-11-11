@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { dailyPath } from '@reflect/core'
+import { dailyPath } from '@kore/core'
 import { DailyEventsSection } from './daily-events-section'
 import { DetailsSections } from './details-sections'
 import { DayCalendar } from './day-calendar'

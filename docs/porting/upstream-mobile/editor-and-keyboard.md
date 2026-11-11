@@ -85,7 +85,7 @@ toolbar — and the hard-won keyboard/focus lessons.
 
 ### Editor configuration
 
-The shared `@team-reflect/reflect-editor` (ProseMirror + Yjs) is mounted
+The shared `@team-reflect/kore-editor` (ProseMirror + Yjs) is mounted
 by `client/screens/note-edit/note-edit-main.tsx` with mobile-specific
 props: `mobile` mode on, `inlineToolbarEnabled: false` (the keyboard
 toolbar replaces it), merge menu off, `readOnly` always false, subject
@@ -182,7 +182,7 @@ Load-bearing behaviors around it:
 
 | V1                                                | v2                                                              |
 | ------------------------------------------------- | ---------------------------------------------------------------- |
-| reflect-editor (ProseMirror+Yjs), `mobile` mode   | meowdown (or CM6 fallback) over the shared document stack        |
+| kore-editor (ProseMirror+Yjs), `mobile` mode   | meowdown (or CM6 fallback) over the shared document stack        |
 | Native accessory toolbar (swizzled)               | Not ported; webview-drawn toolbar later, on keyboard-height      |
 | Toolbar item set + selection-aware enablement     | The requirements list for that later toolbar                     |
 | Hardware-keyboard detection (GCKeyboard)          | Revisit with the toolbar (hide it for hardware keyboards)        |

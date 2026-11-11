@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { foldTag, hasNestedTags, tagDisplayName, type TagTreeNode } from '@reflect/core'
+import { foldTag, hasNestedTags, tagDisplayName, type TagTreeNode } from '@kore/core'
 import { ChevronDown, ChevronRight, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'

@@ -9,7 +9,7 @@ use crate::error::AppResult;
 const DEFAULT_GROUPS: &[(&str, &[&str])] = &[
     (
         "Kore local index + caches (rebuildable; never committed), agent proposals excepted",
-        &reflect_index_schema::IGNORE_RULES,
+        &kore_index_schema::IGNORE_RULES,
     ),
     ("macOS Finder metadata", &[".DS_Store", "._*"]),
     (

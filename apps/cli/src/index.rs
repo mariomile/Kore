@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use rusqlite::{Connection, OpenFlags};
 
-use reflect_index_schema::{INDEX_FILE, KORE_DIR, LATEST_SCHEMA_VERSION};
+use kore_index_schema::{INDEX_FILE, KORE_DIR, LATEST_SCHEMA_VERSION};
 
 use crate::error::CliError;
 use crate::hash::hash_content;
@@ -49,7 +49,7 @@ pub fn open_read_only(root: &Path) -> IndexOpen {
     // after it, so the semantic leg of `search` can run its KNN query here.
     // Lexical commands never touch vec0; a failed registration only costs
     // semantic search, which degrades on its own.
-    let _ = reflect_index_schema::register_sqlite_vec();
+    let _ = kore_index_schema::register_sqlite_vec();
     let conn = match Connection::open_with_flags(&file, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(conn) => conn,
         Err(err) => return IndexOpen::Unusable(format!("could not open the index: {err}")),

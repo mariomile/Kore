@@ -38,7 +38,7 @@ export interface SnippetTask {
   /** `[x]`/`[X]` → true, `[ ]` → false. */
   checked: boolean
   /**
-   * True for Reflect's round task syntax (a `+` bullet). Purely visual now —
+   * True for Kore's round task syntax (a `+` bullet). Purely visual now —
    * round and square checkboxes both project and both toggle; the flag only
    * picks which checkbox the snippet draws.
    */

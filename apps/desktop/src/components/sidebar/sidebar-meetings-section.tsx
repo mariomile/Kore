@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { errorMessage, resolveOrCreateNoteWithTitle, type CalendarEvent } from '@reflect/core'
+import { errorMessage, resolveOrCreateNoteWithTitle, type CalendarEvent } from '@kore/core'
 import { Calendar } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { formatTimeOfDay } from '@/lib/dates'

@@ -6,7 +6,7 @@ import {
   type BaseResultGroup,
   type BaseResultRow,
   type BaseViewResult,
-} from '@reflect/core'
+} from '@kore/core'
 import { cn } from '@/lib/utils'
 import { BaseCellEditor } from './base-cell-editor'
 import { BaseNewRow } from './base-new-row'

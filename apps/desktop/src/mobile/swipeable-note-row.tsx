@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Pin, PinOff, Trash } from '@/components/icons'
-import type { HighlightSegment } from '@reflect/core'
+import type { HighlightSegment } from '@kore/core'
 import { formatRecencyLabel } from '@/lib/dates'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import { useNoteRowSwipe } from '@/mobile/use-note-row-swipe'

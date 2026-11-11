@@ -59,7 +59,7 @@ keyboard's own dictation.
 - **The whole chat engine.** `streamChat` (`packages/core/src/ai/chat/stream-chat.ts`),
   the note tools + CloudSafe minting (`tools.ts`, `../checkers.ts`), context-window
   fitting, the transcript model (`transcript.ts`), and the store (`store.ts`)
-  are platform-neutral TS in `@reflect/core`. The privacy gate is type-level
+  are platform-neutral TS in `@kore/core`. The privacy gate is type-level
   and travels with the code — there is no new enforcement work on mobile.
 - **Persistence.** `chat_conversations`/`chat_messages` (migration
   `crates/index-schema/migrations/0008_chat.sql`) ship in the shared

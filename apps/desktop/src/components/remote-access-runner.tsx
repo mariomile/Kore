@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { errorMessage, startRemoteAccess, stopRemoteAccess } from '@reflect/core'
+import { errorMessage, startRemoteAccess, stopRemoteAccess } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { isMacosDesktop } from '@/lib/platform'
 import {

@@ -6,7 +6,7 @@ import {
   type DateFormat,
   type TimeFormat,
   type WeekStartDay,
-} from '@reflect/core'
+} from '@kore/core'
 import {
   Select,
   SelectContent,

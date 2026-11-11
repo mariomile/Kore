@@ -7,7 +7,7 @@ import {
   listNotes,
   writeNote,
   type ReplaceMatch,
-} from '@reflect/core'
+} from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { runNoteBatch } from './note-batch'

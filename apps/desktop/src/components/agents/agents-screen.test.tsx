@@ -3,7 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { Settings } from '@reflect/core'
+import type { Settings } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { AgentsScreen } from './agents-screen'
 
@@ -16,8 +16,8 @@ const readNote = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
 const writeNote = vi.hoisted(() =>
   vi.fn<(path: string, contents: string, generation: number) => Promise<void>>(async () => {}),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listAgentProfiles,
   createAgentProfile,
   ensureUserMemoryNote,

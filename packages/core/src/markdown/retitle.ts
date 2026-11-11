@@ -103,7 +103,7 @@ export interface PathWikiLinkRepointOptions {
  * (`[[notes/plan-2]]`), keeping pipe displays and `#fragments` byte-for-byte.
  * Which link addresses the file is decided with the same reduction the index
  * projection uses ({@link wikiNoteReference}), so a same-stem link in another
- * folder is never touched. Markdown hrefs stay as written: Reflect never
+ * folder is never touched. Markdown hrefs stay as written: Kore never
  * emits them, and rewriting other tools' files is not this pipeline's job.
  */
 export function repointPathWikiLinks(source: string, options: PathWikiLinkRepointOptions): string {

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import type { NoteBlame } from '@reflect/core'
+import type { NoteBlame } from '@kore/core'
 import '@/test-utils/locator'
 import { LineAuthorShading } from './line-author-shading'
 import { NoteEditor } from './note-editor'
 
 const gitBlame = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   gitBlame,
 }))
 

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Hash } from '@/components/icons'
-import { tagDisplayName, type ChatTurn, type NoteToolResult, type TagProperty } from '@reflect/core'
+import { tagDisplayName, type ChatTurn, type NoteToolResult, type TagProperty } from '@kore/core'
 import { useApplyTagSchema } from '@/hooks/use-apply-tag-schema'
 import { diffTagSchema, type SchemaDiffRow } from '@/lib/tags/schema-diff'
 import { cn } from '@/lib/utils'

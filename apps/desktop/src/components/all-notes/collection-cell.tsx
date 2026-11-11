@@ -11,7 +11,7 @@ import {
   type CollectionValue,
   type RelationLink,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 import { Check } from '@/components/icons'
 import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { formatShortDate } from '@/lib/dates'

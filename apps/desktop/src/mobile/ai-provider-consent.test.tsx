@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
-import { aiProvider } from '@reflect/core'
+import { aiProvider } from '@kore/core'
 import { AiProviderConsent } from './ai-provider-consent'
 
 const openUrl = vi.hoisted(() => vi.fn(() => Promise.resolve()))

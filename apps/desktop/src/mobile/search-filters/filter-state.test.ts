@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emptySearchFilters } from '@reflect/core'
+import { emptySearchFilters } from '@kore/core'
 import {
   EMPTY_ALL_NOTES_FILTERS,
   buildAllNotesSearch,

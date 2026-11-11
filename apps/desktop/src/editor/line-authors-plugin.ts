@@ -1,4 +1,4 @@
-import { lineAuthorKey, type LineAuthor } from '@reflect/core'
+import { lineAuthorKey, type LineAuthor } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { Plugin, PluginKey, type Transaction } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'

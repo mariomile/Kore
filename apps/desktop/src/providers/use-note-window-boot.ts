@@ -9,7 +9,7 @@ import {
   windowBootstrap,
   type AppPlatform,
   type WindowBootstrap,
-} from '@reflect/core'
+} from '@kore/core'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
 import { throttledInvalidateIndexQueries } from '@/lib/query-client'
 import { trackSubscriptions } from '@/lib/subscriptions'

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { baseDisplayName, resolveAttachmentSource, type BaseEmbed } from '@reflect/core'
+import { baseDisplayName, resolveAttachmentSource, type BaseEmbed } from '@kore/core'
 import { BaseViewContent } from '@/components/bases/base-view-content'
 import { useBaseView } from '@/components/bases/use-base-view'
 import { useCreateBaseNote } from '@/components/bases/use-create-base-note'

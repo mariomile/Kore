@@ -8,7 +8,7 @@ import type { Database } from './schema'
  * snake_case columns/tables in the Rust schema (and result rows back to
  * camelCase).
  *
- * `@reflect/core` owns the shared instance wired to the IPC bridge; tests and
+ * `@kore/core` owns the shared instance wired to the IPC bridge; tests and
  * other hosts (e.g. the Plan 14 CLI reading the index file directly) construct
  * their own with a suitable runner.
  */

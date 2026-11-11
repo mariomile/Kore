@@ -6,7 +6,7 @@ import {
   noteFileStem,
   splitFrontmatter,
   stripLeadingHeading,
-} from '@reflect/core'
+} from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { appendBodyTag, writeNote } from '@reflect/core'
+import { appendBodyTag, writeNote } from '@kore/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'

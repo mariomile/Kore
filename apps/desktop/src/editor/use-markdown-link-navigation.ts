@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage, noteLinkFragment, resolveExistingMarkdownTarget } from '@reflect/core'
+import { errorMessage, noteLinkFragment, resolveExistingMarkdownTarget } from '@kore/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'

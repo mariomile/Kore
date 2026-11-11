@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { canvasDisplayName } from '@reflect/core'
+import { canvasDisplayName } from '@kore/core'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
 import { useCanvasDocument, useCanvasFiles } from './use-canvas'

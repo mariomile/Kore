@@ -5,7 +5,7 @@ import {
   parseFrontmatter,
   splitFrontmatter,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { migratePropertyRenames, planPropertyRenames } from '@/lib/tags/schema-renames'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'

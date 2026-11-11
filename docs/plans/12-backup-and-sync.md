@@ -12,7 +12,7 @@ reconciliation for open notes — load-bearing for conflicts), Plan 10 (keychain
 **Unlocks:** multi-device durability; AI-assisted conflict resolution (deferred).
 
 **Architecture:** Git is a Rust primitive (`git2`/libgit2); sync orchestration, cadence,
-GitHub specifics, and conflict policy live in `@reflect/core` (`actions/sync`). See
+GitHub specifics, and conflict policy live in `@kore/core` (`actions/sync`). See
 [Architecture & Conventions](architecture-conventions.md).
 
 **Libraries:** `git2` (libgit2), `keyring` — Rust. (`diff`/jsdiff returns for the

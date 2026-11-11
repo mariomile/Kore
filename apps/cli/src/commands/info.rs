@@ -3,7 +3,7 @@
 //! tag counts. The one index-backed command that never exits 4: an agent
 //! runs it first to learn what the other commands will be able to do.
 
-use reflect_index_schema::{INDEX_FILE, KORE_DIR};
+use kore_index_schema::{INDEX_FILE, KORE_DIR};
 
 use crate::commands::output::{print_json, CountsJson, IndexInfoJson, InfoJson};
 use crate::commands::warn;

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { CHAT_SYSTEM_PROMPT_MAX_LENGTH } from '@reflect/core'
+import { CHAT_SYSTEM_PROMPT_MAX_LENGTH } from '@kore/core'
 import { Sliders } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

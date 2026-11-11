@@ -1,4 +1,4 @@
-import { parseNote } from '@reflect/core'
+import { parseNote } from '@kore/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createNoteSession, type NoteSession } from '@/editor/note-session'
 import { registerOpenDocument } from '@/editor/open-documents'

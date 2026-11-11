@@ -1,4 +1,4 @@
-# @reflect/core
+# @kore/core
 
 All of Reflect's TypeScript business logic. Platform-agnostic by design:
 nothing in this package imports `@tauri-apps/*` — the native shell is reached

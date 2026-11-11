@@ -7,7 +7,7 @@ import {
   formatMoment,
   getVaultLayout,
   readNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { formatDayLabel, formatTimeOfDay, todayIso } from '@/lib/dates'
 import { templateBody } from '@/lib/note-templates'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'

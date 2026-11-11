@@ -1,4 +1,4 @@
-import { getVaultLayout } from '@reflect/core'
+import { getVaultLayout } from '@kore/core'
 import { useContactsAuthorization } from '@/hooks/use-contacts-authorization'
 import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { isMacosDesktop } from '@/lib/platform'

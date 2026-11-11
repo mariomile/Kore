@@ -1,5 +1,5 @@
 /**
- * `@reflect/core` — the TypeScript business-logic layer.
+ * `@kore/core` — the TypeScript business-logic layer.
  *
  * Per the architecture conventions, all reads, orchestration, AI/provider
  * calls, and privacy guards live here; the Rust shell provides only native

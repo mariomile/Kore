@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 import { diffTagSchema } from './schema-diff'
 
 const AUTHOR: TagProperty = { name: 'Author', key: 'author', type: 'text' }

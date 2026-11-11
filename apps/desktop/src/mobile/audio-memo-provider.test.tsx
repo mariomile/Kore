@@ -1,7 +1,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import type {
   AiProvidersState,
   AudioMemoIdentity,
@@ -9,7 +9,7 @@ import type {
   CaptureAudioMemoOutcome,
   GraphInfo,
   Settings,
-} from '@reflect/core'
+} from '@kore/core'
 import type { NativeRecorderResult } from '@/mobile/use-native-audio-recorder'
 import { act } from '@/test-utils/act'
 
@@ -75,8 +75,8 @@ const stagedControls = vi.hoisted(() => ({
   stopActive: vi.fn<() => Promise<NativeRecorderResult | null>>(),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   captureAudioMemo,
 }))
 

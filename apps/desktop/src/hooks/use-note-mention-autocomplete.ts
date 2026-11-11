@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
-import { listPrivateNotePaths, searchNotes, type SearchHit } from '@reflect/core'
+import { listPrivateNotePaths, searchNotes, type SearchHit } from '@kore/core'
 
 /**
  * The composer's @-mention autocomplete: typing `@query` after a word

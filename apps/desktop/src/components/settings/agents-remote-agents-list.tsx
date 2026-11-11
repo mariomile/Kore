@@ -8,7 +8,7 @@ import {
   setRemoteAgentAccess,
   type RemoteAgent,
   type RemoteAgentAccess,
-} from '@reflect/core'
+} from '@kore/core'
 import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

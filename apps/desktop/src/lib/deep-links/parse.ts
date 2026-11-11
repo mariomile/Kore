@@ -1,4 +1,4 @@
-import type { TextCaptureKind } from '@reflect/core'
+import type { TextCaptureKind } from '@kore/core'
 import { isIsoDate } from '@/lib/dates'
 import {
   DEEP_LINK_SCHEME,

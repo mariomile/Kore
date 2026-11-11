@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { AgentStep, AgentStepOutcome, AssistantPart } from '@reflect/core'
+import type { AgentStep, AgentStepOutcome, AssistantPart } from '@kore/core'
 import { ChatAgentSteps } from './chat-agent-steps'
 
 vi.mock('@/hooks/use-note-link-navigation', () => ({

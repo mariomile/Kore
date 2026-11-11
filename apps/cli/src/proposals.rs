@@ -119,7 +119,7 @@ pub struct Claim {
 pub fn claim(root: &Path, id: &str) -> Result<Claim, CliError> {
     let waiting = path_for(root, id)?;
     let claimed = root
-        .join(reflect_index_schema::KORE_DIR)
+        .join(kore_index_schema::KORE_DIR)
         .join(format!("accepting-{id}.json"));
     std::fs::rename(&waiting, &claimed)
         .map_err(|_| CliError::Usage(format!("no proposal {id:?}")))?;
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn proposals_live_in_the_synced_part_of_the_runtime_directory() {
-        use reflect_index_schema::{KORE_DIR, SYNCED_SUBDIR};
+        use kore_index_schema::{KORE_DIR, SYNCED_SUBDIR};
         assert_eq!(DIR, format!("{KORE_DIR}/{SYNCED_SUBDIR}"));
     }
 

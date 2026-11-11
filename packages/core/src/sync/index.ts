@@ -1,5 +1,5 @@
 /**
- * `@reflect/core` sync domain (Plan 12) — GitHub backup & sync over the Rust
+ * `@kore/core` sync domain (Plan 12) — GitHub backup & sync over the Rust
  * git primitives: typed command bindings, the GitHub module (device flow,
  * token refresh, repo API), and the debounced sync engine.
  */

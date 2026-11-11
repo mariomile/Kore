@@ -1,5 +1,5 @@
 import type { EditorView } from '@prosekit/pm/view'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import {
   blockLinkText,

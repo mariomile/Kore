@@ -177,7 +177,7 @@ workflow.
 
   ```bash
   cd apps/desktop/src-tauri/gen/apple
-  xcodebuild -project reflect-open.xcodeproj -target <NewExtension> \
+  xcodebuild -project kore-open.xcodeproj -target <NewExtension> \
     -sdk iphoneos -configuration release -allowProvisioningUpdates build
   ```
 

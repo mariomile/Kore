@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from 'react'
-import { isTagSymbolIconName, parseNoteAppearanceFromSource } from '@reflect/core'
+import { isTagSymbolIconName, parseNoteAppearanceFromSource } from '@kore/core'
 import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
 import { cn } from '@/lib/utils'
 

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { BrowserSearchEngine } from '@reflect/core'
+import type { BrowserSearchEngine } from '@kore/core'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'

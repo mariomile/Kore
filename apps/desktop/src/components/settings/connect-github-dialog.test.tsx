@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import type { ConnectExistingResult } from '@/lib/backup-controller'
@@ -19,8 +19,8 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
 // App-credential scenarios exercise a configured installation; Kore ships with PAT auth.
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   githubAppInstallUrl: () => 'https://github.com/apps/kore-test/installations/new',
 }))
 const httpFetch = vi.mocked(tauriFetch)

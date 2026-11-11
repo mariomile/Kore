@@ -9,7 +9,7 @@ import {
   notePath,
   resolveWikiTarget,
   type CalendarEvent,
-} from '@reflect/core'
+} from '@kore/core'
 import { Calendar } from '@/components/icons'
 import { formatTimeOfDay } from '@/lib/dates'
 import { useCalendarChangeInvalidation, useDayEvents } from '@/lib/use-calendar'

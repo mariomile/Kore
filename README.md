@@ -191,10 +191,10 @@ Common commands from the repository root:
 pnpm dev              # turbo dev: Vite app on http://localhost:1420 (+ extension dev server)
 pnpm check            # typecheck + lint
 pnpm test             # vitest; use --run path/to/test for one file
-pnpm --filter @reflect/desktop e2e  # Chromium smoke of the Vite app (no Tauri shell)
+pnpm --filter @kore/desktop e2e  # Chromium smoke of the Vite app (no Tauri shell)
 
 # Rust tests that compile the desktop crate need sidecars staged first
-pnpm --filter @reflect/desktop sidecar
+pnpm --filter @kore/desktop sidecar
 cargo test --workspace
 ```
 

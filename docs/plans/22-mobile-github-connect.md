@@ -42,7 +42,7 @@ mobile (Plan 16's agent-auth transport has no phone story).
   keychain as well as the macOS one.
 - **Core auth.** `runDeviceFlow` (poll policy included),
   `saveGithubAuth`/`loadGithubAuth`, `createGithubRepo`/`getGithubRepo` —
-  all platform-neutral TS in `@reflect/core`. The device flow is *always*
+  all platform-neutral TS in `@kore/core`. The device flow is *always*
   configured: `GITHUB_APP_CLIENT_ID` is a hardcoded constant in
   `packages/core/src/sync/github-auth.ts`, not a build-time env var, so iOS
   builds need no injection.

@@ -6,8 +6,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use reflect_graph_paths::eviction_placeholder;
-use reflect_note_policy::{first_h1, parse_frontmatter, split_frontmatter, Frontmatter};
+use kore_graph_paths::eviction_placeholder;
+use kore_note_policy::{first_h1, parse_frontmatter, split_frontmatter, Frontmatter};
 
 use crate::error::CliError;
 use crate::keys::fold_key;
@@ -279,7 +279,7 @@ pub fn ensure_not_private(root: &Path, rel_path: &str) -> Result<(), CliError> {
 /// The file itself may be absent (daily `path` output relies on that), but any
 /// component that exists must be an ordinary in-graph entry.
 pub(crate) fn checked_note_path(root: &Path, rel_path: &str) -> Result<PathBuf, CliError> {
-    if !reflect_graph_paths::is_note(rel_path) {
+    if !kore_graph_paths::is_note(rel_path) {
         return Err(CliError::Runtime(format!(
             "unsafe or ineligible note path: {rel_path}"
         )));
@@ -314,14 +314,14 @@ pub(crate) fn symlink_free_path(root: &Path, rel_path: &str) -> std::io::Result<
 }
 
 /// Every eligible `.md` in the graph, recursively — the shared vault walk
-/// (`reflect_graph_paths::walk_catalog`), same contract as the desktop
+/// (`kore_graph_paths::walk_catalog`), same contract as the desktop
 /// listing: hidden, reserved, and ignored trees are pruned, symlinks are
 /// skipped, and paths come back graph-relative and forward-slashed. One
 /// unreadable directory costs itself, not the listing; everything the walk
 /// refused is reported once on stderr so results stay explainable without
 /// polluting stdout.
 pub fn walk_notes(root: &Path) -> Vec<DiskNote> {
-    let catalog = reflect_graph_paths::walk_catalog(root);
+    let catalog = kore_graph_paths::walk_catalog(root);
     if catalog.skipped > 0 {
         eprintln!(
             "note: skipped {} entries (unreadable, symlinked, or excluded)",

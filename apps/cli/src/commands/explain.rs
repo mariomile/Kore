@@ -5,7 +5,7 @@
 //! (exit 4); a private note is refused (exit 3), and so is every private
 //! neighbor, as in `links`/`backlinks`.
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::commands::output::{print_json, ExplainJson};
 use crate::commands::{backlinks, links, require_index, resolve_existing};

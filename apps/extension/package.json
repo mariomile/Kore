@@ -1,5 +1,5 @@
 {
-  "name": "@reflect/extension",
+  "name": "@kore/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@reflect/core": "workspace:*",
-    "@reflect/design-system": "workspace:*",
+    "@kore/core": "workspace:*",
+    "@kore/design-system": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.6.7"

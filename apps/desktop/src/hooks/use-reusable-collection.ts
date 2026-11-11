@@ -9,7 +9,7 @@ import {
   type CollectionPropertySchema,
   type CollectionSort,
   type NoteListEntry,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'

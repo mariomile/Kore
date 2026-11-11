@@ -2,7 +2,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page, type Locator } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { ApiKeyValidation, ApiKeyValidationInput } from '@reflect/core'
+import type { ApiKeyValidation, ApiKeyValidationInput } from '@kore/core'
 import { fireEvent } from '@/test-utils/fire-event'
 
 /**
@@ -15,8 +15,8 @@ import { fireEvent } from '@/test-utils/fire-event'
 const validateApiKey = vi.hoisted(() =>
   vi.fn<(input: ApiKeyValidationInput, fetchFn?: typeof fetch) => Promise<ApiKeyValidation>>(),
 )
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   validateApiKey,
 }))
 vi.mock('@/lib/provider-fetch', () => ({ providerFetch: vi.fn() }))

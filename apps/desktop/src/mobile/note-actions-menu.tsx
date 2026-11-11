@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { useNoteRowState } from '@/hooks/use-note-row'

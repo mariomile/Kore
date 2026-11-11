@@ -16,7 +16,7 @@ import {
   saveSettings,
   errorMessage,
   type Settings,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { startOperation } from '@/lib/operations'
 import { setSettingsFlusher } from '@/lib/settings-flush'

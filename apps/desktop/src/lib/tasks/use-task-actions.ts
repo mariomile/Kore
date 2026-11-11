@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import {
   addTask,
   convertTaskToBullet,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
-import { parseEmbedBlocks, type EmbedBlock } from '@reflect/core'
+import { parseEmbedBlocks, type EmbedBlock } from '@kore/core'
 import { EmbeddedMedia } from './embedded-media'
 
 /**

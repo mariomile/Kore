@@ -7,7 +7,7 @@ import {
   errorMessage,
   isCliAgentProvider,
   type AiProviderConfig,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { startOperation } from '@/lib/operations'
 import { ModelCombobox } from './model-combobox'

@@ -126,7 +126,7 @@ export {
   errorMessage,
   isAppError,
   toAppError,
-  ReflectError,
+  KoreError,
   type AppError,
 } from '../errors'
 export {
@@ -168,9 +168,9 @@ export {
   type NoteReference,
 } from '../graph/note-reference'
 export {
-  isValidReflectNoteId,
-  isReflectManagedNotePath,
-  isReflectManagedNote,
+  isValidKoreNoteId,
+  isKoreManagedNotePath,
+  isKoreManagedNote,
 } from '../graph/note-management'
 export {
   graphInfoSchema,

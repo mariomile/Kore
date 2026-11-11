@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { useRef } from 'react'
 import { toast } from '@/components/ui/toast'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'

@@ -1,7 +1,7 @@
-import type { TaskFilters } from '@reflect/core'
+import type { TaskFilters } from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 
-export type { TaskFilters } from '@reflect/core'
+export type { TaskFilters } from '@kore/core'
 
 export interface TaskFiltersControl {
   filters: TaskFilters

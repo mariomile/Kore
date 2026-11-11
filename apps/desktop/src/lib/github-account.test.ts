@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { fetchSignedInUser } from './github-account'
 

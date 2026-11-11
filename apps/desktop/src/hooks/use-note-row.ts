@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getNote, type NoteRow } from '@reflect/core'
+import { getNote, type NoteRow } from '@kore/core'
 import {
   applyNoteRowOverlay,
   reconcileNoteRowOverlay,

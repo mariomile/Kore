@@ -1,5 +1,5 @@
 //! Shared fixtures for the `kore` integration tests: a temp graph on
-//! disk, an index built with the shared `reflect-index-schema` migrations
+//! disk, an index built with the shared `kore-index-schema` migrations
 //! plus direct row inserts that mirror the desktop's `apply_note` write path
 //! (`apps/desktop/src-tauri/src/db/write.rs`), and the process helpers that
 //! run the real binary. Each test binary uses a subset, hence `dead_code`.
@@ -12,9 +12,9 @@ use std::process::{Command, Output};
 use rusqlite::params;
 use tempfile::TempDir;
 
-use reflect_cli::hash::hash_content;
-use reflect_cli::keys::{fold_graph_path, fold_key};
-use reflect_cli::note_file::parse_note_meta;
+use kore_cli::hash::hash_content;
+use kore_cli::keys::{fold_graph_path, fold_key};
+use kore_cli::note_file::parse_note_meta;
 
 /// `note_claims.tier` values (the desktop's `claim_tier`): lower wins.
 const TIER_DAILY_DATE: i64 = 1;
@@ -41,11 +41,11 @@ impl Fixture {
     /// Index every note on disk the way the desktop pipeline would: derived
     /// title/aliases/private, content hash, file mtime, FTS row.
     pub fn build_index(&self) {
-        let conn = reflect_index_schema::open_index_at(self.root()).unwrap();
-        for note in reflect_cli::note_file::walk_notes(self.root()) {
+        let conn = kore_index_schema::open_index_at(self.root()).unwrap();
+        for note in kore_cli::note_file::walk_notes(self.root()) {
             let content = fs::read_to_string(self.root().join(&note.rel_path)).unwrap();
             let meta = parse_note_meta(&note.rel_path, &content);
-            let daily_date = reflect_cli::paths::date_from_daily_path(&note.rel_path);
+            let daily_date = kore_cli::paths::date_from_daily_path(&note.rel_path);
             let kind = if daily_date.is_some() {
                 "daily"
             } else {
@@ -93,7 +93,7 @@ impl Fixture {
             if let Some(date) = daily_date {
                 // Calendar-valid only: an impossible `daily/2026-02-31.md` is
                 // an ordinary note and must never claim a date.
-                if reflect_cli::paths::parse_calendar_date(&date).is_some() {
+                if kore_cli::paths::parse_calendar_date(&date).is_some() {
                     claim(&mut claims, date.to_string(), TIER_DAILY_DATE);
                 }
             }
@@ -285,7 +285,7 @@ impl Fixture {
         model_id: &str,
         vector: &[f32],
     ) {
-        reflect_index_schema::register_sqlite_vec().unwrap();
+        kore_index_schema::register_sqlite_vec().unwrap();
         let conn = self.index_conn();
         conn.execute(
             "INSERT INTO embedding_chunks

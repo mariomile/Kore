@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { ConflictedNote } from '@reflect/core'
+import type { ConflictedNote } from '@kore/core'
 import { ChevronRight } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'

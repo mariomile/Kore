@@ -3546,6 +3546,12 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-11 — Plan 33: A1 ✓ (#343), A2 ✓ (#350), A3 ✓ (#387, who wrote each
+  line, off by default). Next: B2 (tags that extend tags).
+- 2026-11-11 — Internal rename merged (#355): `@kore/*` packages, `kore-*`
+  crates, desktop crate and Xcode project `kore-open`; release-please branch
+  is now `release-please--branches--master--components--kore-open`. The next
+  mobile bump needs a TestFlight run because the Xcode project was renamed.
 - 2026-11-11 — Quality refactor, no behavior change. Chat attachment media
   types live in one table (`ATTACHMENT_KINDS` in
   `ai/chat/attachment-types.ts`: media type, extensions, channel image /

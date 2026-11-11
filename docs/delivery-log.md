@@ -7,6 +7,17 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Plan 33 A3 (#387): "Show who wrote each line" (Settings → Editor, and Note
+  actions). Off by default. Shades each block an agent or the Kore host last
+  changed, from `git blame` over A1's signed commits (new `git_blame`
+  primitive, core `gitBlame`/`lineAuthors`, `editorLineAuthors` setting,
+  `line-authors-plugin`). Display-only; granularity is per block, and a block
+  takes its newest line's author.
+
+- The code says Kore everywhere: packages are @kore/*, crates kore-*, the
+  desktop crate and Xcode project kore-open, and pnpm lint fails if a new
+  reflect name appears. Nothing changes in the app. (#355)
+
 - Scrolling the daily notes stays smooth when the Mac is busy: while the
   stream moves a day is drawn as plain text, and the days on screen become
   editors again as soon as the scroll rests. A click on a day gives it its

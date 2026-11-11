@@ -305,6 +305,19 @@ describe('commitNoteFrontmatter', () => {
     expect(cleared[1].endsWith('# Trip\n')).toBe(true)
   })
 
+  it('writes the cover position and clears it with the cover', async () => {
+    readNote.mockResolvedValue('---\ncover: assets/beach.png\n---\n# Trip\n')
+    await commitNoteFrontmatter('notes/trip.md', { coverY: 30 }, 3)
+    const written = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(written[1]).toBe('---\ncover: assets/beach.png\ncover_y: 30\n---\n# Trip\n')
+
+    writeNote.mockClear()
+    readNote.mockResolvedValue('---\ncover: assets/beach.png\ncover_y: 30\n---\n# Trip\n')
+    await commitNoteFrontmatter('notes/trip.md', { cover: null, coverY: null }, 3)
+    const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(cleared[1]).toBe('# Trip\n')
+  })
+
   it('leaves unrelated keys and comments untouched around a property write', async () => {
     readNote.mockResolvedValue('---\n# reading log\nstatus: to-read\nid: 01H\n---\n# A\n')
 

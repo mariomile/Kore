@@ -1,13 +1,9 @@
-import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
+import { useMemo, type ReactElement } from 'react'
 import { noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
 import { Image, Smile } from '@/components/icons'
 import { cn } from '@/lib/utils'
-import {
-  dragHasFiles,
-  firstImageFile,
-  NoteCoverPicker,
-  type CoverUpload,
-} from './note-cover-picker'
+import { NoteCover, type CoverEdit } from './note-cover'
+import { NoteCoverPicker, type CoverUpload } from './note-cover-picker'
 import { NoteIconGlyph } from './note-icon-glyph'
 import { NoteIconPicker } from './note-icon-picker'
 
@@ -36,84 +32,12 @@ interface NoteAppearanceProps {
   onCoverChange?: ((cover: string | null) => void) | undefined
   /** Copies a picked or dropped image into the vault for the cover. */
   uploadCover?: CoverUpload | undefined
-}
-
-interface CoverEdit {
-  onChange: (cover: string | null) => void
-  upload: CoverUpload
+  /** Saves the cover's vertical position; the cover shows Reposition when set. */
+  onCoverPositionChange?: ((coverY: number) => void) | undefined
 }
 
 const HOVER_ACTION_CLASS =
   'flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-hover hover:text-text'
-
-const COVER_ACTION_CLASS =
-  'rounded-md bg-surface/90 px-2 py-1 text-xs text-text-secondary shadow-sm backdrop-blur-sm transition-colors hover:bg-surface hover:text-text'
-
-/**
- * The cover image. Editable, it shows Change and Remove while hovered (or
- * focused, or while its picker is open) and replaces itself with an image
- * dropped on it.
- */
-function NoteCover({ url, edit }: { url: string; edit: CoverEdit | null }): ReactElement {
-  const [dragOver, setDragOver] = useState(false)
-  const image = (
-    <img data-testid="note-cover" src={url} alt="" className="h-40 w-full object-cover" />
-  )
-  if (edit === null) {
-    return image
-  }
-  const onDrop = (event: DragEvent): void => {
-    if (!dragHasFiles(event)) {
-      return
-    }
-    event.preventDefault()
-    setDragOver(false)
-    const file = firstImageFile(event.dataTransfer.files)
-    if (file !== null) {
-      void edit.upload(file).then((path) => {
-        if (path !== null) {
-          edit.onChange(path)
-        }
-      })
-    }
-  }
-  return (
-    <div
-      className="group/cover relative"
-      onDragOver={(event) => {
-        if (dragHasFiles(event)) {
-          event.preventDefault()
-          setDragOver(true)
-        }
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={onDrop}
-    >
-      {image}
-      {dragOver ? (
-        <div className="pointer-events-none absolute inset-0 bg-surface-inverse/30 ring-2 ring-border-focus ring-inset" />
-      ) : null}
-      <div className="absolute right-3 bottom-3 flex gap-1 opacity-0 transition-opacity duration-100 group-hover/cover:opacity-100 focus-within:opacity-100 has-data-popup-open:opacity-100">
-        <NoteCoverPicker
-          onChange={edit.onChange}
-          upload={edit.upload}
-          label="Change cover"
-          className={COVER_ACTION_CLASS}
-        >
-          Change
-        </NoteCoverPicker>
-        <button
-          type="button"
-          aria-label="Remove cover"
-          className={COVER_ACTION_CLASS}
-          onClick={() => edit.onChange(null)}
-        >
-          Remove
-        </button>
-      </div>
-    </div>
-  )
-}
 
 /**
  * Cover image and icon from reserved frontmatter keys. Absent or unresolvable
@@ -127,6 +51,7 @@ export function NoteAppearance({
   onIconChange,
   onCoverChange,
   uploadCover,
+  onCoverPositionChange,
 }: NoteAppearanceProps): ReactElement | null {
   const appearance = useMemo(() => parseNoteAppearanceFromSource(source), [source])
   const coverUrl = appearance.coverSrc !== null ? resolveImageUrl(appearance.coverSrc) : null
@@ -135,8 +60,8 @@ export function NoteAppearance({
     () =>
       onCoverChange === undefined || uploadCover === undefined
         ? null
-        : { onChange: onCoverChange, upload: uploadCover },
-    [onCoverChange, uploadCover],
+        : { onChange: onCoverChange, upload: uploadCover, onPositionChange: onCoverPositionChange },
+    [onCoverChange, uploadCover, onCoverPositionChange],
   )
 
   let iconEl: ReactElement | null = null
@@ -202,7 +127,7 @@ export function NoteAppearance({
   if (coverUrl !== null) {
     return (
       <div className={cn('relative', iconEl !== null ? 'mb-10' : 'mb-3')}>
-        <NoteCover url={coverUrl} edit={coverEdit} />
+        <NoteCover url={coverUrl} position={appearance.coverY} edit={coverEdit} />
         {iconEl !== null ? (
           <div className={cn('absolute -bottom-6', gutterClassName)}>{iconEl}</div>
         ) : null}

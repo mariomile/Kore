@@ -12,7 +12,7 @@ use serde::Serialize;
 /// The app's own frontmatter keys — never properties, never writable through
 /// `set` (`RESERVED_FRONTMATTER_KEYS`, `packages/core/src/tags/tag-type.ts`).
 /// `tags` is tag membership, written by `tag` / `untag`, not a data column.
-pub const RESERVED_KEYS: [&str; 15] = [
+pub const RESERVED_KEYS: [&str; 16] = [
     "id",
     "title",
     "aliases",
@@ -24,6 +24,7 @@ pub const RESERVED_KEYS: [&str; 15] = [
     "properties",
     "template",
     "cover",
+    "cover_y",
     "icon",
     "kore",
     "koreCollection",

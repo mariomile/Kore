@@ -40,7 +40,15 @@ export function noteIconValue(icon: NoteIcon): string {
 export interface NoteAppearance {
   readonly icon: NoteIcon | null
   readonly coverSrc: string | null
+  /**
+   * Which band of the cover shows (`cover_y:`), as the vertical
+   * `object-position` percentage: 0 is the top edge, 100 the bottom.
+   */
+  readonly coverY: number
 }
+
+/** The cover's vertical position when `cover_y:` is absent: centered. */
+export const DEFAULT_COVER_Y = 50
 
 function unwrapTarget(raw: string): string {
   const trimmed = raw.trim()
@@ -107,11 +115,29 @@ export function parseNoteCover(value: unknown): string | null {
   return target
 }
 
+/**
+ * Parse `cover_y:` — a number from 0 (top) to 100 (bottom), or a numeric
+ * string. Out-of-range values clamp; anything else is the centered default.
+ */
+export function parseNoteCoverY(value: unknown): number {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN
+  if (!Number.isFinite(number)) {
+    return DEFAULT_COVER_Y
+  }
+  return Math.min(100, Math.max(0, Math.round(number)))
+}
+
 /** Read {@link NoteAppearance} from already-parsed frontmatter. */
 export function parseNoteAppearance(frontmatter: Frontmatter): NoteAppearance {
   return {
     icon: parseNoteIcon(frontmatter.icon),
     coverSrc: parseNoteCover(frontmatter.cover),
+    coverY: parseNoteCoverY(frontmatter['cover_y']),
   }
 }
 

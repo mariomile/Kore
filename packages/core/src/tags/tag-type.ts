@@ -307,6 +307,7 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'properties',
   'template',
   'cover',
+  'cover_y',
   'icon',
   'kore',
   'koreCollection',

@@ -181,6 +181,8 @@ export {
   parseNoteAppearance,
   parseNoteAppearanceFromSource,
   parseNoteCover,
+  parseNoteCoverY,
+  DEFAULT_COVER_Y,
   parseNoteIcon,
   noteIconValue,
   symbolIconValue,

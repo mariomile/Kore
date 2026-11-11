@@ -1,7 +1,8 @@
 # Plan 34 — Kore Cloud (the vault always on, in the user's own Cloudflare)
 
-> **Status (2026-11-09):** slice 1 (the Worker, `apps/cloud/`) written and
-> tested; slices 2-4 not started. Italian plan for Mario:
+> **Status (2026-11-11):** slices 1 (the Worker, `apps/cloud/`) and 2
+> (named agents, `kore cloud setup`) written and tested, locally against
+> `wrangler dev`; the first run on a real account and slices 3-4 not started. Italian plan for Mario:
 > `/mnt/project-files/kore-cloud-spike/PIANO.md`; spike measurements:
 > `/mnt/project-files/kore-cloud-spike/RISULTATI.md` (project files).
 
@@ -22,8 +23,8 @@ in the user's account; Kore operates nothing.
 ## Shape
 
 - **One Worker per vault** (`kore-cloud` on the user's `*.workers.dev`), with
-  three bindings: `DB` (D1), `OAUTH_KV` (KV, OAuth grants and tokens) and the
-  secret `KORE_ACCESS_KEY`. `KORE_VAULT_LAYOUT` (JSON `VaultLayout`) tells it
+  four bindings: `DB` (D1), `OAUTH_KV` (KV, OAuth grants and tokens),
+  `PAGES` (KV, for published pages later) and the secret `KORE_OWNER_KEY`. `KORE_VAULT_LAYOUT` (JSON `VaultLayout`) tells it
   where daily notes and new notes go, as the app reads them from `.obsidian/`.
 - **D1 holds the notes.** One row per note: path, full source, and the parsed
   title, tags and text for the FTS5 index (`unicode61 remove_diacritics 2`).
@@ -36,8 +37,8 @@ in the user's account; Kore operates nothing.
   `create_note`, `set_properties`) and the vault's `AGENTS.md` (else
   `CLAUDE.md`) inlined in `instructions` up to 12,000 characters. Claude and
   ChatGPT sign in through OAuth (`@cloudflare/workers-oauth-provider`: DCR,
-  client metadata documents, PKCE); the consent page asks for the access key.
-  A CLI may send the access key itself as the bearer token.
+  client metadata documents, PKCE); the consent page asks for the owner key and names the agent.
+  A CLI may send the owner key itself as the bearer token.
 - **Writes are structural.** Every agent write reads the note, applies one
   edit (append, exact-passage replace, property patch, create), and writes
   with the version it read; on a lost race it rereads and reapplies (three
@@ -76,8 +77,15 @@ in the user's account; Kore operates nothing.
    token page with the permissions prefilled
    (`dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=…`), takes the
    pasted token, creates D1 + KV, uploads the Worker bundle, sets the access
-   key (stored in the keychain), uploads the notes. First run on Mario's
-   account measures the open limits above.
+   key, uploads the notes. First run on Mario's account measures the open
+   limits above. *Written:* the work runs in `kore-cloud.mjs`
+   (`apps/cloud/setup/`, bundled with the Worker inlined) under Node, the
+   way `kore index` runs the core indexer; the owner key lives in a 0600
+   file outside the vault (`~/.config/kore/cloud.json`, like `kore keys`)
+   until the app's Settings take it into the keychain (slice 4). The token
+   page is the account-token one (`/:account/api-tokens`). The first upload
+   only adds notes Kore Cloud lacks and never overwrites one there; two-way
+   reconciling is app sync's job.
 3. **App sync**: policy in `packages/core/src/sync/` (cursor, push with base
    versions, conflict copies, private → delete), HTTP in a thin Rust command,
    the same split as git sync.

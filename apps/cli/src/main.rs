@@ -335,6 +335,12 @@ enum Command {
         #[command(subcommand)]
         action: KeysAction,
     },
+    /// Kore Cloud: the vault always on for every agent, in your own
+    /// Cloudflare account (free plan)
+    Cloud {
+        #[command(subcommand)]
+        action: commands::cloud::CloudAction,
+    },
     /// The read-only Library: agent homes such as ~/.claude and ~/.codex,
     /// served to local agents only (no graph needed)
     Library {
@@ -441,8 +447,13 @@ fn run(cli: &Cli) -> Result<(), CliError> {
     if let Command::Library { action } = &cli.command {
         return commands::library::run(action.as_ref(), cli.json);
     }
+    if let Command::Cloud { action } = &cli.command {
+        if !commands::cloud::needs_vault(action) {
+            return commands::cloud::run(action, None);
+        }
+    }
     let graph = match &cli.command {
-        Command::Index { .. } | Command::Sources { .. } => {
+        Command::Index { .. } | Command::Sources { .. } | Command::Cloud { .. } => {
             graph::resolve_for_index(cli.graph.as_deref())?
         }
         _ => graph::resolve(cli.graph.as_deref())?,
@@ -450,6 +461,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
     match &cli.command {
         Command::Keys { action } => run_keys(action, cli.json),
         Command::Library { action } => commands::library::run(action.as_ref(), cli.json),
+        Command::Cloud { action } => commands::cloud::run(action, Some(&graph.root)),
         Command::Today { path } => commands::today::run(&graph, cli.json, *path),
         Command::Search { query, limit, mode } => {
             commands::search::run(&graph, cli.json, query, *limit, *mode)

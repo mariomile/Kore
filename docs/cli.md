@@ -410,6 +410,32 @@ is null when the index is absent or unusable.
 }
 ```
 
+### `kore cloud setup | upload | key | token-url`
+
+Kore Cloud (Plan 34): the vault always on for every agent, in the user's own
+Cloudflare account on the free plan. Kore runs nothing: the Worker, the
+database and the keys live in that account.
+
+- `kore cloud setup [--account <id>] [--name <worker>]` prints Cloudflare's
+  token page with the permissions prefilled (Workers Scripts, D1 and Workers
+  KV edit, Account Settings read), takes the pasted token without echoing
+  it (or `KORE_CLOUDFLARE_TOKEN`), then creates or finds the `kore` D1
+  database and the `kore-oauth` and `kore-pages` KV namespaces, uploads the
+  Worker with the vault's layout from `.obsidian/`, turns on its
+  `*.workers.dev` URL and uploads the notes. The token is never stored.
+  Running it again updates the Worker in place and keeps the owner key.
+- `kore cloud upload` sends the notes Kore Cloud lacks. It never overwrites
+  a note already there with other text (it reports it); private notes,
+  hidden folders and notes over 1 MB stay local.
+- `kore cloud key` prints the owner key, which approves each agent on Kore
+  Cloud's sign-in page (`<url>/mcp` is the connector URL).
+- The URL and owner key live in `$KORE_CLOUD_FILE`, else
+  `$XDG_CONFIG_HOME/kore/cloud.json`, else `~/.config/kore/cloud.json`
+  (mode 0600, outside the vault).
+- Needs Node 22 (`KORE_NODE`) and `kore-cloud.mjs` next to the `kore`
+  binary, or its path in `KORE_CLOUD_SCRIPT`. Build it with
+  `pnpm --filter @kore/cloud build:setup` (it lands in `apps/cloud/dist/`).
+
 ### `kore index [--rebuild] [--json]`
 
 Builds or refreshes `.kore/index.sqlite` with no app running, so every

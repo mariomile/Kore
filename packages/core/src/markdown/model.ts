@@ -35,6 +35,15 @@ function coercePrivate(value: unknown): boolean {
 }
 
 /**
+ * The privacy level other second-brain kits write instead of `private: true`
+ * (cyber-brain's `sensitivity: private | personal | shareable`). Only the
+ * exact word `private` counts, so `personal` and `shareable` stay public.
+ */
+export function isSensitivityPrivate(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().toLowerCase() === 'private'
+}
+
+/**
  * Coerce the pin value. `pinned: true` pins; a finite number pins **with an
  * explicit sidebar order** — the encoding the pinned shelf reorder writes.
  * Truthy words follow `private`'s rules; anything unrecognized is unpinned.
@@ -90,38 +99,47 @@ export type GistFrontmatter = z.infer<typeof gistFrontmatterSchema>
  * Built to tolerate external edits — bad known fields fall back via `.catch`
  * rather than failing the whole parse and making a note unreadable.
  */
-export const frontmatterSchema = z.looseObject({
-  /** Reserved stable id. Not auto-written in the first wave (identity = path). */
-  id: z.string().optional().catch(undefined),
-  aliases: z.array(z.string()).catch([]).default([]),
-  /** Hard privacy flag: such notes must never be sent to any external service. */
-  private: z.preprocess(coercePrivate, z.boolean()).default(false),
-  /**
-   * Pinned to the sidebar's Pinned section: `true`, or a number for an
-   * explicit order. Unpinned notes omit the key. Read through
-   * {@link isPinned}/{@link pinnedOrder} — `pinned: 0` is a pinned note.
-   */
-  pinned: z.preprocess(coercePinned, z.union([z.boolean(), z.number()])).default(false),
-  /**
-   * The published GitHub Gist block. A hand-mangled block degrades to
-   * "never published" (`.catch`) rather than an unreadable note; the next
-   * publish then creates a fresh gist and rewrites it whole.
-   */
-  gist: gistFrontmatterSchema.optional().catch(undefined),
-  /**
-   * Contact names whose suggested-contact card was dismissed on this note
-   * (v1's `ignoredContactNames`). Per contact, not per note: ignoring "Ada"
-   * must not suppress a later "Grace" suggestion after a retitle. An added
-   * contact needs no mark — the details it writes into the body suppress
-   * the card by content. A mangled value degrades to the empty list; the
-   * card reappears, nothing breaks.
-   */
-  ignoredContacts: z.array(z.string()).catch([]).default([]),
-  /** Short glyph or image path shown above the editor. */
-  icon: z.string().optional().catch(undefined),
-  /** Cover image path (graph-relative, wiki embed, or http(s) URL). */
-  cover: z.string().optional().catch(undefined),
-})
+export const frontmatterSchema = z
+  .looseObject({
+    /** Reserved stable id. Not auto-written in the first wave (identity = path). */
+    id: z.string().optional().catch(undefined),
+    aliases: z.array(z.string()).catch([]).default([]),
+    /** Hard privacy flag: such notes must never be sent to any external service. */
+    private: z.preprocess(coercePrivate, z.boolean()).default(false),
+    /**
+     * Pinned to the sidebar's Pinned section: `true`, or a number for an
+     * explicit order. Unpinned notes omit the key. Read through
+     * {@link isPinned}/{@link pinnedOrder} — `pinned: 0` is a pinned note.
+     */
+    pinned: z.preprocess(coercePinned, z.union([z.boolean(), z.number()])).default(false),
+    /**
+     * The published GitHub Gist block. A hand-mangled block degrades to
+     * "never published" (`.catch`) rather than an unreadable note; the next
+     * publish then creates a fresh gist and rewrites it whole.
+     */
+    gist: gistFrontmatterSchema.optional().catch(undefined),
+    /**
+     * Contact names whose suggested-contact card was dismissed on this note
+     * (v1's `ignoredContactNames`). Per contact, not per note: ignoring "Ada"
+     * must not suppress a later "Grace" suggestion after a retitle. An added
+     * contact needs no mark — the details it writes into the body suppress
+     * the card by content. A mangled value degrades to the empty list; the
+     * card reappears, nothing breaks.
+     */
+    ignoredContacts: z.array(z.string()).catch([]).default([]),
+    /** Short glyph or image path shown above the editor. */
+    icon: z.string().optional().catch(undefined),
+    /** Cover image path (graph-relative, wiki embed, or http(s) URL). */
+    cover: z.string().optional().catch(undefined),
+  })
+  // `sensitivity: private` is the same hard block as `private: true`, folded
+  // into the one flag every gate already reads.
+  .transform((data): typeof data => {
+    if (!data.private && isSensitivityPrivate(data['sensitivity'])) {
+      data.private = true
+    }
+    return data
+  })
 export type Frontmatter = z.infer<typeof frontmatterSchema>
 
 /** Is the note pinned at all? Never truthiness — `pinned: 0` is order 0, pinned. */
@@ -218,6 +236,12 @@ export interface ParsedTask extends TaskMarker {
    * Absent when the task is date-only — the daily digest still covers those.
    */
   dueTime: string | null
+  /**
+   * The section the task sits in: the nearest top-level heading above it
+   * (level 2 or deeper; an H1 is the note's title, not a section), or null.
+   * The Projects view lists a project's tasks under these, like Todoist.
+   */
+  section: string | null
 }
 
 /** Version of the extraction contract; bump on breaking shape changes.
@@ -231,8 +255,9 @@ export interface ParsedTask extends TaskMarker {
  * 7 — `tags` also carries the frontmatter `tags:` names, ahead of body
  * hashtags (TDR 0005 amendment).
  * 8 — `previewText`: the plain text without code, comments, and Obsidian
- * plugin syntax, for list-row previews. */
-export const PARSED_NOTE_VERSION = 8
+ * plugin syntax, for list-row previews.
+ * 9 — `tasks[].section`: the nearest top-level heading above the task. */
+export const PARSED_NOTE_VERSION = 9
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

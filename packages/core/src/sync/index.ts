@@ -95,6 +95,16 @@ export {
   type SittingNote,
 } from './activity'
 export {
+  acceptProposal,
+  describeProposal,
+  listProposals,
+  proposalSchema,
+  rejectProposal,
+  type Proposal,
+  type ProposalLine,
+  type ProposalPreview,
+} from './proposals'
+export {
   gitUndoPreview,
   undoSitting,
   type UndoConflictReason,

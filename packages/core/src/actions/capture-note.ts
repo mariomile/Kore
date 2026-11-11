@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isAppError } from '../errors'
-import { readNote } from '../graph/commands'
+import { readNote, readNoteLocal } from '../graph/commands'
+import { icloudRequestDownloads } from '../ipc/commands'
 import { hashContent } from '../indexing/hash'
 import { wikiLinkSafe } from '../markdown/edit'
 import { parseFrontmatter, splitFrontmatter, upsertFrontmatter } from '../markdown/frontmatter'
@@ -162,6 +163,73 @@ export async function noteSource(path: string, generation: number): Promise<stri
     }
     throw cause
   }
+}
+
+/**
+ * Thrown by {@link readNoteUnlessMissing} when the note exists only as an
+ * iCloud eviction stub (`.name.md.icloud`, iOS). The download has been
+ * requested; the caller must stop and retry later rather than treat the note
+ * as empty, because writing the logical path then forks the user's real note
+ * into an iCloud conflict copy.
+ */
+export class NoteNotLocalError extends Error {
+  readonly path: string
+
+  constructor(path: string) {
+    super(`${path} is still downloading from iCloud`)
+    this.name = 'NoteNotLocalError'
+    this.path = path
+  }
+}
+
+/**
+ * A note's source at `generation`, `null` when no note exists, and a thrown
+ * {@link NoteNotLocalError} when it exists but isn't downloaded yet.
+ *
+ * `readNote` materializes a dataless file (macOS) on its own, but on iOS an
+ * evicted note is a `.name.md.icloud` stub in the logical path's place, so the
+ * read answers `notFound`. Only that answer is double-checked, so every
+ * ordinary read stays one call.
+ */
+export async function readNoteUnlessMissing(
+  path: string,
+  generation: number,
+): Promise<string | null> {
+  try {
+    return await readNote(path, generation)
+  } catch (cause) {
+    if (!(isAppError(cause) && cause.kind === 'notFound')) {
+      throw cause
+    }
+  }
+  let local
+  try {
+    local = await readNoteLocal(path, generation)
+  } catch (cause) {
+    if (isAppError(cause) && cause.kind === 'notFound') {
+      return null
+    }
+    throw cause
+  }
+  if (local.kind === 'content') {
+    return local.content // the download landed between the two reads
+  }
+  try {
+    await icloudRequestDownloads([path])
+  } catch {
+    // Best-effort: iCloud downloads evicted files on its own schedule anyway,
+    // and the stop below keeps the write from happening either way.
+  }
+  throw new NoteNotLocalError(path)
+}
+
+/**
+ * {@link noteSource} for a caller about to *write* the note: "no note yet"
+ * reads as empty, but a note still in iCloud throws {@link NoteNotLocalError}
+ * instead of reading as empty.
+ */
+export async function localNoteSource(path: string, generation: number): Promise<string> {
+  return (await readNoteUnlessMissing(path, generation)) ?? ''
 }
 
 export function notePrivate(source: string): boolean {

@@ -93,6 +93,49 @@ describe('ChatToolChip browse', () => {
   })
 })
 
+describe('ChatToolChip memory', () => {
+  it('says what the kit kept, and why a write was refused', async () => {
+    const saved = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'memory', toolCallId: 'm1', action: 'open_loop', label: 'Send the deck' },
+          result: {
+            tool: 'memory',
+            toolCallId: 'm1',
+            action: 'open_loop',
+            label: 'Send the deck',
+            output: 'opened loop-1',
+            error: null,
+          },
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(saved.getByText(/Opened loop: Send the deck/)).toBeInTheDocument()
+
+    const refused = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'memory', toolCallId: 'm2', action: 'remember', label: 'x' },
+          result: {
+            tool: 'memory',
+            toolCallId: 'm2',
+            action: 'remember',
+            label: 'x',
+            output: null,
+            error: 'Memory writes need "Allow edits"',
+          },
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(refused.getByText(/Couldn’t save to memory/)).toBeInTheDocument()
+    await expect.element(refused.getByText(/Allow edits/)).toBeInTheDocument()
+  })
+})
+
 describe('ChatToolChip setProperty', () => {
   it('applies a proposed value through the session-safe commit channel', async () => {
     const view = await render(

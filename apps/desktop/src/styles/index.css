@@ -17,6 +17,8 @@ Cascade layer order, low to high priority.
 @import '@meowdown/react/style.css';
 @import './callouts.css';
 @import './link-cards.css';
+@import './block-zoom.css';
+@import './block-ids.css';
 @import './post-embeds.css';
 
 /* Tailwind v4 dark variant keyed to the design-system `.dark` scope set by the
@@ -1640,4 +1642,15 @@ html[data-sidebar-resizing] aside {
   line-height: 1.5;
   letter-spacing: normal;
   color: var(--text-secondary);
+}
+
+/* Static daily days (daily-day.tsx): an empty paragraph keeps the line it has in
+   the editor, where ProseMirror fills it with a trailing break. */
+[data-static-day] .reflect-editor p:empty::before {
+  content: '\200b';
+}
+/* The editor root keeps its children's outer margins inside it
+   (a contenteditable is its own formatting context); the static root must too. */
+[data-static-day] .reflect-editor {
+  display: flow-root;
 }

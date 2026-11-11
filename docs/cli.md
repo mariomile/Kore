@@ -39,10 +39,12 @@ kore new <title>           # create notes/<slug>.md (--template, --tag, --set, -
 kore set <note> k=v…       # write frontmatter properties typed by the tag schemas
 kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
-kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
+kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --memory-only, --http <addr>)
+kore brain                 # write memory through the vault's cyber-brain script (status, trust, remember, loop, decision)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
 kore sources               # pull Readwise highlights and Granola meetings without the app (--only, --since)
-kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
+kore keys add <name>       # a named agent's own key for mcp --http (--write or --propose; list, remove)
+kore proposals             # writes from --propose keys waiting for you (accept <id>, reject <id>)
 kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does; --sources pulls them too)
 kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
@@ -513,6 +515,29 @@ the vault has no contract, and a `CLAUDE.md` that imports it (`@AGENTS.md`)
 when `AGENTS.md` exists and `CLAUDE.md` does not. It never overwrites a
 file; `--json` reports `{ "written": [...] }`.
 
+### `kore brain [status | trust | <kit command> --option=value…] [--json]`
+
+Memory writes through the vault's own cyber-brain kit (Plan 35), for a
+vault whose `AGENTS.md` frontmatter declares `cyber_brain:`. The arguments
+are the kit's own (`brain.mjs --help`): `kore brain remember --kind=fact
+--text=… --source=…`, `loop open|update|close`, `decision new`, `check`.
+Only those commands pass, every value goes inline as `--option=value`,
+and Kore signs the run record with the calling agent (`--agent` from the
+caller is dropped). Reads such as `facts` stay out: they print lines from
+private notes too.
+
+The script runs only once the user allowed its exact content: `kore brain
+trust` (or Settings → Agents → Memory) records the digest of the whole
+scripts folder in `.kore/kit-trust.json`, and any edit, including one
+that arrives by sync, takes the permission back. `kore brain` alone
+reports the kit and whether its script is `trusted`, `new` or `changed`.
+Node 18 or newer must be installed; without it nothing is written.
+
+```jsonc
+// kore brain remember --kind=fact --text="Alice runs pricing" --source="call" --json
+{ "ok": true, "output": "stored fact: Alice runs pricing -> CRM/People/Alice.md (commit 0ff9c38)", "commit": "0ff9c38" }
+```
+
 ### `kore tags [--json]`
 
 Every tag with its public note count, grouped on the folded key with one
@@ -837,6 +862,16 @@ fails (not found, private, no index) comes back as a tool result with
 | `remember` | `capture` (to today's daily, or `--to <note>`) |
 | `library_sources`, `library_files`, `library_grep`, `library_read` | `library sources`, `library files`, `library grep`, `library read` (stdio only) |
 
+In a vault whose `AGENTS.md` frontmatter declares `cyber_brain:` (Plan 35),
+memory belongs to the vault's own kit, so the memory tools change:
+`remember` (kit fact line), `open_loop`, `update_loop`, `close_loop` and
+`record_decision` each run `kore brain`, which runs the vault's
+`brain.mjs`. The result is the kit's own: the same fact line, run record
+and commit as Claude Code writes, signed with the calling agent's name.
+`--memory-only` lists only `vault_guide` and these tools (the Kore chat
+attaches the server this way, beside its own file tools), and `--agent
+<name>` names a stdio client for the run records.
+
 `remember` is the shared-memory verb: one fact as a signed bullet,
 `[likely] The fact (previously: old) — Grok bot, 2026-11-04`. The
 confidence tag is `certain`, `likely` (default) or `speculative`; the name
@@ -928,7 +963,10 @@ its own key:
 
 **Named agents.** `kore keys add "Grok bot"` prints a new key once
 (`--write` lets that agent use the writing tools; keys are read-only by
-default). The agent signs in with it like the token, as a bearer header or
+default). With `--propose` the agent sees the writing tools, but each call
+is kept in `.kore/proposals/` instead of written: `kore proposals` lists
+them, `kore proposals accept <id>` writes one signed as that agent (checked
+again exactly like a direct call), `reject <id>` drops it. The agent signs in with it like the token, as a bearer header or
 on the "Connect to Kore" page; then what it `remember`s carries its name,
 and `kore keys remove "Grok bot"` disconnects it alone, OAuth tokens
 included, at its next request. `kore keys list` shows names and permissions,
@@ -937,7 +975,8 @@ never keys. The keys live in `$KORE_MCP_KEYS_FILE`, else
 (mode 0600, outside the vault), and the server reads that file on every
 request, so none of this needs a restart or the app. The Mac app keeps its
 own list in the keychain and passes it as `KORE_MCP_AGENTS` (a JSON list of
-`{id, name, key, write}`).
+`{id, name, key, access}`, where `access` is `read`, `propose` or `write`;
+an older `write: true|false` is still read).
 
 `--read-only` applies here too. Search, tags, backlinks, lists and tasks
 read the index the Kore app keeps, so run the server where the app has the

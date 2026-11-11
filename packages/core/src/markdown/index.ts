@@ -7,6 +7,7 @@ export {
   frontmatterSchema,
   gistFrontmatterSchema,
   isPinned,
+  isSensitivityPrivate,
   pinnedOrder,
   PARSED_NOTE_VERSION,
   type Frontmatter,
@@ -56,6 +57,25 @@ export {
   type LinkKindInfo,
 } from './link-kind'
 export {
+  blockIdsIn,
+  blockLinkLabel,
+  extractBlockSection,
+  isBlockId,
+  hiddenBlockIdTail,
+  type HiddenBlockIdTail,
+  lineBlockId,
+  newBlockId,
+  noteLinkBlockId,
+  withoutBlockIds,
+} from './block-ids'
+export {
+  planBranchMove,
+  retargetBlockLinks,
+  type BranchMove,
+  type BranchMoveInput,
+  type SourceBacklink,
+} from './move-branch'
+export {
   extractHeadingSection,
   formatNoteTransclusion,
   parseNoteTransclusions,
@@ -74,7 +94,13 @@ export {
   type NoteAppearance,
   type NoteIcon,
 } from './note-appearance'
-export { parseNote, isTagName, hasAuthoredTitle, frontmatterTagNames } from './extract'
+export {
+  parseNote,
+  isTagName,
+  inlineTagNames,
+  hasAuthoredTitle,
+  frontmatterTagNames,
+} from './extract'
 export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
 export { addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
 export {
@@ -107,6 +133,7 @@ export {
   toggleTaskMarker,
   TaskStaleError,
 } from './edit'
+export { cutTaskBlock, pasteTaskBlock, taskSectionNames, type TaskBlock } from './task-move'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
 export {
   displayNoteTitle,

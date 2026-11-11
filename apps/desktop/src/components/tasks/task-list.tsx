@@ -18,6 +18,9 @@ import { TaskBreadcrumbs } from './task-breadcrumbs'
 import { TaskGroupHeader } from './task-group-header'
 import { TaskRow } from './task-row'
 
+/** How far each subtask level indents: one checkbox column. */
+const SUBTASK_INDENT_PX = 24
+
 interface TaskListProps {
   /** The flattened rows, in render order — see {@link import('@/lib/tasks/task-list-items').flattenTaskGroups}. */
   items: readonly TaskListItem[]
@@ -130,6 +133,15 @@ export function TaskList({
                   No tasks
                 </div>
               )
+            case 'section':
+              return (
+                <div
+                  key={taskListItemKey(item)}
+                  className="mt-3 pb-0.5 pl-[46px] pr-4 text-xs font-semibold leading-6 text-text-muted lg:pl-[78px] lg:pr-12"
+                >
+                  {item.label}
+                </div>
+              )
             case 'breadcrumb':
               return (
                 <TaskBreadcrumbs
@@ -141,7 +153,7 @@ export function TaskList({
             case 'task': {
               const key = taskKey(item.task)
               const selected = selection.isSelected(key)
-              return (
+              const row = (
                 <TaskRow
                   key={taskListItemKey(item)}
                   task={item.task}
@@ -157,6 +169,16 @@ export function TaskList({
                   onOpen={onOpen}
                   onCyclePriority={() => onCyclePriority(item.task)}
                 />
+              )
+              return item.depth === 0 ? (
+                row
+              ) : (
+                <div
+                  key={taskListItemKey(item)}
+                  style={{ paddingLeft: `${item.depth * SUBTASK_INDENT_PX}px` }}
+                >
+                  {row}
+                </div>
               )
             }
           }

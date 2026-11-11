@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupTasks, type TaskGroup } from '@reflect/core'
+import { groupTasks, groupTasksForView, type TaskGroup } from '@reflect/core'
 import { makeOpenTask as task } from './open-task-fixture'
 import { taskKey } from './task-identity'
 import { flattenTaskGroups, taskListItemKey } from './task-list-items'
@@ -141,5 +141,32 @@ describe('taskListItemKey', () => {
     const first = flattenTaskGroups(groups)
     const second = flattenTaskGroups(groups)
     expect(first.map(taskListItemKey)).toEqual(second.map(taskListItemKey))
+  })
+
+  it('turns project headings into section rows and indents subtasks under their parent', () => {
+    const note = { notePath: 'P/K/K.md', noteTitle: 'K' }
+    const groups = groupTasksForView(
+      'projects',
+      [
+        task({ ...note, text: 'loose', markerOffset: 0 }),
+        task({ ...note, text: 'launch', markerOffset: 1, section: 'Launch' }),
+        task({
+          ...note,
+          text: 'copy',
+          markerOffset: 2,
+          section: 'Launch',
+          breadcrumbs: ['launch'],
+        }),
+      ],
+      TODAY,
+      new Set(['P/K/K.md']),
+    )
+    const items = flattenTaskGroups(groups)
+    expect(items.map((item) => item.kind)).toEqual(['header', 'task', 'section', 'task', 'task'])
+    expect(items[2]).toMatchObject({ kind: 'section', label: 'Launch' })
+    expect(items.filter((item) => item.kind === 'task').map((item) => item.depth)).toEqual([
+      0, 0, 1,
+    ])
+    expect(new Set(items.map(taskListItemKey)).size).toBe(items.length)
   })
 })

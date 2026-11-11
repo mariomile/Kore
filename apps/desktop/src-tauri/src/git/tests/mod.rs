@@ -547,6 +547,81 @@ fn non_fast_forward_push_is_rejected_as_data() {
 }
 
 #[test]
+fn fast_forward_keeps_a_save_that_landed_during_the_fetch() {
+    let fixture = fixture();
+    let root_a = &fixture.graph_a;
+    write(root_a, "daily/today.md", "v1\n");
+    write(root_a, "notes/other.md", "o1\n");
+    commit_all(root_a, "base", MAX_FILE_BYTES).unwrap();
+    push(root_a, None).unwrap();
+
+    let root_b = second_device(&fixture);
+    write(&root_b, "notes/other.md", "o2 from b\n");
+    commit_all(&root_b, "from b", MAX_FILE_BYTES).unwrap();
+    push(&root_b, None).unwrap();
+
+    // The engine committed, then the user saved again while the fetch ran:
+    // the save is uncommitted when the fast-forward lands (bug D1).
+    let delta = fetch(root_a, None).unwrap();
+    assert_eq!((delta.ahead, delta.behind), (0, 1));
+    write(root_a, "daily/today.md", "v2 typed during the fetch\n");
+
+    let merged = merge_remote(root_a).unwrap();
+    assert!(matches!(merged.kind, MergeKind::FastForward), "{merged:?}");
+    assert_eq!(
+        read(root_a, "daily/today.md"),
+        "v2 typed during the fetch\n"
+    );
+    assert_eq!(read(root_a, "notes/other.md"), "o2 from b\n");
+    assert_eq!(head_message(root_a), head_message(&root_b));
+    // The save is still pending, so the next cycle commits it.
+    assert!(
+        commit_all(root_a, "next", MAX_FILE_BYTES)
+            .unwrap()
+            .committed
+    );
+    assert!(read(root_a, "daily/today.md").starts_with("v2"));
+}
+
+#[test]
+fn fast_forward_over_a_concurrent_save_to_the_same_note_aborts_without_writing() {
+    let fixture = fixture();
+    let root_a = &fixture.graph_a;
+    write(root_a, "notes/shared.md", "base\n");
+    commit_all(root_a, "base", MAX_FILE_BYTES).unwrap();
+    push(root_a, None).unwrap();
+
+    let root_b = second_device(&fixture);
+    write(&root_b, "notes/shared.md", "from b\n");
+    write(&root_b, "notes/new.md", "new from b\n");
+    commit_all(&root_b, "from b", MAX_FILE_BYTES).unwrap();
+    push(&root_b, None).unwrap();
+
+    fetch(root_a, None).unwrap();
+    let head_before = head_message(root_a);
+    write(root_a, "notes/shared.md", "typed during the fetch\n");
+
+    // Remote and local both touched the note: refuse, write nothing.
+    assert!(merge_remote(root_a).is_err());
+    assert_eq!(read(root_a, "notes/shared.md"), "typed during the fetch\n");
+    assert!(!root_a.join("notes/new.md").exists());
+    assert_eq!(head_message(root_a), head_before);
+
+    // The next cycle commits the save and does a real merge: both sides
+    // survive (as conflict markers in the note), nothing is lost.
+    commit_all(root_a, "local save", MAX_FILE_BYTES).unwrap();
+    let merged = merge_remote(root_a).unwrap();
+    assert!(
+        matches!(merged.kind, MergeKind::MergedWithConflicts),
+        "{merged:?}"
+    );
+    let shared = read(root_a, "notes/shared.md");
+    assert!(shared.contains("typed during the fetch"), "{shared}");
+    assert!(shared.contains("from b"), "{shared}");
+    assert_eq!(read(root_a, "notes/new.md"), "new from b\n");
+}
+
+#[test]
 fn conflicting_edits_are_committed_with_labeled_markers() {
     let fixture = fixture();
     let root_a = &fixture.graph_a;

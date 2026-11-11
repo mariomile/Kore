@@ -8,6 +8,8 @@ export {
   isPropertyKey,
   propertyKeyForName,
   parseTagTypeFrontmatter,
+  parseTagExtends,
+  TAG_EXTENDS_KEY,
   encodeTagTypeJson,
   decodeTagTypeJson,
   tagNameForDefinitionPath,
@@ -58,7 +60,26 @@ export {
   type TagIconResolution,
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
-export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
+export { resolveTagTypes, tagDescendants } from './tag-inheritance'
+export { localCalendarDate } from './timestamps'
+export {
+  STARTING_VALUE_NEXT_NUMBER,
+  STARTING_VALUE_NOW,
+  STARTING_VALUE_TODAY,
+  localDateTime,
+  nextNumberKeys,
+  propertyStartingValue,
+  startingValueKind,
+  startingValueKinds,
+  startingValueOf,
+  startingValues,
+  valuesMissingFrom,
+  withStoredStartingValues,
+  type FixedValue,
+  type StartingValue,
+  type StartingValueContext,
+  type StartingValueKind,
+} from './starting-values'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {
   extractNoteProperties,

@@ -28,7 +28,7 @@ use crate::error::{AppError, AppResult};
 use self::io::{
     atomic_create, atomic_write, bootstrap, collect_files, initialize_runtime, AtomicCreateOutcome,
 };
-use self::resolve::resolve;
+pub(crate) use self::resolve::resolve;
 
 /// Atomic byte write staged under `.kore/tmp/`, shared with the conflict
 /// machinery (shadow bases, resolution writes) so every graph write follows

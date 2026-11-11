@@ -1,6 +1,8 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   aiApiKeyForConfig,
+  attachMemoryTools,
+  memoryWriteForChat,
   appendEvent,
   buildHistory,
   errorMessage,
@@ -421,9 +423,18 @@ export async function deliverChatTurn(
             chatModeAllowsEdits(chatMode) && cliProviderSupportsEdits(config.provider)
           const mcpAllowed =
             cliProviderSupportsMcp(config.provider) && (chatMode === 'full-access' || chatTools)
-          const mcpServers = mcpAllowed
+          const userMcpServers = mcpAllowed
             ? await resolveMcpServers(mcpServerSettings).catch(() => [])
             : []
+          // A cyber-brain vault's memory tools ride every run that may
+          // write: they are Kore's own local server, not an external tool.
+          const memory = await attachMemoryTools({
+            context: agentContext,
+            canWrite: allowEdits && cliProviderSupportsMcp(config.provider),
+            graphRoot: graph.root,
+            servers: userMcpServers,
+          })
+          const mcpServers = memory.servers
           controller.signal.throwIfAborted()
           return streamCliAgentChat(config.provider, {
             model: config.model,
@@ -435,7 +446,7 @@ export async function deliverChatTurn(
             privateNotePaths,
             allowEdits,
             mcpServers,
-            agentContext,
+            agentContext: memory.context,
             memoryWriteApproval: memoryWriteApproval,
             signal: controller.signal,
             // Inject-capable engines expose mid-turn steering: the steer
@@ -459,12 +470,14 @@ export async function deliverChatTurn(
         }
         // The graph overview degrades to null (prompt without the block)
         // rather than blocking the turn — a cold index shouldn't kill chat.
-        const [apiKey, context] = await Promise.all([
+        const [apiKey, context, memoryWriteFn] = await Promise.all([
           aiApiKeyForConfig(config),
           loadChatGraphContext(graph.name).catch((cause: unknown) => {
             console.error('chat graph context failed:', errorMessage(cause))
             return null
           }),
+          // A cyber-brain vault's memory tools write through its own kit.
+          memoryWriteForChat(agentContext, generation),
         ])
         if (apiKey === null) {
           applyEvent({
@@ -493,6 +506,7 @@ export async function deliverChatTurn(
             // answer here is what makes the browse tools refuse honestly
             // on mobile and in the web harness.
             browsingAvailable: isNativeShell() && !isMobileSurface(),
+            memoryWriteFn,
           },
           signal: controller.signal,
           // The engine cuts the leg in flight, keeps its partial output,

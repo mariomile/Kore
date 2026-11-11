@@ -81,6 +81,7 @@ export {
   getOpenTasks,
   getOpenTasksForNote,
   getProjectNotePaths,
+  getTaskProjectLinks,
   getCompletedTasks,
   getPinnedNotes,
   getWikiAddressForPath,
@@ -119,23 +120,39 @@ export {
 } from './unlinked-mentions'
 export {
   groupTaskContexts,
+  subtaskDepths,
   groupTasks,
   taskDateBucket,
   type TaskContext,
   type TaskGroup,
   type TaskGroupKind,
+  type TaskSection,
 } from './group-tasks'
 export {
   countTasksByView,
   groupTasksForView,
   isFolderNotePath,
+  linkedProjectsByTask,
   projectForNote,
+  projectForTask,
+  taskLocationKey,
   taskViewsFor,
   TASK_VIEWS,
   UPCOMING_DAYS,
+  type LinkedTaskProjects,
+  type TaskLineLink,
   type TaskProject,
   type TaskView,
 } from './task-views'
+export {
+  countTaskTags,
+  parseTaskQuery,
+  taskHasTags,
+  taskTagKeys,
+  toggleQueryTag,
+  type TaskQuery,
+  type TaskTagCount,
+} from './task-tags'
 export {
   parseQuickAdd,
   QUICK_ADD_MAX_ADDED,
@@ -234,6 +251,13 @@ export {
   type BlockContextLines,
   type BlockContextSource,
 } from './block-context'
+export {
+  listTagChildren,
+  collectionTagKeys,
+  tagExtendsLoop,
+  listTagParentCandidates,
+} from './resolved-tag-types'
+export { nextNumbers, startingValuesFor } from './starting-values'
 export { extractSnippetTasks, type SnippetTask } from './snippet-tasks'
 export {
   getTagType,

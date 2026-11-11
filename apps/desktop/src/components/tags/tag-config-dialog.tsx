@@ -265,7 +265,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             frontmatter); its body is kept.
           </p>
         ) : null}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Icon</span>
           <TagIconPicker value={icon} onChange={setIcon} />
         </div>
@@ -325,10 +325,14 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
           </Button>
         </div>
         {loading ? null : <TagViewsStrip properties={liveSchema} />}
-        <label className="flex flex-col gap-1">
-          <span className={FIELD_LABEL_CLASS}>New-row template</span>
+        <label className="flex items-center gap-2">
+          <span className={FIELD_LABEL_CLASS}>Template</span>
           <Select
             value={template ?? 'none'}
+            items={{
+              none: 'None',
+              ...Object.fromEntries(templates.map((entry) => [entry.path, entry.title])),
+            }}
             onValueChange={(value) => setTemplate(value === 'none' ? null : value)}
           >
             <SelectTrigger aria-label="New-row template">

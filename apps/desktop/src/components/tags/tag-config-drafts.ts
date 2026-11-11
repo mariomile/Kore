@@ -57,7 +57,15 @@ export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
   reverse: 'Reverse relation',
 }
 
-export const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
+/**
+ * Labels sit in one fixed column, 32px tall like the controls beside them, so
+ * every control in the dialog starts at the same x and a label stays on the
+ * first line of a control that wraps (options chips, parents). A property
+ * card narrows the column by its own inset (`--field-label-w`), so controls
+ * inside a card line up with the dialog's top-level ones.
+ */
+export const FIELD_LABEL_CLASS =
+  'flex h-8 w-(--field-label-w,7rem) shrink-0 items-center text-xs font-medium text-text-secondary'
 
 export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDraft[] {
   return properties.map((property, index) => ({

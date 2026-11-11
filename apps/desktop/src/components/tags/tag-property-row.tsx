@@ -33,6 +33,14 @@ import {
   type PropertyDraft,
 } from './tag-config-drafts'
 
+/** Capitalized once, for both the menu and the closed trigger. */
+const ROLLUP_AGGREGATION_LABELS = Object.fromEntries(
+  rollupAggregationSchema.options.map((aggregation) => [
+    aggregation,
+    aggregation.charAt(0).toUpperCase() + aggregation.slice(1),
+  ]),
+)
+
 export interface TagPropertyRowProps {
   draft: PropertyDraft
   /** The name is missing. */
@@ -89,7 +97,7 @@ export function TagPropertyRow({
     (tagTypes ?? []).map((entry) => entry.tagKey),
   )
   return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5">
+    <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5 [--field-label-w:calc(7rem-11px)]">
       <div className="flex items-center gap-1.5">
         <Input
           value={draft.name}
@@ -119,7 +127,7 @@ export function TagPropertyRow({
             }
           }}
         >
-          <SelectTrigger className="w-36 shrink-0" aria-label="Property type">
+          <SelectTrigger className="w-44 shrink-0" aria-label="Property type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -163,8 +171,8 @@ export function TagPropertyRow({
         </Button>
       </div>
       {hasOptions ? (
-        <div className="flex items-start gap-1.5">
-          <span className={`${FIELD_LABEL_CLASS} pt-1.5`}>Options</span>
+        <div className="flex items-start gap-2">
+          <span className={FIELD_LABEL_CLASS}>Options</span>
           <OptionsChipsEditor
             value={draft.options}
             onChange={(options) => updateDraft(draft.rowId, { options })}
@@ -180,7 +188,7 @@ export function TagPropertyRow({
         updateDraft={updateDraft}
       />
       {isRelation ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Target</span>
           <Select
             value={draft.target === '' ? '__any' : draft.target}
@@ -214,7 +222,7 @@ export function TagPropertyRow({
         </label>
       ) : null}
       {draft.type === 'formula' ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Expression</span>
           <Input
             value={draft.formulaExpression}
@@ -228,8 +236,8 @@ export function TagPropertyRow({
         </label>
       ) : null}
       {draft.type === 'reverse' ? (
-        <div className="flex items-center gap-1.5">
-          <label className="flex flex-1 items-center gap-1.5">
+        <>
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Of</span>
             <Select
               value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
@@ -259,7 +267,7 @@ export function TagPropertyRow({
               </SelectContent>
             </Select>
           </label>
-          <label className="flex flex-1 items-center gap-1.5">
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Via</span>
             <Input
               value={draft.reverseProperty}
@@ -271,40 +279,35 @@ export function TagPropertyRow({
               }
             />
           </label>
-        </div>
+        </>
       ) : null}
       {draft.type === 'rollup' ? (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <label className="flex flex-1 items-center gap-1.5">
-              <span className={FIELD_LABEL_CLASS}>Relation</span>
-              <Input
-                value={draft.rollupRelation}
-                aria-label="Rollup relation key"
-                placeholder="author"
-                className="flex-1 font-mono text-xs"
-                onChange={(event) =>
-                  updateDraft(draft.rowId, { rollupRelation: event.target.value })
-                }
-              />
-            </label>
-            <label className="flex flex-1 items-center gap-1.5">
-              <span className={FIELD_LABEL_CLASS}>Property</span>
-              <Input
-                value={draft.rollupProperty}
-                aria-label="Rollup property key"
-                placeholder="rating"
-                className="flex-1 font-mono text-xs"
-                onChange={(event) =>
-                  updateDraft(draft.rowId, { rollupProperty: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="flex items-center gap-1.5">
+        <>
+          <label className="flex items-center gap-2">
+            <span className={FIELD_LABEL_CLASS}>Relation</span>
+            <Input
+              value={draft.rollupRelation}
+              aria-label="Rollup relation key"
+              placeholder="author"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) => updateDraft(draft.rowId, { rollupRelation: event.target.value })}
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className={FIELD_LABEL_CLASS}>Property</span>
+            <Input
+              value={draft.rollupProperty}
+              aria-label="Rollup property key"
+              placeholder="rating"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) => updateDraft(draft.rowId, { rollupProperty: event.target.value })}
+            />
+          </label>
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Aggregation</span>
             <Select
               value={draft.rollupAggregation}
+              items={ROLLUP_AGGREGATION_LABELS}
               onValueChange={(value) => {
                 const parsed = rollupAggregationSchema.safeParse(value)
                 if (parsed.success) {
@@ -312,22 +315,22 @@ export function TagPropertyRow({
                 }
               }}
             >
-              <SelectTrigger className="w-40" aria-label="Rollup aggregation">
+              <SelectTrigger className="w-44" aria-label="Rollup aggregation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {rollupAggregationSchema.options.map((aggregation) => (
+                {Object.entries(ROLLUP_AGGREGATION_LABELS).map(([aggregation, label]) => (
                   <SelectItem key={aggregation} value={aggregation}>
-                    {aggregation.charAt(0).toUpperCase() + aggregation.slice(1)}
+                    {label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </label>
-        </div>
+        </>
       ) : null}
       {keyOpen ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Key</span>
           <Input
             value={draft.key}

@@ -211,6 +211,8 @@ export {
   buildTagTree,
   getTagTree,
   hasNestedTags,
+  splitTypesFromTags,
+  type TypeShelfEntry,
   listTagTreeCounts,
   type TagTreeCount,
   type TagTreeNode,

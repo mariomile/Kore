@@ -185,7 +185,7 @@ describe('NotePropertiesHeader', () => {
 
     await view.getByRole('button', { name: 'Add a type' }).click()
     await expect.element(view.getByText('Types', { exact: true })).toBeInTheDocument()
-    await expect.element(view.getByText('Other types')).toBeInTheDocument()
+    await expect.element(view.getByText('Tags', { exact: true })).toBeInTheDocument()
     // `book` is typed, so it appears once, above the untyped suggestions.
     await expect.element(view.getByText('#idea')).toBeInTheDocument()
     expect(view.getByText('#book').elements()).toHaveLength(1)

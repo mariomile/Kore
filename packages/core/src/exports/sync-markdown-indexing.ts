@@ -478,6 +478,8 @@ export {
   listTagMentions,
   type TagMention,
   hasNestedTags,
+  splitTypesFromTags,
+  type TypeShelfEntry,
   listTagTreeCounts,
   type TagTreeCount,
   type TagTreeNode,

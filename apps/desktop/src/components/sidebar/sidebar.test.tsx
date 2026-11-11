@@ -93,7 +93,7 @@ vi.mock('@/providers/graph-provider', () => ({
     recents: [
       { root: '/notes', name: 'Notes', openedMs: 2 },
       {
-        root: '/Users/mario/Library/Mobile Documents/iCloud~app~lore/Documents/Work',
+        root: '/Users/mario/Library/Mobile Documents/iCloud~app~kore/Documents/Work',
         name: 'Work',
         openedMs: 1,
       },
@@ -642,7 +642,7 @@ describe('Sidebar', () => {
     await expect.element(page.getByText('iCloud Drive › Kore › Work')).toBeVisible()
     await work.click()
     expect(openRecent).toHaveBeenCalledWith(
-      '/Users/mario/Library/Mobile Documents/iCloud~app~lore/Documents/Work',
+      '/Users/mario/Library/Mobile Documents/iCloud~app~kore/Documents/Work',
     )
 
     await view.getByRole('button', { name: /Notes/ }).click()

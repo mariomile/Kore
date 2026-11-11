@@ -9,14 +9,14 @@ edit the same note while apart.
 - **Where the graph lives.** In the app's iCloud Drive container — visible as
   **iCloud Drive → Kore** in Files (iOS) and Finder (macOS). Notes stay
   plain markdown files; iCloud moves them between devices.
-- **The container's real directory is `iCloud~app~lore`.** Finder and Files
+- **The container's real directory is `iCloud~app~kore`.** Finder and Files
   substitute the container's `NSUbiquitousContainerName` ("Kore", declared in
   `src-tauri/Info.plist` and `ios.project.yml`), but a terminal, a backup tool,
   or any other app that prints real paths shows
-  `~/Library/Mobile Documents/iCloud~app~lore/Documents/<graph>` — the
+  `~/Library/Mobile Documents/iCloud~app~kore/Documents/<graph>` — the
   container id spelled with `~` for `.`. It reads as a stray "Lore" folder and
   it is not one: iCloud container ids are permanent, and this one is bound to
-  the `app.lore.*` Apple identity that must not change (see AGENTS.md —
+  the `app.kore.*` Apple identity that must not change (see AGENTS.md —
   Naming). Renaming it would break signing and orphan every synced graph.
   Kore therefore prints its own paths the way the file managers do —
   `iCloud Drive › Kore › <graph>` (`lib/graph-path-display.ts`) — so the raw
@@ -74,7 +74,7 @@ provisioned:
 
 - **iOS**: the entitlements + `NSUbiquitousContainers` declaration are in
   `ios.project.yml` / `gen/apple`; Xcode automatic signing registers the
-  container (`iCloud.app.lore`) on the first entitled build.
+  container (`iCloud.app.kore`) on the first entitled build.
 - **macOS**: the entitlements live in
   `apps/desktop/src-tauri/Entitlements.plist`, granted by the committed
   Developer ID provisioning profiles (`Reflect.provisionprofile` /

@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The app's Apple identity is Kore (`app.kore.*`). Updating keeps your
+  settings, recent vaults, model cache and saved keys: the old folders and
+  keychain entries move over on first launch.
+
 - Note icon and cover editable from the note header (#380, #396): "Add icon"
   and "Add cover" on hover, cover by upload, https link or drop. The file
   format is unchanged (`icon:`, `cover:`).

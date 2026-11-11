@@ -1,5 +1,38 @@
 # Kore working state
 
+## Apple identity becomes Kore, 2026-11-09
+
+Ask (Mario, 2026-11-08, "Vedi cosa rimane ancora di reflect, ora deve essere
+tutto Kore", then "ok" on the three-PR plan). This is PR 2 of 3: the Apple
+identity and the app's own folders. PR 1 (visible leftovers, `.reflect/` in
+the vault) and PR 3 (internal `@reflect/*` / `reflect-*` rename) run in their
+own threads.
+
+- [x] Bundle ids `app.lore.*` → `app.kore.*` (desktop flavors, iOS app, share
+  extension, widgets), `group.app.kore`, `iCloud.app.kore`, the recording
+  notification names and the home-screen shortcut type.
+- [x] `apps/desktop/src-tauri/src/app_dir.rs` (added by #354 for the config
+  dir) also moves `<data dir>/app.lore.<flavor>` into `app.kore.<flavor>` at
+  launch, before any plugin reads it, without overwriting. The CLI's model
+  lookup falls back to the old dirs until then.
+- [x] Keychain service `"kore"`; reads fall back to `"lore"` and
+  `"reflect-open"` and copy forward, keeping the old entry for one release
+  so a rollback still finds the keys (review I8).
+- [x] CLAUDE.md / AGENTS.md naming rule rewritten: Kore everywhere, old names
+  only as migration fallbacks.
+- [x] `DEVELOPMENT_TEAM` is Mario's `ZQG9377GFQ` (was upstream's
+  `789ULN5MZB`); he registered `app.kore.ios` on 2026-11-11. WebKit
+  localStorage under the old bundle id (collapsed sections, theme cache) is
+  not moved; it rebuilds itself. The bundled `Reflect*.provisionprofile`
+  files are upstream's and unused by the unsigned DMG.
+- Known cost: a new bundle id resets macOS permissions (notifications, so
+  task reminders stay silent until re-allowed; calendar, contacts) and WebKit
+  storage (UI conveniences only). Dry run on Kore Dev before the bump.
+- Verified: CLI embed tests, the touched Vitest suites (node + Chromium).
+  The desktop crate can't compile in the container (onnxruntime download
+  blocked), so `app_dir.rs` and `secrets.rs` tests are left to CI. Mac
+  upgrade not tried live.
+
 ## Note icon, cover, relation picker and type dialog polish, 2026-11-11
 
 Ask: Mario, Lotion ideas phase 1 and the note properties follow-ups.

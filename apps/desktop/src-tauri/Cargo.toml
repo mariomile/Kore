@@ -44,11 +44,11 @@ serde_json = { workspace = true }
 # `hooks` adds the authorizer API used to lock the read-only `db_query` bridge
 # down to pure reads (deny ATTACH/DETACH/PRAGMA); see `db/query.rs`.
 rusqlite = { workspace = true, features = ["hooks"] }
-reflect-index-schema = { path = "../../../crates/index-schema" }
-reflect-graph-paths = { workspace = true }
-reflect-index-store = { workspace = true }
-reflect-note-policy = { workspace = true }
-reflect-kit-script = { workspace = true }
+kore-index-schema = { path = "../../../crates/index-schema" }
+kore-graph-paths = { workspace = true }
+kore-index-store = { workspace = true }
+kore-note-policy = { workspace = true }
+kore-kit-script = { workspace = true }
 tempfile = { workspace = true }
 sha2 = { workspace = true }
 dirs = "6.0.0"

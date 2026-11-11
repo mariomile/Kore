@@ -1,7 +1,7 @@
 //! Link-capture primitives (Plan 11): the capture-inbox commands the drain
 //! action composes, the screenshot promote/downscale step, the bounded
 //! meta-scrape fetch, and the native-messaging plumbing (pointer file +
-//! browser host manifests) that lets the `reflect-capture-host` sidecar spool
+//! browser host manifests) that lets the `kore-capture-host` sidecar spool
 //! captures while this app is closed. Policy — what gets written where, the
 //! privacy gate, enrichment — lives in `@kore/core` (`actions/capture`);
 //! this module only moves bytes.
@@ -29,7 +29,7 @@ const LEGACY_HOST_NAME: &str = "app.reflect.capture";
 /// The sidecar binary, staged beside the app binary by the Tauri bundler (and
 /// beside the dev binary by `tauri dev`).
 #[cfg(target_os = "macos")]
-const HOST_BINARY: &str = "reflect-capture-host";
+const HOST_BINARY: &str = "kore-capture-host";
 
 /// Extension IDs allowed to launch the host. The first is the dev/unpacked ID,
 /// pinned by the `key` field in `apps/extension/wxt.config.ts`; the second is
@@ -578,14 +578,14 @@ mod tests {
     #[test]
     fn manifest_pins_name_path_and_origins() {
         let manifest = host_manifest_json(Path::new(
-            "/Applications/Reflect.app/Contents/MacOS/reflect-capture-host",
+            "/Applications/Reflect.app/Contents/MacOS/kore-capture-host",
         ));
         let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap();
         assert_eq!(parsed["name"], "app.kore.capture");
         assert_eq!(parsed["type"], "stdio");
         assert_eq!(
             parsed["path"],
-            "/Applications/Reflect.app/Contents/MacOS/reflect-capture-host"
+            "/Applications/Reflect.app/Contents/MacOS/kore-capture-host"
         );
         assert_eq!(
             parsed["allowed_origins"],
@@ -619,7 +619,7 @@ mod tests {
         fs::create_dir_all(&hosts).unwrap();
         fs::write(hosts.join("app.reflect.capture.json"), "{}").unwrap();
         let written =
-            register_manifests(dir.path(), Path::new("/bundle/reflect-capture-host")).unwrap();
+            register_manifests(dir.path(), Path::new("/bundle/kore-capture-host")).unwrap();
         assert_eq!(written, 1);
         let manifest = dir
             .path()

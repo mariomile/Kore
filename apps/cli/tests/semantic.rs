@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use common::{graph, json, kore, kore_env, stderr, Fixture};
-use reflect_cli::embed::{Embedder, MODEL_ID};
+use kore_cli::embed::{Embedder, MODEL_ID};
 
 /// A unit vector along one axis: enough for the model-free tests, which
 /// never get as far as comparing vectors.

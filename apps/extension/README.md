@@ -16,7 +16,7 @@ Install the published extension from the
 ## Architecture in one breath
 
 popup → `chrome.storage` queue → background `sendNativeMessage` →
-`reflect-capture-host` (Tauri sidecar, registered by the desktop app on every
+`kore-capture-host` (Tauri sidecar, registered by the desktop app on every
 launch) → capture inbox → desktop drain (`@kore/core` `actions/capture`):
 raw note + daily `## [[Links]]` entry now (resolving or creating that category
 note), meta-scrape + BYOK AI title + description async. The extension stores no
@@ -161,7 +161,7 @@ Each is reviewed individually; every permission below is exercised by the code:
 | --- | --- |
 | `activeTab` | Read the URL/title and grab a screenshot + selection of the tab you capture — only at the moment you click the button or press the shortcut. Avoids any broad host permission. |
 | `scripting` | Run a one-line script in the active tab to read the current selection and, when opted in, extract the page's readable text. |
-| `nativeMessaging` | The only output: hand each capture to the local `reflect-capture-host` the desktop app registers. No network is used. |
+| `nativeMessaging` | The only output: hand each capture to the local `kore-capture-host` the desktop app registers. No network is used. |
 | `storage` | Queue captures locally so a capture survives the app being closed and retries until it spools. |
 | `unlimitedStorage` | Queued captures embed a screenshot data URL, which can exceed the default storage quota while waiting for the app. |
 | `alarms` | A coarse retry timer so held captures flush once Kore is installed/launched later. |

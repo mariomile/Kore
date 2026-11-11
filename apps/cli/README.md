@@ -1,4 +1,4 @@
-# reflect-cli
+# kore-cli
 
 `kore` — the read/discovery/capture CLI over a graph (Plan 14), bundled
 with the desktop app as a Tauri sidecar and usable standalone.
@@ -15,4 +15,4 @@ The only writes are structural: `capture` (an append-only list item) and
 editing, which the desktop app picks up live.
 
 Full command reference and design notes: [docs/cli.md](../../docs/cli.md).
-Test with `cargo test -p reflect-cli`.
+Test with `cargo test -p kore-cli`.

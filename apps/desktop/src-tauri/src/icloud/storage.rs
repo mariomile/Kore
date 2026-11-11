@@ -157,15 +157,15 @@ pub async fn icloud_pending_count(root: String, notes_only: bool) -> AppResult<u
 /// Whether a placeholder found under `rel_dir` (the stub's directory,
 /// graph-relative) standing for `target` falls in the notes-only download
 /// scope: an eligible Markdown note anywhere in the vault (the shared
-/// `reflect-graph-paths` policy). Assets, audio memos, and anything else
+/// `kore-graph-paths` policy). Assets, audio memos, and anything else
 /// wait for the follow-up full-scope request.
 ///
 /// Compiled off Apple targets only for tests: its sole production caller is
 /// the platform walk, which has no non-Apple twin.
 #[cfg(any(target_os = "ios", target_os = "macos", test))]
 fn placeholder_in_note_scope(rel_dir: &Path, target: &str) -> bool {
-    reflect_graph_paths::wire_path(&rel_dir.join(target))
-        .is_some_and(|wire| reflect_graph_paths::is_note(&wire))
+    kore_graph_paths::wire_path(&rel_dir.join(target))
+        .is_some_and(|wire| kore_graph_paths::is_note(&wire))
 }
 
 /// Every existing graph among the container `Documents/` subdirectories
@@ -195,7 +195,7 @@ fn find_graph_dirs(documents: &Path) -> Vec<PathBuf> {
 /// directory is excluded from sync on purpose, so a synced-down graph
 /// arrives as bare Markdown content.
 fn dir_has_notes(root: &Path) -> bool {
-    !reflect_graph_paths::walk_catalog(root).notes.is_empty()
+    !kore_graph_paths::walk_catalog(root).notes.is_empty()
 }
 
 /// Ask iCloud to (re)download one item, best-effort. The metadata-query

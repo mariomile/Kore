@@ -8,7 +8,7 @@
 >
 > **Status (2026-06-14): Implemented.** The pipeline below is built end-to-end:
 > `apps/extension` (WXT MV3, popup + queue + ⌘⇧K), `apps/native-host`
-> (`reflect-capture-host`, bundled as a second sidecar), the capture inbox +
+> (`kore-capture-host`, bundled as a second sidecar), the capture inbox +
 > watcher carve-out, `drainCaptureInbox`/`reconcileCaptureEnrichment` in
 > `packages/core/src/actions/capture.ts`, and the desktop controller
 > (`apps/desktop/src/lib/capture-controller.ts`). Two deliberate narrowings for
@@ -20,7 +20,7 @@
 > "enough phase-1 content" condition below is always met) plus the daily
 > `[[Links]]` backlink; enrichment status lives in the capture note's
 > frontmatter (`captureStatus: pending | done | skipped`). The macOS Tauri
-> overlay bundles both sidecars (`binaries/reflect`, `binaries/reflect-capture-host`).
+> overlay bundles both sidecars (`binaries/reflect`, `binaries/kore-capture-host`).
 
 **Goal:** Launch-grade web capture: a Chrome extension hands URL/title/selection/
 screenshot to the **installed desktop app** through a local **capture inbox**; the

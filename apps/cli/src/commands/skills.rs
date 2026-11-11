@@ -5,7 +5,7 @@
 //! pick one; with a name it returns the whole skill to follow. Works without
 //! an index. A skill marked `private: true` is neither listed nor served.
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::commands::output::{print_content, print_json, SkillJson, SkillsJson};
 use crate::error::CliError;

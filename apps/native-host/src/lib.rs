@@ -83,7 +83,7 @@ pub fn run(
     while let Some(payload) = read_message(input)? {
         let outcome = handle_message(&payload, pointer_path);
         if let Err(error) = &outcome {
-            eprintln!("reflect-capture-host: {error:?}");
+            eprintln!("kore-capture-host: {error:?}");
         }
         write_message(output, &ack_json(&outcome))?;
     }

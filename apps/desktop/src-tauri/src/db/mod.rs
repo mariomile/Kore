@@ -17,7 +17,7 @@ mod migrations;
 #[cfg(test)]
 mod tests;
 
-use reflect_index_store::{embed_write, query, scan, write};
+use kore_index_store::{embed_write, query, scan, write};
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};

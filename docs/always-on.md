@@ -128,7 +128,7 @@ URL as `KORE_PUBLIC_URL`. Agents connect exactly as described in
 ## Run it without Docker
 
 On a small VPS: install `kore` and `kore-indexer.mjs` side by side in
-`/usr/local/bin` (`cargo build --release -p reflect-cli` and
+`/usr/local/bin` (`cargo build --release -p kore-cli` and
 `pnpm --filter @kore/core build:indexer`), Node 22 and git; copy
 `deploy/always-on/entrypoint.sh` to `/usr/local/bin/kore-host`; clone the
 vault as the service user; put the secrets in `/etc/kore-host.env`; then

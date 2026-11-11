@@ -363,13 +363,13 @@ shared crates, and the Tauri plugins — see the layout below):
 
 ```bash
 # Prefer per-crate runs; cargo test --workspace also works
-cargo test -p reflect-cli
+cargo test -p kore-cli
 cargo test -p reflect-open
 ```
 
 **Before any cargo build/check/test that compiles the desktop crate** (including
 `--workspace` commands and clippy), the sidecars (the `kore` CLI and the
-`reflect-capture-host` native-messaging host) must be staged once per checkout:
+`kore-capture-host` native-messaging host) must be staged once per checkout:
 
 ```bash
 pnpm --filter @kore/desktop sidecar
@@ -412,7 +412,7 @@ Kore/
 │   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md);
 │   │                       #   `kore index` hosts the core's indexer under Node
 │   ├── extension/          # @kore/extension — Chrome MV3 capture extension (WXT; see its README)
-│   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
+│   └── native-host/        # `kore-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/
 │   ├── core/               # @kore/core — the TS business logic (markdown/, indexing/, graph/,
 │   │                       #   embeddings/, ai/, settings/, tags/, sync/, actions/, ipc/, …)
@@ -433,9 +433,9 @@ Kore/
 │                           #   frontmatter/index parity — see fixtures/parity/README.txt)
 ├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
-├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
-│                           #   reflect-index-schema, reflect-index-store, reflect-graph-paths,
-│                           #   reflect-note-policy, and
+├── Cargo.toml              # Root Cargo workspace: reflect-open, kore-cli, kore-capture-host,
+│                           #   kore-index-schema, kore-index-store, kore-graph-paths,
+│                           #   kore-note-policy, and
 │                           #   the two Tauri plugins
 └── turbo.json, pnpm-workspace.yaml
 ```

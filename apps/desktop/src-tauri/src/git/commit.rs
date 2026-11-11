@@ -51,7 +51,7 @@ pub(super) fn commit_all(
     // runtime directory must never enter a backup commit (Plan 21 — a synced
     // `.kore/` is index corruption on every other device). Its `proposals/`
     // subtree is the one exception: it syncs by design (Plan 33, A2).
-    repo.add_ignore_rule(&reflect_index_schema::IGNORE_RULES.join("\n"))?;
+    repo.add_ignore_rule(&kore_index_schema::IGNORE_RULES.join("\n"))?;
 
     let mut index = repo.index()?;
     let skipped = add_all_with_size_guard(&mut index, root, max_file_bytes)?;
@@ -273,9 +273,9 @@ fn is_committable(rel: &str) -> bool {
             .components()
             .all(|component| matches!(component, std::path::Component::Normal(_)))
         && match components.next() {
-            Some(first) if first.as_os_str() == reflect_index_schema::KORE_DIR => components
+            Some(first) if first.as_os_str() == kore_index_schema::KORE_DIR => components
                 .next()
-                .is_some_and(|second| second.as_os_str() == reflect_index_schema::SYNCED_SUBDIR),
+                .is_some_and(|second| second.as_os_str() == kore_index_schema::SYNCED_SUBDIR),
             Some(_) => true,
             None => false,
         }

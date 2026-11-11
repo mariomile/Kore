@@ -5,7 +5,7 @@
 //! `.kore/index.sqlite` strictly read-only — no Node runtime, no running
 //! desktop app, no IPC. The one exception is `kore index` ([`indexer`]),
 //! which builds the index without the app by running `@kore/core`'s own
-//! indexer under Node and writing its rows through `reflect-index-store`. The modules mirror the small contract owned by
+//! indexer under Node and writing its rows through `kore-index-store`. The modules mirror the small contract owned by
 //! `@kore/core` (paths, fold keys, frontmatter, title derivation, slugs,
 //! hashing, FTS match syntax, the tag grammar, property typing); each one
 //! names its TS counterpart and is parity- or unit-tested against the same

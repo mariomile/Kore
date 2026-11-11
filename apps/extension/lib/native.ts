@@ -4,7 +4,7 @@ import type { HoldReason } from './messages'
 
 /**
  * The native-messaging hop: one `sendNativeMessage` per capture to the
- * `reflect-capture-host` sidecar the desktop app registered. Chrome spawns
+ * `kore-capture-host` sidecar the desktop app registered. Chrome spawns
  * the host per message — no port, no daemon — and the host's only honest
  * success is `queued` (it spools into the capture inbox and exits; it never
  * observes the desktop app draining).

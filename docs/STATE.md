@@ -508,7 +508,7 @@ first cut copied the plugins' layout; it now leaves the layout to the user.
 
 **Validation:** core connector and pattern tests (17), the connectors
 settings and mobile browser suites on Chromium (348; WebKit left to CI),
-`cargo test -p reflect-cli` (all suites), clippy `-D warnings`,
+`cargo test -p kore-cli` (all suites), clippy `-D warnings`,
 `pnpm check`. End to end in the container with Readwise and Granola stubbed
 in Node: an existing article note was adopted (only the missing highlight
 appended), a second run wrote nothing, `kore search` found the new
@@ -665,7 +665,7 @@ offered to local agents only, never over the remote MCP.
   with its own fence in `apps/desktop/src-tauri/src/library.rs`. The two
   keep separate folder lists for now (the app adds `~/.kiro`).
 
-**Validation:** `cargo test -p reflect-cli` (library unit tests, MCP
+**Validation:** `cargo test -p kore-cli` (library unit tests, MCP
 gating test), clippy `-D warnings`, fmt, smoke run with a temporary HOME
 (stdio `library_grep`, settings.json and projects/ refused).
 
@@ -787,7 +787,7 @@ journal survives an offline restart; reads never commit and `.reflect/`
 never enters history; dirty or non-git folders refused. End to end with the
 debug binary and the real indexer: `capture` over HTTP reached the Mac's
 clone as one `Kore host` commit; a note pushed from the Mac was found by
-`search` over HTTP within one 5 s interval. `cargo clippy -p reflect-cli
+`search` over HTTP within one 5 s interval. `cargo clippy -p kore-cli
 --all-targets -D warnings`, `cargo fmt --check`.
 The Docker image builds and runs: it cloned a test vault, indexed it,
 answered `capture` over HTTP and pushed the commit (`pulled 0, pushed 1`).
@@ -819,7 +819,7 @@ mai usare l'app").
 - Not done: "last seen" per agent; recall stays the existing search.
 
 **Validation:** `cargo fmt --check`, `cargo clippy --workspace
---all-targets -D warnings`, `cargo test -p reflect-cli` (all pass), core
+--all-targets -D warnings`, `cargo test -p kore-cli` (all pass), core
 `remote-access.test.ts`, Chromium browser test of the Remote access field,
 `pnpm check`. The iOS bindings check could not run in the container (no
 Xcode toolchain); CI is its first pass. Needs a live test on the Mac with
@@ -854,9 +854,9 @@ like the in-app chat.
 - Not done: the 20 fixed questions on marioverse.ai and their recall@5 run
   (needs the vault and the app-built index, i.e. the Mac).
 
-**Validation:** `cargo test -p reflect-cli` (unit + integration + MCP
+**Validation:** `cargo test -p kore-cli` (unit + integration + MCP
 end-to-end, including stale-text refusal and private refusal), `cargo
-clippy -p reflect-cli --all-targets -D warnings`, `cargo fmt`. The embedder
+clippy -p kore-cli --all-targets -D warnings`, `cargo fmt`. The embedder
 was checked against onnxruntime on a random BERT-shaped ONNX model built in
 the container (cosine > 0.9999 on every reference text,
 `KORE_TEST_MODEL_DIR` test); the real model could not be downloaded here
@@ -874,7 +874,7 @@ backlinks, list, tasks, recent, collection and done (`require_index`, exit
 4), so an always-on `kore mcp` over a git clone could not search. Step 2 of
 "Remote MCP over HTTP" below.
 
-- [x] `crates/index-store` (`reflect-index-store`): the index write path
+- [x] `crates/index-store` (`kore-index-store`): the index write path
   (`write.rs`), reconcile scan (`scan.rs`, now owning `FileMeta`), embedding
   writes and the read-only query guard moved out of the desktop crate, plus
   the batch transactions every host issues (`apply_notes`, `remove_notes`,
@@ -896,11 +896,11 @@ backlinks, list, tasks, recent, collection and done (`require_index`, exit
   `Kore.app` (today it is built from the repo), a guard against running it
   on a graph the app has open.
 
-**Validation:** `cargo test -p reflect-cli -p reflect-index-store` (two new
+**Validation:** `cargo test -p kore-cli -p kore-index-store` (two new
 host tests: write then read back over the bridge; traversal, missing note
 and write-through-query refused; a read through a symlinked directory is
-refused, from the Cursor security review), `cargo clippy -p reflect-index-store -p
-reflect-cli --all-targets -D warnings`, `cargo fmt --check`;
+refused, from the Cursor security review), `cargo clippy -p kore-index-store -p
+kore-cli --all-targets -D warnings`, `cargo fmt --check`;
 `stdio-bridge.test.ts` (2); `pnpm check` exit 0. End to end on a synthetic
 5,155-note vault (frontmatter tags, `up:` links, tasks, 155 dailies) with a
 debug `kore`: first run 13.4 s, `info` reports the index fresh, search,
@@ -947,9 +947,9 @@ what was missing, each a CLI command plus an MCP tool:
 - [x] The Etch-style Library: see "Library: agent folders read-only in the
   sidebar" above.
 
-**Validation:** `cargo test -p reflect-cli` (108 unit incl. route BFS and
+**Validation:** `cargo test -p kore-cli` (108 unit incl. route BFS and
 outline, 72 CLI incl. five new end-to-end tests with private notes, 2 MCP,
-14 other), `cargo clippy -p reflect-cli --all-targets -D warnings`,
+14 other), `cargo clippy -p kore-cli --all-targets -D warnings`,
 `cargo fmt --all --check`, `cargo clippy -p reflect-open --all-targets
 -D warnings`, `pnpm check`, `workspace-state.test.ts` (2 tests). Not yet
 tried in the running app or from a real MCP client.
@@ -1332,7 +1332,7 @@ an always-on server off the Mac.
 - Not done: an index the CLI builds without the app (step 2, the always-on
   server on a VPS over the GitHub clone).
 
-**Validation:** `cargo test -p reflect-cli` (three new router tests: 401 with
+**Validation:** `cargo test -p kore-cli` (three new router tests: 401 with
 `resource_metadata`, full OAuth round trip with PKCE plus replay and expiry,
 foreign redirect refused), clippy `-D warnings`, fmt; a curl smoke against
 the real binary (401, discovery metadata, `read_note` with the bearer, 202
@@ -1380,7 +1380,7 @@ read errors, prompts under read-only, a review without its daily) and an
 end-to-end session over the real binary under `--read-only`
 (`apps/cli/tests/mcp.rs`: list hides the private note, read by path and by
 id, private read refused, `connect_note` lists the link); a CLI test for id
-resolution; `cargo test -p reflect-cli`, clippy `-D warnings`, fmt. Not yet
+resolution; `cargo test -p kore-cli`, clippy `-D warnings`, fmt. Not yet
 tried from a real MCP client.
 
 **Next:** on the Mac, in Claude Desktop attach a note from the Kore server
@@ -1412,9 +1412,9 @@ operators, but `kore search` matched every token literally, so an agent's
 - Known difference kept from before: CLI search excludes templates but
   still lists tag definition notes, the app excludes both.
 
-**Validation:** `cargo test -p reflect-cli` (parser unit tests, six new
+**Validation:** `cargo test -p kore-cli` (parser unit tests, six new
 end-to-end search tests on an Obsidian-shaped fixture), `cargo clippy
--p reflect-cli --all-targets -D warnings`, `cargo fmt --check`.
+-p kore-cli --all-targets -D warnings`, `cargo fmt --check`.
 
 **Next:** on the Mac, after the release, run
 `kore search "tag:#type/person path:CRM/"` against marioverse.ai and check
@@ -1712,7 +1712,7 @@ way in.
 **Validation:** Rust unit tests (argv mapping, tool errors, read-only,
 protocol negotiation) and an end-to-end session over the real binary
 (`apps/cli/tests/mcp.rs`: initialize, search hiding a private note,
-read_note refused on it, append written); `cargo clippy -p reflect-cli
+read_note refused on it, append written); `cargo clippy -p kore-cli
 --all-targets -D warnings`, fmt; core `agent-skill.test.ts`; desktop
 `agents-section.test.tsx` on Chromium; typecheck, oxfmt, oxlint, eslint on
 touched files. WebKit left to CI. Not yet tried from a real MCP client.
@@ -1989,8 +1989,8 @@ CI. Not tried on the real vault.
   back to the attachment folder until the next open.
 
 **Validation:** core node suite, desktop node suite and the desktop browser
-suite on Chromium; `cargo test` + `clippy` for `reflect-cli` and
-`reflect-graph-paths`. The desktop crate (`reflect-open`) cannot compile in
+suite on Chromium; `cargo test` + `clippy` for `kore-cli` and
+`kore-graph-paths`. The desktop crate (`reflect-open`) cannot compile in
 the container (no GTK), so its two new commands and the watcher change get
 their first build in CI. WebKit is left to CI (it cannot run in the cloud
 container). Not tried against the real vault on the Mac.
@@ -2038,7 +2038,7 @@ Obsidian" thread.
 tests for the five affected files (Type field header and rail, chat note-type
 card, `use-add-note-tag`, `use-apply-note-type`) 24/24 on **Chromium only**,
 WebKit left to CI (not installable in this container); `cargo test -p
-reflect-cli` and `cargo clippy -p reflect-cli --all-targets -D warnings`
+kore-cli` and `cargo clippy -p kore-cli --all-targets -D warnings`
 clean; `pnpm check` exit 0.
 
 **Next:** on Mario's Mac, open the vault and check that the tag sidebar and a
@@ -2251,9 +2251,9 @@ first, one commit each.
   `release.yml` and `testflight.yml`, since fat LTO slows the release link.
 
 **Validation:** `cargo fmt --check` clean; `cargo clippy -D warnings` on
-`reflect-open`, `reflect-index-schema`, `reflect-cli` clean; after the revert
+`reflect-open`, `kore-index-schema`, `kore-cli` clean; after the revert
 `reflect-open` `db::` tests 69/69 (the open test now asserts `synchronous = 1`),
-`reflect-index-schema` 2/2, `reflect-cli` 145/145. **Not run locally:** the
+`kore-index-schema` 2/2, `kore-cli` 145/145. **Not run locally:** the
 iOS `cargo check` fails in Tauri's Swift build script on this machine (the
 macOS 27 SDK lacks `CoreServices/CSIdentityBase.h`), before any Kore code
 compiles; the changes are platform-neutral Rust and CI runs that check. No
@@ -2968,10 +2968,10 @@ replace three copies of the read-patch-write choreography; `list --kind`
 validated by clap; integration tests split into `tests/common/mod.rs`,
 `tests/cli.rs` (reads) and `tests/writes.rs`.
 
-**Validation:** `cargo test -p reflect-cli`: 70 unit + 60 + 8 integration
+**Validation:** `cargo test -p kore-cli`: 70 unit + 60 + 8 integration
 green (the macOS-only `/private/var` comparison in
 `capture_joins_todays_trailing_list` now canonicalizes both sides). `cargo
-fmt --check` and `cargo clippy -p reflect-cli --all-targets -D warnings`
+fmt --check` and `cargo clippy -p kore-cli --all-targets -D warnings`
 clean. No TypeScript changed, so `pnpm check` is unaffected.
 
 **Shipped:** PR #175 squash-merged to master on 2026-09-06 after the
@@ -3549,7 +3549,7 @@ screen: Agents then Close lands on today.
 - 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
   that agent-CLI chat runs (Claude Code, Codex) never see the in-process
   tools of `ai/chat/tools.ts`, so the tools live in `kore mcp` instead and
-  slices 1 and 2 merge. New crate `reflect-kit-script` (detect the kit from
+  slices 1 and 2 merge. New crate `kore-kit-script` (detect the kit from
   `AGENTS.md`, digest the scripts folder, `.kore/kit-trust.json`, argv
   allowlist); `kore brain` runs the vault's `brain.mjs` only when allowed,
   signed with the caller; `kore mcp` serves `remember`/`open_loop`/
@@ -3865,7 +3865,7 @@ screen: Agents then Close lands on today.
   which still parses so pasted links keep working, but is never written).
   Kept on purpose, internal only: `reflect-*` crates and `@kore/*`
   packages, the `.reflect/` index directory, the `reflect-managed` skill
-  marker, `reflect-capture-host` and its `app.reflect.capture` native
+  marker, `kore-capture-host` and its `app.reflect.capture` native
   messaging id (tied to the browser extension), the iOS
   `reflect://record-audio` widget verb, CSS classes and storage keys.
 - 2026-10-17 — Autonomous discovery run. Most Obsidian blockers from the

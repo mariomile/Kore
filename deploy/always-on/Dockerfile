@@ -8,7 +8,7 @@
 FROM rust:1-bookworm AS cli
 WORKDIR /src
 COPY . .
-RUN cargo build --release --locked -p reflect-cli
+RUN cargo build --release --locked -p kore-cli
 
 FROM node:22-bookworm-slim AS indexer
 WORKDIR /src

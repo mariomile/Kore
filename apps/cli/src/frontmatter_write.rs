@@ -18,7 +18,7 @@ use crate::frontmatter_values::{
     entries, format_number, parse_mapping, property_value, PropertyValue,
 };
 use crate::write::line_ending;
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 /// One key to set (`Some`) or delete (`None`).
 pub type Patch = Vec<(String, Option<PropertyValue>)>;

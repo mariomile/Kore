@@ -44,7 +44,7 @@ mod output;
 use std::fmt::Display;
 use std::path::Path;
 
-use reflect_index_schema::{INDEX_FILE, KORE_DIR};
+use kore_index_schema::{INDEX_FILE, KORE_DIR};
 
 use crate::error::CliError;
 use crate::index::{detect_staleness, open_read_only, IndexOpen, OpenIndex, Staleness};

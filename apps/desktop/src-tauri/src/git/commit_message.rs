@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use git2::{Commit, Delta, DiffOptions, Repository, Tree};
-use reflect_note_policy::{first_h1, parse_frontmatter, split_frontmatter};
+use kore_note_policy::{first_h1, parse_frontmatter, split_frontmatter};
 
 use crate::error::AppResult;
 

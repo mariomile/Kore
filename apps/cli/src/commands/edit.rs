@@ -19,7 +19,7 @@ use crate::commands::resolve_existing;
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::write::{line_ending, update_note};
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 /// The refusals, worded like the chat's so an agent reads the same advice.
 pub const NOT_FOUND: &str =

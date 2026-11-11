@@ -289,7 +289,7 @@ mod tests {
             b"image",
         )
         .unwrap();
-        let conn = reflect_index_schema::open_index_at(source.path()).unwrap();
+        let conn = kore_index_schema::open_index_at(source.path()).unwrap();
         conn.execute_batch(
             "INSERT INTO chat_conversations VALUES ('conv', 'Hello', 1, 1);
              INSERT INTO chat_messages VALUES ('turn-1', 'conv', 0, 'Hello', '[]', '[]', '[]', 1);",

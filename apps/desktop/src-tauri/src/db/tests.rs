@@ -2,7 +2,7 @@
 //! together against a migrated in-memory database, the same shape the commands
 //! compose at runtime.
 
-use reflect_index_schema::LATEST_SCHEMA_VERSION;
+use kore_index_schema::LATEST_SCHEMA_VERSION;
 use rusqlite::Connection;
 use serde_json::Value;
 

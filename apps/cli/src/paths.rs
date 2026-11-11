@@ -133,7 +133,7 @@ impl DailyLayout {
 
     /// The layout for the graph at `root`.
     pub fn for_graph(root: &Path) -> Self {
-        match reflect_graph_paths::read_obsidian_file(root, "daily-notes.json") {
+        match kore_graph_paths::read_obsidian_file(root, "daily-notes.json") {
             Some(json) => Self::from_obsidian_json(&json),
             None => Self::default(),
         }

@@ -49,7 +49,7 @@ kore sync                  # pull the vault's git clone, push kore's writes, rei
 kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
 
-Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
+Built from `apps/cli` (`cargo build -p kore-cli`); bundled with the desktop
 app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/kore`, Linux
 `.deb`: `/usr/bin/kore`). For local development:
 `cargo install --path apps/cli`.

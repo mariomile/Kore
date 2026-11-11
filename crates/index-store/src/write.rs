@@ -82,6 +82,8 @@ pub struct IndexedLink {
 pub struct IndexedTag {
     pub tag: String,
     pub tag_key: String,
+    /// Membership (frontmatter `tags:` or a tag-only line) rather than a mention.
+    pub member: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -224,10 +226,11 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
         }
     }
     {
-        let mut stmt =
-            conn.prepare_cached("INSERT INTO tags(note_path, tag, tag_key) VALUES(?1, ?2, ?3)")?;
+        let mut stmt = conn.prepare_cached(
+            "INSERT INTO tags(note_path, tag, tag_key, member) VALUES(?1, ?2, ?3, ?4)",
+        )?;
         for tag in &note.tags {
-            stmt.execute(params![note.path, tag.tag, tag.tag_key])?;
+            stmt.execute(params![note.path, tag.tag, tag.tag_key, tag.member])?;
         }
     }
     {

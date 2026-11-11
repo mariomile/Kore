@@ -5,8 +5,9 @@ description: Work with Kore collections — tags as supertags with a property sc
 
 # Kore collections
 
-Every tag is a collection: its rows are the notes carrying `#tag` (in the
-body or in frontmatter `tags:`), its
+Every tag is a collection: its rows are the notes that are members of the
+tag (frontmatter `tags:`, or a tag-only first or last body paragraph; a
+`#tag` inside a sentence is only a mention, never a row), its
 columns are the properties the tag's schema declares. Values live in each
 note's own frontmatter; the schema lives in a definition note. Nothing is
 stored anywhere else, so every surface (table, board, calendar, note

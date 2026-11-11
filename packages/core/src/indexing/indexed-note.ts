@@ -137,8 +137,11 @@ import {
  * `notes.is_private` like `private: true`. Rows indexed before hold `false`,
  * so the CLI, `kore mcp` and search would still serve those notes until they
  * were edited: the bump reprojects every note so the block holds at once.
+ * 32 - `tags.member` (migration 0026) tells membership from mentions: only
+ * frontmatter `tags:` and a tag-only first or last paragraph make a note a
+ * member. Existing rows default to members until the rebuild sorts them.
  */
-export const PROJECTION_VERSION = 31
+export const PROJECTION_VERSION = 32
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -207,6 +210,8 @@ export const indexedTagSchema = z.object({
   tag: z.string(),
   /** Case-folded match key ({@link foldTag}) — what queries compare against. */
   tagKey: z.string(),
+  /** The note *is* this tag (frontmatter or tag-only line), not just mentions it. */
+  member: z.boolean(),
 })
 export type IndexedTag = z.infer<typeof indexedTagSchema>
 
@@ -500,7 +505,10 @@ export function buildIndexedNote(
     assetText: meta.assetText ?? '',
     preview: previewSnippet(parsed.previewText, parsed.title),
     links: [...wikiLinks, ...mdLinks],
-    tags: parsed.tags.map((tag) => ({ tag, tagKey: foldTag(tag) })),
+    tags: parsed.tags.map((tag) => {
+      const tagKey = foldTag(tag)
+      return { tag, tagKey, member: parsed.memberTags.includes(tagKey) }
+    }),
     aliases,
     claims: projectNoteClaims(parsed, aliases),
     emails: extractEmailFields(body).map((email) => ({ email, emailKey: foldEmail(email) })),

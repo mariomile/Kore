@@ -53,11 +53,21 @@ at the top; a second H1 is body text.
 A tag is written inline in the body (`#book`, `#sci-fi/classic`) or listed
 in frontmatter `tags:` (`tags: [book, sci-fi/classic]`, a block list, or a
 comma-separated string; a leading `#` is optional). Grammar: a letter, then
-letters, digits, `/`, `_`, `-`. Either source makes the note a member of
-that tag's collection, a daily included. `tags:` is membership, not an
-ordinary property. The app's Type field writes `tags:`; `kore tag` and
-the editor write one trailing `#tag` line at the end of the body. To take a
-tag off, remove it from both places.
+letters, digits, `/`, `_`, `-`. Where the tag sits decides what it means:
+
+- **Membership.** Frontmatter `tags:`, or a paragraph made only of tags as
+  the body's first (right under the `# Title`) or last paragraph, makes the
+  note a member of that tag's collection, a daily included: it is one of
+  the tag's rows and gets its fields. `tags:` is membership, not an
+  ordinary property.
+- **Mention.** A `#tag` inside a sentence (`met Anna about #project-x`) is
+  only a reference: it is searchable and shows under the tag page's
+  "Mentioned in", but it does not make the note a row.
+
+The app's Type field writes `tags:`; `kore tag` and the editor write one
+trailing `#tag` line at the end of the body, which counts as membership. To
+make a note a member, never rely on a tag inside prose. To take a tag off,
+remove it from both places.
 
 ## Tasks
 

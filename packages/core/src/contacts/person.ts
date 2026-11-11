@@ -68,6 +68,7 @@ async function personOwners(emails: readonly string[]): Promise<PersonOwnerRow[]
       .innerJoin('tags', 'tags.notePath', 'notes.path')
       .where('noteEmails.emailKey', 'in', chunk)
       .where('tags.tagKey', '=', PERSON_TAG_KEY)
+      .where('tags.member', '=', 1)
       .where('notes.kind', '=', 'note')
       .select('notes.path as path')
       .distinct()

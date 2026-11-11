@@ -171,10 +171,11 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
         )
       }
       for (const tag of note.tags) {
-        run(db, 'INSERT INTO tags(note_path, tag, tag_key) VALUES(?, ?, ?)', [
+        run(db, 'INSERT INTO tags(note_path, tag, tag_key, member) VALUES(?, ?, ?, ?)', [
           note.path,
           tag.tag,
           tag.tagKey,
+          tag.member ? 1 : 0,
         ])
       }
       for (const alias of note.aliases) {

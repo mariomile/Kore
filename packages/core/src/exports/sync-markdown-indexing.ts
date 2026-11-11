@@ -475,6 +475,8 @@ export {
   listRecentNotes,
   buildTagTree,
   getTagTree,
+  listTagMentions,
+  type TagMention,
   hasNestedTags,
   listTagTreeCounts,
   type TagTreeCount,

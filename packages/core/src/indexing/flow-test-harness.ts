@@ -123,9 +123,11 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
     )
   }
 
-  const insertTag = database.prepare('INSERT INTO tags(note_path, tag, tag_key) VALUES (?, ?, ?)')
+  const insertTag = database.prepare(
+    'INSERT INTO tags(note_path, tag, tag_key, member) VALUES (?, ?, ?, ?)',
+  )
   for (const tag of indexed.tags) {
-    insertTag.run(indexed.path, tag.tag, tag.tagKey)
+    insertTag.run(indexed.path, tag.tag, tag.tagKey, tag.member ? 1 : 0)
   }
 
   const insertProperty = database.prepare(

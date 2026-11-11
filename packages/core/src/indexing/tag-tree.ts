@@ -113,7 +113,7 @@ async function listTagPrefixes(options: ListNoteTagsOptions): Promise<TagPrefixR
     WITH RECURSIVE parts(note_path, key_prefix, tag_prefix, key_rest, tag_rest) AS (
       SELECT tags.note_path, '', '', tags.tag_key || '/', tags.tag || '/'
       FROM tags JOIN notes ON notes.path = tags.note_path
-      WHERE notes.kind = 'note' ${privacy}
+      WHERE notes.kind = 'note' AND tags.member = 1 ${privacy}
       UNION
       SELECT
         note_path,

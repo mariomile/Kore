@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore has its own Apple identity, `app.kore.*` (#363). Settings, the app data
+  folder and keychain keys move over at first launch. After the update macOS
+  asks once more for notification, calendar and contacts permission, and
+  today's reminders or digest may fire once more.
+- Drag a note's cover to choose which part shows (#398), saved as `cover_y:`.
+- Daily: days with images (markdown and `![[foto.png]]`) render static while
+  scrolling; at 4x CPU fps 42-45 → 45-53, frames over 100 ms 32-41 → 6-31
+  (#400).
+- A #tag inside a sentence is a mention, listed under "Mentioned in" on the
+  tag page; only frontmatter `tags:` or a tag-only line at the top or bottom
+  makes a note a member (#401). The relation picker lists members of the type
+  alphabetically. Migration 0026 reindexes the vault once on first launch.
 - The app's Apple identity is Kore (`app.kore.*`). Updating keeps your
   settings, recent vaults, model cache and saved keys: the old folders and
   keychain entries move over on first launch.

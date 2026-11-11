@@ -86,7 +86,7 @@ pub async fn settings_save<R: tauri::Runtime>(
     #[cfg(desktop)]
     {
         crate::windows::sync_quick_capture_shortcut(&app, &settings);
-        crate::liquid_glass::sync_from_settings(&app, &settings);
+        crate::liquid_glass::sync_on_save(&app, &settings);
     }
     #[cfg(not(desktop))]
     let _ = app;

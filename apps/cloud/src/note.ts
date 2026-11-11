@@ -31,7 +31,7 @@ export function describeNote(path: string, source: string): NoteMeta {
 
 /**
  * A graph-relative Markdown path a client may write: relative, `.md`, no
- * `..`, and outside hidden folders such as `.git/` or `.reflect/`.
+ * `..`, and outside hidden folders such as `.git/` or `.kore/`.
  */
 export function isNotePath(path: string): boolean {
   return (

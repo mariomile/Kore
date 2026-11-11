@@ -23,12 +23,12 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use file_id::{get_file_id, FileId};
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, FileIdCache};
 use kore_graph_paths::{
     classify, evicted_logical_path, eviction_placeholder, has_pruned_component, is_pruned_dir_name,
     wire_path, GraphPathKind, ObsidianExclusions,
 };
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, FileIdCache};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use walkdir::WalkDir;

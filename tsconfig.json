@@ -1,5 +1,6 @@
 {
   "extends": "@ocavue/tsconfig/dom/root.json",
+  "include": ["*", "scripts/*.mjs"],
   "references": [
     {
       "path": "./apps/cloud/tsconfig.json"

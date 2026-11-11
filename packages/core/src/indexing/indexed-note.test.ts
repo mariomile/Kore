@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(31)
+    expect(PROJECTION_VERSION).toBe(32)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {
@@ -52,7 +52,7 @@ describe('buildIndexedNote', () => {
       { alias: 'PJX', aliasKey: 'pjx' },
       { alias: 'Proj X', aliasKey: 'proj x' },
     ])
-    expect(indexed.tags).toEqual([{ tag: 'status', tagKey: 'status' }])
+    expect(indexed.tags).toEqual([{ tag: 'status', tagKey: 'status', member: false }])
 
     const wiki = indexed.links.filter((link) => link.kind === 'wiki')
     expect(
@@ -211,7 +211,7 @@ describe('buildIndexedNote', () => {
     })
     expect(indexed.preview).toBe('First body line. #CAFÉ')
     // Folding is Unicode-aware — exactly what SQLite's ASCII-only lower() misses.
-    expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café' }])
+    expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café', member: false }])
   })
 
   it('previews the prose under an Obsidian query block, not the query', () => {

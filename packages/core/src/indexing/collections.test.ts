@@ -83,7 +83,7 @@ describe('listNoteTagTypes', () => {
     expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
     const [, args] = mockInvoke.mock.calls[0]!
     expect(String(args['sql'])).toContain('inner join "tag_types"')
-    expect(args['params']).toEqual(['notes/a.md'])
+    expect(args['params']).toEqual(['notes/a.md', 1])
   })
 })
 
@@ -331,6 +331,6 @@ describe('listTagsOnNote', () => {
     ])
     const [, args] = mockInvoke.mock.calls[0]!
     expect(String(args['sql'])).toContain('left join "tag_types"')
-    expect(args['params']).toEqual(['notes/a.md'])
+    expect(args['params']).toEqual(['notes/a.md', 1])
   })
 })

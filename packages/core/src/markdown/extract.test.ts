@@ -174,6 +174,15 @@ describe('parseNote — links, assets, tags, text', () => {
     expect(parse('---\ntags: alpha, beta gamma\n---\n').tags).toEqual(['alpha', 'beta', 'gamma'])
   })
 
+  it('tells membership (frontmatter, a tag-only first or last line) from mentions', () => {
+    expect(
+      parse('---\ntags: [book]\n---\n# Dune\n\nI loved this #scifi novel.').memberTags,
+    ).toEqual(['book'])
+    expect(parse('# Dune\n#book #Novel\n\nBody.').memberTags).toEqual(['book', 'novel'])
+    expect(parse('# Dune\n\nBody with #mention.\n\n#book\n').memberTags).toEqual(['book'])
+    expect(parse('# Day\n\nThe #book was good.\n\nMore notes.').memberTags).toEqual([])
+  })
+
   it('skips frontmatter tags the #tag grammar rejects', () => {
     expect(parse('---\ntags: [2024, "two words", ok, {nested: 1}]\n---\n').tags).toEqual(['ok'])
   })

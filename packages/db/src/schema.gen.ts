@@ -133,6 +133,7 @@ export interface SearchFts {
 }
 
 export interface Tags {
+  member: Generated<number>;
   notePath: string;
   tag: string;
   tagKey: Generated<string>;

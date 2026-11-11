@@ -4,6 +4,7 @@ import { foldTag, normalizeWikiTarget } from '../markdown'
 import { generateDateSuggestions, type DateSuggestionContext } from './date-suggestions'
 import { db } from './db'
 import { inClauseChunks, likeContains } from './query-utils'
+import { collectionTagKeys } from './resolved-tag-types'
 import {
   mergeDateSuggestions,
   rankWikiSuggestions,
@@ -13,6 +14,7 @@ import {
   type WikiLinkSuggestion,
   type WikiSuggestion,
 } from './suggest'
+import { carriesAnyTagOrNested } from './tag-match'
 
 /** One `#tag` autocomplete candidate: display casing + how many notes carry it. */
 export interface TagSuggestion {
@@ -102,11 +104,15 @@ export async function suggestWikiLinkTargets(
 }
 
 /**
- * {@link suggestWikiLinkTargets} narrowed to one collection: only notes
- * carrying `tagKey` (a folded tag) are candidates, so a typed `relation`
- * offers its target collection's rows and nothing else. Same verification
- * contract — every offered target is proven to resolve. No date generation:
- * a fuzzy date is a navigation affordance, not a row of the collection.
+ * {@link suggestWikiLinkTargets} narrowed to one collection: only the notes
+ * {@link listCollection} would list for `tagKey` are candidates — members of
+ * the tag, of a tag nested under it, or of a tag that builds on it — so a
+ * typed `relation` offers its target collection's rows and nothing else. A
+ * note that only mentions the tag in its prose is not a row and is not
+ * offered. With no query the rows read alphabetically, like a list of things
+ * to pick from. Same verification contract — every offered target is proven
+ * to resolve. No date generation: a fuzzy date is a navigation affordance,
+ * not a row of the collection.
  */
 export async function suggestRelationTargets(
   query: string,
@@ -116,9 +122,16 @@ export async function suggestRelationTargets(
   if (limit <= 0) {
     return { suggestions: [], claimedTargetKeys: [], queryReadsAsDate: false }
   }
-  const result = await queryWikiTargetCandidates(query, undefined, tagKey)
+  const tagKeys = await collectionTagKeys(tagKey)
+  const result = await queryWikiTargetCandidates(query, undefined, tagKeys)
+  const candidates =
+    normalizeWikiTarget(query).key === ''
+      ? [...result.candidates].sort((left, right) =>
+          left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }),
+        )
+      : result.candidates
   return await verifyWikiSuggestionAddresses(
-    result.candidates,
+    candidates,
     result.candidateTargetKeys,
     limit,
     normalizeWikiTarget(query).key,
@@ -152,23 +165,29 @@ export async function getWikiAddressForPath(path: string): Promise<WikiLinkSugge
 async function queryWikiTargetCandidates(
   query: string,
   dateGen?: DateSuggestionContext,
-  memberOfTagKey?: string,
+  memberOfTagKeys?: readonly string[],
 ): Promise<WikiTargetCandidateResult> {
   const normalized = normalizeWikiTarget(query)
   const key = normalized.key
   const memberPaths =
-    memberOfTagKey === undefined
+    memberOfTagKeys === undefined
       ? undefined
-      : db.selectFrom('tags').where('tagKey', '=', memberOfTagKey).select('notePath')
+      : db
+          .selectFrom('notes')
+          .where(carriesAnyTagOrNested('"notes"."path"', memberOfTagKeys))
+          .select('notes.path')
 
   let titleQuery = db
     .selectFrom('notes')
     .where('kind', '!=', 'template')
     .select(['path', 'title', 'titleKey', 'dailyDate', 'mtime'])
-    .orderBy('mtime', 'desc')
     .limit(50)
   if (memberPaths !== undefined) {
-    titleQuery = titleQuery.where('path', 'in', memberPaths)
+    // A collection's rows: with no query, the first 50 alphabetically, the
+    // order the picker shows them in.
+    titleQuery = titleQuery.where('path', 'in', memberPaths).orderBy(sql`title collate nocase`)
+  } else {
+    titleQuery = titleQuery.orderBy('mtime', 'desc')
   }
   if (key !== '') {
     titleQuery = titleQuery.where(sql<boolean>`title_key LIKE ${likeContains(key)} ESCAPE '\\'`)

@@ -250,6 +250,7 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
     .selectFrom('tags')
     .innerJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
+    .where('tags.member', '=', 1)
     .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tagTypes.tagKey')
     .execute()
@@ -257,7 +258,8 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
 }
 
 /**
- * Every tag one note carries, schema-bearing or not, in key order. Since
+ * Every tag one note is a member of (not the ones its prose only mentions),
+ * schema-bearing or not, in key order. Since
  * TDR 0005 Amendment A a tag *is* a collection whether or not a definition
  * note declares properties, so the note's Type field lists them all; the
  * property union above still comes from {@link listNoteTagTypes}, because an
@@ -273,6 +275,7 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .selectFrom('tags')
     .leftJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
+    .where('tags.member', '=', 1)
     .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tags.tagKey')
     .execute()

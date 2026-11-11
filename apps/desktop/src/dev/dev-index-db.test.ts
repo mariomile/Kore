@@ -49,7 +49,7 @@ function sampleNote(overrides: Partial<IndexedNote> = {}): IndexedNote {
         posTo: 16,
       },
     ],
-    tags: [{ tag: 'book', tagKey: 'book' }],
+    tags: [{ tag: 'book', tagKey: 'book', member: true }],
     aliases: [],
     claims: [
       { key: 'sample note', tier: 2 },

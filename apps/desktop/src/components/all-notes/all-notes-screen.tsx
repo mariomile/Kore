@@ -68,6 +68,7 @@ import { FolderPageTitle } from './folder-page-title'
 import { FolderSubfolders } from './folder-subfolders'
 import { NewFolderNoteButton } from './new-folder-note-button'
 import { NewNoteButton } from './new-note-button'
+import { TagMentionsSection } from './tag-mentions-section'
 import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
@@ -482,6 +483,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
       </header>
       <FolderSubfolders folder={folderNode} />
       <TagPageDescription tag={tag} />
+      <TagMentionsSection tag={tag} />
       {collectionAvailable && tag !== null ? (
         <div className="flex flex-none flex-wrap items-center justify-between gap-3 pb-3 pl-12 pr-7">
           <CollectionViewTabs

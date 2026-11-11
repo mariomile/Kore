@@ -316,6 +316,32 @@ filters.
 - **Reprojection.** No SQL migration; `PROJECTION_VERSION` 26 and
   `PARSED_NOTE_VERSION` 7 rebuild the projection on next open.
 
+## Amendment E (2026-11-11) — Where a tag sits decides membership; a tag in prose is a mention
+
+One tag, two positions. Treating every inline `#tag` as membership (M1) made
+any sentence that names a tag a row of its collection, so collections, the
+Type field and the relation picker filled up with notes that only talked
+about the tag (an Area picker offering meeting notes that mentioned `#area`).
+
+- **Membership** is frontmatter `tags:` (Amendment D) or a body paragraph made
+  only of tags when it is the first paragraph (right under a `# Title`
+  heading) or the last one. The trailing `#tag` line `kore tag`, the editor and
+  collection rows already write stays membership, so no file is rewritten.
+- **Mention** is any other inline `#tag`. It still indexes as a tag row
+  (search, tag counts, the tag page's "Mentioned in" disclosure,
+  `listTagMentions`) but never makes the note a collection row, a typed note,
+  a person, a relation target or a reusable-collection member.
+- **Index.** `tags.member` (migration 0026, default 1) carries the position;
+  `ParsedNote.memberTags` (`membershipLineTags` in
+  `packages/core/src/markdown/extract.ts`) feeds it. Every membership query
+  (`carriesTagOrNested`, `carriesAnyTagOrNested`, tag types, the tag tree,
+  persons, reusable collections, the CLI's `collection` and starting values)
+  filters `member = 1`. `PROJECTION_VERSION` 32 and `PARSED_NOTE_VERSION` 10
+  rebuild the projection once on next open.
+- **Relation picker.** Targets are the members of the relation's tag and its
+  nested tags and `extends` descendants (`collectionTagKeys`), sorted by title
+  when nothing is typed, up to 50.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

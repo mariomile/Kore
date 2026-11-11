@@ -282,6 +282,42 @@ export function inlineTagNames(text: string): string[] {
   return [...tags.values()]
 }
 
+/**
+ * The folded tags of the body's membership lines: a paragraph made only of
+ * `#tag` tokens that opens the body (or follows its leading H1) or closes it.
+ * That is the line `appendBodyTag` writes, and the one the editor folds into
+ * the Type field; a `#tag` anywhere else is a mention, not membership.
+ */
+export function membershipLineTags(body: string): string[] {
+  const paragraphs = body.split(/\n[ \t]*\n/u).map((part) => part.trim())
+  const blocks = paragraphs.filter((part) => part !== '')
+  const candidates: string[] = []
+  const first = blocks[0]
+  if (first !== undefined) {
+    const lines = first.split('\n')
+    if (/^#\s/u.test(lines[0] ?? '')) {
+      const rest = lines.slice(1).join('\n').trim()
+      candidates.push(rest !== '' ? rest : (blocks[1] ?? ''))
+    } else {
+      candidates.push(first)
+    }
+  }
+  const last = blocks.at(-1)
+  if (last !== undefined && blocks.length > 1) {
+    candidates.push(last)
+  }
+  const keys = new Set<string>()
+  for (const candidate of candidates) {
+    if (candidate === '' || candidate.replaceAll(TAG_RE, '').trim() !== '') {
+      continue
+    }
+    for (const match of candidate.matchAll(TAG_RE)) {
+      keys.add(foldTag(match[2]!))
+    }
+  }
+  return [...keys]
+}
+
 function collectTags(body: string, excluded: Span[], into: Map<string, string>): void {
   for (const match of body.matchAll(TAG_RE)) {
     // Both groups are mandatory in TAG_RE, so a match always populates them.
@@ -479,6 +515,10 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       tags.set(key, tag)
     }
   }
+  const memberTags = new Set(tags.keys())
+  for (const key of membershipLineTags(body)) {
+    memberTags.add(key)
+  }
   collectTags(body, tagExcluded, tags)
 
   // Obsidian `^id` anchors (Plan 33 C3) are addresses, not words: no task
@@ -503,6 +543,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     wikiLinks,
     links,
     tags: [...tags.values()],
+    memberTags: [...memberTags],
     headings,
     assets,
     tasks,

@@ -24,9 +24,9 @@ vi.mock('@kore/core', async (importOriginal) => ({
     claimedTargetKeys: [],
     queryReadsAsDate: false,
   }),
-  suggestRelationTargets: async (_query: string, tagKey: string) => {
+  suggestRelationTargets: async (_query: string, tagKey: string, limit = 8) => {
     scopedTargetKeys.current.push(tagKey)
-    return { suggestions: relationSuggestions.current, claimedTargetKeys: [] }
+    return { suggestions: relationSuggestions.current.slice(0, limit), claimedTargetKeys: [] }
   },
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -340,6 +340,36 @@ describe('PropertyValueEditor', () => {
     await expect
       .poll(() => onCommit.mock.calls.at(-1)?.[0])
       .toEqual(['[[Frank Herbert]]', '[[Octavia Butler]]'])
+  })
+
+  it('lists every row of a target collection larger than six', async () => {
+    const areas = [
+      'Health',
+      'Money & Admin',
+      'Network',
+      'Building',
+      'Weekly Review',
+      'Now',
+      'Career',
+    ]
+    relationSuggestions.current = areas.map((title) => ({
+      target: title,
+      insertText: title,
+      path: `areas/${title}.md`,
+      title,
+      alias: null,
+      date: null,
+    }))
+    const property: TagProperty = { name: 'Area', key: 'area', type: 'relations', target: 'area' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Area' }).click()
+    await expect.element(view.getByPlaceholder('Link #area rows…')).toBeVisible()
+    for (const title of areas) {
+      await expect
+        .element(view.getByRole('option', { name: title, exact: true }))
+        .toBeInTheDocument()
+    }
   })
 
   it('deletes the key on the last unlink of a multi-relation', async () => {

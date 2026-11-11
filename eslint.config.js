@@ -15,7 +15,7 @@ export default defineESLintConfig(
   {
     // src-tauri/gen holds generated platform projects plus Apple's Share
     // Extension preprocessing JS — not code this repo authors or lints.
-    ignores: ['./design-system/', '**/.wxt/', '**/.output/', '**/src-tauri/gen/'],
+    ignores: ['./design-system/', '**/.wxt/', '**/.output/', '**/.wrangler/', '**/src-tauri/gen/'],
   },
   {
     // The AI SDK loads on first use (packages/core/src/ai/load-sdk.ts). A value

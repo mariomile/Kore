@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Groundwork for Kore Cloud: the always-on service that will keep your
+  vault reachable by Claude, ChatGPT and other agents when your Mac is off,
+  in your own free Cloudflare account. Not reachable from the app yet.
+
 - Scrolling the daily notes stays smooth when the Mac is busy: while the
   stream moves a day is drawn as plain text, and the days on screen become
   editors again as soon as the scroll rests. A click on a day gives it its

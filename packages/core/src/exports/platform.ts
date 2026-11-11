@@ -283,6 +283,7 @@ export {
   editorSmoothCaretAnimationSchema,
   editorTextSizeSchema,
   editorFullWidthSchema,
+  editorLineAuthorsSchema,
   editorFontFamilySchema,
   editorLineSpacingSchema,
   sidebarWidthSchema,

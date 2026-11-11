@@ -95,6 +95,13 @@ export {
   type SittingNote,
 } from './activity'
 export {
+  gitBlame,
+  lineAuthorKey,
+  lineAuthors,
+  type LineAuthor,
+  type NoteBlame,
+} from './line-authors'
+export {
   acceptProposal,
   describeProposal,
   listProposals,

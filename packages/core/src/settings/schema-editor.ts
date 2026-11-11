@@ -75,6 +75,14 @@ export const EDITOR_TEXT_SIZE_IDS = editorTextSizeEnum.options
 export const editorFullWidthSchema = z.boolean().catch(false)
 
 /**
+ * Whether the editor shades each line by who last changed it (Plan 33, A3):
+ * you, the always-on host, or a named agent, read from the vault's backup
+ * history. Off by default; display-only, it never touches the stored
+ * Markdown.
+ */
+export const editorLineAuthorsSchema = z.boolean().catch(false)
+
+/**
  * The typeface family the note editor renders prose in. `sans` (the default)
  * is the app's Inter stack; `serif` swaps to a book-style serif stack,
  * `system` to the OS UI font, and `mono` to the app's monospace stack.

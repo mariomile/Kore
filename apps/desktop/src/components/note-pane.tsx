@@ -47,6 +47,7 @@ import { useTagActions } from '@/editor/use-tag-actions'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
+import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
@@ -578,6 +579,12 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <LineAuthorShading
+          enabled={settings.editorLineAuthors}
+          path={path}
+          generation={generation}
+          header={document.header}
+        />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}

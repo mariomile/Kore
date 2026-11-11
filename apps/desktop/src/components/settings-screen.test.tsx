@@ -400,6 +400,17 @@ describe('SettingsScreen', () => {
     await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({ editorFullWidth: true }))
   })
 
+  it('turns who-wrote-each-line shading on and persists it', async () => {
+    await renderScreen()
+    const toggle = page.getByRole('switch', { name: /show who wrote each line/i })
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
+
+    await toggle.click()
+
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'true')
+    await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({ editorLineAuthors: true }))
+  })
+
   it('reflects a persisted spell check opt-out', async () => {
     stored = { editorSpellCheck: false }
     await renderScreen()

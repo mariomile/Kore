@@ -32,6 +32,11 @@ vi.mock('@/lib/note-pin', () => ({ toggleNotePinned }))
 vi.mock('@/lib/note-private', () => ({ toggleNotePrivate }))
 vi.mock('@/lib/note-delete', () => ({ deleteOpenNote }))
 vi.mock('@/lib/operations', () => ({ startOperation }))
+const settingsState = vi.hoisted(() => ({ editorLineAuthors: false }))
+const updateSettings = vi.hoisted(() => vi.fn())
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({ settings: settingsState, updateSettings }),
+}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
 }))
@@ -60,6 +65,8 @@ beforeEach(() => {
   startOperation.mockClear()
   operationFail.mockClear()
   isApplePlatform.mockReturnValue(false)
+  settingsState.editorLineAuthors = false
+  updateSettings.mockReset()
 })
 
 function noteRow(path: string, isPrivate: boolean, title = 'A') {
@@ -219,5 +226,17 @@ describe('NoteActionsSection trash action', () => {
     const view = await renderSection('daily/2026-06-10.md', true)
     expect(view.getByRole('button', { name: 'Trash note' }).query()).toBeNull()
     await view.unmount()
+  })
+
+  it('turns who-wrote-each-line shading on and off through the setting', async () => {
+    const view = await renderSection('notes/a.md')
+    await userEvent.click(view.getByRole('button', { name: 'Show who wrote each line' }))
+    expect(updateSettings).toHaveBeenCalledWith({ editorLineAuthors: true })
+
+    settingsState.editorLineAuthors = true
+    const shown = await renderSection('notes/b.md')
+    await expect
+      .element(shown.getByRole('button', { name: 'Hide who wrote each line' }))
+      .toHaveAttribute('aria-pressed', 'true')
   })
 })

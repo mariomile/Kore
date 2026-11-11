@@ -1,0 +1,17 @@
+/* Who wrote what (Plan 33, A3; LineAuthorShading / line-authors-plugin):
+   a block an agent last changed carries that agent's mark, a tinted bar on
+   its left and a light wash in the agent's hue; the host's blocks get the
+   same in a neutral tone. The owner's blocks stay plain. Display-only. */
+
+.reflect-editor .kore-line-author {
+  --kore-line-author-color: hsl(var(--kore-line-author-hue, 210) 65% 50%);
+  box-shadow: inset 2px 0 0 var(--kore-line-author-color);
+  background: color-mix(in oklab, var(--kore-line-author-color) 8%, transparent);
+  border-radius: 2px;
+  padding-inline-start: 0.5em;
+  margin-inline-start: -0.5em;
+}
+
+.reflect-editor .kore-line-author[data-line-author='host'] {
+  --kore-line-author-color: var(--text-muted);
+}

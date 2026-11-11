@@ -270,10 +270,7 @@ export async function refreshGithubAuth(
     }),
   })
   if (!response.ok) {
-    throw new KoreError(
-      'network',
-      `GitHub token refresh failed (${response.status}); will retry`,
-    )
+    throw new KoreError('network', `GitHub token refresh failed (${response.status}); will retry`)
   }
   const parsed = await readJson(response, tokenResponseSchema, 'token refresh')
   if (parsed.access_token !== undefined) {

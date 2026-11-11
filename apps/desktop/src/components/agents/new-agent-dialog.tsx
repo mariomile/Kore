@@ -1,10 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import {
-  createAgentProfile,
-  errorMessage,
-  isCliAgentProvider,
-  type AgentProfile,
-} from '@kore/core'
+import { createAgentProfile, errorMessage, isCliAgentProvider, type AgentProfile } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'

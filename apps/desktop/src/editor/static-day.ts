@@ -1,8 +1,4 @@
-import {
-  detectConflictMarkers,
-  parseNoteAppearanceFromSource,
-  splitFrontmatter,
-} from '@kore/core'
+import { detectConflictMarkers, parseNoteAppearanceFromSource, splitFrontmatter } from '@kore/core'
 import { parseBodyEmbeds } from '@/components/body-embeds'
 import { checkRoundTrip } from './roundtrip'
 

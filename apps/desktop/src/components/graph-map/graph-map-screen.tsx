@@ -1,12 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  displayNoteTitle,
-  foldTag,
-  getGraphMap,
-  noteFileStem,
-  type GraphMapNode,
-} from '@kore/core'
+import { displayNoteTitle, foldTag, getGraphMap, noteFileStem, type GraphMapNode } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { tagColorCss } from '@/lib/graph-colors'

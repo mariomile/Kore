@@ -58,10 +58,7 @@ export async function createGist(
     }),
   })
   if (response.status === 404) {
-    throw new KoreError(
-      'auth',
-      'GitHub refused gist access (404) — reconnect GitHub to grant it',
-    )
+    throw new KoreError('auth', 'GitHub refused gist access (404) — reconnect GitHub to grant it')
   }
   if (response.status === 401 || response.status === 403) {
     throw new KoreError('auth', `GitHub rejected the token (${response.status})`)

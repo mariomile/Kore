@@ -15,8 +15,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   takes its newest line's author.
 
 - The code says Kore everywhere: packages are @kore/*, crates kore-*, the
-  desktop crate and Xcode project kore-open, and pnpm lint fails if a new
-  reflect name appears. Nothing changes in the app. (#355)
+  desktop crate and Xcode project kore-open, and pnpm lint fails if the
+  old upstream name comes back. Nothing changes in the app. (#355)
 
 - Scrolling the daily notes stays smooth when the Mac is busy: while the
   stream moves a day is drawn as plain text, and the days on screen become

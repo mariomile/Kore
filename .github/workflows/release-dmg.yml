@@ -1,17 +1,29 @@
-# Kore's lightweight release channel: an UNSIGNED macOS DMG plus signed
-# updater artifacts, published to a GitHub release on every version tag.
+# Kore's release channel: a macOS DMG plus signed updater artifacts,
+# published to a GitHub release on every version tag.
 #
-# This is deliberately separate from release.yml (the signed + notarized
-# pipeline, which needs Apple Developer certificates): it needs only the
-# Tauri updater keypair, so installed apps can verify and auto-apply
-# updates while the app itself stays unsigned. A freshly downloaded DMG is
-# quarantined by Gatekeeper (recent macOS shows the app as "damaged"); one
-# `xattr -cr /Applications/Kore.app` clears it. Updates installed by the
-# app afterwards need nothing.
+# Two signing modes, picked by which secrets exist:
 #
-# Required repository secrets:
+# - Developer ID (APPLE_CERTIFICATE set): the app is signed with Mario's
+#   Developer ID Application certificate and notarized with the App Store
+#   Connect API key that TestFlight uses too. macOS then ties privacy
+#   permissions (calendar, contacts, microphone, notifications) to
+#   "app.kore.desktop + team ZQG9377GFQ", so they survive every update, and a
+#   fresh download opens without any Gatekeeper workaround. iCloud is left
+#   out of this build (no Developer ID provisioning profile for
+#   app.kore.desktop yet), so it signs with the iCloud-free entitlements.
+# - Unsigned (no APPLE_CERTIFICATE): an ad-hoc signed DMG, as before. A fresh
+#   download needs one `xattr -cr /Applications/Kore.app`, and macOS forgets
+#   granted permissions on every update.
+#
+# release.yml (the release-please-driven notarized pipeline) stays separate.
+#
+# Repository secrets:
 #   TAURI_SIGNING_PRIVATE_KEY           the updater private key
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password (may be empty)
+#   APPLE_CERTIFICATE                   base64 of the Developer ID .p12 (optional)
+#   APPLE_CERTIFICATE_PASSWORD          the .p12 export password
+#   APPLE_API_KEY / APPLE_API_ISSUER / APPLE_API_KEY_CONTENT
+#                                       App Store Connect API key, for notarizing
 #
 # The in-app updater polls
 #   https://github.com/mariomile/Kore/releases/latest/download/latest.json
@@ -50,6 +62,7 @@ jobs:
       # `secrets` is not allowed inside step `if:` expressions — surface the
       # presence of the updater key as an env flag instead.
       HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+      HAS_DEVELOPER_ID: ${{ secrets.APPLE_CERTIFICATE != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +108,71 @@ jobs:
           KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      # Developer ID signing + notarization. tauri-action hands these to the
+      # Tauri bundler, which imports the .p12 into a temporary keychain, signs
+      # the app and its sidecars with the hardened runtime, notarizes through
+      # notarytool with the API key and staples the ticket. The checks fail
+      # the run up front when the certificate is set but notarizing could not
+      # happen, instead of silently shipping a signed-but-unnotarized build.
+      - name: Choose the signing mode
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          API_KEY: ${{ secrets.APPLE_API_KEY }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_DEVELOPER_ID" != 'true' ]; then
+            {
+              echo 'SIGNING_CONFIG={}'
+              echo 'RELEASE_INSTALL_NOTE<<KORE_NOTE_EOF'
+              echo 'Unsigned build for Apple Silicon Macs.'
+              echo ''
+              echo '**First install:** download the `.dmg` and drag Kore.app into Applications.'
+              echo 'The build is unsigned, so macOS quarantines the download and may claim the'
+              echo 'app "is damaged" — it is not. Clear the flag once from Terminal, then open normally:'
+              echo ''
+              echo '```'
+              echo 'xattr -cr /Applications/Kore.app'
+              echo '```'
+              echo 'KORE_NOTE_EOF'
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+          missing=()
+          for name in CERTIFICATE_PASSWORD API_KEY API_ISSUER API_KEY_CONTENT; do
+            [ -n "${!name}" ] || missing+=("APPLE_${name}")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::APPLE_CERTIFICATE is set but these secrets are missing: ${missing[*]}"
+            exit 1
+          fi
+          key_path="$RUNNER_TEMP/apple-api-key.p8"
+          printf '%s\n' "$API_KEY_CONTENT" > "$key_path"
+          clean_certificate=$(printf '%s' "$CERTIFICATE" | tr -d '\n\r ')
+          clean_key=$(printf '%s' "$API_KEY" | tr -d '\n\r ')
+          clean_issuer=$(printf '%s' "$API_ISSUER" | tr -d '\n\r ')
+          echo "::add-mask::$clean_certificate"
+          echo "::add-mask::$CERTIFICATE_PASSWORD"
+          {
+            echo "APPLE_CERTIFICATE=$clean_certificate"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+            echo "APPLE_API_KEY=$clean_key"
+            echo "APPLE_API_ISSUER=$clean_issuer"
+            echo "APPLE_API_KEY_PATH=$key_path"
+            # No iCloud in this build: sign with the iCloud-free entitlements
+            # and drop upstream's provisioning profile, which is bound to
+            # upstream's certificate and would make the signed app refuse to
+            # launch.
+            echo 'SIGNING_CONFIG={"bundle":{"macOS":{"entitlements":"Entitlements.dev.plist","files":{"embedded.provisionprofile":null}}}}'
+            echo 'RELEASE_INSTALL_NOTE<<KORE_NOTE_EOF'
+            echo 'Signed and notarized build for Apple Silicon Macs.'
+            echo ''
+            echo '**First install:** download the `.dmg`, drag Kore.app into Applications and open it.'
+            echo 'KORE_NOTE_EOF'
+          } >> "$GITHUB_ENV"
+
       # Two mutually exclusive publish steps: with the updater keypair in the
       # repo secrets the release carries signed updater artifacts and
       # latest.json (auto-update works); without it the release degrades to a
@@ -107,19 +185,11 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
+          args: --config '${{ env.SIGNING_CONFIG }}'
           tagName: v__VERSION__
           releaseName: 'Kore v__VERSION__'
           releaseBody: |
-            Unsigned build for Apple Silicon Macs.
-
-            **First install:** download the `.dmg` and drag Kore.app into
-            Applications. The build is unsigned, so macOS quarantines the
-            download and may claim the app "is damaged" — it isn't. Clear
-            the flag once from Terminal, then open normally:
-
-            ```
-            xattr -cr /Applications/Kore.app
-            ```
+            ${{ env.RELEASE_INSTALL_NOTE }}
 
             **Updates:** the app checks this repository's latest release and
             updates itself; nothing to download manually after this.
@@ -135,20 +205,11 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
-          args: --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          args: --config '{"bundle":{"createUpdaterArtifacts":false}}' --config '${{ env.SIGNING_CONFIG }}'
           tagName: v__VERSION__
           releaseName: 'Kore v__VERSION__'
           releaseBody: |
-            Unsigned build for Apple Silicon Macs.
-
-            **First install:** download the `.dmg` and drag Kore.app into
-            Applications. The build is unsigned, so macOS quarantines the
-            download and may claim the app "is damaged" — it isn't. Clear
-            the flag once from Terminal, then open normally:
-
-            ```
-            xattr -cr /Applications/Kore.app
-            ```
+            ${{ env.RELEASE_INSTALL_NOTE }}
 
             _This release was built without the updater keypair, so it will
             not auto-update. Add the `TAURI_SIGNING_PRIVATE_KEY` secrets and

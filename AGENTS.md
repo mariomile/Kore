@@ -298,7 +298,8 @@ retry the notarized **Release** workflow.
 
 4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
    That build creates the `v<version>` tag and publishes `Kore v<version>`
-   (unsigned Apple Silicon DMG plus updater `latest.json`). That is the bump;
+   (Apple Silicon DMG, Developer ID signed and notarized when the
+   `APPLE_CERTIFICATE` secrets are set, plus updater `latest.json`). That is the bump;
    it is done when that run succeeds.
 
 Publishing lives entirely in step 4. The Release PR workflow deliberately

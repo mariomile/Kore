@@ -38,14 +38,22 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    key sits in `tauri.conf.json`, the private key belongs in the repo's
    Actions secrets (`TAURI_SIGNING_PRIVATE_KEY` +
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) — and the `Release DMG` workflow
-   (`.github/workflows/release-dmg.yml`) builds an unsigned DMG plus
-   signed updater artifacts on every `v*` tag, publishing them to the
-   GitHub release the in-app updater polls
-   (`releases/latest/download/latest.json`). Apple signing is *not*
-   required for self-update; it only removes the one-time Gatekeeper
-   quarantine on fresh installs (recent macOS calls the unsigned app
-   "damaged" — cleared with `xattr -cr /Applications/Kore.app`). For a
-   prompt-free install, use release.yml, the signed + notarized pipeline.
+   (`.github/workflows/release-dmg.yml`) builds a DMG plus signed updater
+   artifacts on every `v*` tag, publishing them to the GitHub release the
+   in-app updater polls (`releases/latest/download/latest.json`).
+6. **Developer ID signing for the Release DMG.** With a Developer ID
+   Application certificate in the repo secrets (`APPLE_CERTIFICATE`, the
+   base64 of the exported `.p12`, and `APPLE_CERTIFICATE_PASSWORD`) plus the
+   App Store Connect API key TestFlight already uses (`APPLE_API_KEY`,
+   `APPLE_API_ISSUER`, `APPLE_API_KEY_CONTENT`), `Release DMG` signs and
+   notarizes the app. That does two things: a fresh download opens without
+   `xattr -cr`, and macOS keeps calendar, contacts, microphone and
+   notification permissions across updates (an ad-hoc signed app gets a new
+   identity on every build, so TCC forgets them). The signed build uses the
+   iCloud-free `Entitlements.dev.plist` and embeds no provisioning profile,
+   so macOS iCloud stays off until a Developer ID profile for
+   `app.kore.desktop` with `iCloud.app.kore` is committed (step 4). Without
+   `APPLE_CERTIFICATE` the workflow builds the ad-hoc DMG as before.
 
 ## Older names still in the tree
 
@@ -76,7 +84,8 @@ The publish path is a bump followed by a build:
 3. Fast-forward the `release/dmg` pointer:
    `git push origin origin/master:release/dmg`.
 4. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`) builds an
-   unsigned DMG plus signed updater artifacts from that pointer, creates the
+   DMG (Developer ID signed and notarized when step 6's secrets are set) plus
+   signed updater artifacts from that pointer, creates the
    `v<version>` tag, and publishes the GitHub release the in-app updater polls.
 
 Step 3 is not optional: merging the Release PR publishes nothing on its own —

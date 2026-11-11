@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -40,6 +41,19 @@ async function writeConfig(path: string, config: CloudConfig): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
   await chmod(path, 0o600)
+}
+
+/** Open a page in the default browser where there is one (best effort). */
+function openInBrowser(url: string): void {
+  const opener =
+    process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
+  try {
+    spawn(opener, [url], { stdio: 'ignore', detached: true })
+      .on('error', () => {})
+      .unref()
+  } catch {
+    // No browser here: the link above is enough.
+  }
 }
 
 /** A line read from the terminal without echoing it. */
@@ -100,6 +114,7 @@ async function setup(options: {
     log('Kore Cloud runs in your own Cloudflare account (the free plan is enough).')
     log('Open this page, pick your account, press "Create Token" and copy the token:')
     log(`  ${tokenPageUrl()}`)
+    openInBrowser(tokenPageUrl())
     token = await promptHidden('Paste the token (it is not shown): ')
   }
   if (token === '') {
@@ -157,7 +172,9 @@ async function upload(vault: string, config: CloudConfig, created: boolean): Pro
   }
   log('')
   log(`Add it to Claude or ChatGPT as a custom connector: ${config.url}/mcp`)
-  log('When it asks, approve it with the owner key (`kore cloud key` prints it).')
+  log('When it asks, name the agent and approve it with this owner key (keep it to yourself):')
+  log(`  ${config.ownerKey}`)
+  log('`kore cloud key` prints it again.')
   process.stdout.write(
     `${JSON.stringify({ url: config.url, mcp: `${config.url}/mcp`, created, ...report })}\n`,
   )

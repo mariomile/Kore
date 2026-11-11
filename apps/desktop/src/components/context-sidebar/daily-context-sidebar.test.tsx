@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { formatDayLabel } from '@/lib/dates'
 import { monthLabel, monthOf } from '@/lib/month-grid'
@@ -16,8 +16,8 @@ const dailyDatesInRange = vi.hoisted(() => vi.fn())
 const relatedNotes = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn())
 const useNoteRow = vi.hoisted(() => vi.fn<(path: string) => NoteRow | null>(() => null))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   dailyDatesInRange,
   readNote,
@@ -28,7 +28,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return {
     useSettings: () => ({
       settings: {

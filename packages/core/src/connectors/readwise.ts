@@ -1,15 +1,9 @@
 import { z } from 'zod'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import type { FetchFn } from '../sync/github-api'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { getJson } from './http'
-import {
-  appendBlock,
-  connectorFileStem,
-  headingText,
-  indentContinuation,
-  noteWithFrontmatter,
-} from './markdown'
+import { appendBlock, headingText, indentContinuation, noteWithFrontmatter } from './markdown'
 import type { Connector, ConnectorFetchInput, ConnectorNote } from './types'
 
 /**
@@ -147,10 +141,7 @@ function bookTitle(book: ReadwiseBook): string {
 }
 
 /** The full markdown for a book's first sync; `tags` lead its tag list. */
-export function renderReadwiseBook(
-  book: ReadwiseBook,
-  tags: readonly string[] = readwiseConnector.defaultTags,
-): string {
+export function renderReadwiseBook(book: ReadwiseBook, tags: readonly string[]): string {
   const title = bookTitle(book)
   const url = bookUrl(book)
   const meta: string[] = []
@@ -232,7 +223,6 @@ function bookNote(book: ReadwiseBook, tags: readonly string[]): ConnectorNote | 
   }
   return {
     sourceId: String(book.user_book_id),
-    fileStem: connectorFileStem(bookTitle(book), `Readwise ${book.user_book_id}`),
     fields: {
       title: bookTitle(book),
       category: readwiseCategoryName(book.category),
@@ -247,10 +237,10 @@ function bookNote(book: ReadwiseBook, tags: readonly string[]): ConnectorNote | 
 async function verify(token: string, fetchFn: FetchFn): Promise<void> {
   const response = await fetchFn(`${API_BASE}/auth/`, { headers: authHeaders(token) })
   if (response.status === 401 || response.status === 403) {
-    throw new ReflectError('auth', 'Readwise rejected the access token')
+    throw new KoreError('auth', 'Readwise rejected the access token')
   }
   if (!response.ok) {
-    throw new ReflectError('network', `Readwise: request failed (${response.status})`)
+    throw new KoreError('network', `Readwise: request failed (${response.status})`)
   }
 }
 
@@ -294,6 +284,7 @@ export const readwiseConnector: Connector = {
   defaultTags: ['readwise'],
   tokenUrl: 'https://readwise.io/access_token',
   tokenLabel: 'Access token',
+  tokenNoun: 'access token',
   overlapMs: 10 * 60 * 1000,
   verify,
   fetchNotes,

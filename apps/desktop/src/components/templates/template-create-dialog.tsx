@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useForm } from 'react-hook-form'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -70,7 +70,7 @@ export function TemplateCreateDialog({ context }: TemplateCreateDialogProps): Re
         <DialogHeader>
           <DialogTitle>New template</DialogTitle>
           <DialogDescription>
-            A markdown file in your graph's <code>templates/</code> folder.
+            A markdown file in your vault's <code>templates/</code> folder.
           </DialogDescription>
         </DialogHeader>
         <form

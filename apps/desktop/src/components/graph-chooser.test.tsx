@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { GraphProvider } from '@/providers/graph-provider'
 import { SettingsProvider } from '@/providers/settings-provider'
 import '@/test-utils/locator'
@@ -139,8 +139,8 @@ describe('GraphChooser', () => {
     await render(<GraphChooser />, { wrapper })
 
     await expect.element(page.getByRole('button', { name: 'Notes' })).toBeVisible()
-    await expect.element(page.getByText('Open an existing graph from iCloud Drive.')).toBeVisible()
-    await expect.element(page.getByText('or create new graph')).toBeVisible()
+    await expect.element(page.getByText('Open an existing vault from iCloud Drive.')).toBeVisible()
+    await expect.element(page.getByText('or create a new vault')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Work', exact: true }))
 
     await vi.waitFor(() =>

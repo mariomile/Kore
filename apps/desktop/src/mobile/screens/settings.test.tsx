@@ -9,7 +9,7 @@ import {
   type AppPlatform,
   type GraphInfo,
   type Settings,
-} from '@reflect/core'
+} from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import '@/test-utils/locator'
@@ -23,8 +23,8 @@ import { MobileSettings } from './settings'
  * graceful degradation where no SyncProvider is mounted.
  */
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   listNotes: vi.fn(async () => [{ path: 'notes/a.md' }, { path: 'notes/b.md' }]),
   getConflictedNotes: vi.fn(async () => []),
@@ -407,7 +407,7 @@ describe('MobileSettings', () => {
     await mount()
 
     await expect.element(page.getByText('alex/notes')).toBeVisible()
-    await expect.element(page.getByText('Backed up')).toBeVisible()
+    await expect.element(page.getByText('Synced', { exact: true })).toBeVisible()
     // Never git terms.
     await expect.element(page.getByText(/commit|branch|merge|push|pull/i)).not.toBeInTheDocument()
   })
@@ -502,7 +502,7 @@ describe('MobileSettings', () => {
     await expect.element(page.getByText('Field Notes')).toBeVisible()
     await expect.element(page.getByText('1.2.3')).toBeVisible()
     await expect.element(page.getByText('2', { exact: true })).toBeVisible() // the note count
-    await expect.element(page.getByText('Backed up')).not.toBeInTheDocument()
+    await expect.element(page.getByText('Synced', { exact: true })).not.toBeInTheDocument()
     await expect
       .element(page.getByRole('button', { name: 'Disconnect GitHub' }))
       .not.toBeInTheDocument()

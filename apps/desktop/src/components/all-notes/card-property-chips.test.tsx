@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
-import type { CollectionEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, TagType } from '@kore/core'
 import { CardPropertyChips } from './card-property-chips'
 
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({

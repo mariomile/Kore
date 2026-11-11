@@ -12,7 +12,7 @@ import {
   type Connector,
   type ConnectorId,
   type ConnectorSettings,
-} from '@reflect/core'
+} from '@kore/core'
 import type { ConnectorRunStatus } from '@/lib/connector-controller'
 import { formatDateTime, type DateTimePrefs } from '@/lib/dates'
 import { providerFetch } from '@/lib/provider-fetch'

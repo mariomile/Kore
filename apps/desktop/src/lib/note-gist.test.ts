@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { gistBodyHash, upsertFrontmatter } from '@reflect/core'
+import { gistBodyHash, upsertFrontmatter } from '@kore/core'
 import type { NoteSession } from '@/editor/note-session'
 import { getNoteRowOverlay, resetNoteRowOverlays } from '@/hooks/note-row-overlay'
 
@@ -16,8 +16,8 @@ const startOperation = vi.hoisted(() =>
   vi.fn(() => ({ progress: vi.fn(), done: operationDone, fail: operationFail })),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote,
   writeNote,
   getGithubToken,

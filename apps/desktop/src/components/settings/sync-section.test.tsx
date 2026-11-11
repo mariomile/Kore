@@ -3,7 +3,7 @@ import { render } from 'vitest-browser-react'
 import { page, type Locator } from 'vitest/browser'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import '@/test-utils/locator'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -32,8 +32,8 @@ const sync = vi.hoisted(() => ({
   backUpNow: vi.fn(async () => {}),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   icloudStatus: vi.fn(async () => core.status),
   icloudPendingCount: vi.fn(async () => core.pendingNotes),
@@ -99,7 +99,7 @@ describe('SyncSection', () => {
 
     const section = page.getByRole('region', { name: 'Sync' })
     await expect.element(legend(section, 'iCloud Drive')).toBeInTheDocument()
-    await expect.element(section.getByText('1 graph in iCloud Drive.')).toBeInTheDocument()
+    await expect.element(section.getByText('1 vault in iCloud Drive.')).toBeInTheDocument()
     await expect.element(legend(section, 'GitHub sync')).toBeInTheDocument()
     await expect
       .element(section.getByRole('button', { name: /connect github/i }))

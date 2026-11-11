@@ -1,4 +1,4 @@
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 
 export interface AdoptGraphToIcloudParams {
   readonly generation: number
@@ -32,13 +32,13 @@ export async function adoptGraphToIcloud(
       await params.disconnectGraph()
     } catch (caught) {
       warnings.push(
-        `The graph moved to iCloud, but GitHub sync could not be disconnected from the original folder: ${errorMessage(caught)}`,
+        `The vault moved to iCloud, but GitHub sync could not be disconnected from the original folder: ${errorMessage(caught)}`,
       )
     }
   }
   const opened = await params.openRecent(newRoot)
   if (!opened) {
-    warnings.push('The copy landed in iCloud but could not be opened — open it from Saved graphs.')
+    warnings.push('The copy landed in iCloud but could not be opened — open it from Saved vaults.')
   }
   return {
     newRoot,

@@ -1,4 +1,4 @@
-import type { OpenTask } from '@reflect/core'
+import { taskLocationKey, type OpenTask } from '@kore/core'
 
 /** The fields that identify a task: its note and the marker's offset in that note. */
 type TaskIdentity = Pick<OpenTask, 'notePath' | 'markerOffset'>
@@ -10,7 +10,7 @@ type TaskIdentity = Pick<OpenTask, 'notePath' | 'markerOffset'>
  * the row the completion mutation removes.
  */
 export function taskKey(task: TaskIdentity): string {
-  return `${task.notePath}:${task.markerOffset}`
+  return taskLocationKey(task)
 }
 
 /** Whether two task references point at the same checkbox. */

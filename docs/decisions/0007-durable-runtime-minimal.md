@@ -29,7 +29,7 @@ settings document. Four facts shaped this slice:
 ## Decision
 
 Four primitives land in Rust (`src-tauri/src/runtime.rs`); every policy
-stays in `@reflect/core` and the runner:
+stays in `@kore/core` and the runner:
 
 1. **One process-wide run lock.** FIFO leases tagged with the owning window
    label; a destroyed window's leases are swept, and each fresh JS context

@@ -88,12 +88,15 @@ export {
   remoteAccessToken,
   remoteAgents,
   removeRemoteAgent,
+  setRemoteAgentAccess,
+  REMOTE_AGENT_ACCESS,
   remoteMcpStatus,
   rotateRemoteAccessToken,
   startRemoteAccess,
   stopRemoteAccess,
   type RemoteAccessState,
   type RemoteAgent,
+  type RemoteAgentAccess,
   type RemoteMcpStatus,
   type RemoteTunnel,
 } from '../app/remote-access'
@@ -123,7 +126,7 @@ export {
   errorMessage,
   isAppError,
   toAppError,
-  ReflectError,
+  KoreError,
   type AppError,
 } from '../errors'
 export {
@@ -160,13 +163,14 @@ export {
   wikiNoteReference,
   markdownNoteReference,
   noteLinkHeading,
+  noteLinkFragment,
   noteBasenameKey,
   type NoteReference,
 } from '../graph/note-reference'
 export {
-  isValidReflectNoteId,
-  isReflectManagedNotePath,
-  isReflectManagedNote,
+  isValidKoreNoteId,
+  isKoreManagedNotePath,
+  isKoreManagedNote,
 } from '../graph/note-management'
 export {
   graphInfoSchema,
@@ -224,6 +228,7 @@ export {
   captureSharedInboxRelay,
   promoteCaptureScreenshot,
 } from '../graph/commands'
+export { conflictCopyPath, saveConflictCopy } from '../graph/conflict-copy'
 export {
   DEFAULT_VAULT_LAYOUT,
   getVaultLayout,
@@ -278,6 +283,7 @@ export {
   editorSmoothCaretAnimationSchema,
   editorTextSizeSchema,
   editorFullWidthSchema,
+  editorLineAuthorsSchema,
   editorFontFamilySchema,
   editorLineSpacingSchema,
   sidebarWidthSchema,
@@ -319,6 +325,7 @@ export {
   browserSearchHomeUrl,
   browserSearchUrl,
   browserOpenLinksInAppSchema,
+  pasteCollects,
   weekStartDow,
   allNotesFilterTagsSchema,
   savedSearchSchema,

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { TASK_VIEWS, type TaskView } from '@reflect/core'
+import { TASK_VIEWS, type TaskView } from '@kore/core'
 import {
   CalendarDays,
   Folder,

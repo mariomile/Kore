@@ -1,4 +1,4 @@
-import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@reflect/core'
+import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@kore/core'
 import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
@@ -59,6 +59,16 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   // deleted, so rewriting it would recreate it).
   let discarded = false
   let adoptionRevision = 0
+  /**
+   * Orders disk reads. Each reconcile (and each `load`) takes the next number;
+   * a read that settles after a newer one started is stale and is dropped.
+   * Without it two close external changes (v2 then v3) could settle out of
+   * order and leave the editor on v2 while v3 sits on disk, and the next
+   * keystroke would write v2 back over v3.
+   */
+  let readSequence = 0
+  /** The buffer last saved as a conflict copy, so a repeat close copies nothing. */
+  let copiedContent: string | null = null
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -151,6 +161,40 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     return saveChain
   }
 
+  /**
+   * A closing note can't wait for "Keep mine / Load theirs": under a parked
+   * conflict the final flush is a no-op, so the edits made after the banner
+   * would be dropped. Save them beside the note as a conflict copy instead
+   * and leave the note itself on the version from disk. Never blocks.
+   */
+  function preserveParkedConflict(): void {
+    const writeCopy = io.writeConflictCopy
+    if (discarded || !writeCopy || !dirty || isProtected || conflict === null) {
+      return
+    }
+    const content = header + buffer
+    if (content === conflict || content === copiedContent) {
+      return
+    }
+    copiedContent = content
+    const at = path
+    saveChain = saveChain
+      .then(() => writeCopy(at, content))
+      .catch((cause) => {
+        console.error('failed to save conflict copy:', cause)
+        copiedContent = null
+        error = errorMessage(cause)
+        emit()
+      })
+  }
+
+  function flushOnClose(): Promise<void> {
+    void flush()
+    preserveParkedConflict()
+    // Both steps extend the chain synchronously: its tail is this close's work.
+    return saveChain
+  }
+
   function editorChanged(markdown: string): void {
     if (applyingContent) {
       // This change is our own applyContent pushing disk content, not a user
@@ -224,14 +268,16 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * external-change path).
    */
   async function reconcileFromDisk(): Promise<void> {
+    readSequence += 1
+    const sequence = readSequence
     let content: string
     try {
       content = await io.read(path)
     } catch {
       return // deleted/unreadable between event and read; nothing to reconcile
     }
-    if (disposed) {
-      return
+    if (disposed || sequence !== readSequence) {
+      return // a newer read (reconcile or load) owns the outcome
     }
     if (content === disk || content === inFlightWrite) {
       // Nothing to reconcile (stale, or an echo of our own possibly
@@ -269,6 +315,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function load(): void {
+    // Supersede any reconcile still in flight: its read predates this load.
+    readSequence += 1
     loading = true
     missedChange = false
     status = 'loading'
@@ -478,7 +526,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     // reads the (now frozen) buffer, so pending edits persist to this
     // session's path even after the UI moves on.
     if (!discarded) {
-      void flush()
+      void flushOnClose()
     }
     disposed = true
   }
@@ -500,6 +548,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     editorChanged,
     externalChanged,
     flush,
+    flushOnClose,
     keepMine,
     loadTheirs,
     content: () => header + buffer,

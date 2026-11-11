@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { MobileGraphs } from './graphs'
 
 /**
@@ -39,8 +39,8 @@ const storageInfo = vi.hoisted(() => ({
     icloudGraphRoots: [] as string[],
   },
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   mobileStorage: vi.fn(async () => storageInfo.current),
 }))
@@ -118,7 +118,7 @@ describe('MobileGraphs', () => {
   it('creates a graph through the sheet, not an inline form', async () => {
     await mount()
 
-    await userEvent.click(page.getByRole('button', { name: 'New graph' }))
+    await userEvent.click(page.getByRole('button', { name: 'New vault' }))
     await userEvent.fill(page.getByLabelText('Name'), 'Journal')
     await userEvent.click(page.getByRole('button', { name: 'Create' }))
 
@@ -130,7 +130,7 @@ describe('MobileGraphs', () => {
   it('rejects a colliding name before it ever reaches the backend', async () => {
     await mount()
 
-    await userEvent.click(page.getByRole('button', { name: 'New graph' }))
+    await userEvent.click(page.getByRole('button', { name: 'New vault' }))
     await userEvent.fill(page.getByLabelText('Name'), 'Work')
 
     await expect.element(page.getByText(/already exists in iCloud Drive/)).toBeVisible()
@@ -156,6 +156,6 @@ describe('MobileGraphs', () => {
     await mount()
 
     await expect.element(page.getByText(/iCloud Drive isn’t available/)).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'New graph' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'New vault' })).not.toBeInTheDocument()
   })
 })

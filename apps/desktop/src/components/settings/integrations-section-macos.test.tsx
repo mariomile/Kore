@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { IntegrationsSection } from './integrations-section'
 
 // A browser-mode module mock materializes value exports once, so the macOS

@@ -15,8 +15,8 @@ const captureInboxSpool = vi.hoisted(() =>
 )
 const hideQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   windowBootstrap,
   captureInboxSpool,
   hideQuickCapture,

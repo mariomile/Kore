@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@reflect/core'
+import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@kore/core'
 import { PropertyValueEditor } from './property-editors'
 
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
@@ -10,20 +10,23 @@ const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
 const createNoteWithTitle = vi.hoisted(() => vi.fn())
 const getTagType = vi.hoisted(() => vi.fn())
 const getWikiAddressForPath = vi.hoisted(() => vi.fn())
+const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteWithTitle,
   getTagType,
   getWikiAddressForPath,
+  listNoteTags: async () => vaultTags.current.map((tag) => ({ tag, count: 1 })),
+  listTagTypes: async () => [],
   suggestWikiLinkTargets: async () => ({
     suggestions: relationSuggestions.current,
     claimedTargetKeys: [],
     queryReadsAsDate: false,
   }),
-  suggestRelationTargets: async (_query: string, tagKey: string) => {
+  suggestRelationTargets: async (_query: string, tagKey: string, limit = 8) => {
     scopedTargetKeys.current.push(tagKey)
-    return { suggestions: relationSuggestions.current, claimedTargetKeys: [] }
+    return { suggestions: relationSuggestions.current.slice(0, limit), claimedTargetKeys: [] }
   },
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -38,6 +41,7 @@ beforeEach(() => {
   createNoteWithTitle.mockReset()
   getTagType.mockReset().mockResolvedValue(null)
   getWikiAddressForPath.mockReset()
+  vaultTags.current = []
 })
 
 function stored(value: string, valueType: CollectionValue['valueType']): CollectionValue {
@@ -223,6 +227,37 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).toHaveBeenCalledWith('[[Ursula K. Le Guin]]')
   })
 
+  it('creates a new note from an untargeted relation into the collection named like the field', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['meeting', 'Company']
+    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1, '#company')
+  })
+
+  it('creates a plain note from an untargeted relation when no collection matches', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['meeting']
+    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create note “Trade Republic”' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1)
+    expect(getTagType).not.toHaveBeenCalled()
+  })
+
   it('clears a relation from the picker', async () => {
     relationSuggestions.current = []
     const property: TagProperty = { name: 'Author note', key: 'author-note', type: 'relation' }
@@ -305,6 +340,36 @@ describe('PropertyValueEditor', () => {
     await expect
       .poll(() => onCommit.mock.calls.at(-1)?.[0])
       .toEqual(['[[Frank Herbert]]', '[[Octavia Butler]]'])
+  })
+
+  it('lists every row of a target collection larger than six', async () => {
+    const areas = [
+      'Health',
+      'Money & Admin',
+      'Network',
+      'Building',
+      'Weekly Review',
+      'Now',
+      'Career',
+    ]
+    relationSuggestions.current = areas.map((title) => ({
+      target: title,
+      insertText: title,
+      path: `areas/${title}.md`,
+      title,
+      alias: null,
+      date: null,
+    }))
+    const property: TagProperty = { name: 'Area', key: 'area', type: 'relations', target: 'area' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Area' }).click()
+    await expect.element(view.getByPlaceholder('Link #area rows…')).toBeVisible()
+    for (const title of areas) {
+      await expect
+        .element(view.getByRole('option', { name: title, exact: true }))
+        .toBeInTheDocument()
+    }
   })
 
   it('deletes the key on the last unlink of a multi-relation', async () => {

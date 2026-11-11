@@ -1,5 +1,5 @@
 [package]
-name = "reflect-index-store"
+name = "kore-index-store"
 version = "0.1.0"
 description = "The index write path and read bridge, shared by the desktop writer and the kore CLI indexer"
 edition = "2021"
@@ -8,5 +8,5 @@ edition = "2021"
 rusqlite = { workspace = true, features = ["hooks"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-reflect-graph-paths = { workspace = true }
-reflect-index-schema = { path = "../index-schema" }
+kore-graph-paths = { workspace = true }
+kore-index-schema = { path = "../index-schema" }

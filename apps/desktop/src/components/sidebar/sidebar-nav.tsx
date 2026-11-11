@@ -19,8 +19,8 @@ import {
   moveSidebarItem,
   SIDEBAR_NAV_IDS,
   type SidebarNavItem,
-} from '@reflect/core'
-import { Checklist, Graph, Note, NoteEdit, Pencil } from '@/components/icons'
+} from '@kore/core'
+import { Checklist, Graph, Note, NoteEdit, Notebook, Pencil } from '@/components/icons'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { Route } from '@/routing/route'
 import { SidebarItem } from './sidebar-item'
+import { useMemoryKitActive } from '@/hooks/use-memory-kit'
 
 /** What one navigation row needs to render: everything but its position. */
 interface NavRowSpec {
@@ -53,6 +54,7 @@ export const SIDEBAR_NAV_LABELS: Record<SidebarNavItem, string> = {
   allNotes: 'All notes',
   tasks: 'Tasks',
   graph: 'Graph',
+  memory: 'Memory',
 }
 
 function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState): NavRowSpec {
@@ -104,6 +106,13 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
         commandId: 'nav.graphMap',
         active: route.kind === 'graphMap',
       }
+    case 'memory':
+      return {
+        label,
+        icon: <Notebook className="size-3.5" />,
+        commandId: 'nav.memory',
+        active: route.kind === 'memory',
+      }
   }
 }
 
@@ -126,9 +135,11 @@ export function SidebarNav({ context, route, hasActivePinnedNote }: SidebarNavPr
   const { settings, updateSettingsWith } = useSettings()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const hidden = settings.hiddenSidebarItems
+  const memoryKit = useMemoryKitActive()
   const visible = useMemo(
-    () => settings.sidebarNav.filter((id) => !hidden.includes(id)),
-    [settings.sidebarNav, hidden],
+    () =>
+      settings.sidebarNav.filter((id) => !hidden.includes(id) && (id !== 'memory' || memoryKit)),
+    [settings.sidebarNav, hidden, memoryKit],
   )
 
   const handleDragEnd = useCallback(

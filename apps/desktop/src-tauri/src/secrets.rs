@@ -2,7 +2,7 @@
 //!
 //! Per the product principles, credentials never touch markdown, Git, or
 //! `.kore/`. Rust exposes the keychain as an opaque name → value store (a
-//! capability); which names exist and what they hold is `@reflect/core`
+//! capability); which names exist and what they hold is `@kore/core`
 //! policy (see `ai/secrets.ts`).
 
 use keyring::Entry;

@@ -2,15 +2,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import type { NoteTaskRef } from '@reflect/core'
+import type { NoteTaskRef } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { NoteTasksSection } from './note-tasks-section'
 
 const data = vi.hoisted(() => ({ tasks: [] as NoteTaskRef[] }))
 const toggleTask = vi.hoisted(() => vi.fn(async () => {}))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   getOpenTasksForNote: async () => data.tasks,
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -29,6 +29,7 @@ function taskRow(overrides: Partial<NoteTaskRef>): NoteTaskRef {
     checked: false,
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     noteTitle: 'Casa Nuova',
     isPinned: false,

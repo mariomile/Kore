@@ -6,7 +6,7 @@ import {
   resolveExistingWikiTarget,
   transclusionMarkdown,
   type NoteTransclusion,
-} from '@reflect/core'
+} from '@kore/core'
 import { ExternalLink } from '@/components/icons'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
@@ -99,7 +99,7 @@ export function EmbeddedNote({
   } else if ('kind' in data && data.kind === 'missing') {
     body = (
       <p className="px-3 py-6 text-sm text-text-muted">
-        [[{embed.target}]] doesn’t match a note in this graph.
+        [[{embed.target}]] doesn’t match a note in this vault.
       </p>
     )
   } else if ('kind' in data && data.kind === 'ambiguous') {

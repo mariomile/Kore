@@ -15,13 +15,10 @@ export interface ConnectorNote {
    */
   readonly sourceId: string
   /**
-   * Filename stem used when the user's path pattern renders to nothing (no
-   * folder, no `.md`), already filesystem-safe.
-   */
-  readonly fileStem: string
-  /**
    * The values this item offers to the user's path pattern, by token name
    * (`title`, `category`, `date`...). See {@link Connector.patternFields}.
+   * When the user's pattern renders to nothing, the engine names the file
+   * with the connector's default pattern instead.
    */
   readonly fields: Readonly<Record<string, string>>
   /** The full markdown for a note that does not exist yet. */
@@ -46,7 +43,7 @@ export interface ConnectorNote {
 export interface ConnectorFetchInput {
   /** The user's credential for the source (from the OS keychain). */
   readonly token: string
-  /** Tags every new note carries (the user's choice, else the connector's default). */
+  /** Tags every new note carries, as the engine resolved them (the user's, else the default). */
   readonly tags: readonly string[]
   /** Only items changed after this instant are needed; `null` fetches everything. */
   readonly since: Date | null
@@ -89,6 +86,8 @@ export interface Connector {
   readonly tokenUrl: string
   /** Label for the credential field. */
   readonly tokenLabel: string
+  /** The credential's name mid-sentence ("Get API key", "Add your access token"). */
+  readonly tokenNoun: string
   /**
    * How far a run looks back before the last successful sync, absorbing
    * items the source publishes late (a meeting whose summary finishes after

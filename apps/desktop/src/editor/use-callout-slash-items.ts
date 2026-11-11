@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { SlashMenuItem, SlashMenuSearchHandler } from '@meowdown/react'
-import { CALLOUT_ALIASES, CALLOUT_KINDS, formatCalloutBlock, type CalloutKind } from '@reflect/core'
+import { CALLOUT_ALIASES, CALLOUT_KINDS, formatCalloutBlock, type CalloutKind } from '@kore/core'
 import type { NoteEditorHandle } from './note-editor'
 
 function calloutKeywords(kind: CalloutKind): string[] {

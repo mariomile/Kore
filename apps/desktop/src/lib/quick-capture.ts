@@ -2,7 +2,7 @@ import {
   TEXT_CAPTURE_MAX_LENGTH,
   textCaptureEnvelopeSchema,
   type TextCaptureEnvelope,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * Fold a capture bar's payload to one line. The drain rejects newlines, so

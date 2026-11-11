@@ -9,8 +9,8 @@ const gitCommitAll = vi.hoisted(() => vi.fn())
 const writeNote = vi.hoisted(() => vi.fn(async () => {}))
 const indexNote = vi.hoisted(() => vi.fn(async () => {}))
 const emitFileChanges = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   gitNoteHistory,
   gitNoteVersion,
   gitCommitAll,

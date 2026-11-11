@@ -1,5 +1,5 @@
 {
-  "name": "@reflect/extension",
+  "name": "@kore/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,11 +12,11 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@reflect/core": "workspace:*",
-    "@reflect/design-system": "workspace:*",
+    "@kore/core": "workspace:*",
+    "@kore/design-system": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -25,7 +25,7 @@
     "@wxt-dev/module-react": "^1.2.2",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
-    "vitest": "^4.1.10",
+    "vitest": "^4.1.12",
     "wxt": "^0.21.4"
   }
 }

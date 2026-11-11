@@ -12,14 +12,14 @@ import {
   type NoteListFilter,
   type NoteListFolder,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 import { Check, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useCollection } from '@/hooks/use-collection'
+import { useCollection, useTagChildren } from '@/hooks/use-collection'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
@@ -58,6 +58,7 @@ import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
 import { CollectionOptionsMenu } from './collection-options-menu'
 import { CollectionTable } from './collection-table'
+import { TagChildrenFilter } from './tag-children-filter'
 import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
@@ -268,7 +269,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
   const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
-  const collection = useCollection(collectionWanted ? tag : null, collectionSorts)
+  // Tags that build on this one (Plan 33 B2) list their notes here too,
+  // unless the "only #tag" filter is on; ephemeral like the property filters.
+  const tagChildren = useTagChildren(collectionAvailable ? tag : null)
+  const [ownOnly, setOwnOnly] = useState(false)
+  const collection = useCollection(collectionWanted ? tag : null, collectionSorts, {
+    ownOnly: ownOnly && tagChildren.length > 0,
+  })
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -278,6 +285,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     setFilterTag(tag)
     setCollectionFilters([])
     setFilterMatch('all')
+    setOwnOnly(false)
   }
   const filteredCollection = useMemo(
     () =>
@@ -544,6 +552,12 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 </SelectContent>
               </Select>
             ) : null}
+            <TagChildrenFilter
+              tag={tag}
+              childTags={tagChildren}
+              ownOnly={ownOnly}
+              onOwnOnlyChange={setOwnOnly}
+            />
             <CollectionFilterMenu
               type={tagType}
               entries={collection}

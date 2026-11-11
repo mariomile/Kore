@@ -1,4 +1,10 @@
-import { groupTaskContexts, type OpenTask, type TaskContext, type TaskGroup } from '@reflect/core'
+import {
+  groupTaskContexts,
+  subtaskDepths,
+  type OpenTask,
+  type TaskContext,
+  type TaskGroup,
+} from '@kore/core'
 import { taskKey } from './task-identity'
 
 /**
@@ -12,8 +18,16 @@ import { taskKey } from './task-identity'
 export type TaskListItem =
   | { kind: 'header'; group: TaskGroup }
   | { kind: 'empty'; group: TaskGroup }
+  | { kind: 'section'; group: TaskGroup; label: string; firstTask: OpenTask }
   | { kind: 'breadcrumb'; group: TaskGroup; context: TaskContext }
-  | { kind: 'task'; group: TaskGroup; task: OpenTask; showSource: boolean }
+  | {
+      kind: 'task'
+      group: TaskGroup
+      task: OpenTask
+      showSource: boolean
+      /** How many levels this row nests under a parent task shown above it. */
+      depth: number
+    }
 
 /** A group's stable identity — a date bucket's kind, an Upcoming day's date, or a note group's path. */
 function groupIdentity(group: TaskGroup): string {
@@ -30,6 +44,8 @@ export function taskListItemKey(item: TaskListItem): string {
       return `header:${groupIdentity(item.group)}`
     case 'empty':
       return `empty:${groupIdentity(item.group)}`
+    case 'section':
+      return `section:${groupIdentity(item.group)}:${taskKey(item.firstTask)}`
     case 'breadcrumb':
       // A context's first task pins the row to one run of consecutive tasks —
       // two contexts sharing breadcrumbs within the same group never collide.
@@ -60,12 +76,30 @@ export function flattenTaskGroups(groups: readonly TaskGroup[]): TaskListItem[] 
     // Date buckets aggregate tasks from many notes, so their rows show the
     // source; a note group's rows already sit under that note's own header.
     const showSource = group.kind !== 'note'
-    for (const context of groupTaskContexts(group.tasks)) {
-      if (context.visibleBreadcrumbs.length > 0) {
-        items.push({ kind: 'breadcrumb', group, context })
+    // A project's headings become section rows; subtasks indent under a parent
+    // task listed above them instead of repeating it as a breadcrumb.
+    const depths = new Map(
+      subtaskDepths(group.tasks).map((depth, index) => [taskKey(group.tasks[index]!), depth]),
+    )
+    const sections = group.sections ?? [{ label: null, tasks: group.tasks }]
+    for (const section of sections) {
+      if (section.label !== null && section.tasks.length > 0) {
+        items.push({ kind: 'section', group, label: section.label, firstTask: section.tasks[0]! })
       }
-      for (const task of context.tasks) {
-        items.push({ kind: 'task', group, task, showSource })
+      for (const context of groupTaskContexts(section.tasks)) {
+        const underParent = (depths.get(taskKey(context.tasks[0]!)) ?? 0) > 0
+        if (context.visibleBreadcrumbs.length > 0 && !underParent) {
+          items.push({ kind: 'breadcrumb', group, context })
+        }
+        for (const task of context.tasks) {
+          items.push({
+            kind: 'task',
+            group,
+            task,
+            showSource,
+            depth: depths.get(taskKey(task)) ?? 0,
+          })
+        }
       }
     }
   }

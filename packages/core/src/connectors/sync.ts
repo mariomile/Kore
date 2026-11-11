@@ -1,10 +1,11 @@
-import { isAppError, ReflectError } from '../errors'
+import { isAppError, KoreError } from '../errors'
 import { createNoteIfAbsent, readNote, writeNote } from '../graph/commands'
 import { classifyGraphPath } from '../graph/paths'
 import { db } from '../indexing/db'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { FetchFn } from '../sync/github-api'
 import { renderNotePlacement } from './pattern'
+import { connectorFileStem } from './markdown'
 import type { Connector, ConnectorNote } from './types'
 
 /**
@@ -73,7 +74,7 @@ export function normalizeConnectorFolder(folder: string): string {
     return ''
   }
   if (classifyGraphPath(`${trimmed}/note.md`) !== 'note') {
-    throw new ReflectError('parse', `"${folder}" can’t hold notes; choose another folder`)
+    throw new KoreError('parse', `"${folder}" can’t hold notes; choose another folder`)
   }
   return trimmed
 }
@@ -130,13 +131,30 @@ async function mergeInto(
   return 'updated'
 }
 
+/**
+ * The filename stem when the user's pattern renders to nothing: the
+ * connector's default pattern, else its name and the item's id.
+ */
+function fallbackStem(connector: Connector, note: ConnectorNote): string {
+  return renderNotePlacement(
+    connector.defaultPattern,
+    note.fields,
+    connectorFileStem(`${connector.label} ${note.sourceId}`, 'Untitled'),
+  ).stem
+}
+
 function candidatePath(
+  connector: Connector,
   folder: string,
   pattern: string,
   note: ConnectorNote,
   ordinal: number,
 ): string {
-  const { dir: subfolder, stem } = renderNotePlacement(pattern, note.fields, note.fileStem)
+  const { dir: subfolder, stem } = renderNotePlacement(
+    pattern,
+    note.fields,
+    fallbackStem(connector, note),
+  )
   const name = ordinal === 1 ? `${stem}.md` : `${stem} ${ordinal}.md`
   const dir = [folder, subfolder].filter((part) => part !== '').join('/')
   return dir === '' ? name : `${dir}/${name}`
@@ -177,7 +195,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
       }
     }
     for (let ordinal = 1; ordinal <= MAX_PATH_ATTEMPTS; ordinal += 1) {
-      const path = candidatePath(folder, pattern, note, ordinal)
+      const path = candidatePath(connector, folder, pattern, note, ordinal)
       const outcome = await createNoteIfAbsent(path, note.source, generation)
       if (outcome.kind === 'created') {
         placed.set(note.sourceId, path)
@@ -192,9 +210,9 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
         return await mergeInto(path, existing, note, generation)
       }
     }
-    throw new ReflectError(
+    throw new KoreError(
       'io',
-      `no free filename for "${note.fileStem}" in ${folder || 'the graph'}`,
+      `no free filename for "${fallbackStem(connector, note)}" in ${folder || 'the graph'}`,
     )
   }
 

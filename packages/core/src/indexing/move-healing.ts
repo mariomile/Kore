@@ -6,7 +6,7 @@ import { getNoteIdsByPath } from './queries'
 /**
  * External-move detection (Plan 17), shared by the open-time reconcile
  * (`indexer.ts`) and the live watcher batch (`live.ts`). Both observe the
- * same shape after a rename Reflect didn't perform: an indexed row whose file
+ * same shape after a rename Kore didn't perform: an indexed row whose file
  * vanished (an **orphan**) and an unindexed file that appeared (an
  * **arrival**). When an arrival carries an orphan's frontmatter id, the pair
  * is a move — the caller migrates the rows instead of delete+create, so

@@ -28,6 +28,7 @@ import {
 import { detectExternalMoves } from './move-healing'
 import { INDEX_PASS_YIELD_EVERY, yieldToEventLoop } from './pacing'
 import { getIndexMeta, isProjectionCurrent } from './queries'
+import { refreshTagTypeResolutionsSafely } from './resolved-tag-types'
 
 /**
  * The indexing pipeline (Plan 04): read (Plan 02) → parse/extract in TS
@@ -302,6 +303,15 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
  * forever on unchanged files.
  */
 export async function syncIndex(options: IndexPassOptions): Promise<void> {
+  await syncNotes(options)
+  // Once per open, so a tag inheritance pass that failed after an earlier
+  // write heals here instead of waiting for the next definition edit.
+  if (options.signal?.aborted !== true) {
+    await refreshTagTypeResolutionsSafely(options.generation)
+  }
+}
+
+async function syncNotes(options: IndexPassOptions): Promise<void> {
   if (await isProjectionCurrent()) {
     return await reconcileIndex(options)
   }
@@ -358,7 +368,7 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
 
   // Id-based move healing (Plan 17): a row whose file vanished plus a new
   // file carrying the same frontmatter id is a rename observed after the
-  // fact — an external tool or a sync pull moved it while Reflect wasn't
+  // fact — an external tool or a sync pull moved it while Kore wasn't
   // looking. Move the rows instead of delete+create, so embedding vectors
   // survive. Best-effort throughout: any failure degrades to the plain pass
   // below (the arrival is indexed fresh, the removal loop drops the orphan).

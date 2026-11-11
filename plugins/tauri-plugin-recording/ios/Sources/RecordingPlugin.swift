@@ -85,7 +85,7 @@ struct StagedPathArgs: Decodable {
   let path: String
 }
 
-/// Reflect's native audio-memo recorder (the mobile leg of the raw-first
+/// Kore's native audio-memo recorder (the mobile leg of the raw-first
 /// pipeline in `packages/core/src/actions/audio-memo.ts`).
 ///
 /// The V1 lesson this preserves: **capture must not depend on the webview.**
@@ -118,7 +118,7 @@ class RecordingPlugin: Plugin {
   /// The Siri/App-Intent bridge: intents compiled into the app target run in
   /// this process but in a different module, so they talk to the plugin
   /// through NotificationCenter. Names are duplicated in
-  /// `gen/apple/Sources/reflect-open/` — keep them in sync.
+  /// `gen/apple/Sources/kore-open/` — keep them in sync.
   static let startRequestedNotification = Notification.Name(
     "app.kore.recording.start-requested")
   static let stopRequestedNotification = Notification.Name(

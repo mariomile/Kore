@@ -1,4 +1,6 @@
 import { EDITOR_KEY_BINDINGS } from '@meowdown/core'
+import { ZOOM_IN_BINDING, ZOOM_OUT_BINDING } from './block-zoom-plugin'
+import { MOVE_BRANCH_BINDING } from './move-branch-opener'
 
 /**
  * The central keymap registry (Plan 05 step 9). Every shortcut the app binds —
@@ -42,7 +44,7 @@ export function listRegisteredBindings(): ReadonlyMap<string, KeymapScope> {
 
 /**
  * Display descriptions for the editor-scope bindings (the shortcuts UI). The
- * editor's keymap lives in meowdown's engine; Reflect only claims those keys
+ * editor's keymap lives in meowdown's engine; Kore only claims those keys
  * editor-scope so no app binding can shadow them, and lists them in the
  * Keyboard settings section.
  *
@@ -63,16 +65,19 @@ const EDITOR_BINDINGS = Object.fromEntries(
 export const AI_MENU_BINDING = 'Mod-Shift-j'
 
 /**
- * Reflect's own editor-scope bindings (bound via `useKeymap` inside the
+ * Kore's own editor-scope bindings (bound via `useKeymap` inside the
  * editor, not by meowdown's engine). Declared here, next to meowdown's, so
  * the shortcuts UI lists them — a feature registering its key elsewhere
  * would fire without ever appearing in the cheat sheet.
  */
-const REFLECT_EDITOR_BINDINGS: Record<string, string> = {
+const KORE_EDITOR_BINDINGS: Record<string, string> = {
   [AI_MENU_BINDING]: 'Open the AI menu on the selection',
+  [ZOOM_IN_BINDING]: 'Zoom into the block, section or list item (or ⌘-click a bullet)',
+  [ZOOM_OUT_BINDING]: 'Zoom out one level (or Escape, or Back)',
+  [MOVE_BRANCH_BINDING]: 'Move the block, section or list item to another note',
 }
 
 export const EDITOR_BINDING_DESCRIPTIONS: Record<string, string> = registerKeymap('editor', {
   ...EDITOR_BINDINGS,
-  ...REFLECT_EDITOR_BINDINGS,
+  ...KORE_EDITOR_BINDINGS,
 })

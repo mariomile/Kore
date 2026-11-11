@@ -11,8 +11,8 @@ const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() => vi.fn(() => ({ fail: operationFail })))
 const settingsState = vi.hoisted(() => ({ contactsEnabled: false }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   suggestWikiTargets: async () => [],
   suggestWikiLinkTargets,

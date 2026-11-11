@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { foldTag, type OpenTab } from '@reflect/core'
+import { foldTag, type OpenTab } from '@kore/core'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useTagIcons } from '@/hooks/use-tag-icons'
 import {
@@ -16,6 +16,7 @@ import {
   Note,
   Pencil,
   Search,
+  Notebook,
   Terminal,
 } from '@/components/icons'
 
@@ -66,6 +67,8 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
       return <Checklist aria-hidden className={className} />
     case 'insights':
       return <Chart aria-hidden className={className} />
+    case 'memory':
+      return <Notebook aria-hidden className={className} />
     case 'activity':
       return <History aria-hidden className={className} />
     case 'graphMap':

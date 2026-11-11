@@ -7,7 +7,7 @@ import {
   parseNoteTransclusions,
   type EmbedBlock,
   type NoteTransclusion,
-} from '@reflect/core'
+} from '@kore/core'
 
 /** The embeds a note pane renders below the editor, parsed from the body. */
 export interface BodyEmbeds {

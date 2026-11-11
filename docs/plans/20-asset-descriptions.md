@@ -29,7 +29,7 @@ almost verbatim.
 *produces* the descriptions; indexing them is explicitly out of scope.
 
 **Architecture:** all policy (eligibility, privacy, AI calls, description writes)
-lives in `@reflect/core`; the desktop app owns the watcher trigger, the
+lives in `@kore/core`; the desktop app owns the watcher trigger, the
 single-flight controller, and the Settings UI. This mirrors capture
 ([`actions/capture.ts`](../../packages/core/src/actions/capture.ts) +
 [`lib/capture-controller.ts`](../../apps/desktop/src/lib/capture-controller.ts))
@@ -148,8 +148,8 @@ Multimodal parts (AI SDK v6, `ai@^6`):
   endpoints reject `image/svg+xml`; SVG is XML, so describing the source is both
   correct and cheap.
 
-Errors mirror `describe-page.ts` exactly: `ReflectError('auth')` on 401/403,
-`ReflectError('network')` on 429/5xx/timeout (caller retries later), and a new
+Errors mirror `describe-page.ts` exactly: `KoreError('auth')` on 401/403,
+`KoreError('network')` on 429/5xx/timeout (caller retries later), and a new
 `AssetDescriptionRejectedError` on other 4xx (permanent — logged, no description).
 `maxRetries: 0`; the reconcile pass is the retry layer. 60s `AbortSignal.timeout`.
 
@@ -240,7 +240,7 @@ with a non-private note (and no private note):
 4. Description decision (managed marker + hash) → skip up-to-date / skip user-authored;
    size cap → skip oversize.
 5. `describeAsset(...)`. On `AssetDescriptionRejectedError`: log, `refused++`,
-   continue. On `ReflectError('auth'|'network')`: stop the pass (`stopped`) for a
+   continue. On `KoreError('auth'|'network')`: stop the pass (`stopped`) for a
    later retry — nothing written.
 6. Write the description (`writeNote(descriptionPath, body, generation)`), `described++`,
    `onProgress`.

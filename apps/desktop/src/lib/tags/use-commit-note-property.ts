@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage, subscribeIndexApplied } from '@reflect/core'
+import { errorMessage, subscribeIndexApplied } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { invalidateIndexQueries } from '@/lib/query-client'

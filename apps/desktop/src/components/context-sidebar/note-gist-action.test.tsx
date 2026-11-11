@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 import { resetNoteRowOverlays, setNoteRowOverlay } from '@/hooks/note-row-overlay'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { NoteGistAction } from './note-gist-action'

@@ -1,4 +1,4 @@
-import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@reflect/core'
+import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@kore/core'
 import { isSettingsPage, routeForPath, routesEqual, type Route } from '@/routing/route'
 
 /**
@@ -98,6 +98,7 @@ export function openTabForRoute(
       return { kind: 'library', root: route.root, path: route.path, pinned: false }
     case 'tasks':
     case 'insights':
+    case 'memory':
     case 'activity':
     case 'graphMap':
     case 'terminal':
@@ -137,6 +138,8 @@ export function routeForOpenTab(tab: OpenTab): Route {
       return { kind: 'tasks' }
     case 'insights':
       return { kind: 'insights' }
+    case 'memory':
+      return { kind: 'memory' }
     case 'activity':
       return { kind: 'activity' }
     case 'graphMap':
@@ -155,6 +158,7 @@ export const SURFACE_TAB_LABEL: Record<WorkspaceSurface, string> = {
   search: 'Search',
   tasks: 'Tasks',
   insights: 'Insights',
+  memory: 'Memory',
   activity: 'Activity',
   graphMap: 'Graph',
   terminal: 'Terminal',

@@ -1,7 +1,7 @@
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { MobileStorageInfo } from '@reflect/core'
+import type { MobileStorageInfo } from '@kore/core'
 import { fireEvent } from '@/test-utils/fire-event'
 import { MobileOnboardingScreen } from './onboarding-screen'
 import { MobileApp } from './mobile-app'
@@ -66,9 +66,9 @@ describe('MobileOnboardingScreen', () => {
     await expect
       .element(page.getByRole('heading', { name: 'iCloud sync', exact: true }))
       .toBeVisible()
-    await expect.element(page.getByLabelText('Graph name')).toHaveValue('Notes')
-    fireEvent.change(page.getByLabelText('Graph name'), { target: { value: 'Journal' } })
-    await page.getByRole('button', { name: 'Setup graph' }).click()
+    await expect.element(page.getByLabelText('Vault name')).toHaveValue('Notes')
+    fireEvent.change(page.getByLabelText('Vault name'), { target: { value: 'Journal' } })
+    await page.getByRole('button', { name: 'Set up vault' }).click()
 
     await vi.waitFor(() =>
       expect(completeOnboarding).toHaveBeenCalledWith('icloud', '/iCloud/Documents/Journal'),
@@ -88,7 +88,7 @@ describe('MobileOnboardingScreen', () => {
       .toBeVisible()
     await expect.element(page.getByText('Start fresh', { exact: true })).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Continue with Notes' })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Setup graph' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Set up vault' })).toBeDisabled()
     await page.getByRole('button', { name: 'Continue with Work' }).click()
 
     await vi.waitFor(() =>
@@ -104,8 +104,8 @@ describe('MobileOnboardingScreen', () => {
     })
     await render(<MobileOnboardingScreen />)
 
-    fireEvent.change(page.getByLabelText('Graph name'), { target: { value: 'Journal' } })
-    await page.getByRole('button', { name: 'Setup graph' }).click()
+    fireEvent.change(page.getByLabelText('Vault name'), { target: { value: 'Journal' } })
+    await page.getByRole('button', { name: 'Set up vault' }).click()
 
     await vi.waitFor(() =>
       expect(completeOnboarding).toHaveBeenCalledWith('icloud', '/iCloud/Documents/Journal'),
@@ -136,7 +136,7 @@ describe('MobileOnboardingScreen', () => {
       .element(page.getByRole('heading', { name: 'iCloud sync', exact: true }))
       .toBeVisible()
     await expect.element(page.getByText('Checking iCloud Drive…')).toBeVisible()
-    expect(page.getByRole('button', { name: 'Setup graph' }).query()).toBeNull()
+    expect(page.getByRole('button', { name: 'Set up vault' }).query()).toBeNull()
     expect(page.getByText(/Sign in to iCloud/).query()).toBeNull()
     // The on-device path stays live — its root is already known.
     await expect

@@ -31,11 +31,10 @@ vi.mock('../indexing/db', () => {
 
 const files = new Map<string, string>()
 
-function note(sourceId: string, fileStem: string, body: string): ConnectorNote {
+function note(sourceId: string, title: string, body: string, kind = 'Articles'): ConnectorNote {
   return {
     sourceId,
-    fileStem,
-    fields: { title: fileStem, kind: 'Articles' },
+    fields: { title, kind },
     source: `---\nsample_id: "${sourceId}"\n---\n${body}\n`,
     merge: (existing) => (existing.includes(body) ? null : `${existing}${body}\n`),
   }
@@ -53,6 +52,7 @@ function connector(notes: ConnectorNote[]): Connector {
     defaultTags: [],
     tokenUrl: '',
     tokenLabel: '',
+    tokenNoun: '',
     overlapMs: 0,
     verify: async () => {},
     async *fetchNotes() {
@@ -119,6 +119,17 @@ describe('syncConnector', () => {
     const third = await run([note('1', 'Renamed', 'beta')])
     expect(third).toMatchObject({ created: 0, updated: 0 })
     expect(files.has('Sample/Renamed.md')).toBe(false)
+  })
+})
+
+describe('syncConnector naming', () => {
+  it('names a file whose pattern renders to nothing by the default pattern, then by its id', async () => {
+    const untitled = { ...note('3', '', 'gamma'), fields: { title: '', kind: '' } }
+    const result = await run([note('1', 'Book', 'alpha', ''), untitled], '{kind}')
+
+    expect(result).toMatchObject({ created: 2 })
+    expect(files.get('Sample/Book.md')).toContain('alpha')
+    expect(files.get('Sample/Sample 3.md')).toContain('gamma')
   })
 })
 

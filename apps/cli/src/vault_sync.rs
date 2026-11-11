@@ -559,7 +559,7 @@ fn exclude_index(git: &Git, git_dir: &Path) -> Result<(), CliError> {
     writeln!(
         file,
         "\n# kore: the search index is rebuilt on each machine\n{}",
-        reflect_index_schema::IGNORE_RULES.join("\n")
+        kore_index_schema::IGNORE_RULES.join("\n")
     )?;
     Ok(())
 }

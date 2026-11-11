@@ -1,7 +1,7 @@
 //! The graph's commit log as raw activity: who committed what, when, and
 //! which files changed. A read-only primitive over the local backup
 //! repository; grouping commits into sittings and naming authors (agents,
-//! the host, the owner) is `@reflect/core`'s policy.
+//! the host, the owner) is `@kore/core`'s policy.
 
 use std::path::Path;
 
@@ -125,7 +125,7 @@ fn describe(
 
 /// `Key: value` lines of the final paragraph, when every line there has
 /// that shape and the message has more than one paragraph.
-fn trailers(message: &str) -> Vec<Trailer> {
+pub(super) fn trailers(message: &str) -> Vec<Trailer> {
     let paragraphs: Vec<&str> = message
         .trim()
         .split("\n\n")

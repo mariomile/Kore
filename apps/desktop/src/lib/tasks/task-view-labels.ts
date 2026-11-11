@@ -1,4 +1,4 @@
-import type { TaskView } from '@reflect/core'
+import type { TaskView } from '@kore/core'
 
 const LABELS: Readonly<Record<TaskView, string>> = {
   inbox: 'Inbox',

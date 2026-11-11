@@ -1,7 +1,7 @@
 //! Script-mode routine ticks (the silent tick): run one user-authored shell
 //! command in the graph root, bounded by a timeout, and hand the frontend
 //! its exit code and capped output. The *interpretation* — skip, wake the
-//! agent, or count a failure — lives in `@reflect/core`'s `routine-script`;
+//! agent, or count a failure — lives in `@kore/core`'s `routine-script`;
 //! this module only owns the process: spawn, drain, deadline, kill.
 //!
 //! The script runs in its own process group so the timeout can kill the
@@ -141,16 +141,34 @@ fn run_script(
     }
     let timeout =
         Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS).min(MAX_TIMEOUT_MS));
-
     let mut command = shell_command(script);
+    command.current_dir(cwd);
+    run_bounded(command, timeout, cancelled)
+        .map_err(|err| AppError::io(format!("could not start the routine script: {err}")))?
+}
+
+/// Spawn `command` (already in its own process group), drain its capped
+/// output, and kill its whole tree at `timeout` or on `cancelled`. Shared by
+/// routine ticks and the vault kit script (`kit_script`). The outer error is
+/// a spawn failure, reported by the caller in its own words.
+pub(crate) fn run_bounded(
+    mut command: Command,
+    timeout: Duration,
+    cancelled: &AtomicBool,
+) -> Result<AppResult<ScriptTickOutcome>, std::io::Error> {
     let mut child = command
-        .current_dir(cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|err| AppError::io(format!("could not start the routine script: {err}")))?;
+        .spawn()?;
+    Ok(wait_bounded(&mut child, timeout, cancelled))
+}
 
+fn wait_bounded(
+    child: &mut std::process::Child,
+    timeout: Duration,
+    cancelled: &AtomicBool,
+) -> AppResult<ScriptTickOutcome> {
     // Capped drains on their own threads: waiting for the deadline while a
     // chatty script fills a pipe nobody reads would deadlock the child.
     let stdout = drain_capped(child.stdout.take());
@@ -160,7 +178,7 @@ fn run_script(
     let mut timed_out = false;
     let code = loop {
         if cancelled.load(Ordering::SeqCst) {
-            process_tree::terminate_tree(&mut child);
+            process_tree::terminate_tree(child);
             return Err(AppError::io("script stopped"));
         }
         match child.try_wait() {
@@ -169,7 +187,7 @@ fn run_script(
             }
             Ok(_) => {}
             Err(err) => {
-                process_tree::terminate_tree(&mut child);
+                process_tree::terminate_tree(child);
                 return Err(AppError::io(format!(
                     "could not wait for the script: {err}"
                 )));
@@ -182,7 +200,7 @@ fn run_script(
         std::thread::sleep(Duration::from_millis(POLL_MS));
     };
     // Also sweep descendants of a shell that exited before its children.
-    process_tree::terminate_tree(&mut child);
+    process_tree::terminate_tree(child);
     let drain_deadline = Instant::now() + Duration::from_millis(250);
     while !(stdout.is_finished() && stderr.is_finished()) && Instant::now() < drain_deadline {
         std::thread::sleep(Duration::from_millis(POLL_MS));

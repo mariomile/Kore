@@ -10,7 +10,7 @@ import {
   type SavedCollectionView,
   type TagProperty,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { groupableProperties } from './collection-board'

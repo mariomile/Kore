@@ -4,7 +4,7 @@ import {
   TAG_DEFINITION_UNMARKED_ERROR,
   parseFrontmatter,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
@@ -38,7 +38,7 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
   return useCallback(
     async ({ tag, icon, previousIcon }: TagIconChange): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       const definition = await readTagDefinition(tag)
       // Same channel `readTagDefinition` read from (live session first), so a
@@ -57,7 +57,7 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
       if (definition.icon !== previousIcon) {
         throw new Error(STALE_TAG_ICON_MESSAGE)
       }
-      await saveTagType(tag, definition.properties, generation, definition.template, icon)
+      await saveTagType(tag, definition.properties, generation, { icon })
       invalidateOnNextIndexApply()
     },
     [generation],

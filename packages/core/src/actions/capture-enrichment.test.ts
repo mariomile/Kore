@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DescriptionRejectedError } from '../ai/describe-page'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import {
   addSpool,
   CAPTURE_URL,
@@ -36,8 +36,12 @@ vi.mock('../graph/commands', () => ({
   promoteCaptureScreenshot: vi.fn(),
   readAsset: vi.fn(),
   readNote: vi.fn(),
+  readNoteLocal: vi.fn(),
   writeAsset: vi.fn(),
   writeNote: vi.fn(),
+}))
+vi.mock('../ipc/commands', () => ({
+  icloudRequestDownloads: vi.fn(),
 }))
 vi.mock('./meta-scrape', () => ({
   scrapePageMeta: vi.fn(),
@@ -133,7 +137,7 @@ describe('reconcileCaptureEnrichment', () => {
     addSpool(envelope({ source: 'ios-share' }), { screenshot: false })
     expect((await drain()).stopped).toBeNull()
     writeNoteMock.mockClear()
-    linkPreviewMock.mockRejectedValue(new ReflectError('network', 'preview unavailable'))
+    linkPreviewMock.mockRejectedValue(new KoreError('network', 'preview unavailable'))
 
     const outcome = await reconcile({ providers: NO_PROVIDERS })
 
@@ -449,7 +453,7 @@ describe('reconcileCaptureEnrichment', () => {
       description: 'A description available without the keychain.',
       siteName: null,
     })
-    getSecretMock.mockRejectedValue(new ReflectError('io', 'keychain is unavailable'))
+    getSecretMock.mockRejectedValue(new KoreError('io', 'keychain is unavailable'))
 
     const outcome = await reconcile()
 
@@ -578,7 +582,7 @@ describe('reconcileCaptureEnrichment', () => {
 
   it('a transient scrape failure leaves the capture pending; the next pass retries', async () => {
     await drainOne()
-    scrapeMock.mockRejectedValueOnce(new ReflectError('network', 'offline'))
+    scrapeMock.mockRejectedValueOnce(new KoreError('network', 'offline'))
 
     const first = await reconcile()
     expect(first.stopped?.reason).toBe('network')
@@ -603,7 +607,7 @@ describe('reconcileCaptureEnrichment', () => {
     writeNoteMock.mockClear()
     scrapeMock.mockImplementation(async (url) => {
       if (url.includes('instagram')) {
-        throw new ReflectError('network', 'https://www.instagram.com answered 429')
+        throw new KoreError('network', 'https://www.instagram.com answered 429')
       }
       return { title: 'An article', description: 'A scraped description.', siteName: null }
     })
@@ -645,11 +649,11 @@ describe('reconcileCaptureEnrichment', () => {
     writeNoteMock.mockClear()
     scrapeMock.mockImplementation(async (url) => {
       if (url.includes('instagram')) {
-        throw new ReflectError('network', 'https://www.instagram.com answered 429')
+        throw new KoreError('network', 'https://www.instagram.com answered 429')
       }
       return { title: 'An article', description: 'A scraped description.', siteName: null }
     })
-    getSecretMock.mockRejectedValue(new ReflectError('io', 'keychain is unavailable'))
+    getSecretMock.mockRejectedValue(new KoreError('io', 'keychain is unavailable'))
 
     const outcome = await reconcile()
 
@@ -681,7 +685,7 @@ describe('reconcileCaptureEnrichment', () => {
     writeNoteMock.mockClear()
     describeMock.mockImplementation(async (request) => {
       if (request.url.endsWith('/first')) {
-        throw new ReflectError('network', 'the provider is unavailable (429)')
+        throw new KoreError('network', 'the provider is unavailable (429)')
       }
       return { title: null, description: 'An AI description of the page.' }
     })
@@ -704,7 +708,7 @@ describe('reconcileCaptureEnrichment', () => {
 
   it('a permanent scrape failure enriches without meta tags', async () => {
     await drainOne()
-    scrapeMock.mockRejectedValue(new ReflectError('parse', 'not an HTML page'))
+    scrapeMock.mockRejectedValue(new KoreError('parse', 'not an HTML page'))
 
     const outcome = await reconcile()
 
@@ -769,7 +773,7 @@ describe('reconcileCaptureEnrichment', () => {
       description: 'A description available without AI.',
       siteName: null,
     })
-    describeMock.mockRejectedValue(new ReflectError('auth', 'key rejected'))
+    describeMock.mockRejectedValue(new KoreError('auth', 'key rejected'))
 
     const outcome = await reconcile()
 
@@ -782,7 +786,7 @@ describe('reconcileCaptureEnrichment', () => {
     expect(files.get(DAILY)).toContain('|A title available without AI]]')
 
     scrapeMock.mockClear()
-    scrapeMock.mockRejectedValue(new ReflectError('network', 'offline'))
+    scrapeMock.mockRejectedValue(new KoreError('network', 'offline'))
     describeMock.mockResolvedValue({ title: null, description: 'A description from the retry.' })
     const retry = await reconcile()
 
@@ -910,7 +914,7 @@ describe('reconcileCaptureEnrichment', () => {
       .mockImplementationOnce(async (path, contents) => {
         files.set(path, contents)
       })
-      .mockRejectedValueOnce(new ReflectError('io', 'disk full'))
+      .mockRejectedValueOnce(new KoreError('io', 'disk full'))
 
     const first = await reconcile({ providers: NO_PROVIDERS })
 

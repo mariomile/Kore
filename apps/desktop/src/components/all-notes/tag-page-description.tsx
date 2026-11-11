@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import { splitFrontmatter, stripLeadingHeading, tagDefinitionPath } from '@reflect/core'
+import { splitFrontmatter, stripLeadingHeading, tagDefinitionPath } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { readNoteSource } from '@/lib/note-frontmatter'

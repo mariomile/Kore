@@ -6,7 +6,7 @@ import {
   loadGithubAuth,
   type GithubAuth,
   type GithubUser,
-} from '@reflect/core'
+} from '@kore/core'
 import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { providerFetch } from '@/lib/provider-fetch'
 

@@ -12,6 +12,30 @@ beforeEach(() => {
 })
 
 describe('listVaultSkills', () => {
+  it('reads a kit vault’s folder-per-skill layout (Plan 35)', async () => {
+    listFiles.mockResolvedValue([
+      { path: 'System/skills/remember/SKILL.md' },
+      { path: 'System/skills/recall/SKILL.md' },
+      { path: 'System/skills/recall/notes.md' },
+      { path: 'System/skills.md' },
+      { path: 'agents/skills/kore.md' },
+    ])
+    readNote.mockImplementation(async (path: string) =>
+      path.includes('remember')
+        ? '---\ndescription: Keep a durable fact\n---\n# Remember\n\nSteps\n'
+        : '# Recall\n\nSteps\n',
+    )
+    const layout = { dir: 'System/skills', kind: 'folder' } as const
+    const skills = await listVaultSkills(layout)
+    expect(skills.map((skill) => skill.path)).toEqual([
+      'System/skills/recall/SKILL.md',
+      'System/skills/remember/SKILL.md',
+    ])
+    expect(vaultSkillsPromptLines(skills, layout)[1]).toContain(
+      'one SKILL.md each under System/skills/<name>/',
+    )
+  })
+
   it('lists skills with H1 names and frontmatter descriptions, A→Z', async () => {
     listFiles.mockResolvedValue([
       { path: 'notes/other.md' },

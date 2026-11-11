@@ -1,4 +1,4 @@
-import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@reflect/core'
+import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@kore/core'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
@@ -6,6 +6,9 @@ import { runGistPublish } from '@/lib/note-gist'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { startOperation } from '@/lib/operations'
+import { zoomLastFocusedEditor } from '@/editor/block-zoom-plugin'
+import { copyLinkToLastFocusedLine } from '@/editor/copy-block-link'
+import { moveBranchFromLastFocused } from '@/editor/move-branch-opener'
 import type { AppCommand } from './types'
 
 /**
@@ -119,7 +122,7 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
     title: 'Copy note path',
     keywords: ['file', 'absolute', 'filesystem', 'clipboard', 'location'],
     // The OS-path sibling of "Copy deep link": copies the note's absolute
-    // file path (Finder's Copy-as-Pathname chord) for use outside Reflect,
+    // file path (Finder's Copy-as-Pathname chord) for use outside Kore,
     // where a kore:// address cannot resolve. `runCopyNotePath` owns all
     // feedback (the "Note path copied" status line and failure surfaces).
     keybinding: 'Alt-Mod-c',
@@ -164,6 +167,44 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
       if (path !== null) {
         context.navigate({ kind: 'note', path })
       }
+    },
+  },
+  {
+    id: 'note.zoomIn',
+    title: 'Zoom into block',
+    keywords: ['focus', 'outline', 'branch', 'section', 'hoist'],
+    // ⌘⇧. inside the editor (an editor-scope binding); the palette entry
+    // zooms the note editor that last had the caret.
+    run: () => {
+      zoomLastFocusedEditor('in')
+    },
+  },
+  {
+    id: 'note.copyLineLink',
+    title: 'Copy link to line',
+    keywords: ['block', 'reference', 'anchor', 'obsidian', '^id'],
+    // Adds an Obsidian ^id to the caret's line in the last focused note
+    // (only when it has none) and copies [[Note#^id]].
+    run: () => {
+      copyLinkToLastFocusedLine()
+    },
+  },
+  {
+    id: 'note.moveBranch',
+    title: 'Move block to note…',
+    keywords: ['branch', 'move', 'send', 'refile', 'outline', 'list item'],
+    // ⌘⇧M inside the editor; the palette entry moves the caret's block in
+    // the note editor that last had focus.
+    run: () => {
+      moveBranchFromLastFocused()
+    },
+  },
+  {
+    id: 'note.zoomOut',
+    title: 'Zoom out of block',
+    keywords: ['focus', 'outline', 'unhoist', 'back'],
+    run: () => {
+      zoomLastFocusedEditor('out')
     },
   },
 ]

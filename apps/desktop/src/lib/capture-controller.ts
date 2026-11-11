@@ -9,7 +9,7 @@ import {
   toAppError,
   type AiProvidersState,
   type ReconcileStop,
-} from '@reflect/core'
+} from '@kore/core'
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { startOperation } from '@/lib/operations'
 import { providerFetch } from '@/lib/provider-fetch'
@@ -54,6 +54,11 @@ export interface CaptureControllerOptions {
   relaySharedInbox?: () => Promise<number>
 }
 
+/** First retry after a drain stopped on a note still downloading from iCloud. */
+const EVICTED_RETRY_FIRST_MS = 2_000
+/** Retry ceiling: iCloud may be offline for a long time; one stat a minute is free. */
+const EVICTED_RETRY_MAX_MS = 60_000
+
 /** Build the controller for one graph session. `dispose()` is terminal. */
 export function createCaptureController(options: CaptureControllerOptions): CaptureController {
   /**
@@ -63,12 +68,36 @@ export function createCaptureController(options: CaptureControllerOptions): Capt
    */
   const surfacedStops = new Map<string, string>()
 
+  /**
+   * A drain that stopped `evicted` waits on an iCloud download it already
+   * requested. Nothing else signals the download landing on iOS (no file
+   * watcher there), so the controller retries on a doubling timer until the
+   * drain gets past it.
+   */
+  let evictedRetryMs = EVICTED_RETRY_FIRST_MS
+  let evictedRetry: ReturnType<typeof setTimeout> | null = null
+
+  function followEvictedStop(stopped: ReconcileStop | null): void {
+    if (stopped?.reason !== 'evicted') {
+      evictedRetryMs = EVICTED_RETRY_FIRST_MS
+      return
+    }
+    if (evictedRetry !== null || loop.isStale()) {
+      return
+    }
+    evictedRetry = setTimeout(() => {
+      evictedRetry = null
+      loop.schedule()
+    }, evictedRetryMs)
+    evictedRetryMs = Math.min(evictedRetryMs * 2, EVICTED_RETRY_MAX_MS)
+  }
+
   function surfaceStop(label: string, stopped: ReconcileStop | null): void {
     if (stopped === null) {
       surfacedStops.delete(label)
       return
     }
-    // Self-healing stops (network/config/stale) stay silent: offline retries on
+    // Self-healing stops (network/config/stale/evicted) stay silent: offline retries on
     // the next trigger, config means no provider/key (enrichment waits; the raw
     // save is done), stale is a graph switch tearing the pass down.
     if (isSilentStop(stopped) || surfacedStops.get(label) === stopped.message) {
@@ -104,6 +133,7 @@ export function createCaptureController(options: CaptureControllerOptions): Capt
         appendResourceSource(path, sourceLink, generation, isStale),
     })
     surfaceStop('Saving link capture', drained.stopped)
+    followEvictedStop(drained.stopped)
     surfaceStop('Collecting captured link', drained.collectionFailures?.[0] ?? null)
     if (isStale()) {
       return
@@ -118,6 +148,12 @@ export function createCaptureController(options: CaptureControllerOptions): Capt
   }
 
   const loop = createBackgroundReconciler({ pass: reconcile })
+  loop.onDispose(() => {
+    if (evictedRetry !== null) {
+      clearTimeout(evictedRetry)
+      evictedRetry = null
+    }
+  })
 
   function start(): void {
     if (loop.isStale()) {

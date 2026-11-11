@@ -4,7 +4,7 @@ import {
   embedStatus,
   subscribeEmbedStatus,
   type EmbedStatus,
-} from '@reflect/core'
+} from '@kore/core'
 
 /**
  * Semantic-search loading (Plan 09). The model is ~90MB and downloads from

@@ -2,7 +2,7 @@
 //!
 //! Rust owns the *capabilities* — init/adopt, commit, fetch, merge, push —
 //! while the sync **policy** (debounce cadence, retry loop, product states,
-//! GitHub specifics) lives in `@reflect/core` `sync/`. Nothing here is
+//! GitHub specifics) lives in `@kore/core` `sync/`. Nothing here is
 //! GitHub-specific: remotes are URLs, credentials arrive per call through a
 //! callback (never embedded in the URL, so never on disk).
 //!
@@ -17,6 +17,7 @@
 
 mod activity;
 mod agent_writes;
+mod blame;
 mod commit;
 mod commit_message;
 mod history;
@@ -57,7 +58,7 @@ pub struct GitStatus {
     pub ahead: usize,
     pub behind: usize,
     /// The repository state is not `Clean` — a merge/rebase the user started
-    /// outside Reflect (e.g. via the git CLI) is in progress. Sync refuses to
+    /// outside Kore (e.g. via the git CLI) is in progress. Sync refuses to
     /// run until it is finished or aborted.
     pub in_progress: bool,
 }
@@ -218,6 +219,20 @@ pub async fn git_activity(
 ) -> AppResult<activity::ActivityPage> {
     let root = crate::fs::root_for_generation(&state, generation)?;
     run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
+}
+
+/// Who last changed each line of `content` (the note as the caller shows
+/// it), blamed against the note's committed history. Lines no commit holds
+/// come back without one. See [`blame::blame`].
+#[tauri::command]
+pub async fn git_blame(
+    path: String,
+    content: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<blame::Blame> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || blame::blame(&root, &path, &content)).await
 }
 
 /// What undoing the commits `oldest..=newest` would leave in each file they

@@ -1,4 +1,4 @@
-import type { LinkPreview } from '@reflect/core'
+import type { LinkPreview } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import {
   Plugin,

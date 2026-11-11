@@ -16,7 +16,8 @@ import {
   isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
-} from '@reflect/core'
+  wikiLinkTargetForTitle,
+} from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
@@ -46,7 +47,12 @@ import { useTagActions } from '@/editor/use-tag-actions'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
+import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { NoteTitleIcon } from '@/editor/note-title-icon'
+import { BlockIds } from '@/editor/block-ids'
+import { BlockZoom } from '@/editor/block-zoom'
+import { MoveBranch } from '@/editor/move-branch-picker'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -58,6 +64,7 @@ import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
+import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -77,7 +84,7 @@ const EmbeddedCollection = lazy(() =>
   })),
 )
 
-interface NotePaneProps {
+export interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
   path: string
   /**
@@ -234,6 +241,24 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
+  // The header's "Add icon" and "Add cover" are pointer affordances for
+  // regular notes: daily notes stack in a stream where every day would grow
+  // them, and touch has no hover to reveal them.
+  const appearanceEdit = useNoteAppearanceEdit(path, generation)
+  const editableAppearance =
+    appearanceEdit !== null && !dailyNote && !isTouchEditorSurface() ? appearanceEdit : null
+  const onIconChange = editableAppearance?.setIcon
+  // A note with a `#` title draws its icon on that line, left of the text;
+  // only a title-less note keeps it above the body.
+  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
+  const noteLinkTarget =
+    noteRow === null
+      ? null
+      : (noteRow.dailyDate ?? (noteRow.title === '' ? null : wikiLinkTargetForTitle(noteRow.title)))
+  const openMovedTo = useCallback(
+    (movedTo: string) => navigate({ kind: 'note', path: movedTo }),
+    [navigate],
+  )
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -382,7 +407,7 @@ export function NotePaneComponent({
         role="status"
         aria-label="Opening note"
         className={cn(
-          'reflect-note-loading flex flex-col px-1 py-2',
+          'kore-note-loading flex flex-col px-1 py-2',
           gutterClassName,
           editorClassName,
           className,
@@ -453,7 +478,7 @@ export function NotePaneComponent({
   )
 
   return (
-    <div className={cn('relative', className)} aria-label={`Editing ${path}`}>
+    <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
         <NoteBreadcrumb path={path} />
 
@@ -488,6 +513,10 @@ export function NotePaneComponent({
         source={document.header}
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
+        onIconChange={onIconChange}
+        onCoverChange={editableAppearance?.setCover}
+        uploadCover={editableAppearance === null ? undefined : saveFile}
       />
 
       <NoteEditor
@@ -536,10 +565,10 @@ export function NotePaneComponent({
         // Daily notes carry no title semantics (the date is their subject),
         // so an empty leading H1 there is just an empty heading.
         {...(dailyNote ? {} : { titlePlaceholder: 'Untitled' })}
-        // `reflect-note-surface` opts this primary editor into the reading
+        // `kore-note-surface` opts this primary editor into the reading
         // text size (Settings → Editor); compact MarkdownView previews that
-        // also carry `reflect-editor` keep their own context size.
-        className={cn('reflect-note-surface', gutterClassName, editorClassName)}
+        // also carry `kore-editor` keep their own context size.
+        className={cn('kore-note-surface', gutterClassName, editorClassName)}
         handleRef={handleRef}
         onExitBoundary={handleExitBoundary}
       >
@@ -554,10 +583,30 @@ export function NotePaneComponent({
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
         <CollectionFenceGuard />
+        <BlockZoom />
+        <BlockIds linkTarget={noteLinkTarget} />
+        <MoveBranch
+          notePath={path}
+          linkTarget={noteLinkTarget}
+          generation={generation}
+          openNote={openMovedTo}
+        />
         {/* Fetching a link's preview reaches the linked host, so a private
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <NoteTitleIcon
+          header={document.header}
+          resolveImageUrl={resolveImageUrl}
+          onIconChange={onIconChange}
+          onTitle={setTitleDrawsIcon}
+        />
+        <LineAuthorShading
+          enabled={settings.editorLineAuthors}
+          path={path}
+          generation={generation}
+          header={document.header}
+        />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}

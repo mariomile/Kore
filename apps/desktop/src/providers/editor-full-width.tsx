@@ -4,7 +4,7 @@ import { useSettings } from '@/providers/settings-provider'
 /**
  * Applies the desktop note-width preference to every note surface.
  *
- * The shared `.reflect-content-gutter` class is used by daily notes,
+ * The shared `.kore-content-gutter` class is used by daily notes,
  * standalone notes, and secondary note windows. Mirroring the setting onto
  * the document root lets one CSS variable update all of those surfaces while
  * leaving the mobile-specific gutter unchanged.

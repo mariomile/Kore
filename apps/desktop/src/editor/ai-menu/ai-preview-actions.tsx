@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { ChevronDown, Restart } from '@/components/icons'
-import type { AiPromptMode, ChatModelOption } from '@reflect/core'
+import type { AiPromptMode, ChatModelOption } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

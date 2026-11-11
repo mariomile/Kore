@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { AssistantPart } from '@reflect/core'
+import type { AssistantPart } from '@kore/core'
 import { ChatToolChip } from './chat-tool-chip'
 
 const commitProperty = vi.hoisted(() => vi.fn())
@@ -90,6 +90,49 @@ describe('ChatToolChip browse', () => {
       />,
     )
     await expect.element(failed.getByText(/no embedded browser is open/)).toBeInTheDocument()
+  })
+})
+
+describe('ChatToolChip memory', () => {
+  it('says what the kit kept, and why a write was refused', async () => {
+    const saved = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'memory', toolCallId: 'm1', action: 'open_loop', label: 'Send the deck' },
+          result: {
+            tool: 'memory',
+            toolCallId: 'm1',
+            action: 'open_loop',
+            label: 'Send the deck',
+            output: 'opened loop-1',
+            error: null,
+          },
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(saved.getByText(/Opened loop: Send the deck/)).toBeInTheDocument()
+
+    const refused = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'memory', toolCallId: 'm2', action: 'remember', label: 'x' },
+          result: {
+            tool: 'memory',
+            toolCallId: 'm2',
+            action: 'remember',
+            label: 'x',
+            output: null,
+            error: 'Memory writes need "Allow edits"',
+          },
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(refused.getByText(/Couldn’t save to memory/)).toBeInTheDocument()
+    await expect.element(refused.getByText(/Allow edits/)).toBeInTheDocument()
   })
 })
 

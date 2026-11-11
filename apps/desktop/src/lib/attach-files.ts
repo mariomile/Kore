@@ -1,5 +1,5 @@
 import { open } from '@tauri-apps/plugin-dialog'
-import { assetFileName, errorMessage, importAsset } from '@reflect/core'
+import { assetFileName, errorMessage, importAsset } from '@kore/core'
 import { noteEditorHandleFor } from '@/editor/editor-handle-registry'
 import type { CommandContext } from '@/lib/commands/types'
 import { startOperation } from '@/lib/operations'

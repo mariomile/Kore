@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { dispatchDeepLink, resetDeepLinkIntakeForTests } from '@/lib/deep-links/intake'
 
 const resolveNoteTarget = vi.hoisted(() => vi.fn())
@@ -15,8 +15,8 @@ const operationHandle = vi.hoisted(() => ({
   dismiss: vi.fn(),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   resolveNoteTarget,
   captureInboxSpool,
 }))

@@ -1,4 +1,4 @@
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 
 /**
  * The note a new task is added to (Return-to-add, V1): its path plus the context
@@ -29,6 +29,7 @@ export function insertedTaskRow(
     noteTitle: target.noteTitle,
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: target.dailyDate,
     isPinned: target.isPinned,
     pinnedOrder: target.pinnedOrder,

@@ -2,8 +2,14 @@ import { useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
 import type { WikilinkClickHandler } from '@meowdown/core'
-import { requoteCalloutBlock, separateCalloutTitles, type SnippetTask } from '@reflect/core'
+import {
+  requoteCalloutBlock,
+  separateCalloutTitles,
+  withoutBlockIds,
+  type SnippetTask,
+} from '@kore/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
+import { resolveWikilink } from '@/editor/resolve-wikilink'
 import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useSnippetTaskToggle } from '@/hooks/use-snippet-task-toggle'
 
@@ -31,10 +37,10 @@ interface BacklinkSnippetProps {
  * `expandCollapsed` renders `+` collapsed items expanded at every depth.
  * Round `+ [ ]` task checkboxes are live — a click writes the
  * toggle through to the source note ({@link useSnippetTaskToggle}), old
- * Reflect's backlink-context behavior — while square GFM boxes stay read-only
- * (the `reflect-backlink-snippet` CSS keeps them inert-looking). The
- * `reflect-editor` class shares the editor's chip styling; the
- * `reflect-backlink-snippet` wrapper keeps it in the panel's compact line box.
+ * Kore's backlink-context behavior — while square GFM boxes stay read-only
+ * (the `kore-backlink-snippet` CSS keeps them inert-looking). The
+ * `kore-editor` class shares the editor's chip styling; the
+ * `kore-backlink-snippet` wrapper keeps it in the panel's compact line box.
  * A context lifted out of a callout arrives dedented, so it is quoted again
  * (`requoteCalloutBlock`) and drawn like any preview's callout, always open
  * for the same reason collapsed bullets are.
@@ -48,16 +54,21 @@ export function BacklinkSnippet({
 }: BacklinkSnippetProps): ReactElement {
   const onTaskClick = useSnippetTaskToggle(notePath, tasks)
   const openExternalLink = useOpenExternalLink()
-  const markdown = useMemo(() => separateCalloutTitles(requoteCalloutBlock(text)), [text])
+  // `^id` markers are Obsidian anchors, never text a reader sees (Plan 33 C3).
+  const markdown = useMemo(
+    () => separateCalloutTitles(requoteCalloutBlock(withoutBlockIds(text))),
+    [text],
+  )
   const hostRef = useRef<HTMLDivElement>(null)
   useCalloutDom(hostRef, false)
   return (
-    <div ref={hostRef} className="reflect-backlink-snippet select-text text-xs text-text">
+    <div ref={hostRef} className="kore-backlink-snippet select-text text-xs text-text">
       <MarkdownView
-        className="reflect-editor"
+        className="kore-editor"
         markdown={markdown}
         expandCollapsed
         onWikilinkClick={onWikilinkClick}
+        resolveWikilink={resolveWikilink}
         onLinkClick={openExternalLink}
         {...(onTaskClick ? { onTaskClick } : {})}
         resolveImageUrl={resolveImageUrl}

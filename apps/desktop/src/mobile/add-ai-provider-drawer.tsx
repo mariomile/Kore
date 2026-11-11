@@ -7,7 +7,7 @@ import {
   aiProviderRequiresApiKey,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
-} from '@reflect/core'
+} from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
@@ -103,7 +103,7 @@ function AddAiProviderSheet({
       <DrawerTitle>Add AI provider</DrawerTitle>
       <DrawerBody>
         <p className="text-sm text-text-muted">
-          The API key is stored in this device’s keychain, never in your graph — add it on each
+          The API key is stored in this device’s keychain, never in your vault — add it on each
           device you chat from.
         </p>
 

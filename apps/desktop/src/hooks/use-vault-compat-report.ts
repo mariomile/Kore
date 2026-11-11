@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { scanVaultCompat, type GraphInfo, type VaultCompatReport } from '@reflect/core'
+import { scanVaultCompat, type GraphInfo, type VaultCompatReport } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /** The query key of the open vault's compatibility report (see {@link useVaultCompatReport}). */
@@ -29,7 +29,7 @@ export function useVaultCompatReport(
     queryKey: vaultCompatQueryKey(graph?.root, graph?.generation),
     queryFn: () => {
       if (graph === null) {
-        throw new Error('no graph is open')
+        throw new Error('no vault is open')
       }
       return scanVaultCompat(graph.generation)
     },

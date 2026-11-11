@@ -1,6 +1,6 @@
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { makeOpenTask as task } from './open-task-fixture'
 import { taskKey } from './task-identity'
 import type { TaskActions } from './use-task-actions'

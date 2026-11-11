@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { CheckCircle, Circle } from '@/components/icons'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { TaskText } from '@/components/tasks/task-text'
 import { formatShortDate } from '@/lib/dates'

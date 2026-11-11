@@ -1,4 +1,4 @@
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 
 /**
  * An open-task row with sensible defaults for tests; override only what a
@@ -18,6 +18,7 @@ export function makeOpenTask(overrides: Partial<OpenTask> = {}): OpenTask {
     noteTitle: 'N',
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     isPinned: false,
     pinnedOrder: null,

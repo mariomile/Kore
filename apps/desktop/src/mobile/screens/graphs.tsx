@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Plus } from '@/components/icons'
-import { errorMessage, mobileStorage, type MobileStorageKind } from '@reflect/core'
+import { errorMessage, mobileStorage, type MobileStorageKind } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -77,7 +77,7 @@ export function MobileGraphs(): ReactElement {
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
         ref={barRef}
-        title="Graphs"
+        title="Vaults"
         onBack={() => (canBack ? back() : navigate({ kind: 'settings' }))}
       />
       <main
@@ -117,7 +117,7 @@ export function MobileGraphs(): ReactElement {
                 ))}
                 {icloudDocumentsRoot !== null ? (
                   <SettingsActionRow
-                    label="New graph"
+                    label="New vault"
                     icon={Plus}
                     disabled={busy}
                     onPress={() => setCreateOpen(true)}

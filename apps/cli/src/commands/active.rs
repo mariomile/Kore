@@ -27,7 +27,7 @@ struct WorkspaceFile {
 pub fn run(graph: &Graph, json: bool) -> Result<(), CliError> {
     let file = graph
         .root
-        .join(reflect_index_schema::KORE_DIR)
+        .join(kore_index_schema::KORE_DIR)
         .join(WORKSPACE_FILE);
     let text = std::fs::read_to_string(&file).map_err(|_| {
         CliError::NotFound(

@@ -17,7 +17,7 @@ const seams = vi.hoisted(() => ({
   flushSettings: vi.fn<() => Promise<void>>(async () => {}),
   flushBackup: vi.fn<() => Promise<void>>(async () => {}),
 }))
-vi.mock('@reflect/core', () => ({
+vi.mock('@kore/core', () => ({
   beginBackgroundTask: seams.beginBackgroundTask,
   endBackgroundTask: seams.endBackgroundTask,
 }))

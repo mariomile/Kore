@@ -10,7 +10,7 @@ import {
   type ConnectorId,
   type ConnectorSettings,
   type ConnectorsSettings,
-} from '@reflect/core'
+} from '@kore/core'
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { startOperation } from '@/lib/operations'
 import { providerFetch } from '@/lib/provider-fetch'
@@ -94,7 +94,7 @@ export function createConnectorController(
       if (token === null || token.trim() === '') {
         record(id, {
           kind: 'failed',
-          message: `Add your ${connector.label} ${connector.tokenLabel.toLowerCase()}.`,
+          message: `Add your ${connector.label} ${connector.tokenNoun}.`,
         })
         return
       }

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { DEFAULT_SETTINGS, setBridge } from '@reflect/core'
+import { DEFAULT_SETTINGS, setBridge } from '@kore/core'
 import { NotePeek } from './note-peek'
 
 /**

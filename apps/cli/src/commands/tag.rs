@@ -1,14 +1,15 @@
 //! `kore tag <note> <tag>` / `kore untag <note> <tag>` — the inline
 //! tag is the note's membership in a collection (TDR 0005, "the hashtag is
 //! the supertag"), so `tag` appends `#tag` as a trailing body line exactly
-//! like the app's bulk-tag action (`appendBodyTag`), stamping the type's
-//! `created` properties for a typed tag, and `untag` removes only such a
+//! like the app's bulk-tag action (`appendBodyTag`), stamping the fields'
+//! starting values (`created` included) when that line is what puts the
+//! note into the tag, and `untag` removes only such a
 //! standalone trailing line — a tag inside prose is the user's text and is
 //! refused, never edited. A tag declared in frontmatter `tags:` counts as
 //! membership too: `tag` leaves such a note alone and `untag` drops the
 //! entry. Both are idempotent and refuse private notes.
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::body_tag::{
     append_body_tag, frontmatter_has_tag, frontmatter_tag_entries, frontmatter_tag_name,
@@ -21,7 +22,8 @@ use crate::frontmatter_values::{extract_properties, properties_json, PropertyVal
 use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
 use crate::keys::fold_tag;
-use crate::schema::{load_schema, TagSchema};
+use crate::schema::load_schema;
+use crate::starting_values::starting_values;
 use crate::write::update_note;
 
 fn tag_name(arg: &str) -> Result<&str, CliError> {
@@ -34,18 +36,19 @@ fn tag_name(arg: &str) -> Result<&str, CliError> {
     Ok(tag)
 }
 
-/// A typed tag's `created` stamps, like a row born in the app — only for
-/// keys the note does not already carry, so re-tagging never rewrites a
-/// history the note already has.
-fn missing_stamps(schema: Option<&TagSchema>, source: &str) -> Vec<(String, PropertyValue)> {
-    let Some(schema) = schema else {
-        return Vec::new();
-    };
+/// The starting values (Plan 33 B4, `created` included) a note joining the
+/// tag does not already carry, like the app's `missingStartingValues`: the
+/// note's own value wins. Only called when this write is what puts the note
+/// into the tag; a note already in it is never stamped.
+fn missing_stamps(
+    source: &str,
+    starting: &[(String, PropertyValue)],
+) -> Vec<(String, PropertyValue)> {
     let existing = extract_properties(split_frontmatter(source).raw);
-    schema
-        .created_stamps()
-        .into_iter()
+    starting
+        .iter()
         .filter(|(key, _)| !existing.iter().any(|(present, _)| present == key))
+        .cloned()
         .collect()
 }
 
@@ -57,20 +60,24 @@ pub fn run_tag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Resu
         Some(open) => load_schema(&open.conn, tag)?,
         None => None,
     };
+    // Read before the write: `next-number` counts the notes already in it.
+    let starting = match (&schema, &index) {
+        (Some(schema), Some(open)) => {
+            starting_values(schema, Some(&open.conn), &[tag.to_string()])?
+        }
+        _ => Vec::new(),
+    };
 
     let mut added = false;
     let mut stamped: Vec<(String, PropertyValue)> = Vec::new();
     update_note(&graph.root, &rel_path, |source| {
         // A tag declared in frontmatter `tags:` is already membership.
         let declared = frontmatter_has_tag(split_frontmatter(source).raw, tag);
-        let tagged = match (!declared).then(|| append_body_tag(source, tag)).flatten() {
-            Some(tagged) => {
-                added = true;
-                tagged
-            }
-            None => source.to_string(),
+        let Some(tagged) = (!declared).then(|| append_body_tag(source, tag)).flatten() else {
+            return Ok(source.to_string());
         };
-        stamped = missing_stamps(schema.as_ref(), &tagged);
+        added = true;
+        stamped = missing_stamps(&tagged, &starting);
         let patch: Patch = stamped
             .iter()
             .map(|(key, value)| (key.clone(), Some(value.clone())))

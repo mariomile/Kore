@@ -34,8 +34,8 @@ pub struct FileMeta {
     pub placeholder: bool,
 }
 
-impl From<reflect_graph_paths::FileEntry> for FileMeta {
-    fn from(entry: reflect_graph_paths::FileEntry) -> Self {
+impl From<kore_graph_paths::FileEntry> for FileMeta {
+    fn from(entry: kore_graph_paths::FileEntry) -> Self {
         Self {
             path: entry.path,
             size: entry.size,

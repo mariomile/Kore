@@ -1,12 +1,17 @@
 import type { ModelMessage } from 'ai'
+import { attachmentChannel } from './chat/attachment-types'
 
 /**
  * Flattening a chat's model-facing history into one headless CLI turn: the
  * prompt text plus the binary attachments (images, PDFs) an engine reads
- * natively. Each engine decides which media types it accepts and how the
- * attachments travel (Claude Code content blocks, Codex image items); this
- * module owns only the transcript and the attachment budget.
+ * natively. Each engine declares the channels it reads (see
+ * `./chat/attachment-types`) and how they travel (Claude Code content
+ * blocks, Codex image items); this module owns only the transcript and the
+ * attachment budget.
  */
+
+/** The binary channels an engine can read natively. */
+export type AgentCliChannel = 'image' | 'document'
 
 /** Rough transcript budget: the CLI re-reads notes itself, so history-only. */
 const MAX_TRANSCRIPT_CHARS = 60_000
@@ -21,6 +26,8 @@ export interface AgentCliAttachment {
   readonly label: string
   readonly name: string
   readonly mediaType: string
+  /** How the engine encodes it (image block, document block). */
+  readonly channel: AgentCliChannel
   /** The bytes, base64-encoded. */
   readonly base64: string
 }
@@ -47,6 +54,17 @@ interface PendingFile {
 }
 
 type MessageSegment = { kind: 'text'; text: string } | { kind: 'file'; file: PendingFile }
+
+/** A file part the engine can read: the channel it travels on and its bytes. */
+function readable(
+  file: PendingFile,
+  accepts: ReadonlySet<AgentCliChannel>,
+): { channel: AgentCliChannel; base64: string } | null {
+  const channel = attachmentChannel(file.mediaType)
+  return channel !== null && channel !== 'text' && accepts.has(channel) && file.base64 !== null
+    ? { channel, base64: file.base64 }
+    : null
+}
 
 /** The base64 payload of a provider file/image part, or null when it is not inline bytes. */
 function inlineBase64(data: unknown): string | null {
@@ -99,14 +117,14 @@ function messageSegments(message: ModelMessage): MessageSegment[] {
  * oldest dropped first when the budget is exceeded.
  *
  * Each file part becomes a `[Attachment N: name]` marker in the text and an
- * entry in `attachments` when `accepts` says the engine reads its media type
+ * entry in `attachments` when the engine `accepts` its channel
  * (newest first, at most {@link MAX_CLI_ATTACHMENTS}); a file the engine
  * cannot read is named in the text as not available, so the model can say
  * so instead of guessing at it.
  */
 export function agentCliInput(
   messages: ModelMessage[],
-  accepts: (mediaType: string) => boolean,
+  accepts: ReadonlySet<AgentCliChannel>,
 ): AgentCliInput {
   const turns = messages
     .filter((message) => message.role === 'user' || message.role === 'assistant')
@@ -134,51 +152,52 @@ export function agentCliInput(
     included.unshift(turn)
   }
 
-  // Newest files win the attachment slots.
+  // Every file in render order (oldest first), then the newest readable
+  // ones win the attachment slots and are numbered in render order.
   const ordered = [...included, current]
-  const carried = new Set<PendingFile>()
-  for (const turn of [...ordered].reverse()) {
-    for (const segment of [...turn.segments].reverse()) {
-      if (
-        segment.kind === 'file' &&
-        segment.file.base64 !== null &&
-        accepts(segment.file.mediaType) &&
-        carried.size < MAX_CLI_ATTACHMENTS
-      ) {
-        carried.add(segment.file)
-      }
-    }
-  }
-
+  const files = ordered.flatMap((turn) =>
+    turn.segments.flatMap((segment) => (segment.kind === 'file' ? [segment.file] : [])),
+  )
+  const slots = new Set(
+    files
+      .map((file, index) => ({ index, read: readable(file, accepts) }))
+      .filter((entry) => entry.read !== null)
+      .map((entry) => entry.index)
+      .slice(-MAX_CLI_ATTACHMENTS),
+  )
   const attachments: AgentCliAttachment[] = []
-  const render = (segments: MessageSegment[]): string =>
-    segments
+  const markers = files.map((file, index): string => {
+    const read = readable(file, accepts)
+    if (read === null) {
+      return `[Attachment: ${file.name} (${file.mediaType}) — this engine cannot read it]`
+    }
+    if (!slots.has(index)) {
+      return `[Earlier attachment: ${file.name} — not resent]`
+    }
+    const label = `Attachment ${attachments.length + 1}: ${file.name}`
+    attachments.push({ label, name: file.name, mediaType: file.mediaType, ...read })
+    return `[${label}]`
+  })
+
+  // Each turn's text with its files' markers, in the same order as `files`.
+  let fileIndex = 0
+  const rendered = ordered.map((turn) =>
+    turn.segments
       .map((segment) => {
         if (segment.kind === 'text') {
           return segment.text
         }
-        const file = segment.file
-        if (!carried.has(file)) {
-          return accepts(file.mediaType) && file.base64 !== null
-            ? `[Earlier attachment: ${file.name} — not resent]`
-            : `[Attachment: ${file.name} (${file.mediaType}) — this engine cannot read it]`
-        }
-        const label = `Attachment ${attachments.length + 1}: ${file.name}`
-        attachments.push({
-          label,
-          name: file.name,
-          mediaType: file.mediaType,
-          base64: file.base64 ?? '',
-        })
-        return `[${label}]`
+        const marker = markers[fileIndex] ?? ''
+        fileIndex += 1
+        return marker
       })
       .join('\n')
-      .trim()
-
-  const history = included.map(
-    (turn) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${render(turn.segments)}`,
+      .trim(),
   )
-  const currentText = render(current.segments)
+  const currentText = rendered.at(-1) ?? ''
+  const history = included.map(
+    (turn, index) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${rendered[index] ?? ''}`,
+  )
   if (history.length === 0) {
     return { text: currentText, attachments }
   }
@@ -200,5 +219,5 @@ export function agentCliInput(
  * is named in the text as unreadable (see {@link agentCliInput}).
  */
 export function agentCliPrompt(messages: ModelMessage[]): string {
-  return agentCliInput(messages, () => false).text
+  return agentCliInput(messages, new Set()).text
 }

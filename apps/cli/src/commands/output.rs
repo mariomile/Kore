@@ -1,6 +1,6 @@
 //! The `--json` output contracts (documented in `docs/cli.md`, locked by the
 //! integration tests) plus the human print helpers. Field names are camelCase
-//! to match the rest of Reflect's external JSON shapes.
+//! to match the rest of Kore's external JSON shapes.
 
 use serde::Serialize;
 
@@ -192,7 +192,8 @@ pub struct NewJson<'a> {
     pub title: &'a str,
     /// The `--tag`s written as trailing `#tag` lines.
     pub tags: &'a [String],
-    /// The frontmatter values written (`--set` plus `created` stamps).
+    /// The frontmatter values written (`--set`, `created` stamps and the
+    /// fields' starting values).
     pub properties: serde_json::Map<String, serde_json::Value>,
 }
 
@@ -215,7 +216,7 @@ pub struct TagWriteJson<'a> {
     pub tag: &'a str,
     /// False when the body already carried the tag.
     pub added: bool,
-    /// `created` stamps written because the tag is typed.
+    /// `created` stamps and starting values written because the tag is typed.
     pub stamped: serde_json::Map<String, serde_json::Value>,
 }
 

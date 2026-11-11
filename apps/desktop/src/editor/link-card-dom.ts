@@ -1,4 +1,4 @@
-import type { LinkPreview, LinkPreviewProvider, PostLinkPreview } from '@reflect/core'
+import type { LinkPreview, LinkPreviewProvider, PostLinkPreview } from '@kore/core'
 
 /**
  * The DOM of one link preview card. Built by hand because it renders as a

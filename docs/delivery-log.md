@@ -11,6 +11,129 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   settings, recent vaults, model cache and saved keys: the old folders and
   keychain entries move over on first launch.
 
+- Note icon and cover editable from the note header (#380, #396): "Add icon"
+  and "Add cover" on hover, cover by upload, https link or drop. The file
+  format is unchanged (`icon:`, `cover:`).
+- The relation picker lists every row of the target type (up to 50, scrolling)
+  instead of stopping at 6 (#395).
+- Dropdown menus open below their button with icons centered; the Configure
+  type dialog lines every field up in one column (#394).
+- Plan 33 A3 (#387): "Show who wrote each line" (Settings → Editor, and Note
+  actions). Off by default. Shades each block an agent or the Kore host last
+  changed, from `git blame` over A1's signed commits (new `git_blame`
+  primitive, core `gitBlame`/`lineAuthors`, `editorLineAuthors` setting,
+  `line-authors-plugin`). Display-only; granularity is per block, and a block
+  takes its newest line's author.
+
+- The code says Kore everywhere: packages are @kore/*, crates kore-*, the
+  desktop crate and Xcode project kore-open, and pnpm lint fails if the
+  old upstream name comes back. Nothing changes in the app. (#355)
+
+- Scrolling the daily notes stays smooth when the Mac is busy: while the
+  stream moves a day is drawn as plain text, and the days on screen become
+  editors again as soon as the scroll rests. A click on a day gives it its
+  editor at once, with the caret where you clicked.
+
+- A Memory view for cyber-brain vaults: what's in NOW, the open loops, the
+  decisions and the latest memory writes from every agent, each opening its
+  file, plus the kit's own health check. The chat with your own API key
+  can now save memory through the kit too.
+
+- In a vault that keeps memory with cyber-brain, Kore's chat (on Claude Code
+  or Codex) and `kore mcp` write facts, loops and decisions by running the
+  vault's own memory script, so the result matches every other agent. The
+  script runs only after you allow it in Settings → Agents, and again after
+  it changes. New `kore brain` command.
+
+- Notes marked `sensitivity: private` (the cyber-brain kit's privacy level)
+  are kept away from AI and agents exactly like `private: true`. The chat
+  now reads up to 20,000 characters of the vault's AGENTS.md, as `kore
+  guide` already did.
+- Fields can start with a value. A new `#invoice` gets the next number,
+  today's date and status Draft by itself. Set it per field under "Starting
+  value" in the tag's settings. It applies when a note joins the tag from Kore
+  or from an agent; notes you already have are left alone.
+
+- A tag can build on another. Give `#client` the line `extends: contact` and
+  every client gets the contact fields plus its own. The `#contact` collection
+  also lists clients, with a filter to show only plain contacts. Private tag
+  definitions stay out of everything agents see.
+
+- Pasting a link or a file no longer files it in a collection unless you ask:
+  Settings → Notes → Pasted links & files has a switch for links, images, PDFs
+  and other files, all off to start, and links can keep or skip the page text.
+
+- Stop in chat always stops the agent: pressing it (or starting a new chat) in
+  the first instant of a Claude Code or Codex turn no longer leaves the run
+  editing the vault in the background.
+
+- iPhone: sharing a link or a note while today's daily is still downloading
+  from iCloud no longer overwrites it. Kore asks iCloud for the file, waits,
+  and adds the capture once the real note is there.
+
+- Sync keeps a note you save while it is pulling another device's changes.
+  Before, that save could be silently reverted.
+
+- An agent can get a key that only proposes: `kore keys add "Grok" --propose`.
+  It sees the writing tools, but nothing it writes touches your notes until
+  you accept it, in Activity under "Waiting for you" (with what it would add
+  or remove) or with `kore proposals accept <id>`; then the change is written
+  in its name and shows in the log. Reject drops it. In Settings → Agents each
+  agent is Read-only, Proposes changes (the default for a new one) or Reads
+  and writes, and you can change it without a new key. The preview shows every
+  detail the agent sent, and accepting twice never writes twice.
+
+- Tasks projects work like Todoist's: a task that links [[Project]] shows
+  under it, projects list tasks by the note's sections with subtasks indented,
+  `m` moves tasks to a project or section (⌘Z undoes), and `#tag` in the
+  search (or the filters menu) narrows any view to a tag.
+
+- Scrolling the daily notes past link preview cards is smoother: a card no
+  longer fades its hover highlight in and out as it passes under the pointer.
+
+- The notes folder is called a vault everywhere in Kore, and Graph means only
+  the graph view. Sync is GitHub and iCloud, Backup is the zip file you
+  export; the History panel and the connector links read correctly.
+
+- Move a block to another note: put the caret on a line and press ⌘⇧M (or
+  use the block menu or ⌘K), pick the note, and the line with everything
+  under it moves to the end of that note. A heading moves with its section.
+  Links to its lines keep working: they now point at the new note.
+
+- Links to a single line, Obsidian-style: `[[Note#^id]]` opens the note on
+  the line that ends with `^id` and highlights it for a moment, and
+  `![[Note#^id]]` shows that line (with its sub-items) inside another note.
+  The `^id` stays in the file but never shows in the note, and the link
+  reads just the note's name. Only ids of four or more characters hide, so
+  `x ^2` stays as written. "Copy link to line"
+  in the block menu or ⌘K adds an id only to that line and copies the link.
+
+- Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that
+  list item with its children, that heading's section, or that paragraph,
+  with a breadcrumb to go back up. The note's file doesn't change. The
+  switch is animated: the block slides to the top while the rest fades.
+  Escape or Back steps out, the block menu and ⌘K offer it too, and Find
+  widens the zoom when the match is elsewhere in the note.
+
+- Closing a note while the "changed elsewhere" banner is open no longer
+  throws away what you typed: Kore saves it beside the note as
+  "Name (conflict).md", leaves the note on the other version, and tells you.
+
+- Steadier terminal and chat: accented letters and emoji no longer turn
+  into "��" in the terminal, a big paste no longer freezes the app, Stop
+  works while a chat turn waits for an automation (which now says it is
+  waiting), Stop no longer hangs on a long prompt, opening a note window
+  during a backup no longer freezes the app, and notes written by the CLI
+  or MCP survive a system crash.
+
+- Two quick edits to a note from outside Kore (another device, an agent,
+  iCloud) no longer leave the editor on the older one, so your next keystroke
+  can't write it back over the newer text.
+
+- Settings → Agents: the Automations description no longer collapses into
+  a narrow column next to its buttons. The agent skill for Kore markdown
+  names the `.kore/` folder.
+
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in
   `kore/`. Opening an existing vault moves every old name across once and

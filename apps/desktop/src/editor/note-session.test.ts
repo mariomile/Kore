@@ -1,4 +1,4 @@
-import { parseNote, TaskStaleError, type TaskMarker } from '@reflect/core'
+import { parseNote, TaskStaleError, type TaskMarker } from '@kore/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNoteSession, type NoteSessionSnapshot } from './note-session'
 import { NoteSaveRetryError } from './note-save-retry-error'
@@ -20,6 +20,8 @@ function firstTask(source: string): TaskMarker {
 interface Harness {
   snapshots: NoteSessionSnapshot[]
   writes: Array<{ path: string; contents: string }>
+  /** Conflict copies the session asked the host to save on close. */
+  copies: Array<{ path: string; contents: string }>
   applied: string[]
   contents: Array<{ content: string; origin: string }>
   /** `null` deletes the file: subsequent reads throw the notFound AppError. */
@@ -41,6 +43,7 @@ function harness(options?: {
 }): Harness {
   const snapshots: NoteSessionSnapshot[] = []
   const writes: Array<{ path: string; contents: string }> = []
+  const copies: Array<{ path: string; contents: string }> = []
   const applied: string[] = []
   const contents: Array<{ content: string; origin: string }> = []
   let disk = options?.disk === undefined ? '# Hello\n' : options.disk
@@ -65,6 +68,9 @@ function harness(options?: {
               writes.push({ path, contents })
               disk = contents
             },
+      writeConflictCopy: async (path, contents) => {
+        copies.push({ path, contents })
+      },
     },
     classify: options?.classify ?? (() => 'exact'),
     onSnapshot: (snapshot) => {
@@ -86,6 +92,7 @@ function harness(options?: {
   return {
     snapshots,
     writes,
+    copies,
     applied,
     contents,
     setDisk: (contents) => {
@@ -206,6 +213,39 @@ describe('createNoteSession', () => {
     expect(writes).toEqual([{ path: 'notes/a.md', contents: '# Same on both\n' }])
     expect(snapshots.at(-1)?.conflict).toBeNull()
     expect(snapshots.at(-1)?.dirty).toBe(false)
+  })
+
+  it('closing under a parked conflict saves the buffer as a copy and leaves the note alone', async () => {
+    const { session, writes, copies, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Hello mine\n')
+    setDisk('# Hello theirs\n')
+    session.externalChanged()
+    await settled()
+    session.editorChanged('# Hello mine, more typing\n')
+
+    await session.flushOnClose()
+    session.dispose() // the pane's teardown closes again: no second copy
+    await settled()
+
+    expect(writes).toEqual([])
+    expect(copies).toEqual([{ path: 'notes/a.md', contents: '# Hello mine, more typing\n' }])
+  })
+
+  it('closing with a parked conflict but a buffer equal to theirs copies nothing', async () => {
+    const { session, copies, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Same on both\n')
+    setDisk('# Same on both\n')
+    session.externalChanged()
+    await settled()
+
+    session.dispose()
+    await settled()
+
+    expect(copies).toEqual([])
   })
 
   it('re-gates protection when external content stops being representable', async () => {
@@ -1082,5 +1122,106 @@ describe('editor checkbox repeat spawn', () => {
     await h.session.flush()
     await settled()
     expect(h.writes.at(-1)?.contents).toBe('+ [x] buy milk\n')
+  })
+})
+
+describe('out-of-order disk reads', () => {
+  /**
+   * A session whose reads can be held open: `hold()` makes the next read
+   * snapshot the disk now but settle only when its returned `release` runs.
+   */
+  function gatedHarness() {
+    const file = { content: 'v1\n' }
+    const writes: string[] = []
+    const gates: Array<Promise<void>> = []
+    const session = createNoteSession({
+      path: 'notes/a.md',
+      io: {
+        read: async () => {
+          const snapshot = file.content
+          const gate = gates.shift()
+          if (gate !== undefined) {
+            await gate
+          }
+          return snapshot
+        },
+        write: async (_path, contents) => {
+          writes.push(contents)
+          file.content = contents
+        },
+      },
+      classify: () => 'exact',
+      onSnapshot: () => {},
+      applyContent: () => {},
+      saveDebounceMs: 10,
+    })
+    function hold(): () => void {
+      let release!: () => void
+      gates.push(
+        new Promise<void>((resolve) => {
+          release = resolve
+        }),
+      )
+      return release
+    }
+    return { file, writes, session, hold }
+  }
+
+  it('a slow older read never replaces a newer one, so the next edit keeps v3', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged() // slow read, snapshots v2
+    h.file.content = 'v3\n'
+    h.session.externalChanged() // fast read, adopts v3
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
+
+    releaseV2()
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
+
+    h.session.editorChanged(`${h.session.content()}edit\n`)
+    await settled()
+    expect(h.file.content).toBe('v3\nedit\n')
+  })
+
+  it('a slow older read does not replace a newer parked conflict', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+    h.session.editorChanged('mine\n')
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged()
+    h.file.content = 'v3\n'
+    h.session.externalChanged()
+    await settled()
+    releaseV2()
+    await settled()
+
+    h.session.loadTheirs()
+    expect(h.session.content()).toBe('v3\n')
+    expect(h.writes).toEqual([])
+  })
+
+  it('a reconcile still reading when load() restarts is superseded by the load', async () => {
+    const h = gatedHarness()
+    h.session.load()
+    await settled()
+
+    h.file.content = 'v2\n'
+    const releaseV2 = h.hold()
+    h.session.externalChanged()
+    h.file.content = 'v3\n'
+    h.session.load()
+    await settled()
+    releaseV2()
+    await settled()
+    expect(h.session.content()).toBe('v3\n')
   })
 })

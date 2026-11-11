@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { RouterProvider } from '@/routing/router'
 import { TagPageDescription } from './tag-page-description'
 
@@ -39,7 +39,7 @@ describe('TagPageDescription', () => {
   it('renders the definition note body with an Edit link to it', async () => {
     mockInvoke.mockImplementation(async (command, args) => {
       if (command === 'note_read' && args['path'] === 'tags/book.md') {
-        return '---\nlore: tag\n---\n# Book\n\nA book worth finishing.\n'
+        return '---\nkore: tag\n---\n# Book\n\nA book worth finishing.\n'
       }
       throw { kind: 'notFound', message: 'not found' }
     })

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssetDescriptionRejectedError, describeAsset } from '../ai/describe-asset'
 import type { AiProvidersState } from '../ai/provider-config'
-import { ReflectError } from '../errors'
+import { KoreError } from '../errors'
 import { listDir, readAsset, readNote, writeNote } from '../graph/commands'
 import { assetReferencingNotePaths } from '../indexing/asset-refs'
 import { hashContent } from '../indexing/hash'
@@ -203,7 +203,7 @@ describe('classifyAsset (privacy gate)', () => {
   })
 
   it('fails closed when a referer cannot be read', async () => {
-    readNoteMock.mockRejectedValueOnce(new ReflectError('io', 'disk error'))
+    readNoteMock.mockRejectedValueOnce(new KoreError('io', 'disk error'))
     refs.set('assets/a.png', ['notes/pub.md'])
     expect(await classifyAsset('assets/a.png', GENERATION)).toBe('skip-private')
   })
@@ -397,7 +397,7 @@ describe('reconcileAssetDescriptions', () => {
     assets.set('assets/a.png', 'aGVsbG8=')
     files.set('notes/pub.md', publicNote('assets/a.png'))
     refs.set('assets/a.png', ['notes/pub.md'])
-    describeMock.mockRejectedValueOnce(new ReflectError('network', 'offline'))
+    describeMock.mockRejectedValueOnce(new KoreError('network', 'offline'))
 
     const outcome = await reconcileAssetDescriptions(input())
 

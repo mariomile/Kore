@@ -4,7 +4,7 @@
 //! other lines survive; a file whose changed lines were edited again (or
 //! that is not text) is a conflict.
 //!
-//! A preview only: nothing is written. `@reflect/core` decides whether to
+//! A preview only: nothing is written. `@kore/core` decides whether to
 //! go ahead (all or nothing) and writes the results through its ordinary
 //! note paths, so the index and open editors follow.
 
@@ -164,7 +164,7 @@ fn blob_at(repo: &Repository, tree: Option<&Tree<'_>>, path: &str) -> AppResult<
 
 fn read_disk(root: &Path, path: &str) -> AppResult<Option<Vec<u8>>> {
     if path.split('/').any(|part| part == ".." || part.is_empty()) {
-        return Err(AppError::traversal(format!("{path} leaves the graph")));
+        return Err(AppError::traversal(format!("{path} leaves the vault")));
     }
     match std::fs::read(root.join(path)) {
         Ok(bytes) => Ok(Some(bytes)),

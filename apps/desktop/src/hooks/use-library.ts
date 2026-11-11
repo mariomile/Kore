@@ -5,7 +5,7 @@ import {
   libraryRoots,
   type LibraryDir,
   type LibraryRoot,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 /**

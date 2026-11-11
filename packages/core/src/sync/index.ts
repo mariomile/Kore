@@ -1,5 +1,5 @@
 /**
- * `@reflect/core` sync domain (Plan 12) — GitHub backup & sync over the Rust
+ * `@kore/core` sync domain (Plan 12) — GitHub backup & sync over the Rust
  * git primitives: typed command bindings, the GitHub module (device flow,
  * token refresh, repo API), and the debounced sync engine.
  */
@@ -94,6 +94,23 @@ export {
   type ActivitySitting,
   type SittingNote,
 } from './activity'
+export {
+  gitBlame,
+  lineAuthorKey,
+  lineAuthors,
+  type LineAuthor,
+  type NoteBlame,
+} from './line-authors'
+export {
+  acceptProposal,
+  describeProposal,
+  listProposals,
+  proposalSchema,
+  rejectProposal,
+  type Proposal,
+  type ProposalLine,
+  type ProposalPreview,
+} from './proposals'
 export {
   gitUndoPreview,
   undoSitting,

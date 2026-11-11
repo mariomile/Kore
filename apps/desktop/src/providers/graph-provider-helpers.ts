@@ -1,5 +1,5 @@
 import { homeDir, join } from '@tauri-apps/api/path'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 
 /**
  * On a macOS first run (no recents yet), start the folder picker in iCloud

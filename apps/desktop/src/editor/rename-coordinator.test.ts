@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { upsertFrontmatter } from '@reflect/core'
+import { upsertFrontmatter } from '@kore/core'
 import { onNoteMoved } from '@/lib/note-moves'
 import type { NoteSession } from './note-session'
 import { openSession, registerOpenDocument, retargetOpenDocument } from './open-documents'
@@ -26,8 +26,8 @@ const io = vi.hoisted(() => ({
   slugPathForTitle: vi.fn(),
   moveNoteIndexed: vi.fn(),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   rewriteLinksForTitleChange: io.rewriteLinksForTitleChange,
   getBacklinks: io.getBacklinks,
   getLinkSources: io.getLinkSources,
@@ -112,6 +112,7 @@ function fakeSession(content: string): NoteSession & {
     editorChanged: () => {},
     externalChanged: () => {},
     flush: vi.fn(async () => {}),
+    flushOnClose: async () => {},
     keepMine: () => {},
     isDirty: () => false,
     loadTheirs: () => {},

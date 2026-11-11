@@ -3,14 +3,14 @@ import {
   errorMessage,
   isBasePath,
   isCanvasPath,
-  noteLinkHeading,
+  noteLinkFragment,
   normalizeWikiTarget,
   resolveAttachmentSource,
   resolveExistingWikiTarget,
   resolveOrCreateNoteWithTitle,
   resolveWikiTarget,
   wikiNoteReference,
-} from '@reflect/core'
+} from '@kore/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -67,18 +67,18 @@ export function useWikiLinkNavigation(
 
   return useCallback(
     ({ target, openInSplit }: { target: string; openInSplit: boolean }) => {
-      const heading = noteLinkHeading(target)
+      const fragment = noteLinkFragment(target)
       if (wikiNoteReference(target)?.kind === 'self') {
-        if (heading !== null && sourcePath !== undefined) {
-          revealNoteHeading(sourcePath, heading)
+        if (fragment !== null && sourcePath !== undefined) {
+          revealNoteHeading(sourcePath, fragment)
         }
         return
       }
       const isStale = beginLinkIntent()
       const open = (route: NoteRoute, path?: string): void => {
         navigateNoteLink({ target: route, openInSplit })
-        if (heading !== null && path !== undefined) {
-          revealNoteHeading(path, heading)
+        if (fragment !== null && path !== undefined) {
+          revealNoteHeading(path, fragment)
         }
       }
       // `[[Projects.base]]` opens the base; it must never create a note

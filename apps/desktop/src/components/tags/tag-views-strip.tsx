@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { TagProperty } from '@reflect/core'
+import type { TagProperty } from '@kore/core'
 import { Calendar, Layers, LayoutTemplate, type Icon } from '@/components/icons'
 import { boardGroupablePropertiesOf, calendarPropertyOf } from '@/lib/tags/schema-views'
 import { FIELD_LABEL_CLASS } from './tag-config-drafts'
@@ -54,21 +54,23 @@ export function TagViewsStrip({ properties }: TagViewsStripProps): ReactElement 
     },
   ]
   return (
-    <div className="flex flex-wrap items-center gap-1.5" aria-label="Views this schema unlocks">
+    <div className="flex items-start gap-2" aria-label="Views this schema unlocks">
       <span className={FIELD_LABEL_CLASS}>Views</span>
-      {pills.map(({ label, Glyph, poweredBy, on, hint }) => (
-        <span
-          key={label}
-          className={
-            on
-              ? 'flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-soft-text'
-              : 'flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-text-muted'
-          }
-        >
-          <Glyph aria-hidden className="size-3" />
-          {on ? (poweredBy === null ? label : `${label} · ${poweredBy}`) : `${label} — ${hint}`}
-        </span>
-      ))}
+      <div className="flex min-h-8 flex-1 flex-wrap items-center gap-1.5">
+        {pills.map(({ label, Glyph, poweredBy, on, hint }) => (
+          <span
+            key={label}
+            className={
+              on
+                ? 'flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-soft-text'
+                : 'flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-text-muted'
+            }
+          >
+            <Glyph aria-hidden className="size-3" />
+            {on ? (poweredBy === null ? label : `${label} · ${poweredBy}`) : `${label} — ${hint}`}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

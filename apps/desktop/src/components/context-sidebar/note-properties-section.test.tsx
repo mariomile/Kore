@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import type { CollectionValue, NoteTagEntry } from '@reflect/core'
+import type { CollectionValue, NoteTagEntry } from '@kore/core'
 import { NotePropertiesSection } from './note-properties-section'
 
 const data = vi.hoisted(() => ({
@@ -11,8 +11,8 @@ const data = vi.hoisted(() => ({
 }))
 const commitProperty = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listTagsOnNote: async () => data.tags,
   listTagTypes: async () => [],
   suggestTags: async () => [],
@@ -23,7 +23,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return { useSettings: () => ({ settings: DEFAULT_SETTINGS }) }
 })
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
@@ -99,8 +99,8 @@ describe('NotePropertiesSection', () => {
 
     await expect.element(view.getByText('Author')).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
-    await expect.element(view.getByText('#book')).toBeInTheDocument()
-    await expect.element(view.getByText('#media')).toBeInTheDocument()
+    await expect.element(view.getByText('Book', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Media', { exact: true })).toBeInTheDocument()
     expect(view.container.textContent).not.toContain('Creator')
 
     await view.getByRole('checkbox', { name: 'Read' }).click()

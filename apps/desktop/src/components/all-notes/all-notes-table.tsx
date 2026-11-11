@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type MouseEvent, type ReactElement } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import { DENSITY_ROW_HEIGHT, type NoteListEntry } from '@reflect/core'
+import { DENSITY_ROW_HEIGHT, type NoteListEntry } from '@kore/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'

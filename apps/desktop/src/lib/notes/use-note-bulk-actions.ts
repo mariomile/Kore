@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { appendBodyTag, writeNote } from '@reflect/core'
+import { appendBodyTag, writeNote } from '@kore/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'
@@ -129,7 +129,7 @@ export function useNoteBulkActions(): NoteBulkActions {
     async (paths: readonly string[], folder: string): Promise<BulkOutcome> => {
       const target = folder.replaceAll(/^\/+|\/+$/g, '')
       return await run(
-        `Moving notes to ${target === '' ? 'the graph root' : target}`,
+        `Moving notes to ${target === '' ? 'the vault root' : target}`,
         paths,
         async (path, generation) => {
           if (folderOf(path) === target) {

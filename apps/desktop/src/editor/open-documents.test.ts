@@ -9,7 +9,8 @@ function fakeSession(path: string, log: string[]): NoteSession {
     load: () => {},
     editorChanged: () => {},
     externalChanged: () => {},
-    flush: async () => {
+    flush: async () => {},
+    flushOnClose: async () => {
       log.push(`flush:${path}`)
     },
     keepMine: () => {},
@@ -72,7 +73,7 @@ describe('open documents', () => {
   it('one failing document does not block the others, and nothing rejects', async () => {
     const log: string[] = []
     const failing = fakeSession('notes/bad.md', log)
-    failing.flush = async () => {
+    failing.flushOnClose = async () => {
       throw new Error('disk full')
     }
     const unregisterBad = registerOpenDocument({ session: failing })

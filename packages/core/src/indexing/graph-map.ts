@@ -50,7 +50,12 @@ export async function getGraphMap(): Promise<GraphMap> {
       .groupBy(['sourcePath', 'targetPath'])
       .select((eb) => ['sourcePath', 'targetPath', eb.fn.countAll<number>().as('weight')])
       .execute(),
-    db.selectFrom('tags').select(['notePath', 'tag']).orderBy(['notePath', 'tagKey']).execute(),
+    db
+      .selectFrom('tags')
+      .select(['notePath', 'tag'])
+      .orderBy('notePath')
+      .orderBy('tagKey')
+      .execute(),
   ])
 
   // Edges whose endpoint rows vanished mid-reindex would strand the layout

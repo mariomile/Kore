@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS, VISUAL_THEME_IDS } from '@reflect/core'
+import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS, VISUAL_THEME_IDS } from '@kore/core'
 import {
   THEME_ACCENT_CACHE_KEY,
   THEME_GLASS_LEVEL_CACHE_KEY,

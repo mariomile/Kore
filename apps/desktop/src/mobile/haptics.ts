@@ -1,4 +1,4 @@
-import { impactLight } from '@reflect/core'
+import { impactLight } from '@kore/core'
 import { hapticsEnabled } from '@/lib/haptics-preference'
 
 let bridgeAvailable = true

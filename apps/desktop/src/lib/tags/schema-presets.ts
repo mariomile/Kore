@@ -1,4 +1,4 @@
-import { DEFAULT_VAULT_OBJECTS, type TagProperty } from '@reflect/core'
+import { DEFAULT_VAULT_OBJECTS, type TagProperty } from '@kore/core'
 
 /** One ready-made schema the config dialog can seed an empty tag with. */
 export interface TagSchemaPreset {

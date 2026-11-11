@@ -2,7 +2,7 @@
 //! hosts: a page's HTML for its meta tags, an oEmbed answer, and a JSON or
 //! XML document (a pasted link's saved text). They live here rather than
 //! widening the webview's HTTP-plugin capability to every URL, and the
-//! privacy gate in `@reflect/core` runs before any of them is called.
+//! privacy gate in `@kore/core` runs before any of them is called.
 //!
 //! Which URLs are asked is policy in core; each command only bounds the
 //! transport: scheme, redirects, accepted content type and a byte cap. The

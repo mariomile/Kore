@@ -7,11 +7,11 @@ import {
   gistBodyHash,
   gistFilename,
   parseNote,
-  ReflectError,
+  KoreError,
   splitFrontmatter,
   updateGist,
   type GistFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { setNoteRowOverlay } from '@/hooks/note-row-overlay'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'
@@ -62,17 +62,17 @@ export async function publishNoteToGist(path: string, generation: number): Promi
   // one — and `upsertFrontmatter` rightly refuses to rewrite a header it
   // can't parse. That refusal must come *before* the gist exists, not after.
   if (parsed.frontmatterWarning !== undefined) {
-    throw new ReflectError('parse', 'The note has invalid frontmatter — fix it before publishing')
+    throw new KoreError('parse', 'The note has invalid frontmatter — fix it before publishing')
   }
 
   const body = splitFrontmatter(source).body
   if (body.trim() === '') {
-    throw new ReflectError('io', 'The note is empty — nothing to publish')
+    throw new KoreError('io', 'The note is empty — nothing to publish')
   }
 
   const token = await getGithubToken(providerFetch)
   if (token === null) {
-    throw new ReflectError('auth', 'Connect GitHub in Settings to publish gists')
+    throw new KoreError('auth', 'Connect GitHub in Settings to publish gists')
   }
 
   const filename = gistFilename(parsed.title)
@@ -118,14 +118,14 @@ export async function publishNoteToGist(path: string, generation: number): Promi
  * Delete the note's published GitHub Gist and remove the local `gist`
  * frontmatter block. A missing local block is already unpublished, so this is a
  * no-op. The local record is cleared before the remote delete, so a local write
- * failure cannot leave Reflect pointing at a dead link. If GitHub rejects the
+ * failure cannot leave Kore pointing at a dead link. If GitHub rejects the
  * delete, the local block is restored before the error is surfaced.
  */
 export async function unpublishNoteGist(path: string, generation: number): Promise<void> {
   const source = await readNoteSource(path)
   const parsed = parseNote({ path, source })
   if (parsed.frontmatterWarning !== undefined) {
-    throw new ReflectError('parse', 'The note has invalid frontmatter — fix it before unpublishing')
+    throw new KoreError('parse', 'The note has invalid frontmatter — fix it before unpublishing')
   }
 
   const previous = parsed.frontmatter.gist
@@ -135,7 +135,7 @@ export async function unpublishNoteGist(path: string, generation: number): Promi
 
   const token = await getGithubToken(providerFetch)
   if (token === null) {
-    throw new ReflectError('auth', 'Connect GitHub in Settings to unpublish gists')
+    throw new KoreError('auth', 'Connect GitHub in Settings to unpublish gists')
   }
 
   await commitNoteFrontmatter(path, { gist: false }, generation)

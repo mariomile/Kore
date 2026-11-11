@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { isHttpBaseUrl, normalizeOpenAICompatibleBaseUrl } from '../ai/openai-compatible'
 
 /**
- * The AI providers Reflect can call directly (BYOK — the user's own keys, no
- * Reflect-hosted proxy). `openai-compatible` stores its user-supplied base URL
+ * The AI providers Kore can call directly (BYOK — the user's own keys, no
+ * Kore-hosted proxy). `openai-compatible` stores its user-supplied base URL
  * per configured entry.
  */
 export const aiProviderIdSchema = z.enum([
@@ -162,7 +162,7 @@ export function normalizeChatSystemPrompt(value: string): string {
 
 /**
  * Additional instructions the user wants included in every AI chat system
- * prompt. Reflect's built-in grounding and privacy rules remain in place;
+ * prompt. Kore's built-in grounding and privacy rules remain in place;
  * this text is appended after them so users can configure tone, format, and
  * other assistant behavior. Empty (the default) adds nothing. Oversized
  * hand-edited values are truncated so the prompt cannot consume the model's
@@ -253,7 +253,7 @@ export const aiPromptsSchema = z
 /**
  * Whether audio-memo transcripts receive a best-effort AI formatting pass
  * before they are written as Markdown. On by default, matching the original
- * Reflect preference. Turning it off keeps the transcription provider's raw
+ * Kore preference. Turning it off keeps the transcription provider's raw
  * body; transcript-derived title generation remains enabled.
  */
 export const transcriptionFormatSchema = z.boolean().catch(true)

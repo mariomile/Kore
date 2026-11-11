@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CaptureWireMessage } from '@reflect/core/capture-envelope'
+import type { CaptureWireMessage } from '@kore/core/capture-envelope'
 import { enqueueCapture, flushQueue, readQueue } from './flush'
 import { sendToHost, type SendOutcome } from './native'
 

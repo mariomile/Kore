@@ -10,7 +10,7 @@ import {
   type AppPlatform,
   type MobileStorageInfo,
   type MobileStorageKind,
-} from '@reflect/core'
+} from '@kore/core'
 import { takeWarmMobileStorage } from '@/lib/mobile-boot-warm'
 import { SETTINGS_QUERY_KEY, useSettings } from '@/providers/settings-provider'
 
@@ -299,7 +299,7 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
         throw new Error(
           kind === 'icloud'
             ? 'iCloud Drive isn’t available on this device.'
-            : 'No graph folder available.',
+            : 'No vault folder available.',
         )
       }
       const shouldCreateIcloudRoot =

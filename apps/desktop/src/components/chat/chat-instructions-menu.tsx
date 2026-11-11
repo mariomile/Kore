@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { CHAT_SYSTEM_PROMPT_MAX_LENGTH } from '@reflect/core'
+import { CHAT_SYSTEM_PROMPT_MAX_LENGTH } from '@kore/core'
 import { Sliders } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -69,7 +69,7 @@ export function ChatInstructionsMenu(): ReactElement {
           className="mt-2 text-sm"
         />
         <p className="mt-2 text-xs text-text-muted">
-          Sent with every chat, in this graph and the next. Same setting as Settings → AI chat.
+          Sent with every chat, in this vault and the next. Same setting as Settings → AI chat.
         </p>
         <p className="mt-4 text-sm font-medium text-text">This conversation</p>
         <Textarea

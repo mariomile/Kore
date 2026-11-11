@@ -17,10 +17,10 @@ export function AppBootScreen(): ReactElement {
   return (
     <div
       role="status"
-      aria-label="Opening your graph"
+      aria-label="Opening your vault"
       className="flex h-screen w-screen items-center justify-center bg-surface-app"
     >
-      <span aria-hidden className="reflect-boot-mark">
+      <span aria-hidden className="kore-boot-mark">
         <img src={KORE_MARK} alt="" className="h-24 w-auto invert dark:invert-0" />
       </span>
     </div>

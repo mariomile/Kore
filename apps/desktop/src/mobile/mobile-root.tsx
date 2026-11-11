@@ -1,5 +1,5 @@
 import { useLayoutEffect, type ReactElement } from 'react'
-import { setLocalWriteEcho, type AppPlatform } from '@reflect/core'
+import { setLocalWriteEcho, type AppPlatform } from '@kore/core'
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { setPlatformSurface } from '@/lib/platform-surface'

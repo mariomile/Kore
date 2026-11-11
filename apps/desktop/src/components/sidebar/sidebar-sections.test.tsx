@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS } from '@reflect/core'
+import { DEFAULT_SETTINGS } from '@kore/core'
 import { INVALIDATE_THROTTLE_MS } from '@/lib/query-client'
 import { SidebarSections } from './sidebar-sections'
 

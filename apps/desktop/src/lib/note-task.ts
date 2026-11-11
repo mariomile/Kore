@@ -13,7 +13,7 @@ import {
   toggleTaskMarker,
   writeNote,
   type TaskMarker,
-} from '@reflect/core'
+} from '@kore/core'
 import type { NoteSession } from '@/editor/note-session'
 import { openSession } from '@/editor/open-documents'
 import { todayIso } from '@/lib/dates'
@@ -64,7 +64,7 @@ export class NoteBusyError extends Error {
  */
 const writeChains = new Map<string, Promise<unknown>>()
 
-function serializeByPath<T>(path: string, op: () => Promise<T>): Promise<T> {
+export function serializeByPath<T>(path: string, op: () => Promise<T>): Promise<T> {
   const previous = writeChains.get(path) ?? Promise.resolve()
   // Run `op` whether the previous write resolved or rejected — one failure must
   // not wedge the chain for the note.

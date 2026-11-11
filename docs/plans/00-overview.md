@@ -21,7 +21,7 @@ The source tree now implements Plans 01–12 and 14–17, with Plan 16 at its V1
 longer deferred: the repo contains the WXT extension (`apps/extension`), the native
 messaging sidecar (`apps/native-host`), desktop capture commands
 (`apps/desktop/src-tauri/src/capture.rs`), and the TS drain/enrichment path in
-`@reflect/core`.
+`@kore/core`.
 
 Plan 13 is **closed by product decision**: the graph folder itself is the portability
 surface, so no dedicated import/export suite is planned. Reflect V1 exports now use a
@@ -40,11 +40,11 @@ wave, per the plan's revision note.
 
 Read these alongside the source docs they implement:
 
-- [V2 Product Vision](../reflect-v2-product-vision.md)
-- [V2 Indexing Strategy](../reflect-v2-indexing-strategy.md)
-- [V2 Sync Strategy](../reflect-v2-sync-strategy.md)
-- [V2 Grounding Brief](../reflect-v2-grounding-brief.md)
-- [V1 Overview](../reflect-v1-overview.md)
+- [V2 Product Vision](../upstream-v2-product-vision.md)
+- [V2 Indexing Strategy](../upstream-v2-indexing-strategy.md)
+- [V2 Sync Strategy](../upstream-v2-sync-strategy.md)
+- [V2 Grounding Brief](../upstream-v2-grounding-brief.md)
+- [V1 Overview](../upstream-v1-overview.md)
 - Repo conventions: [AGENTS.md](../../AGENTS.md)
 
 ## How to read this set

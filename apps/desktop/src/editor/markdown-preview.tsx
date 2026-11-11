@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
-import { separateCalloutTitles } from '@reflect/core'
+import { separateCalloutTitles, withoutBlockIds } from '@kore/core'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
+import { resolveWikilink } from '@/editor/resolve-wikilink'
 
 /**
  * A read-only rendering of note markdown via @meowdown/react's `<MarkdownView>`
@@ -83,7 +84,8 @@ export function MarkdownPreview({
     [],
   )
 
-  const markdown = useMemo(() => separateCalloutTitles(content), [content])
+  // `^id` markers are Obsidian anchors, never text a reader sees (Plan 33 C3).
+  const markdown = useMemo(() => separateCalloutTitles(withoutBlockIds(content)), [content])
   const hostRef = useRef<HTMLDivElement>(null)
   // A passive preview can't be clicked open, so it shows folded callouts open.
   useCalloutDom(hostRef, interactive)
@@ -120,9 +122,10 @@ export function MarkdownPreview({
           resolveXPost={NO_POST_EMBEDS.resolveXPost}
           resolveYouTubeVideo={NO_POST_EMBEDS.resolveYouTubeVideo}
           resolveWikiEmbed={resolveWikiEmbed}
+          resolveWikilink={resolveWikilink}
           {...(interactive ? { onLinkClick: openExternalLink } : {})}
           {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-          className={cn('reflect-editor', className)}
+          className={cn('kore-editor', className)}
         />
       </div>
     </PaneErrorBoundary>

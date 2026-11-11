@@ -25,6 +25,7 @@ export {
   getOpenTasks,
   getOpenTasksForNote,
   getProjectNotePaths,
+  getTaskProjectLinks,
   type NoteTaskRef,
   type OpenTask,
 } from './queries-tasks'
@@ -40,7 +41,7 @@ export {
 
 /**
  * Index read getters (Plan 04). Queries are built with Kysely and execute over
- * the IPC bridge (`@reflect/db`). Rows are our own projection — trusted, not
+ * the IPC bridge (`@kore/db`). Rows are our own projection — trusted, not
  * re-validated per row (see Plan 04 §2).
  */
 

@@ -4,13 +4,21 @@ import {
   collectResourceLink,
   errorMessage,
   parseFrontmatter,
+  pasteCollects,
+  resourceFileKind,
   saveLinkText,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { appendResourceSource } from '@/lib/resource-sources'
+import { useSettings } from '@/providers/settings-provider'
 
-/** Collect resources using the issuing editor's live privacy header and graph generation. */
+/**
+ * Collect resources using the issuing editor's live privacy header and graph
+ * generation. Each kind is filed only when its Settings › Notes › Pasted links
+ * & files switch is on; otherwise a paste is just a paste (the file still
+ * uploads, the link still lands in the note, no card is made).
+ */
 export function useResourceCollection(
   generation: number | null,
   path: string,
@@ -25,12 +33,28 @@ export function useResourceCollection(
   }, [generation, path])
   const frontmatter = parseFrontmatter(splitFrontmatter(header).raw)
   const isPrivate = frontmatter.warning !== undefined || frontmatter.data.private === true
+  const { settings } = useSettings()
+  const collectLinks = settings.pasteCollectLinks
+  const saveText = settings.pasteSaveLinkText
+  const collectImages = settings.pasteCollectImages
+  const collectPdfs = settings.pasteCollectPdfs
+  const collectFiles = settings.pasteCollectFiles
   const collectFile = useCallback(
     async (file: File): Promise<string | null> => {
       if (generation === null) return null
       const epoch = sessionEpoch.current
       const isStale = (): boolean => sessionEpoch.current !== epoch
       let uploaded: string | null = null
+      const kinds = {
+        pasteCollectLinks: collectLinks,
+        pasteCollectImages: collectImages,
+        pasteCollectPdfs: collectPdfs,
+        pasteCollectFiles: collectFiles,
+      }
+      if (!pasteCollects(kinds, resourceFileKind(file))) {
+        if (isStale()) return null
+        return await saveFile(file)
+      }
       try {
         const target = await collectResourceFile(
           file,
@@ -55,11 +79,11 @@ export function useResourceCollection(
         return uploaded
       }
     },
-    [generation, path, isPrivate, saveFile],
+    [generation, path, isPrivate, saveFile, collectLinks, collectImages, collectPdfs, collectFiles],
   )
   const saveUrl = useCallback(
     (url: string): void => {
-      if (generation === null) return
+      if (generation === null || !collectLinks) return
       const epoch = sessionEpoch.current
       const isStale = (): boolean => sessionEpoch.current !== epoch
       void collectResourceLink(url, new URL(url).hostname, {
@@ -70,14 +94,14 @@ export function useResourceCollection(
           appendResourceSource(cardPath, sourceLink, forGeneration, isStale),
       })
         .then(async (cardPath) => {
-          // Keeping the page's words is an outbound fetch: never for a private note.
-          if (!isPrivate) await saveLinkText(cardPath, generation)
+          // Core never fetches for a private card (a private note's cards are private).
+          if (saveText) await saveLinkText(cardPath, generation)
         })
         .catch((cause) => {
           if (!isStale()) startOperation('Collecting link').fail(errorMessage(cause))
         })
     },
-    [generation, path, isPrivate],
+    [generation, path, isPrivate, collectLinks, saveText],
   )
   return { saveFile: collectFile, saveUrl }
 }

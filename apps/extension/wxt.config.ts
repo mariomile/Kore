@@ -27,8 +27,8 @@ const isStoreBuild = process.env['WXT_STORE_BUILD'] === 'true'
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: () => ({ plugins: [tailwindcss()] }),
-  // A stable, human-readable store artifact: `reflect-capture-<version>-chrome.zip`.
-  zip: { name: 'reflect-capture' },
+  // A stable, human-readable store artifact: `kore-capture-<version>-chrome.zip`.
+  zip: { name: 'kore-capture' },
   manifest: {
     name: 'Kore Capture',
     description: 'Save the page you are reading into Kore.',

@@ -88,7 +88,7 @@ provisioned:
 
 Everything below the platform calls — the resolution ladder, the shadow
 merge-base store, the conflict sweep — is plain Rust with unit tests
-(`cargo test -p reflect-open --lib -- conflict icloud`) and runs identically
+(`cargo test -p kore-open --lib -- conflict icloud`) and runs identically
 in CI. What *needs a real container* (and the two-device manual matrix in
 the plan doc) is the `NSMetadataQuery` watch, `NSFileVersion` conflict
 delivery, and download/eviction behavior.

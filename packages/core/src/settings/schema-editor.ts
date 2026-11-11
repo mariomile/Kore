@@ -75,6 +75,14 @@ export const EDITOR_TEXT_SIZE_IDS = editorTextSizeEnum.options
 export const editorFullWidthSchema = z.boolean().catch(false)
 
 /**
+ * Whether the editor shades each line by who last changed it (Plan 33, A3):
+ * you, the always-on host, or a named agent, read from the vault's backup
+ * history. Off by default; display-only, it never touches the stored
+ * Markdown.
+ */
+export const editorLineAuthorsSchema = z.boolean().catch(false)
+
+/**
  * The typeface family the note editor renders prose in. `sans` (the default)
  * is the app's Inter stack; `serif` swaps to a book-style serif stack,
  * `system` to the OS UI font, and `mono` to the app's monospace stack.
@@ -190,12 +198,12 @@ export const sidebarSectionsSchema = z
 
 /**
  * The workspace sidebar's primary navigation rows (Daily notes, New note, All
- * notes, Tasks, Graph), in the order the user dragged them into. Same closed-
- * set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
+ * notes, Tasks, Graph, and Memory, shown only in a cyber-brain vault), in the
+ * order the user dragged them into. Same closed-set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
  * key only records their arrangement. The terminal is not a row: it opens as
  * a tab from the tab strip's "+" menu.
  */
-const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph'])
+const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'])
 
 export type SidebarNavItem = z.infer<typeof sidebarNavEnum>
 

@@ -51,7 +51,9 @@ export type ActivityAuthor =
 const HOST_AUTHOR = 'Kore host'
 
 /** Name a commit's author: the agent trailer wins, then the host, else the owner. */
-export function activityAuthor(commit: ActivityCommit): ActivityAuthor {
+export function activityAuthor(
+  commit: Pick<ActivityCommit, 'authorName' | 'trailers'>,
+): ActivityAuthor {
   const agent = commit.trailers.find((trailer) => trailer.key === AGENT_TRAILER)?.value.trim()
   if (agent !== undefined && agent.length > 0) {
     return { kind: 'agent', name: agent }
@@ -100,7 +102,22 @@ export function groupSittings(
   commits: readonly ActivityCommit[],
   gapMs: number = SITTING_GAP_MS,
 ): ActivitySitting[] {
-  return runsOf(commits, gapMs).map(toSitting)
+  return runsOf(commits.flatMap(withoutRuntimeFiles), gapMs).map(toSitting)
+}
+
+/**
+ * The part of `.kore/` that git carries (agents' proposals, Plan 33 A2) is
+ * Kore's own bookkeeping, not a note anyone changed: a commit keeps only its
+ * other files, and one with nothing else leaves the log.
+ */
+const RUNTIME_DIR = '.kore/'
+
+function withoutRuntimeFiles(commit: ActivityCommit): ActivityCommit[] {
+  const files = commit.files.filter((file) => !file.path.startsWith(RUNTIME_DIR))
+  if (files.length === commit.files.length) {
+    return [commit]
+  }
+  return files.length === 0 ? [] : [{ ...commit, files }]
 }
 
 /** Split the log into runs: same author, each commit within `gapMs` of the next. */

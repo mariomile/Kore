@@ -7,7 +7,7 @@ import {
   resolveConflictMarkers,
   writeNote,
   type ConflictResolution,
-} from '@reflect/core'
+} from '@kore/core'
 import { invalidateIndexQueries } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 

@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
@@ -121,11 +121,11 @@ function ConnectorSheet({
               <Switch checked={importHistory} onCheckedChange={setImportHistory} />
             </label>
             <p className="text-sm text-text-muted">
-              Leave off if another app already wrote them into this graph.
+              Leave off if another app already wrote them into this vault.
             </p>
             <div className="flex justify-between gap-2">
               <Button type="button" variant="ghost" onClick={() => openUrlSync(connector.tokenUrl)}>
-                Get {connector.tokenLabel.toLowerCase()}
+                Get {connector.tokenNoun}
               </Button>
               <Button type="submit" disabled={busy || token.trim() === ''}>
                 {busy ? 'Checking…' : 'Connect'}

@@ -1,4 +1,4 @@
-# @reflect/db
+# @kore/db
 
 The Kysely schema and dialect for Reflect's local SQLite index.
 
@@ -24,15 +24,15 @@ Two properties are load-bearing:
 
 Timestamps surface as **epoch-millisecond numbers** (SQLite has no date type);
 booleans as **`0 | 1` integers** — readers map them to real booleans at the
-getter layer (see `NoteRow.isPrivate` in `@reflect/core`).
+getter layer (see `NoteRow.isPrivate` in `@kore/core`).
 
 ## Schema generation
 
 `Database` types are generated from the Rust migrations:
 
 ```bash
-pnpm --filter @reflect/db db:codegen   # rebuilds src/schema.gen.ts
+pnpm --filter @kore/db db:codegen   # rebuilds src/schema.gen.ts
 ```
 
 Never hand-edit `schema.gen.ts`; add a migration in
-`apps/desktop/src-tauri/migrations/` and regenerate.
+`crates/index-schema/migrations/` and regenerate.

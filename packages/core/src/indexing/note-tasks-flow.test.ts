@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { countOpenTasksForNotes, getOpenTasksForNote } from './queries-tasks'
+import { countOpenTasksForNotes, getOpenTasksForNote, getTaskProjectLinks } from './queries-tasks'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
 
 /**
@@ -147,5 +147,34 @@ describe('the SQL line bound', () => {
     await expect(countOpenTasksForNotes(['notes/casa-nuova.md'])).resolves.toEqual({
       'notes/casa-nuova.md': 1,
     })
+  })
+})
+
+describe('getTaskProjectLinks', () => {
+  it('lists the links written on task lines, in line order, without due dates or prose', async () => {
+    applyProjection(database, project('notes/casa-nuova.md', PROJECT_SOURCE, 1))
+    applyProjection(database, project('notes/geometra.md', '# Geometra\n', 2))
+    applyProjection(
+      database,
+      project(
+        'daily/2026-08-30.md',
+        [
+          '+ [ ] chiama [[Geometra]] per [[Casa Nuova]] [[2026-09-01]]',
+          '+ [x] fatto [[Casa Nuova]]',
+          'Prose that mentions [[Casa Nuova]] outside any task.',
+        ].join('\n'),
+        3,
+      ),
+    )
+
+    const links = await getTaskProjectLinks()
+
+    expect(links.map((link) => [link.markerOffset, link.targetPath])).toEqual([
+      [links[0]!.markerOffset, 'notes/geometra.md'],
+      [links[0]!.markerOffset, 'notes/casa-nuova.md'],
+      [links[2]!.markerOffset, 'notes/casa-nuova.md'],
+    ])
+    expect(links[2]!.markerOffset).toBeGreaterThan(links[0]!.markerOffset)
+    expect(new Set(links.map((link) => link.notePath))).toEqual(new Set(['daily/2026-08-30.md']))
   })
 })

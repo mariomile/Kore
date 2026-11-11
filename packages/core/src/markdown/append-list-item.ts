@@ -100,7 +100,7 @@ export function listItemBlock(content: string): string {
 
 /**
  * How an appended line renders as a list item: a plain bullet, the square
- * GFM checkbox, or Reflect's round `+ [ ]` task — the only marker the Tasks
+ * GFM checkbox, or Kore's round `+ [ ]` task — the only marker the Tasks
  * projection reads.
  */
 export type ListItemKind = 'bullet' | 'checkbox' | 'task'

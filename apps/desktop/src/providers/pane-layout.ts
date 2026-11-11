@@ -1,4 +1,4 @@
-import type { OpenColumn, OpenPane, OpenTab } from '@reflect/core'
+import type { OpenColumn, OpenPane, OpenTab } from '@kore/core'
 import { routeForOpenTab, tabKey, tabsEqual } from '@/providers/open-tab'
 import type { Route } from '@/routing/route'
 

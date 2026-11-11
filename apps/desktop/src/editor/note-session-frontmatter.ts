@@ -1,14 +1,15 @@
 import {
   RESERVED_FRONTMATTER_KEYS,
-  TAG_TYPE_MARKER,
+  TAG_DEFINITION_MARKER,
+  TAG_EXTENDS_KEY,
   type GistFrontmatter,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 
 export interface FrontmatterPatch {
   /**
    * The durable note identity (Plan 17's ULID). Only ever *minted* — written
-   * once for a note that predates ids or was created outside Reflect (the
+   * once for a note that predates ids or was created outside Kore (the
    * deep-link copy path) — never changed or removed: links and the index key
    * on it.
    */
@@ -48,7 +49,8 @@ export interface FrontmatterPatch {
    */
   properties?: Record<string, unknown>
   /**
-   * A tag definition's schema write (TDR 0005): sets the `lore: tag` marker
+   * A tag definition's schema write (TDR 0005): sets the `kore: tag` marker
+   * (dropping the older `lore: tag`)
    * and replaces the `properties` list whole. A typed field, not part of the
    * `properties` bag above — the reserved-key guard keeps *value* writes away
    * from these keys, while this write is deliberately about them. Routing it
@@ -63,10 +65,21 @@ export interface FrontmatterPatch {
    */
   tagTemplate?: string | null
   /**
-   * The tag's emoji (`icon:` on the definition, the note-icon key). `null`
-   * deletes the key; omitted leaves whatever is there.
+   * The note's icon (`icon:`: an emoji, `icon:<name>`, or an image), which
+   * is also a tag definition's icon. `null` deletes the key; omitted leaves
+   * whatever is there.
    */
-  tagIcon?: string | null
+  icon?: string | null
+  /**
+   * The note's cover image (`cover:`: a vault-relative image path or an
+   * https link). `null` deletes the key; omitted leaves whatever is there.
+   */
+  cover?: string | null
+  /**
+   * The tags this one builds on (`extends:` on the definition, Plan 33 B2),
+   * folded keys. An empty list deletes the key; omitted leaves it alone.
+   */
+  tagExtends?: readonly string[]
 }
 
 /**
@@ -86,7 +99,7 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
     }
   }
   if (patch.tagSchema !== undefined) {
-    yaml['lore'] = TAG_TYPE_MARKER
+    Object.assign(yaml, TAG_DEFINITION_MARKER)
     // Spelled out key-by-key so the YAML block's shape (and key order) is
     // this module's contract, not whatever object the caller happened to hold.
     yaml['properties'] = patch.tagSchema.map((property) => ({
@@ -98,13 +111,20 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
       ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
       ...(property.reverse === undefined ? {} : { reverse: property.reverse }),
       ...(property.formula === undefined ? {} : { formula: property.formula }),
+      ...(property.default === undefined ? {} : { default: property.default }),
     }))
   }
   if (patch.tagTemplate !== undefined) {
     yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
   }
-  if (patch.tagIcon !== undefined) {
-    yaml['icon'] = patch.tagIcon === null ? undefined : patch.tagIcon
+  if (patch.icon !== undefined) {
+    yaml['icon'] = patch.icon === null ? undefined : patch.icon
+  }
+  if (patch.cover !== undefined) {
+    yaml['cover'] = patch.cover === null ? undefined : patch.cover
+  }
+  if (patch.tagExtends !== undefined) {
+    yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

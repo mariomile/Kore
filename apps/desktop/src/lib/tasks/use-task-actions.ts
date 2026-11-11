@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import {
   addTask,
   convertTaskToBullet,
@@ -122,7 +122,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async (tasks: OpenTask[]) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       for (const task of tasks) {
         await toggleTask(task, generation)
@@ -152,7 +152,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async (tasks: OpenTask[]) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       for (const task of tasks) {
         await toggleTask(task, generation) // [x] → [ ]
@@ -176,7 +176,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async (tasks: OpenTask[]) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       for (const task of tasks) {
         await deleteTask(task, generation)
@@ -209,7 +209,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: ({ task, content }: { task: OpenTask; content: string }) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       return editTask(task, content, generation)
     },
@@ -230,7 +230,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async ({ tasks, isoDate }: { tasks: OpenTask[]; isoDate: string | null }) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       // Sequential, like the other batch writes — tasks can share a note, and the
       // core edit relocates by `raw`, so a same-note batch tolerates offset drift.
@@ -257,7 +257,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async (tasks: OpenTask[]) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       // Sequential, like the other batch writes — tasks can share a note, and the
       // core edit relocates by `raw`, so a same-note batch tolerates offset drift.
@@ -293,7 +293,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async ({ task, content }: { task: OpenTask; content: string }) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       // Edit, then strip the marker off the *rewritten* line — sequential, and the
       // convert is given the post-edit `raw` so it locates the line the edit just
@@ -320,7 +320,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: (target: InsertTaskTarget) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       return insertTask(target.notePath, generation)
     },
@@ -331,7 +331,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: ({ notePath, content }: { notePath: string; content: string }) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       return addTask(notePath, content, generation)
     },
@@ -342,7 +342,7 @@ export function useTaskActions(): TaskActions {
     mutationFn: async ({ task, content }: { task: OpenTask; content: string }) => {
       const generation = graph?.generation
       if (generation === undefined) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       // Edit, then toggle the *rewritten* line — sequential, and the toggle is
       // given the post-edit `raw` so it locates the line the edit just wrote

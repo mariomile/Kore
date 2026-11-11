@@ -16,7 +16,7 @@ for `pnpm release:ios testflight`.
 
 1. **An App Store Connect app for `app.kore.ios`.** The iOS template already
    sets `PRODUCT_BUNDLE_IDENTIFIER` to `app.kore.ios` and `DEVELOPMENT_TEAM`
-   to `789ULN5MZB`. This is intentionally separate from the old Capacitor mobile
+   to `ZQG9377GFQ` (Mario's team). This is intentionally separate from the old Capacitor mobile
    app (`app.reflect.ReflectMobile`), so TestFlight uploads from this repo do not
    replace the existing mobile app record. The release helper verifies the IPA
    bundle identifier before upload.
@@ -66,7 +66,7 @@ for `pnpm release:ios testflight`.
    workflow requires both before building. The DSN initializes the WebView SDK; the iOS
    native SDK embeds its DSN as a constant in `NativeDiagnostics.swift`. The token must
    be allowed to upload JavaScript source maps and native debug files to the
-   `reflect-open` project; it must never use the `VITE_` prefix or enter the app bundle.
+   `kore-open` project; it must never use the `VITE_` prefix or enter the app bundle.
 
 5. **A monotonically increasing build number.** TestFlight rejects duplicate
    `CFBundleVersion` values for the same marketing version. The GitHub Action
@@ -177,7 +177,7 @@ workflow.
 
   ```bash
   cd apps/desktop/src-tauri/gen/apple
-  xcodebuild -project reflect-open.xcodeproj -target <NewExtension> \
+  xcodebuild -project kore-open.xcodeproj -target <NewExtension> \
     -sdk iphoneos -configuration release -allowProvisioningUpdates build
   ```
 

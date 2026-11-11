@@ -8,7 +8,7 @@ import {
   isHttpBaseUrl,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -142,7 +142,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
         <DialogHeader>
           <DialogTitle>Add AI provider</DialogTitle>
           <DialogDescription>
-            Keys are stored in your OS keychain, never in your graph.
+            Keys are stored in your OS keychain, never in your vault.
           </DialogDescription>
         </DialogHeader>
         <form

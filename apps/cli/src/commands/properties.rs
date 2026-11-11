@@ -4,7 +4,7 @@
 //! when one is open. File-only otherwise, like `show`. A private note is
 //! refused (exit 3): property values are frontmatter content.
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::commands::output::{print_json, PropertiesJson};
 use crate::commands::{open_index_for_resolution, resolve_existing};

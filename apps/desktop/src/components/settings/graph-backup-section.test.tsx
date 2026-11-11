@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
-import { agentRoutinesSchema, type Settings } from '@reflect/core'
+import { agentRoutinesSchema, type Settings } from '@kore/core'
 
 const effects = vi.hoisted(() => ({
   exportBackup: vi.fn(async () => {}),
@@ -12,8 +12,8 @@ const effects = vi.hoisted(() => ({
   update: vi.fn<(patch: Partial<Settings>) => void>(),
   flush: vi.fn(async () => {}),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   exportGraphBackup: effects.exportBackup,
   restoreGraphBackup: effects.restoreBackup,
 }))
@@ -41,7 +41,7 @@ vi.mock('@/providers/settings-provider', () => ({
 }))
 
 const { GraphBackupSection } = await import('./graph-backup-section')
-const { exportGraphBackup, restoreGraphBackup } = await import('@reflect/core')
+const { exportGraphBackup, restoreGraphBackup } = await import('@kore/core')
 afterEach(async () => {
   await cleanup()
   vi.clearAllMocks()
@@ -64,13 +64,13 @@ describe('GraphBackupSection', () => {
     effects.open.mockResolvedValueOnce('/backups/work.zip').mockResolvedValueOnce('/restored')
     effects.restoreBackup.mockResolvedValueOnce({ root: '/restored/new', automations })
     await render(<GraphBackupSection />)
-    await page.getByRole('button', { name: 'Export graph backup…' }).click()
+    await page.getByRole('button', { name: 'Export backup…' }).click()
     await expect.poll(() => effects.exportBackup.mock.calls.length).toBe(1)
     expect(exportGraphBackup).toHaveBeenCalledWith('/backups/work.zip', 7, [])
     expect(effects.flush.mock.invocationCallOrder[0]).toBeLessThan(
       effects.exportBackup.mock.invocationCallOrder[0] ?? 0,
     )
-    await page.getByRole('button', { name: 'Restore graph backup…' }).click()
+    await page.getByRole('button', { name: 'Restore backup…' }).click()
     await expect.poll(() => effects.openRecent.mock.calls.length).toBe(1)
     expect(restoreGraphBackup).toHaveBeenCalledWith('/backups/work.zip', '/restored')
     expect(effects.update).toHaveBeenCalledWith({
@@ -84,7 +84,7 @@ describe('GraphBackupSection', () => {
   it('shows export failures in the settings surface', async () => {
     effects.exportBackup.mockRejectedValueOnce(new Error('Disk full'))
     await render(<GraphBackupSection />)
-    await page.getByRole('button', { name: 'Export graph backup…' }).click()
+    await page.getByRole('button', { name: 'Export backup…' }).click()
     await expect.element(page.getByRole('alert')).toHaveTextContent('Disk full')
   })
 })

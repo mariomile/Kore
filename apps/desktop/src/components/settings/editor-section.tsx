@@ -4,7 +4,7 @@ import type {
   EditorLineSpacing,
   EditorMarkdownSyntax,
   EditorTextSize,
-} from '@reflect/core'
+} from '@kore/core'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
@@ -284,6 +284,13 @@ export function EditorSection(): ReactElement {
         description="Stretch note text across the window with a small edge margin."
         checked={settings.editorFullWidth}
         onCheckedChange={(checked) => updateSettings({ editorFullWidth: checked })}
+      />
+
+      <SettingsSwitchField
+        legend="Show who wrote each line"
+        description="Shade the lines an agent or the Kore host last changed, from the vault's backup history."
+        checked={settings.editorLineAuthors}
+        onCheckedChange={(checked) => updateSettings({ editorLineAuthors: checked })}
       />
 
       <SettingsSwitchField

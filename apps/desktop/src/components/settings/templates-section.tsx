@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { errorMessage, listTemplates, type TemplateEntry } from '@reflect/core'
+import { errorMessage, listTemplates, type TemplateEntry } from '@kore/core'
 import { Pencil, Plus, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,7 +45,7 @@ export function TemplatesSection(): ReactElement {
     <SettingsSection id="templates">
       <SettingsField
         legend="Note templates"
-        description="Markdown files in your graph's templates/ folder, inserted from the ⌘K palette."
+        description="Markdown files in your vault's templates/ folder, inserted from the ⌘K palette."
       >
         {templates !== undefined && templates.length > 0 ? (
           <ul className="mt-3 divide-y divide-border rounded-md border border-border">

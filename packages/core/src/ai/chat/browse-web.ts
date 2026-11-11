@@ -10,7 +10,7 @@ import { errorMessage } from '../../errors'
  * only knows how to open and extract one page.
  *
  * Browsing is local: the shell's webview fetches the page directly, nothing
- * proxies through Reflect infrastructure. A visible Browser pane shares its
+ * proxies through Kore infrastructure. A visible Browser pane shares its
  * webview session with these tools, so the user can watch an active browse.
  * Without a visible pane, the shell releases the background page after
  * extracting it. Page text is untrusted input; the system prompt tells the

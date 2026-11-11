@@ -94,6 +94,11 @@ export {
   type SetTagSchemaOutput,
 } from '../ai/chat/tools'
 export {
+  MEMORY_TOOL_NAMES,
+  type MemoryToolName,
+  type MemoryWriteOutput,
+} from '../ai/chat/memory-tools'
+export {
   MAX_NOTE_CONTENT_CHARS,
   MAX_READ_NOTES,
   type ReadNoteResult,
@@ -327,6 +332,7 @@ export {
   CHAT_ATTACHMENT_ACCEPT,
   chatAttachmentMediaType,
   isImageMediaType,
+  isPortableImageType,
   MAX_ATTACHMENT_BYTES,
 } from '../ai/chat/attachment-types'
 export {

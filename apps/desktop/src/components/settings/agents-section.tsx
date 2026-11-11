@@ -7,8 +7,9 @@ import {
   agentSkillUninstall,
   errorMessage,
   type AgentSkillsStatus,
-} from '@reflect/core'
+} from '@kore/core'
 import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
+import { AgentsMemoryKitField } from '@/components/settings/agents-memory-kit-field'
 import { AgentsRemoteAccessField } from '@/components/settings/agents-remote-access-field'
 import { SettingsField } from '@/components/settings/field'
 import { SettingsSection } from '@/components/settings/section'
@@ -130,6 +131,7 @@ export function AgentsSection(): ReactElement | null {
       {status !== undefined ? (
         <AgentsMcpField cliPath={status.cliPath} graphRoot={graph.root} graphName={graph.name} />
       ) : null}
+      <AgentsMemoryKitField graphRoot={graph.root} generation={graph.generation} />
       <AgentsRemoteAccessField graphName={graph.name} />
     </SettingsSection>
   )

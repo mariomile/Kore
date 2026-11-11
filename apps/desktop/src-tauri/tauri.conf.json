@@ -41,7 +41,7 @@
     "active": true,
     "targets": "all",
     "iOS": {
-      "developmentTeam": "789ULN5MZB",
+      "developmentTeam": "ZQG9377GFQ",
       "template": "src-tauri/ios.project.yml"
     },
     "icon": [

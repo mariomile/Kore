@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { linkKindInfo, videoPlayerUrl, type LinkKind, type UrlEmbed } from '@reflect/core'
+import { linkKindInfo, videoPlayerUrl, type LinkKind, type UrlEmbed } from '@kore/core'
 import {
   Book,
   Chat,

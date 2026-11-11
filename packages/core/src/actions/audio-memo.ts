@@ -190,11 +190,13 @@ async function ensureDailyBacklink(
  * provider/key (self-heals when settings change); `stale` = the caller's
  * abort gate fired; `oversize` = a segment tripped the transcription size
  * guard (should never happen with rotation-sized segments — surfaced loudly,
- * never tombstoned); anything else is the failing step's error kind
+ * never tombstoned); `evicted` = a note the pass must write is still an
+ * iCloud placeholder (download requested, retry later); anything else is the
+ * failing step's error kind
  * (`network` while offline is the expected, silent case).
  */
 export interface ReconcileStop {
-  reason: 'config' | 'stale' | 'oversize' | AppError['kind']
+  reason: 'config' | 'stale' | 'oversize' | 'evicted' | AppError['kind']
   message: string
 }
 
@@ -202,12 +204,19 @@ export interface ReconcileStop {
  * Whether a {@link ReconcileStop} is an expected, self-healing stop that a
  * background controller should swallow rather than surface to the user:
  * `network` (offline — retries on the next trigger), `config` (no provider/key
- * yet — the work waits), or `stale` (a graph switch tore the pass down). Any
+ * yet — the work waits), `stale` (a graph switch tore the pass down), or
+ * `evicted` (a note is still downloading from iCloud — the next pass writes
+ * it). Any
  * other reason is an unexpected failure worth surfacing or logging. Shared by
  * every background reconcile loop (capture, transcription, asset descriptions).
  */
 export function isSilentStop(stopped: ReconcileStop): boolean {
-  return stopped.reason === 'network' || stopped.reason === 'config' || stopped.reason === 'stale'
+  return (
+    stopped.reason === 'network' ||
+    stopped.reason === 'config' ||
+    stopped.reason === 'stale' ||
+    stopped.reason === 'evicted'
+  )
 }
 
 export interface ReconcileAudioMemosInput {

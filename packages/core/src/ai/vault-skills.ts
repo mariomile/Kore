@@ -32,8 +32,35 @@ export const VAULT_SKILLS_MAX = 30
 /** Cap on one catalog description line. */
 export const VAULT_SKILL_DESCRIPTION_MAX_CHARS = 200
 
+/**
+ * Where a vault keeps its skills: Kore's own flat `agents/skills/<slug>.md`,
+ * or a kit's folder per skill (`System/skills/<slug>/SKILL.md`, the layout
+ * cyber-brain and Claude Code share — Plan 35).
+ */
+export interface VaultSkillsLayout {
+  readonly dir: string
+  readonly kind: 'flat' | 'folder'
+}
+
+export const KORE_SKILLS_LAYOUT: VaultSkillsLayout = { dir: AGENT_SKILLS_DIR, kind: 'flat' }
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+}
+
+function skillPathRe(layout: VaultSkillsLayout): RegExp {
+  const dir = escapeRegExp(layout.dir)
+  return layout.kind === 'flat'
+    ? new RegExp(String.raw`^${dir}/([^/]+)\.md$`)
+    : new RegExp(String.raw`^${dir}/([^/]+)/SKILL\.md$`)
+}
+
+function skillPath(layout: VaultSkillsLayout, slug: string): string {
+  return layout.kind === 'flat' ? `${layout.dir}/${slug}.md` : `${layout.dir}/${slug}/SKILL.md`
+}
+
 export interface VaultSkill {
-  /** File name under `agents/skills/`, without `.md`. */
+  /** File name under `agents/skills/` without `.md`, or the kit skill's folder name. */
   slug: string
   path: string
   /** Display name: the file's H1, or the slug when it has none. */
@@ -41,8 +68,6 @@ export interface VaultSkill {
   /** One line on when to use it: frontmatter `description`, or empty. */
   description: string
 }
-
-const SKILL_PATH_RE = /^agents\/skills\/([^/]+)\.md$/
 
 function firstHeading(body: string): string | null {
   for (const line of body.split('\n')) {
@@ -59,12 +84,15 @@ function firstHeading(body: string): string | null {
  * A private, empty, or unreadable skill file is skipped — listing never
  * throws, so loading a prompt context can't be blocked by one bad file.
  */
-export async function listVaultSkills(): Promise<VaultSkill[]> {
+export async function listVaultSkills(
+  layout: VaultSkillsLayout = KORE_SKILLS_LAYOUT,
+): Promise<VaultSkill[]> {
+  const pathRe = skillPathRe(layout)
   let slugs: string[]
   try {
     const files = await listFiles()
     slugs = files
-      .map((file) => SKILL_PATH_RE.exec(file.path)?.[1])
+      .map((file) => pathRe.exec(file.path)?.[1])
       .filter((slug): slug is string => slug !== undefined)
       .sort((a, b) => a.localeCompare(b))
       .slice(0, VAULT_SKILLS_MAX)
@@ -73,7 +101,7 @@ export async function listVaultSkills(): Promise<VaultSkill[]> {
   }
   const skills: VaultSkill[] = []
   for (const slug of slugs) {
-    const path = agentSkillPath(slug)
+    const path = skillPath(layout, slug)
     try {
       const source = await readNote(path)
       const split = splitFrontmatter(source)
@@ -102,13 +130,20 @@ export async function listVaultSkills(): Promise<VaultSkill[]> {
  * the file — the agent reads it when a task matches. Empty when the graph
  * has no skills: no block, no noise.
  */
-export function vaultSkillsPromptLines(skills: VaultSkill[]): string[] {
+export function vaultSkillsPromptLines(
+  skills: VaultSkill[],
+  layout: VaultSkillsLayout = KORE_SKILLS_LAYOUT,
+): string[] {
   if (skills.length === 0) {
     return []
   }
+  const where =
+    layout.kind === 'flat'
+      ? `one file each under ${layout.dir}/`
+      : `one SKILL.md each under ${layout.dir}/<name>/`
   return [
     '',
-    `Skills — reusable procedures the user taught, one file each under ${AGENT_SKILLS_DIR}/. When a task matches one, read its file and follow it; do not guess a skill's steps from its name:`,
+    `Skills — reusable procedures the user taught, ${where}. When a task matches one, read its file and follow it; do not guess a skill's steps from its name:`,
     ...skills.map(
       (skill) =>
         `- ${skill.name}${skill.description === '' ? '' : ` — ${skill.description}`} (${skill.path})`,

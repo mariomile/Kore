@@ -17,6 +17,13 @@ import {
 import { browserSearchEngineSchema, browserOpenLinksInAppSchema } from './schema-browser'
 import { connectorsSchema } from './schema-connectors'
 import {
+  pasteCollectFilesSchema,
+  pasteCollectImagesSchema,
+  pasteCollectLinksSchema,
+  pasteCollectPdfsSchema,
+  pasteSaveLinkTextSchema,
+} from './schema-paste'
+import {
   accentColorSchema,
   chatTextSizeSchema,
   customAccentColorSchema,
@@ -50,6 +57,7 @@ import {
   editorDefaultBulletSchema,
   editorFontFamilySchema,
   editorFullWidthSchema,
+  editorLineAuthorsSchema,
   editorLineSpacingSchema,
   editorMarkdownSyntaxSchema,
   editorSmoothCaretAnimationSchema,
@@ -65,6 +73,7 @@ import {
 export * from './schema-ai'
 export * from './schema-appearance'
 export * from './schema-browser'
+export * from './schema-paste'
 export * from './schema-connectors'
 export * from './schema-collections'
 export * from './schema-editor'
@@ -94,6 +103,7 @@ export const workspaceSurfaceSchema = z.enum([
   'search',
   'tasks',
   'insights',
+  'memory',
   'activity',
   'graphMap',
   'terminal',
@@ -279,7 +289,7 @@ const openSearchTabStoredSchema = z.object({
 
 const openStaticSurfaceTabStoredSchema = z.object({
   kind: z.literal('surface'),
-  surface: z.enum(['tasks', 'insights', 'activity', 'graphMap', 'terminal', 'browser']),
+  surface: z.enum(['tasks', 'insights', 'memory', 'activity', 'graphMap', 'terminal', 'browser']),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenStaticSurfaceTab>
 
@@ -600,6 +610,7 @@ const settingsDocumentSchema = z.looseObject({
   editorSmoothCaretAnimation: editorSmoothCaretAnimationSchema,
   editorTextSize: editorTextSizeSchema,
   editorFullWidth: editorFullWidthSchema,
+  editorLineAuthors: editorLineAuthorsSchema,
   editorFontFamily: editorFontFamilySchema,
   editorLineSpacing: editorLineSpacingSchema,
   sidebarWidth: sidebarWidthSchema,
@@ -652,6 +663,11 @@ const settingsDocumentSchema = z.looseObject({
   hapticFeedback: hapticFeedbackSchema,
   browserSearchEngine: browserSearchEngineSchema,
   browserOpenLinksInApp: browserOpenLinksInAppSchema,
+  pasteCollectLinks: pasteCollectLinksSchema,
+  pasteCollectImages: pasteCollectImagesSchema,
+  pasteCollectPdfs: pasteCollectPdfsSchema,
+  pasteCollectFiles: pasteCollectFilesSchema,
+  pasteSaveLinkText: pasteSaveLinkTextSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

@@ -6,8 +6,8 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use reflect_cli::error::CliError;
-use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
+use kore_cli::error::CliError;
+use kore_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -282,11 +282,30 @@ enum Command {
         #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
         new: String,
     },
+    /// Write memory through the vault's own cyber-brain script
+    /// (`kore brain remember --kind=fact --text=…`); `status` reports the
+    /// kit, `trust` allows its current script
+    Brain {
+        /// `status`, `trust`, or the kit's own command and --option=value
+        /// arguments (remember, loop open|update|close, decision new, check)
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "ARGS"
+        )]
+        args: Vec<String>,
+    },
     /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
         #[arg(long)]
         read_only: bool,
+        /// Expose only vault_guide and the memory tools (a cyber-brain vault)
+        #[arg(long)]
+        memory_only: bool,
+        /// The stdio client's name, signed onto the memory it writes
+        #[arg(long, value_name = "NAME", conflicts_with = "http")]
+        agent: Option<String>,
         /// Serve over HTTP on this address (e.g. 127.0.0.1:8765) instead of
         /// stdio; requires KORE_MCP_TOKEN
         #[arg(long, value_name = "ADDR")]
@@ -305,6 +324,11 @@ enum Command {
         /// Seconds between background pulls (with --sync)
         #[arg(long, value_name = "SECS", default_value_t = 60, requires = "sync")]
         sync_every: u64,
+    },
+    /// Writes agents with a "propose" key asked for, waiting for you
+    Proposals {
+        #[command(subcommand)]
+        action: Option<commands::proposals::ProposalsAction>,
     },
     /// Named agents' own keys for `kore mcp --http` (no app needed)
     Keys {
@@ -330,12 +354,17 @@ enum Command {
 #[derive(Subcommand)]
 enum KeysAction {
     /// Give an agent its own key, printed once; read-only unless --write
+    /// or --propose
     Add {
         /// The name its writes are signed with (e.g. "Grok bot")
         name: String,
         /// Let this agent use the tools that write
-        #[arg(long)]
+        #[arg(long, conflicts_with = "propose")]
         write: bool,
+        /// Offer this agent the tools that write, but keep each write as a
+        /// proposal you accept or reject (`kore proposals`)
+        #[arg(long)]
+        propose: bool,
     },
     /// List the agents that have a key (never the keys)
     List,
@@ -352,19 +381,28 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
         CliError::Usage("set KORE_MCP_KEYS_FILE or HOME to say where agent keys live".into())
     })?;
     match action {
-        KeysAction::Add { name, write } => {
-            let agent = agent_keys::add(&path, name, *write)?;
+        KeysAction::Add {
+            name,
+            write,
+            propose,
+        } => {
+            let access = agent_keys::Access::from_flags(*write, *propose);
+            let agent = agent_keys::add(&path, name, access)?;
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({ "name": agent.name, "key": agent.key, "write": agent.write })
+                    serde_json::json!({ "name": agent.name, "key": agent.key, "access": access })
                 );
             } else {
                 println!("{}", agent.key);
                 eprintln!(
                     "kore: key for {:?} ({}), shown once. Give it to the agent with the server's /setup.md.",
                     agent.name,
-                    if agent.write { "read and write" } else { "read-only" }
+                    match access {
+                        agent_keys::Access::Read => "read-only",
+                        agent_keys::Access::Propose => "writes wait for you in `kore proposals`",
+                        agent_keys::Access::Write => "read and write",
+                    }
                 );
             }
         }
@@ -373,16 +411,12 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
             if json {
                 let listed: Vec<_> = agents
                     .iter()
-                    .map(|agent| serde_json::json!({ "name": agent.name, "write": agent.write }))
+                    .map(|agent| serde_json::json!({ "name": agent.name, "access": agent.access }))
                     .collect();
                 println!("{}", serde_json::json!({ "file": path, "agents": listed }));
             } else {
                 for agent in &agents {
-                    println!(
-                        "{}\t{}",
-                        agent.name,
-                        if agent.write { "write" } else { "read" }
-                    );
+                    println!("{}\t{}", agent.name, agent.access.label());
                 }
             }
         }
@@ -446,6 +480,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             limit,
         } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
         Command::Info => commands::info::run(&graph, cli.json),
+        Command::Proposals { action } => {
+            commands::proposals::run(&graph, cli.json, action.as_ref())
+        }
         Command::Guide { init } => commands::guide::run(&graph, cli.json, *init),
         Command::Tags => commands::tags::run(&graph, cli.json),
         Command::List { tag, kind, limit } => {
@@ -499,8 +536,11 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::sources::run(&graph.root, cli.json, only.as_deref(), since.as_deref())
         }
         Command::Edit { note, old, new } => commands::edit::run(&graph, cli.json, note, old, new),
+        Command::Brain { args } => commands::brain::run(&graph, cli.json, args),
         Command::Mcp {
             read_only,
+            memory_only,
+            agent,
             http,
             public_url,
             redirect_uris,
@@ -516,7 +556,12 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             } else {
                 Box::new(runner)
             };
-            let server = mcp::Server::new(runner, *read_only);
+            let mut server = mcp::Server::new(runner, *read_only)
+                .with_memory_kit(kore_kit_script::detect(&graph.root).is_some())
+                .owner_named(agent.clone());
+            if *memory_only {
+                server = server.memory_only();
+            }
             let Some(address) = http else {
                 let server = server.for_this_machine();
                 mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;

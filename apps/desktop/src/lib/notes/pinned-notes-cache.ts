@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import type { PinnedNote } from '@reflect/core'
+import type { PinnedNote } from '@kore/core'
 import { pinnedNotesQueryKey } from '@/hooks/use-pinned-notes'
 
 /**

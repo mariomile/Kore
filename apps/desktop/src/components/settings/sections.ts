@@ -24,6 +24,8 @@ export const SETTINGS_GROUPS = [
       { id: 'templates', title: 'Note templates' },
       { id: 'all-notes', title: 'All notes' },
       { id: 'tasks', title: 'Tasks' },
+      // Whether a paste also files a resource card in Links / Images / PDFs / Files.
+      { id: 'pasted-resources', title: 'Pasted links & files' },
       { id: 'search', title: 'Search' },
     ],
   },
@@ -82,11 +84,6 @@ export type SettingsGroup = (typeof SETTINGS_GROUPS)[number]
 
 /** Identifier of one {@link SETTINGS_GROUPS} entry. */
 export type SettingsGroupId = SettingsGroup['id']
-
-/** The label a group renders — shared by the page and the navigator. */
-export function settingsGroupTitle(id: SettingsGroupId): string {
-  return SETTINGS_GROUPS.find((group) => group.id === id)?.title ?? id
-}
 
 /** Identifier of one {@link SETTINGS_SECTIONS} entry. */
 export type SettingsSectionId = (typeof SETTINGS_GROUPS)[number]['sections'][number]['id']

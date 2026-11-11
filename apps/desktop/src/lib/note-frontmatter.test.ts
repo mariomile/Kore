@@ -10,8 +10,8 @@ const writeNote = vi.hoisted(() =>
 )
 const openSession = vi.hoisted(() => vi.fn<(path: string) => NoteSession | null>(() => null))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   readNote,
   writeNote,
 }))
@@ -256,37 +256,53 @@ describe('commitNoteFrontmatter', () => {
 
     expect(writeNote).toHaveBeenCalledWith(
       'tags/book.md',
-      '---\nlore: tag\nproperties:\n  - name: Author\n    key: author\n    type: text\n---\n# Books\n',
+      '---\nkore: tag\nproperties:\n  - name: Author\n    key: author\n    type: text\n---\n# Books\n',
       3,
     )
   })
 
   it('writes or clears a bound template on a tag definition', async () => {
-    readNote.mockResolvedValue('---\nlore: tag\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\nproperties: []\n---\n')
 
     await commitNoteFrontmatter('tags/book.md', { tagTemplate: 'templates/book.md' }, 3)
     const written = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(written[1]).toContain('template: templates/book.md')
 
     writeNote.mockClear()
-    readNote.mockResolvedValue('---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
     await commitNoteFrontmatter('tags/book.md', { tagTemplate: null }, 3)
     const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(cleared[1]).not.toContain('template:')
   })
 
   it('writes or clears the icon on a tag definition', async () => {
-    readNote.mockResolvedValue('---\nlore: tag\nproperties: []\n---\n')
+    readNote.mockResolvedValue('---\nkore: tag\nproperties: []\n---\n')
 
-    await commitNoteFrontmatter('tags/book.md', { tagIcon: '📚' }, 3)
+    await commitNoteFrontmatter('tags/book.md', { icon: '📚' }, 3)
     const written = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(written[1]).toMatch(/icon: "?📚"?/)
 
     writeNote.mockClear()
-    readNote.mockResolvedValue('---\nlore: tag\nicon: "📚"\nproperties: []\n---\n')
-    await commitNoteFrontmatter('tags/book.md', { tagIcon: null }, 3)
+    readNote.mockResolvedValue('---\nkore: tag\nicon: "📚"\nproperties: []\n---\n')
+    await commitNoteFrontmatter('tags/book.md', { icon: null }, 3)
     const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
     expect(cleared[1]).not.toContain('icon:')
+  })
+
+  it('writes or clears a note cover without touching the body', async () => {
+    readNote.mockResolvedValue('# Trip\n')
+
+    await commitNoteFrontmatter('notes/trip.md', { cover: 'assets/beach.png' }, 3)
+    const written = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(written[1]).toBe('---\ncover: assets/beach.png\n---\n# Trip\n')
+
+    writeNote.mockClear()
+    readNote.mockResolvedValue('---\ncover: assets/beach.png\nicon: 🏖️\n---\n# Trip\n')
+    await commitNoteFrontmatter('notes/trip.md', { cover: null }, 3)
+    const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(cleared[1]).not.toContain('cover:')
+    expect(cleared[1]).toContain('icon: 🏖️')
+    expect(cleared[1].endsWith('# Trip\n')).toBe(true)
   })
 
   it('leaves unrelated keys and comments untouched around a property write', async () => {

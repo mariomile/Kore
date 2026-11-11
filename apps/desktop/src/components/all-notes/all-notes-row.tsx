@@ -1,5 +1,5 @@
 import { memo, type MouseEvent, type ReactElement } from 'react'
-import type { NoteListEntry } from '@reflect/core'
+import type { NoteListEntry } from '@kore/core'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'

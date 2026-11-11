@@ -87,9 +87,14 @@ existing "turn on backup").
 ## A2 — "Propose" agent keys
 
 `kore keys add <name> --propose`: writes from that key are not applied but
-queued in `.reflect/proposals/` (one JSON per write: the CLI args and a diff
-preview). The app lists them with the existing `ChatProposalCard`; accept
-runs the queued command signed as the agent (A1 step 1), reject drops it.
+queued in `.kore/proposals/` (one JSON per write: the tool and the
+arguments the agent sent, signed by the `kore mcp` process, never argv).
+The folder is the one part of `.kore/` that git sync carries, so proposals
+made on the always-on host reach the Mac. `kore proposals accept <id>`
+rebuilds the call through the MCP tool table (so validation and privacy
+apply again) and runs it signed as the agent (A1 step 1); `reject` drops
+it. The app then lists them with the existing `ChatProposalCard`, with a
+diff preview.
 
 ## A3 — Who wrote what
 

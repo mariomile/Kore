@@ -2,7 +2,7 @@
 //!
 //! iCloud document sync is the primary way phone + desktop share a graph:
 //! per Plan 21 contract 1 the graph lives at `<container>/Documents/<name>/`
-//! in the app's iCloud Drive container (visible as "Reflect" in the Files
+//! in the app's iCloud Drive container (visible as "Kore" in the Files
 //! app and in Finder's iCloud Drive), and the OS moves the markdown between
 //! devices. Rust owns only the storage primitives — resolving the
 //! container, finding an existing graph inside it, and nudging undownloaded
@@ -23,7 +23,7 @@ use tauri::Manager;
 use crate::error::{AppError, AppResult};
 
 /// The graph directory name used when a nameless root is adopted into the
-/// container. A plain, human name — it reads as `iCloud Drive → Reflect →
+/// container. A plain, human name — it reads as `iCloud Drive → Kore →
 /// Notes` in Files/Finder, and becomes the graph's display name. (The
 /// onboarding default lives frontend-side as `DEFAULT_ICLOUD_GRAPH_NAME`.)
 const DEFAULT_ICLOUD_GRAPH_DIR: &str = "Notes";
@@ -157,15 +157,15 @@ pub async fn icloud_pending_count(root: String, notes_only: bool) -> AppResult<u
 /// Whether a placeholder found under `rel_dir` (the stub's directory,
 /// graph-relative) standing for `target` falls in the notes-only download
 /// scope: an eligible Markdown note anywhere in the vault (the shared
-/// `reflect-graph-paths` policy). Assets, audio memos, and anything else
+/// `kore-graph-paths` policy). Assets, audio memos, and anything else
 /// wait for the follow-up full-scope request.
 ///
 /// Compiled off Apple targets only for tests: its sole production caller is
 /// the platform walk, which has no non-Apple twin.
 #[cfg(any(target_os = "ios", target_os = "macos", test))]
 fn placeholder_in_note_scope(rel_dir: &Path, target: &str) -> bool {
-    reflect_graph_paths::wire_path(&rel_dir.join(target))
-        .is_some_and(|wire| reflect_graph_paths::is_note(&wire))
+    kore_graph_paths::wire_path(&rel_dir.join(target))
+        .is_some_and(|wire| kore_graph_paths::is_note(&wire))
 }
 
 /// Every existing graph among the container `Documents/` subdirectories
@@ -195,7 +195,7 @@ fn find_graph_dirs(documents: &Path) -> Vec<PathBuf> {
 /// directory is excluded from sync on purpose, so a synced-down graph
 /// arrives as bare Markdown content.
 fn dir_has_notes(root: &Path) -> bool {
-    !reflect_graph_paths::walk_catalog(root).notes.is_empty()
+    !kore_graph_paths::walk_catalog(root).notes.is_empty()
 }
 
 /// Ask iCloud to (re)download one item, best-effort. The metadata-query
@@ -275,7 +275,7 @@ mod platform {
 
     /// The same path **without creating anything** — for pure lookups like
     /// the watch's coverage check. Creating the container's `Documents/` as
-    /// a side effect there would plant an empty, user-visible "Reflect"
+    /// a side effect there would plant an empty, user-visible "Kore"
     /// folder in iCloud Drive just because the user opened a graph kept
     /// elsewhere; only adoption and mobile storage may create it.
     pub fn ubiquity_documents_path() -> Option<PathBuf> {
@@ -465,7 +465,7 @@ fn adopt_graph(root: &Path) -> AppResult<String> {
     let target = documents.join(&name);
     if dir_has_notes(&target) {
         return Err(AppError::io(format!(
-            "iCloud Drive already contains a graph named \"{name}\" — open that one instead, or rename one of the two"
+            "iCloud Drive already contains a vault named \"{name}\" — open that one instead, or rename one of the two"
         )));
     }
     adopt_into(root, &target)?;
@@ -497,7 +497,7 @@ fn copy_and_verify(root: &Path, target: &Path) -> AppResult<()> {
     let landed = count_graph_tree(target)?;
     if copied != landed {
         return Err(AppError::io(format!(
-            "the iCloud copy did not verify (copied {} files / {} bytes, found {} / {}); the original graph is untouched",
+            "the iCloud copy did not verify (copied {} files / {} bytes, found {} / {}); the original vault is untouched",
             copied.0, copied.1, landed.0, landed.1
         )));
     }

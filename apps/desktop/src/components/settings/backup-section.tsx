@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactElement } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useQuery } from '@tanstack/react-query'
-import { getConflictedNotes, getDuplicateNoteIds } from '@reflect/core'
+import { getConflictedNotes, getDuplicateNoteIds } from '@kore/core'
 import { ExternalLink } from '@/components/icons'
 import { ConnectGithubDialog } from '@/components/settings/connect-github-dialog'
 import { ConflictedNoteLinks } from '@/components/settings/conflicted-note-links'
@@ -19,21 +19,21 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
 
-/** A short, plain-language line for each backup state — never Git jargon. */
+/** A short, plain-language line for each sync state — never Git jargon. */
 function statusLine(backup: Extract<BackupState, { phase: 'connected' }>): string {
   switch (backup.status.state) {
     case 'idle':
       return 'Files synced'
     case 'syncing':
-      return 'Backing up…'
+      return 'Syncing…'
     case 'offline':
       return backup.status.message
     case 'error':
       // "Reconnect GitHub" only helps when GitHub is the remote; a generic
       // remote's auth message already names the fix (ssh-add, known_hosts…).
       return backup.status.errorKind === 'auth' && backup.repo !== null
-        ? 'Backup failed — reconnect GitHub'
-        : `Backup failed: ${backup.status.message}`
+        ? 'Sync failed — reconnect GitHub'
+        : `Sync failed: ${backup.status.message}`
   }
 }
 
@@ -126,16 +126,16 @@ export function BackupSettingsField(): ReactElement {
   return (
     <>
       <SettingsField
-        legend={genericRemote ? 'Backup' : 'GitHub sync'}
+        legend={genericRemote ? 'Git sync' : 'GitHub sync'}
         description={
           genericRemote
-            ? 'Sync graph files to your git remote. Includes private notes; chat history and chat attachments are excluded. Use a graph archive below to preserve them.'
-            : 'Sync graph files to GitHub. Includes private notes; chat history and chat attachments are excluded. Use a graph archive below to preserve them.'
+            ? 'Sync vault files to your git remote. Includes private notes; chat history and chat attachments are excluded. Use a backup below to keep them too.'
+            : 'Sync vault files to GitHub. Includes private notes; chat history and chat attachments are excluded. Use a backup below to keep them too.'
         }
       >
         <div className="mt-3 flex flex-col gap-2">
           {backup.phase === 'loading' ? (
-            <p className="text-xs text-text-muted">Checking backup status…</p>
+            <p className="text-xs text-text-muted">Checking sync status…</p>
           ) : null}
 
           {backup.phase === 'disconnected' ? (
@@ -184,15 +184,15 @@ export function BackupSettingsField(): ReactElement {
                   disabled={backup.status.state === 'syncing' || action.pending}
                   onClick={() => void action.run(backUpNow)}
                 >
-                  Back up now
+                  Sync now
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="This graph stops backing up; its history and your GitHub sign-in stay"
+                  title="This vault stops syncing; its history and your GitHub sign-in stay"
                   onClick={() => void action.run(disconnectGraph)}
                 >
-                  Stop backing up
+                  Stop syncing
                 </Button>
                 {backup.repo !== null ? (
                   <Button variant="ghost" size="sm" onClick={openGithubRepo}>
@@ -204,7 +204,7 @@ export function BackupSettingsField(): ReactElement {
               {backup.repo !== null ? (
                 <GithubSignOutRow
                   signOut={signOut}
-                  description="Sign out on this machine; connected graphs stop backing up."
+                  description="Sign out on this machine; connected vaults stop syncing."
                 />
               ) : null}
             </>

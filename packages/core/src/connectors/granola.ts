@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { FetchFn } from '../sync/github-api'
 import { getJson, sleep } from './http'
-import { connectorFileStem, headingText, noteWithFrontmatter } from './markdown'
+import { headingText, noteWithFrontmatter } from './markdown'
 import type { Connector, ConnectorFetchInput, ConnectorNote } from './types'
 
 /**
@@ -82,10 +82,7 @@ function summaryBody(note: GranolaNote): string | null {
 }
 
 /** The full markdown for a meeting note; `null` when it has no summary yet. */
-export function renderGranolaNote(
-  note: GranolaNote,
-  tags: readonly string[] = granolaConnector.defaultTags,
-): string | null {
+export function renderGranolaNote(note: GranolaNote, tags: readonly string[]): string | null {
   const summary = summaryBody(note)
   if (summary === null) {
     return null
@@ -111,7 +108,6 @@ function meetingNote(note: GranolaNote, tags: readonly string[]): ConnectorNote 
   const title = headingText(note.title ?? '') || 'Untitled meeting'
   return {
     sourceId: note.id,
-    fileStem: connectorFileStem(date === null ? title : `${date} ${title}`, note.id),
     fields: {
       title,
       date: date ?? '',
@@ -187,6 +183,7 @@ export const granolaConnector: Connector = {
   defaultTags: ['meeting'],
   tokenUrl: 'https://docs.granola.ai/introduction',
   tokenLabel: 'API key',
+  tokenNoun: 'API key',
   overlapMs: 3 * 24 * 60 * 60 * 1000,
   verify,
   fetchNotes,

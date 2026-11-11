@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AUDIO_MEMO_MAX_DURATION_MS } from '@reflect/core'
+import { AUDIO_MEMO_MAX_DURATION_MS } from '@kore/core'
 import { audioMemoCapWarning, formatRecordingElapsed } from './recording-time'
 
 describe('formatRecordingElapsed', () => {

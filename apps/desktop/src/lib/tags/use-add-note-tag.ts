@@ -3,9 +3,10 @@ import {
   addNoteTag,
   errorMessage,
   getTagType,
-  missingCreatedStamps,
+  startingValuesFor,
+  valuesMissingFrom,
   upsertFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { useGraph } from '@/providers/graph-provider'
@@ -35,6 +36,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
         // Read before the write: the schema decides which stamps exist, and
         // an untyped tag simply has none.
         const type = await getTagType(tag)
+        const starting = await startingValuesFor(tag, type)
         await commitNoteBodyTransform(
           path,
           (source) => {
@@ -42,7 +44,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
             if (tagged === null) {
               return source
             }
-            return upsertFrontmatter(tagged, missingCreatedStamps(tagged, type))
+            return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
           },
           generation,
         )

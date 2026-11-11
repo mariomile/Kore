@@ -132,7 +132,7 @@ they are Reflect's organizing primitive.
    *strips any mark not in its computed set*, so a custom mark would be removed (or
    fight the engine with ping-ponging appendTransactions). Decorations never touch the
    document — serialization is byte-identical by construction. Detection reuses the
-   canonical grammar via `scanInlineWikiLinks` (`@reflect/core`), and the syntax spans
+   canonical grammar via `scanInlineWikiLinks` (`@kore/core`), and the syntax spans
    follow meowdown's own MarkMode reveal contract (`.show` near the caret). If Plan 07
    needs a real inline node, the path is upstreaming `WikiLink` into meowdown itself
    (first-party), not fighting it from outside. Resolution uses Plan 03's shared

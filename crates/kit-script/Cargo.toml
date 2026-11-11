@@ -1,0 +1,14 @@
+[package]
+name = "kore-kit-script"
+version = "0.1.0"
+description = "The vault's own memory kit (cyber-brain, Plan 35): detection, script digest and trust, argv limits"
+edition = "2021"
+
+[dependencies]
+kore-note-policy = { workspace = true }
+saphyr = "0.0.6"
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

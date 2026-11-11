@@ -12,7 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 use crate::body_tag::{append_body_tag, is_tag_name};
 use crate::commands::open_index_for_resolution;
@@ -27,6 +27,7 @@ use crate::note_file::parse_note_meta;
 use crate::paths::today_date;
 use crate::schema::{parse_assignments, union_schema, warn_untyped_writes, TagSchema};
 use crate::slug::slug_for_title;
+use crate::starting_values::starting_values;
 use crate::write::read_stdin;
 
 /// Far beyond any real graph's same-slug population; fail loud instead of
@@ -256,7 +257,9 @@ pub fn run(
         }
     }
     let mut values = parse_assignments(&schema, sets)?;
-    for (key, stamp) in schema.created_stamps() {
+    // The `created` stamps and the fields' starting values (Plan 33 B4).
+    let starting = starting_values(&schema, index.as_ref().map(|open| &open.conn), &tags)?;
+    for (key, stamp) in starting {
         if !values.iter().any(|(present, _)| *present == key) {
             values.push((key, stamp));
         }

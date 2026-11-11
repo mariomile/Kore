@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import { SuggestedContactCard } from './suggested-contact-card'
 

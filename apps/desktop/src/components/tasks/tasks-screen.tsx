@@ -11,14 +11,16 @@ import { useQuery } from '@tanstack/react-query'
 import { Archive, CalendarClock, Flag, List, Plus, Search } from '@/components/icons'
 import {
   countTasksByView,
+  countTaskTags,
   cycleTaskContentPriority,
   getCompletedTasks,
   getOpenTasks,
-  getProjectNotePaths,
+  parseTaskQuery,
   projectForNote,
+  toggleQueryTag,
   type OpenTask,
   type QuickAdd,
-} from '@reflect/core'
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -35,12 +37,10 @@ import { composeVisibleTaskGroups } from '@/lib/tasks/task-visibility'
 import { useTaskKeyboard } from '@/lib/tasks/use-task-keyboard'
 import { useTaskSelection } from '@/lib/tasks/use-task-selection'
 import { formatDayLabel } from '@/lib/dates'
-import {
-  completedTasksQueryKey,
-  projectNotePathsQueryKey,
-  tasksQueryKey,
-} from '@/lib/tasks/tasks-query'
+import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { dailyTarget } from '@/lib/tasks/task-navigation'
+import { useTaskProjects } from '@/lib/tasks/use-task-projects'
+import { useTaskMove } from '@/lib/tasks/use-task-move'
 import { useTaskView } from '@/lib/tasks/use-task-view'
 import { useSettings } from '@/providers/settings-provider'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
@@ -54,6 +54,7 @@ import { TaskBoard } from './task-board'
 import { TaskList } from './task-list'
 import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
+import { TaskMovePicker } from '@/components/tasks/task-move-picker'
 import { TaskQuickAdd } from './task-quick-add'
 import { TaskViewTabs } from './task-view-tabs'
 import { isModEvent } from '@meowdown/core'
@@ -105,6 +106,8 @@ export function TasksScreen(): ReactElement {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [moving, setMoving] = useState<OpenTask[] | null>(null)
+  const taskMove = useTaskMove()
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const bridgeReady = useBridgeReady()
@@ -120,19 +123,17 @@ export function TasksScreen(): ReactElement {
     queryFn: () => getCompletedTasks(),
     enabled: enabled && filters.archived,
   })
-  const { data: projectNotes } = useQuery({
-    queryKey: projectNotePathsQueryKey(graph?.root),
-    queryFn: () => getProjectNotePaths(),
-    // Projects groups by them; Quick Add's `#Name` picks one, so load them
-    // before the dialog opens: a fast "q, #Kore, Return" must still find it.
-    enabled,
-  })
-  const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
+  // Projects groups by them; Quick Add's `#Name` picks one, so load them
+  // before the dialog opens: a fast "q, #Kore, Return" must still find it.
+  const { projectNotes, projectNotePaths, linkedProjects } = useTaskProjects(graph?.root, enabled)
   const projects = useMemo(
-    () => (projectNotes ?? []).map((path) => projectForNote(path, path, projectNotePaths)),
+    () => projectNotes.map((path) => projectForNote(path, path, projectNotePaths)),
     [projectNotes, projectNotePaths],
   )
-  const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
+  const counts = useMemo(
+    () => countTasksByView(open ?? [], today, linkedProjects),
+    [open, today, linkedProjects],
+  )
 
   // Either read failing surfaces the alert — a failed completed read must not
   // leave `ready` stuck (and the list blank) just because its data never arrived.
@@ -151,6 +152,8 @@ export function TasksScreen(): ReactElement {
   const recentlyCompleted = useRecentlyCompleted(graph?.root ?? null, open)
 
   const needle = query.trim().toLowerCase()
+  const activeTags = useMemo(() => parseTaskQuery(needle).tags, [needle])
+  const tagCounts = useMemo(() => countTaskTags(open ?? []), [open])
   const groups = useMemo(
     () =>
       composeVisibleTaskGroups({
@@ -162,8 +165,19 @@ export function TasksScreen(): ReactElement {
         today,
         view,
         projectNotePaths,
+        linkedProjects,
       }),
-    [open, completed, recentlyCompleted, filters, needle, today, view, projectNotePaths],
+    [
+      open,
+      completed,
+      recentlyCompleted,
+      filters,
+      needle,
+      today,
+      view,
+      projectNotePaths,
+      linkedProjects,
+    ],
   )
 
   // The flat, render-order list of tasks the selection and its shortcuts act on.
@@ -330,6 +344,8 @@ export function TasksScreen(): ReactElement {
     onConvertToBullet,
     onCyclePriority,
     onQuickAdd: () => setQuickAddOpen(true),
+    onMove: setMoving,
+    onUndoMove: taskMove.undo,
     view,
     onGoToView: (next) => {
       selection.clear()
@@ -374,7 +390,7 @@ export function TasksScreen(): ReactElement {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search..."
+            placeholder="Search or #tag…"
             aria-label="Search tasks"
             className="h-9 border-none bg-transparent pl-[38px] shadow-none"
           />
@@ -455,6 +471,9 @@ export function TasksScreen(): ReactElement {
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
           bucketFilters={view === 'all'}
+          tags={tagCounts}
+          activeTags={activeTags}
+          onToggleTag={(tag) => setQuery((current) => toggleQueryTag(current, tag))}
         />
       </header>
       <TaskViewTabs
@@ -514,6 +533,19 @@ export function TasksScreen(): ReactElement {
         today={today}
         projects={projects}
         onSubmit={onQuickAddSubmit}
+      />
+      <TaskMovePicker
+        tasks={moving}
+        projects={projects}
+        onClose={() => {
+          setMoving(null)
+          // Back to the list, not the search box, so ⌘Z and the arrows act on it.
+          requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }))
+        }}
+        onMove={(tasks, target, label) => {
+          selection.clear()
+          taskMove.move(tasks, target, label)
+        }}
       />
     </div>
   )

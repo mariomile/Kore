@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { CollectionEntry, NoteListEntry, TagType } from '@reflect/core'
+import type { CollectionEntry, NoteListEntry, TagType } from '@kore/core'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -23,6 +23,9 @@ interface AllNotesGridProps {
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
+
+/** A card's footer names this many of the note's tags. */
+const MAX_FOOTER_TAGS = 3
 
 /**
  * The All Notes masonry view (Plan 28, Craft's register): the same notes as
@@ -93,7 +96,7 @@ export function AllNotesGrid({
   }
   if (notes.length === 0) {
     return (
-      <p className="px-12 py-10 text-sm text-text-muted">
+      <p className="py-10 pl-12 pr-7 text-sm text-text-muted">
         {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
       </p>
     )
@@ -101,10 +104,11 @@ export function AllNotesGrid({
   return (
     <div
       data-testid="all-notes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 px-12 pb-10 pt-2 [grid-template-rows:masonry]"
+      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 pb-10 pl-12 pr-7 pt-2 [grid-template-rows:masonry]"
     >
       {notes.slice(0, visibleCount).map((note) => {
         const entry = type != null ? entryByPath.get(note.path) : undefined
+        const shownTags = note.tags.slice(0, MAX_FOOTER_TAGS)
         return (
           <button
             key={note.path}
@@ -147,17 +151,18 @@ export function AllNotesGrid({
                     path={note.path}
                     mtime={note.mtime}
                     snippet={note.snippet}
+                    shownTags={shownTags}
                     resolveImageUrl={resolvePreviewImageUrl}
                   />
                 </div>
               </div>
               <div className="relative z-[1] mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
-                {note.tags.slice(0, 3).map((noteTag) => (
+                {shownTags.map((noteTag) => (
                   <span
                     key={noteTag}
                     className="rounded-full border border-border px-2 py-0.5 text-2xs font-medium text-text-secondary"
                   >
-                    {noteTag}
+                    #{noteTag}
                   </span>
                 ))}
                 <span className="ml-auto text-2xs text-text-muted">

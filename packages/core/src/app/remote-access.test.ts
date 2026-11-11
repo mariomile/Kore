@@ -9,6 +9,7 @@ import {
   remoteAccessSetupPrompt,
   remoteAgents,
   removeRemoteAgent,
+  setRemoteAgentAccess,
   startRemoteAccess,
   stopRemoteAccess,
 } from './remote-access'
@@ -156,16 +157,16 @@ describe('startRemoteAccess', () => {
 })
 
 describe('remote agents', () => {
-  it('each agent gets its own key, read-only by default, handed to the server', async () => {
+  it('each agent gets its own key and access, handed to the server', async () => {
     const { calls, secrets } = installBridge({
       tailscale_run: () => tailscaleRun({ found: false, code: null }),
       remote_mcp_start: () => running,
     })
-    const grok = await addRemoteAgent(' Grok bot ', false)
-    const chatgpt = await addRemoteAgent('ChatGPT', true)
-    expect(grok).toMatchObject({ name: 'Grok bot', write: false })
+    const grok = await addRemoteAgent(' Grok bot ', 'read')
+    const chatgpt = await addRemoteAgent('ChatGPT', 'write')
+    expect(grok).toMatchObject({ name: 'Grok bot', access: 'read' })
     expect(grok.key).not.toBe(chatgpt.key)
-    await expect(addRemoteAgent('grok BOT', true)).rejects.toThrow('already has a key')
+    await expect(addRemoteAgent('grok BOT', 'write')).rejects.toThrow('already has a key')
 
     await removeRemoteAgent(grok.id)
     expect((await remoteAgents()).map((agent) => agent.name)).toEqual(['ChatGPT'])
@@ -176,6 +177,26 @@ describe('remote agents', () => {
 
     secrets.set(REMOTE_ACCESS_AGENTS_SECRET, 'not json')
     expect(await remoteAgents()).toEqual([])
+  })
+
+  it('changes an agent to propose without a new key, and reads keys saved before', async () => {
+    const { secrets } = installBridge({})
+    const key = 'k'.repeat(32)
+    secrets.set(
+      REMOTE_ACCESS_AGENTS_SECRET,
+      JSON.stringify([
+        { id: 'a', name: 'Old writer', key, write: true },
+        { id: 'b', name: 'Old reader', key, write: false },
+      ]),
+    )
+    expect((await remoteAgents()).map((agent) => agent.access)).toEqual(['write', 'read'])
+
+    await setRemoteAgentAccess('a', 'propose')
+    const stored: unknown = JSON.parse(secrets.get(REMOTE_ACCESS_AGENTS_SECRET) ?? '')
+    expect(stored).toEqual([
+      { id: 'a', name: 'Old writer', key, access: 'propose' },
+      { id: 'b', name: 'Old reader', key, access: 'read' },
+    ])
   })
 
   it('the setup prompt points at the public setup page, never the key', () => {

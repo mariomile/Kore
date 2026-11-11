@@ -18,7 +18,7 @@ checkpoints).
 **Unlocks:** a graph that reads as plain markdown on GitHub/Finder/Obsidian — the
 "boring vault durability" promise of the product vision, kept at the filename level.
 
-**Libraries:** none new. The slugger is hand-rolled in `@reflect/core`
+**Libraries:** none new. The slugger is hand-rolled in `@kore/core`
 (`markdown/slug.ts`): the constraint set (Windows reserved names, byte caps,
 case folding, CJK preservation) is bespoke, small, and property-testable;
 off-the-shelf slugifiers transliterate or strip non-Latin scripts.
@@ -75,7 +75,7 @@ later surface), daily notes (untouched in every respect — `daily/YYYY-MM-DD.md
 
 ## Steps
 
-1. **Slugger** (`@reflect/core` `markdown/slug.ts`). `slugForTitle(title): string`:
+1. **Slugger** (`@kore/core` `markdown/slug.ts`). `slugForTitle(title): string`:
    NFC-normalize → lowercase (Unicode-aware) → keep `\p{L}\p{N}`, map whitespace
    and separator runs to single `-` → strip everything else (covers `/ \ : * ? "
    < > |`, control chars) → trim leading/trailing `-`/`.` → cap at 60 code

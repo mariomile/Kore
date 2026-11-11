@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { userEvent, type Locator } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 import { useEffect, useState, type MutableRefObject, type ReactNode } from 'react'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { makeOpenTask as task } from '@/lib/tasks/open-task-fixture'
@@ -17,8 +17,8 @@ const getOpenTasks = vi.hoisted(() => vi.fn())
 const getCompletedTasks = vi.hoisted(() => vi.fn())
 const getProjectNotePaths = vi.hoisted(() => vi.fn())
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getOpenTasks,
   getCompletedTasks,
@@ -59,7 +59,7 @@ function seedArchivedFilter(): void {
 }
 
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   const { useSyncExternalStore } = await import('react')
   let cached: Record<string, unknown> | null = null
   let cachedVersion = -1
@@ -122,6 +122,11 @@ const insertTask = vi.hoisted(() => vi.fn())
 const addTask = vi.hoisted(() => vi.fn())
 const continueTaskInContext = vi.hoisted(() => vi.fn())
 const convertTaskToBullet = vi.hoisted(() => vi.fn())
+const moveTask = vi.hoisted(() => vi.fn())
+const undoTaskMoves = vi.hoisted(() => vi.fn())
+const projectSections = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tasks/task-move', () => ({ moveTask, undoTaskMoves, projectSections }))
+
 vi.mock('@/lib/note-task', () => ({
   toggleTask,
   deleteTask,
@@ -319,6 +324,9 @@ beforeEach(() => {
   insertTask.mockResolvedValue(0)
   addTask.mockReset().mockResolvedValue(undefined)
   getProjectNotePaths.mockReset().mockResolvedValue([])
+  moveTask.mockReset().mockResolvedValue({ rewrites: [] })
+  undoTaskMoves.mockReset().mockResolvedValue(undefined)
+  projectSections.mockReset().mockResolvedValue([])
   continueTaskInContext.mockReset()
   continueTaskInContext.mockResolvedValue({
     created: { markerOffset: 0, raw: '[ ] ' },
@@ -2294,6 +2302,56 @@ describe('TasksScreen Todoist views', () => {
       ),
     )
     await waitFor(() => expect(view.queryByRole('textbox', { name: 'Task' })).toBeNull())
+    await view.unmount()
+  })
+
+  it('moves the selection to a project section with m, and ⌘Z undoes it', async () => {
+    getOpenTasks.mockResolvedValue(tasks)
+    getProjectNotePaths.mockResolvedValue(['Projects/Kore/Kore.md'])
+    projectSections.mockResolvedValue(['Doing', 'Later'])
+    const view = await renderScreen()
+    await view.findByRole('button', { name: 'jotted today' })
+
+    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard('m')
+    await userEvent.click(await view.findByRole('option', { name: 'Kore' }))
+    getOpenTasks.mockResolvedValue([]) // the reindex after the move
+    await userEvent.click(await view.findByRole('option', { name: 'Doing' }))
+
+    await waitFor(() => expect(moveTask).toHaveBeenCalledTimes(tasks.length))
+    expect(moveTask).toHaveBeenCalledWith(
+      expect.objectContaining({ raw: '[ ] jotted today' }),
+      { notePath: 'Projects/Kore/Kore.md', section: 'Doing' },
+      1,
+    )
+    await waitFor(() => expect(view.queryByRole('button', { name: 'jotted today' })).toBeNull())
+    await waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toBe('Tasks'))
+
+    await userEvent.keyboard('{Meta>}z{/Meta}')
+    await waitFor(() => expect(undoTaskMoves).toHaveBeenCalledTimes(1))
+    expect(undoTaskMoves.mock.calls[0]?.[0]).toHaveLength(tasks.length)
+    await view.unmount()
+  })
+
+  it('filters by a tag from the filters menu, writing #tag into the search', async () => {
+    getOpenTasks.mockResolvedValue([
+      task({
+        notePath: 'notes/a.md',
+        markerOffset: 2,
+        raw: '[ ] buy milk #home',
+        text: 'buy milk',
+      }),
+      task({ notePath: 'notes/b.md', markerOffset: 2, raw: '[ ] ship #work', text: 'ship' }),
+    ])
+    const view = await renderScreen()
+    await view.findByRole('button', { name: /^ship/ })
+
+    await userEvent.click(view.getByRole('button', { name: 'Task filters' }))
+    await userEvent.click(await view.findByRole('menuitemcheckbox', { name: /#home/ }))
+
+    await expect.element(view.getByRole('textbox', { name: 'Search tasks' })).toHaveValue('#home')
+    await waitFor(() => expect(view.queryByRole('button', { name: /^ship/ })).toBeNull())
+    await view.findByRole('button', { name: /^buy milk/ })
     await view.unmount()
   })
 

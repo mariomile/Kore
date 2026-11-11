@@ -88,7 +88,7 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
 
     let value = json(&kore(&fixture, &["tag", "Dune", "#Book", "--json"]));
     assert_eq!(value["added"], true);
-    let today = reflect_cli::paths::today_date();
+    let today = kore_cli::paths::today_date();
     assert_eq!(value["stamped"]["added"], today);
     assert_eq!(
         read(&fixture, "notes/dune.md"),
@@ -128,6 +128,10 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
         &["tag", "notes/arrival.md", "book", "--json"],
     ));
     assert_eq!(declared["added"], false, "already declared: {declared}");
+    // Already in the tag: nothing joins, so nothing is stamped, not even
+    // the `created` field it lacks.
+    assert_eq!(declared["stamped"], serde_json::json!({}), "{declared}");
+    assert!(!read(&fixture, "notes/arrival.md").contains("added:"));
     let cleared = json(&kore(
         &fixture,
         &["untag", "notes/arrival.md", "book", "--json"],
@@ -252,7 +256,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
     fixture.build_index();
     fixture.insert_tag_type(
         "book",
-        r#"{"properties":[{"name":"Rating","key":"rating","type":"rating"},{"name":"Added","key":"added","type":"created"}],"template":"templates/book.md"}"#,
+        r#"{"properties":[{"name":"Rating","key":"rating","type":"rating"},{"name":"Added","key":"added","type":"created","start":{"kind":"today"}}],"template":"templates/book.md"}"#,
     );
 
     let value = json(&kore(
@@ -271,7 +275,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
     ));
     assert_eq!(value["path"], "notes/left-hand.md");
     assert_eq!(value["tags"], serde_json::json!(["book", "idea"]));
-    let today = reflect_cli::paths::today_date();
+    let today = kore_cli::paths::today_date();
     assert_eq!(
         value["properties"],
         serde_json::json!({"rating": 5, "added": today})

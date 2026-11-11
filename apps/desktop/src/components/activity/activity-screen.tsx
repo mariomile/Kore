@@ -9,9 +9,10 @@ import {
   type ActivityAuthor,
   type ActivitySitting,
   type SittingNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { UndoSittingDialog } from '@/components/activity/undo-sitting-dialog'
+import { WaitingProposals } from '@/components/activity/waiting-proposals'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel, formatTimeOfDay } from '@/lib/dates'
@@ -71,7 +72,8 @@ function groupByDay(sittings: readonly ActivitySitting[]): DayGroup[] {
  * repository, grouped into sittings (one author's run of work) and days,
  * newest first. Agents are named by their `Kore-Agent` trailer, so you can
  * see what each one did; a note row opens that note's history at the change.
- * Each sitting can be undone (step 6), keeping later edits.
+ * Each sitting can be undone (step 6), keeping later edits. Writes agents
+ * only proposed wait on top until you accept or reject them (A2).
  */
 export function ActivityScreen(): ReactElement {
   const { graph } = useGraph()
@@ -123,6 +125,7 @@ export function ActivityScreen(): ReactElement {
     return (
       <div className="mx-auto w-full max-w-2xl px-6 py-8">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Activity</h1>
+        <WaitingProposals generation={generation} />
         <p role="status" className="mt-4 text-sm text-text-muted">
           Activity is read from the vault’s backup history. Turn on backup to see what you and your
           agents change.
@@ -145,6 +148,8 @@ export function ActivityScreen(): ReactElement {
       <p className="mt-1 text-sm text-text-muted">
         What you and your agents changed in this vault, newest first.
       </p>
+
+      <WaitingProposals generation={generation} />
 
       {authors.length > 1 ? (
         <div role="group" aria-label="Filter by author" className="mt-5 flex flex-wrap gap-1.5">

@@ -4,9 +4,9 @@
 //! Self-contained: reads the graph's markdown files directly and opens
 //! `.kore/index.sqlite` strictly read-only — no Node runtime, no running
 //! desktop app, no IPC. The one exception is `kore index` ([`indexer`]),
-//! which builds the index without the app by running `@reflect/core`'s own
-//! indexer under Node and writing its rows through `reflect-index-store`. The modules mirror the small contract owned by
-//! `@reflect/core` (paths, fold keys, frontmatter, title derivation, slugs,
+//! which builds the index without the app by running `@kore/core`'s own
+//! indexer under Node and writing its rows through `kore-index-store`. The modules mirror the small contract owned by
+//! `@kore/core` (paths, fold keys, frontmatter, title derivation, slugs,
 //! hashing, FTS match syntax, the tag grammar, property typing); each one
 //! names its TS counterpart and is parity- or unit-tested against the same
 //! rules. Keep this surface tight — the CLI must never grow its own parser
@@ -40,11 +40,13 @@ pub mod mcp;
 pub mod mcp_http;
 pub mod note_file;
 pub mod paths;
+pub mod proposals;
 pub mod resolve;
 pub mod schema;
 pub mod search;
 pub mod search_query;
 pub mod semantic;
 pub mod slug;
+pub mod starting_values;
 pub mod vault_sync;
 pub mod write;

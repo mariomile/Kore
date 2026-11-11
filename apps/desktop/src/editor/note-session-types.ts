@@ -1,4 +1,4 @@
-import type { TaskMarker } from '@reflect/core'
+import type { TaskMarker } from '@kore/core'
 import type { FrontmatterPatch } from './note-session-frontmatter'
 import type { RoundTripFidelity } from './roundtrip'
 
@@ -49,7 +49,7 @@ export const INITIAL_NOTE_SNAPSHOT: NoteSessionSnapshot = {
   error: null,
 }
 
-/** File access injected by the host (the hook binds `@reflect/core` commands). */
+/** File access injected by the host (the hook binds `@kore/core` commands). */
 export interface NoteSessionIo {
   read: (path: string) => Promise<string>
   /**
@@ -58,6 +58,12 @@ export interface NoteSessionIo {
    * writes.
    */
   write: ((path: string, contents: string) => Promise<void>) | null
+  /**
+   * Save `contents` as a new conflict copy beside `path`, never overwriting
+   * the note or an earlier copy. Used only when a note closes with a parked
+   * conflict; absent means such edits can't be preserved.
+   */
+  writeConflictCopy?: ((path: string, contents: string) => Promise<void>) | undefined
 }
 
 /** Why {@link NoteSessionOptions.onContent} fired. */
@@ -135,6 +141,13 @@ export interface NoteSession {
    * can't die before the bytes land.
    */
   flush: () => Promise<void>
+  /**
+   * The final flush of a closing note (tab close, note switch, quit). Like
+   * {@link NoteSession.flush}, but under a parked conflict — where saves are
+   * paused — the unsaved buffer goes to a conflict copy beside the note, and
+   * the note keeps the version from disk. Resolves once that write settles.
+   */
+  flushOnClose: () => Promise<void>
   /** Resolve a conflict by keeping the buffer (rewrites the file). */
   keepMine: () => void
   /** Resolve a conflict by loading the external content (discards the buffer). */

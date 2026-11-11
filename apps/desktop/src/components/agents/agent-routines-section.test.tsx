@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { AgentRoutine, Settings } from '@reflect/core'
+import type { AgentRoutine, Settings } from '@kore/core'
 
 const settingsState = vi.hoisted(() => ({
   agentRoutines: [] as AgentRoutine[],
@@ -69,7 +69,7 @@ describe('AgentRoutinesSection', () => {
     const view = await render(<AgentRoutinesSection profiles={[]} />)
     await expect.element(view.getByText('Other graph', { exact: true })).not.toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Run Morning brief now' })).toBeDisabled()
-    await view.getByRole('button', { name: 'Assign to this graph' }).click()
+    await view.getByRole('button', { name: 'Assign to this vault' }).click()
     expect(updated.at(-1)?.agentRoutines?.find((entry) => entry.id === 'brief')).toMatchObject({
       graphRoot: '/g',
       enabled: false,

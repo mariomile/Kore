@@ -13,7 +13,7 @@ use std::os::raw::c_int;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
-use reflect_graph_paths::{evicted_logical_path, eviction_placeholder, is_dataless};
+use kore_graph_paths::{evicted_logical_path, eviction_placeholder, is_dataless};
 
 use crate::error::{AppError, AppResult};
 use crate::graph_gitignore;
@@ -26,11 +26,11 @@ pub(super) struct FileCatalog {
     pub notes: Vec<FileMeta>,
     pub attachments: Vec<FileMeta>,
     /// Entries the walk refused or failed to list (unreadable directories,
-    /// symlinks, default-pruned trees) — see `reflect_graph_paths::walk_catalog`.
+    /// symlinks, default-pruned trees) — see `kore_graph_paths::walk_catalog`.
     pub skipped: u32,
 }
 
-pub(super) use reflect_index_schema::KORE_DIR;
+pub(super) use kore_index_schema::KORE_DIR;
 const META_SCHEMA_VERSION: u32 = 1;
 pub(super) const TOP_LEVEL_DIRS: [&str; 3] = ["daily", "notes", "assets"];
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -61,7 +61,7 @@ pub(super) fn bootstrap(root: &Path) -> AppResult<()> {
 /// the root `.gitignore` remain byte-for-byte untouched, except for renaming
 /// the `.reflect/` group earlier Kore builds wrote there.
 pub(super) fn initialize_runtime(root: &Path) -> AppResult<()> {
-    reflect_index_schema::migrate_legacy_dir(root)?;
+    kore_index_schema::migrate_legacy_dir(root)?;
     ensure_runtime_directory(root)?;
     sweep_upload_staging(root);
     mark_dir_local_only(&root.join(KORE_DIR));
@@ -115,12 +115,12 @@ fn ensure_runtime_gitignore(root: &Path) -> AppResult<()> {
     let path = root.join(KORE_DIR).join(".gitignore");
     if fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.file_type().is_file())
         && fs::read_to_string(&path)
-            .is_ok_and(|text| text == reflect_index_schema::LEGACY_SELF_GITIGNORE)
+            .is_ok_and(|text| text == kore_index_schema::LEGACY_SELF_GITIGNORE)
     {
-        fs::write(&path, reflect_index_schema::SELF_GITIGNORE)?;
+        fs::write(&path, kore_index_schema::SELF_GITIGNORE)?;
         return Ok(());
     }
-    create_runtime_file(&path, reflect_index_schema::SELF_GITIGNORE)
+    create_runtime_file(&path, kore_index_schema::SELF_GITIGNORE)
 }
 
 fn ensure_runtime_meta(root: &Path) -> AppResult<()> {
@@ -530,14 +530,14 @@ pub(super) fn collect_files(
 }
 
 /// Recursively list every eligible Markdown note from the graph root, via the
-/// shared vault walk (`reflect_graph_paths::walk_catalog`).
+/// shared vault walk (`kore_graph_paths::walk_catalog`).
 pub(super) fn collect_note_files(root: &Path) -> Vec<FileMeta> {
     collect_file_catalog(root).notes
 }
 
 /// Build one snapshot of every eligible note and supported attachment.
 pub(super) fn collect_file_catalog(root: &Path) -> FileCatalog {
-    let catalog = reflect_graph_paths::walk_catalog(root);
+    let catalog = kore_graph_paths::walk_catalog(root);
     FileCatalog {
         notes: catalog.notes.into_iter().map(FileMeta::from).collect(),
         attachments: catalog
@@ -650,7 +650,7 @@ mod tests {
         initialize_runtime(dir.path()).unwrap();
         assert_eq!(
             fs::read_to_string(dir.path().join(".kore/.gitignore")).unwrap(),
-            reflect_index_schema::SELF_GITIGNORE
+            kore_index_schema::SELF_GITIGNORE
         );
     }
 
@@ -685,7 +685,7 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(dir.path().join(".kore/.gitignore")).unwrap(),
-            reflect_index_schema::SELF_GITIGNORE
+            kore_index_schema::SELF_GITIGNORE
         );
     }
 

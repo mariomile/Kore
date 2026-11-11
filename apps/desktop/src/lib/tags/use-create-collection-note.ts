@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage, type TagType } from '@reflect/core'
+import { errorMessage, type TagType } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { useGraph } from '@/providers/graph-provider'

@@ -29,8 +29,8 @@ const captureInboxSpool = vi.hoisted(() =>
 const subscribeBrowserNavigated = vi.hoisted(() => vi.fn(async () => () => {}))
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   browserEmbedShow,
   browserEmbedBounds,
   browserEmbedClose,

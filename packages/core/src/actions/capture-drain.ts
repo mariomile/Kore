@@ -6,7 +6,6 @@ import {
   captureInboxReject,
   captureInboxRemove,
   promoteCaptureScreenshot,
-  readNote,
   writeNote,
 } from '../graph/commands'
 import { dailyPath, notePath } from '../graph/paths'
@@ -39,8 +38,10 @@ import {
   captureNoteMeta,
   captureNoteSource,
   displayTitle,
+  localNoteSource,
+  NoteNotLocalError,
   notePrivate,
-  noteSource,
+  readNoteUnlessMissing,
   retitleDailyEntry,
   type CaptureStatus,
 } from './capture-note'
@@ -128,14 +129,11 @@ async function findSameDayCapture(
     if (identity === null) {
       continue
     }
-    let source: string
-    try {
-      source = await readNote(identity.notePath, generation)
-    } catch (cause) {
-      if (isAppError(cause) && cause.kind === 'notFound') {
-        continue
-      }
-      throw cause
+    // An evicted capture note stops the pass (NoteNotLocalError) instead of
+    // being skipped: skipping would capture the same link a second time.
+    const source = await readNoteUnlessMissing(identity.notePath, generation)
+    if (source === null) {
+      continue
     }
     const meta = captureNoteMeta(parseFrontmatter(splitFrontmatter(source).raw).data)
     if (meta && meta.captureUrl === url && meta.captureSelectionHash === selectionHash) {
@@ -208,7 +206,7 @@ export async function drainCaptureInbox(
       const fresh = captureIdentity(new Date(envelope.capturedAt), envelope.id)
       const daily = dailyPath(fresh.date)
       const linksNoteTitle = await ensureBacklinkTarget(LINKS_NOTE_TITLE, input.generation)
-      const dailySource = await noteSource(daily, input.generation)
+      const dailySource = await localNoteSource(daily, input.generation)
       const selection = envelope.selection?.trim()
       const selectionHash = selection ? await hashContent(selection) : undefined
       const existing = await findSameDayCapture(
@@ -287,7 +285,7 @@ export async function drainCaptureInbox(
         deduped += 1
       }
     } catch (cause) {
-      return outcome({ reason: toAppError(cause).kind, message: errorMessage(cause) })
+      return outcome(stopFor(cause))
     }
   }
 
@@ -297,6 +295,18 @@ export async function drainCaptureInbox(
     return outcome({ reason: toAppError(cause).kind, message: errorMessage(cause) })
   }
   return outcome(null)
+}
+
+/**
+ * The stop a failed spool reports. A daily or capture note still in iCloud is
+ * `evicted`: the spool stays, the download is already requested, and the next
+ * pass retries. Writing on top would fork the user's note into a conflict copy.
+ */
+function stopFor(cause: unknown): ReconcileStop {
+  if (cause instanceof NoteNotLocalError) {
+    return { reason: 'evicted', message: cause.message }
+  }
+  return { reason: toAppError(cause).kind, message: errorMessage(cause) }
 }
 
 function parseEnvelope(raw: string): InboxEnvelope | null {
@@ -318,8 +328,8 @@ function parseEnvelope(raw: string): InboxEnvelope | null {
  */
 async function drainTextCapture(envelope: TextCaptureEnvelope, generation: number): Promise<void> {
   const daily = dailyPath(captureLocalDate(new Date(envelope.capturedAt)))
-  const dailySource = await noteSource(daily, generation)
-  // `task` is Reflect's round `+` checkbox, the only marker the Tasks
+  const dailySource = await localNoteSource(daily, generation)
+  // `task` is Kore's round `+` checkbox, the only marker the Tasks
   // projection reads; `checkbox` is the square `- [ ]`, an inert daily item.
   const kind: ListItemKind = envelope.kind === 'append' ? 'bullet' : envelope.kind
   await writeNote(daily, appendListItem(dailySource, envelope.text, kind), generation)

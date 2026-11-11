@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Pencil, Trash } from '@/components/icons'
-import type { AiPrompt } from '@reflect/core'
+import type { AiPrompt } from '@kore/core'
 import { Button } from '@/components/ui/button'
 
 interface AiPromptRowProps {

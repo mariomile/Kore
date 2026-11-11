@@ -1,4 +1,4 @@
-import { isAppError, readNote } from '@reflect/core'
+import { isAppError, readNote } from '@kore/core'
 
 /**
  * The note's content, where a missing file reads as an empty note — the lazy

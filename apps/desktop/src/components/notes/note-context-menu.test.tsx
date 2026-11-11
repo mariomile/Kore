@@ -24,8 +24,8 @@ const graph = vi.hoisted(
     },
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getPinnedNotes,
   getNote,
@@ -167,6 +167,6 @@ describe('NoteListContextMenu', () => {
 
     await userEvent.click(page.getByRole('menuitem', { name: /^Pin/ }))
     expect(toggleNotePinned).not.toHaveBeenCalled()
-    expect(operationFail).toHaveBeenCalledWith('No graph is open.')
+    expect(operationFail).toHaveBeenCalledWith('No vault is open.')
   })
 })

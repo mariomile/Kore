@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { readNote, writeNote, type FileChange } from '@reflect/core'
+import { noteFileStem, readNote, saveConflictCopy, writeNote, type FileChange } from '@kore/core'
+import { startOperation } from '@/lib/operations'
 import { useFileChanges } from '@/lib/use-file-changes'
 import { createDocumentBinding, type DocumentBinding } from './document-binding'
 import { cacheNoteContent, getCachedNoteContent } from './note-content-cache'
@@ -10,7 +11,7 @@ import { checkRoundTrip } from './roundtrip'
 
 /**
  * React adapter over the {@link createNoteSession} document state machine: one
- * session per open `(path, generation)`, wired to the `@reflect/core` file
+ * session per open `(path, generation)`, wired to the `@kore/core` file
  * commands, the watcher event stream, and the editor's imperative handle. All
  * save/conflict/protection semantics live in `note-session.ts`, and the
  * create/adopt/teardown/hand-off lifecycle (a rename retargets the live
@@ -46,7 +47,7 @@ export interface NoteDocumentOptions {
   /**
    * Maintain inbound `[[links]]` when this note's settled title changes. The
    * coordinator separately requires a direct `notes/*.md` path with valid
-   * Reflect ULID frontmatter before moving a file onto its title's slug, so
+   * Kore ULID frontmatter before moving a file onto its title's slug, so
    * adopted and stable-path notes keep their filenames.
    */
   trackRenames?: boolean
@@ -151,6 +152,18 @@ export function useNoteDocument(
                   })
                 }
               : null,
+            writeConflictCopy: canWrite
+              ? async (forPath, contents) => {
+                  const current = generationRef.current
+                  if (current === null) {
+                    throw new Error('no graph generation available for the conflict copy')
+                  }
+                  const copy = await saveConflictCopy(forPath, contents, current)
+                  startOperation('Saved your edits as a copy').warn(
+                    `"${noteFileStem(forPath)}" changed elsewhere while you were writing. It keeps that version; your text is in "${noteFileStem(copy)}".`,
+                  )
+                }
+              : undefined,
           },
           classify: checkRoundTrip,
           onSnapshot: (next) => {

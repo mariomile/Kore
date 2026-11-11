@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { RemoteAccessState } from '@reflect/core'
+import type { RemoteAccessState } from '@kore/core'
 
 /**
  * Where remote access stands, shared by the invisible runner that starts and

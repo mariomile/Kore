@@ -1,4 +1,4 @@
-# Workspace for all Rust crates: the Tauri desktop shell, the `reflect` CLI,
+# Workspace for all Rust crates: the Tauri desktop shell, the `kore` CLI,
 # the shared index-schema crate, and first-party mobile plugins. One lockfile
 # pins one SQLite everywhere — the desktop writer and the CLI reader can
 # never skew.
@@ -11,6 +11,7 @@ members = [
   "crates/graph-paths",
   "crates/index-schema",
   "crates/index-store",
+  "crates/kit-script",
   "crates/note-policy",
   "plugins/tauri-plugin-keyboard",
   "plugins/tauri-plugin-recording",
@@ -24,9 +25,10 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.11.0"
 tempfile = "3.27.0"
-reflect-graph-paths = { path = "crates/graph-paths" }
-reflect-note-policy = { path = "crates/note-policy" }
-reflect-index-store = { path = "crates/index-store" }
+kore-graph-paths = { path = "crates/graph-paths" }
+kore-note-policy = { path = "crates/note-policy" }
+kore-kit-script = { path = "crates/kit-script" }
+kore-index-store = { path = "crates/index-store" }
 
 # Shipped builds trade compile time for a smaller, faster binary: one codegen
 # unit plus fat LTO lets rustc inline across crates (rusqlite, tauri, serde).

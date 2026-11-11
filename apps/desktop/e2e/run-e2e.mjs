@@ -7,7 +7,7 @@
 // Run with `pnpm e2e` from apps/desktop. The script owns its dev server
 // (spawned on E2E_PORT, default 5199) and tears it down; Chromium comes from
 // Playwright's own download (`pnpm test:install`), overridable with
-// REFLECT_E2E_CHROMIUM=/path/to/chromium for prebaked environments.
+// KORE_E2E_CHROMIUM=/path/to/chromium for prebaked environments.
 //
 // The scenario leans on the seed graph fixtures (src/dev/seed-graph.ts):
 // renaming "Kore V2"/"Quarterly Goals" or the "sync over Git." sentence
@@ -72,7 +72,7 @@ function stopServer() {
 }
 
 // ---- browser --------------------------------------------------------------
-const explicitChromium = process.env['REFLECT_E2E_CHROMIUM']
+const explicitChromium = process.env['KORE_E2E_CHROMIUM']
 const prebaked = '/opt/pw-browsers/chromium'
 const executablePath = explicitChromium ?? (existsSync(prebaked) ? prebaked : undefined)
 
@@ -189,8 +189,6 @@ try {
       .getByText('Kore V2')
       .click()
     await page.getByText('sync over Git.').first().waitFor()
-    // The sidebar's Open section mirrors the same tabs.
-    await page.getByRole('button', { name: 'Open', exact: true }).waitFor()
   })
   await page.screenshot({ path: `${SHOTS}06-tabs.png` })
 
@@ -271,6 +269,8 @@ try {
   })
 
   await step('the Graph view maps the seeded notes and links', async () => {
+    // The agent step leaves Settings open, and Settings covers the sidebar.
+    await page.getByRole('button', { name: 'Close settings' }).click()
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Graph').click()
     await page.getByRole('heading', { name: 'Graph', exact: true }).waitFor()
     // The seeded graph has linked notes; exact counts vary with earlier steps,

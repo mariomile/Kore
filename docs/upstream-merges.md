@@ -30,7 +30,7 @@ git fetch upstream
 git checkout -b upstream-merge master
 git merge upstream/main        # expect conflicts; see hotspots below
 pnpm install && pnpm fix && pnpm check
-pnpm --filter @reflect/desktop test
+pnpm --filter @kore/desktop test
 cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings
 ```
 

@@ -25,7 +25,7 @@ fn indexer_script() -> Result<PathBuf, CliError> {
     }
     Err(CliError::runtime(format!(
         "{INDEXER_SCRIPT} not found next to {}; set KORE_INDEXER to its path \
-         (build it with `pnpm --filter @reflect/core build:indexer`)",
+         (build it with `pnpm --filter @kore/core build:indexer`)",
         exe.display()
     )))
 }

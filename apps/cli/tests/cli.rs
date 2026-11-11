@@ -10,7 +10,7 @@ use rusqlite::params;
 use tempfile::TempDir;
 
 use common::*;
-use reflect_cli::paths::{daily_path, today_date};
+use kore_cli::paths::{daily_path, today_date};
 
 /// A graph with the standard layout but no index file.
 
@@ -1217,10 +1217,9 @@ fn collection_lists_typed_tag_rows_with_properties() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO tag_types(tag_key, note_path, schema_json)
-         VALUES('book', 'tags/book.md',
-                '[{\"name\":\"Author\",\"key\":\"author\",\"type\":\"text\"},{\"name\":\"Rating\",\"key\":\"rating\",\"type\":\"number\"}]')",
-        [],
+        "INSERT INTO tag_types(tag_key, note_path, schema_json, resolved_json, public_resolved_json)
+         VALUES('book', 'tags/book.md', ?1, ?1, ?1)",
+        [r#"[{"name":"Author","key":"author","type":"text"},{"name":"Rating","key":"rating","type":"number"}]"#],
     )
     .unwrap();
     for (path, key, value, value_type, value_number) in [

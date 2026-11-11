@@ -111,17 +111,17 @@ fresh process; concurrent builds distort latency comparisons.
 Stage the existing sidecars once per checkout, then build the test binary:
 
 ```sh
-pnpm --filter @reflect/desktop sidecar
-cargo test -p reflect-open --lib --locked --no-run
+pnpm --filter @kore/desktop sidecar
+cargo test -p kore-open --lib --locked --no-run
 ```
 
 Set `KORE_EMBED_BENCH_CACHE` to the populated `models` directory under the
 app's data directory. Use the test executable path printed by Cargo (named
-`target/debug/deps/reflect_open_lib-<hash>`):
+`target/debug/deps/kore_open_lib-<hash>`):
 
 ```sh
 export KORE_EMBED_BENCH_CACHE='/path/to/existing/model/cache'
-export KORE_EMBED_BENCH_BINARY='target/debug/deps/reflect_open_lib-<hash>'
+export KORE_EMBED_BENCH_BINARY='target/debug/deps/kore_open_lib-<hash>'
 KORE_EMBED_BENCH_MODE=release KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
   "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
 KORE_EMBED_BENCH_MODE=bounded KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \

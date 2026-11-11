@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import type { CollectionEntry, TagProperty, TagType } from '@reflect/core'
+import type { CollectionEntry, TagProperty, TagType } from '@kore/core'
 import { Close, Filter, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

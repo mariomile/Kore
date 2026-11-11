@@ -1,5 +1,5 @@
 {
-  "name": "@reflect/utils",
+  "name": "@kore/utils",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,6 +13,6 @@
   "devDependencies": {
     "@ocavue/tsconfig": "^0.7.1",
     "typescript": "~6.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   }
 }

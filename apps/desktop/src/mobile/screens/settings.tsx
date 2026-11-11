@@ -12,7 +12,7 @@ import {
   type AiPrompt,
   type AiProviderConfig,
   type TranscriptionProvider,
-} from '@reflect/core'
+} from '@kore/core'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
 import { useAiProviders } from '@/hooks/use-ai-providers'
 import { useAppVersion } from '@/hooks/use-app-version'
@@ -221,7 +221,7 @@ export function MobileSettings(): ReactElement {
           />
 
           {showGraph ? (
-            <SettingsGroup header="Graph">
+            <SettingsGroup header="Vault">
               <SettingsNavRow
                 label={graph?.name ?? '—'}
                 value={storageLabel}
@@ -343,7 +343,7 @@ export function MobileSettings(): ReactElement {
 
           {showBackup ? (
             <SettingsGroup
-              header="Backup"
+              header="Sync"
               footer={
                 canConnect
                   ? 'Sync notes with Kore on your other devices.'

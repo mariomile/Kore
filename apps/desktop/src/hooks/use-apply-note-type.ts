@@ -2,14 +2,15 @@ import { useCallback } from 'react'
 import {
   addNoteTag,
   getTagType,
-  missingCreatedStamps,
+  startingValuesFor,
+  valuesMissingFrom,
   noteHasTag,
   parseFrontmatter,
   PRIVATE_NOTE_EDIT_ERROR,
   removeNoteTag,
   splitFrontmatter,
   upsertFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { commitNoteBodyTransform, readNoteSource } from '@/lib/note-frontmatter'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { useGraph } from '@/providers/graph-provider'
@@ -29,7 +30,7 @@ export interface NoteTypeChange {
 /**
  * Land a chat-proposed note type the user accepted (the review card's
  * Accept). The write is the Type field's own — `addNoteTag` plus the
- * type's `created` stamps in one transform, or `removeNoteTag` — so a note
+ * type's `created` stamps and starting values in one transform, or `removeNoteTag` — so a note
  * typed from chat is byte-identical to one typed from the picker.
  *
  * The note is re-checked as it is *now*, on the same channel the write goes
@@ -44,7 +45,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
   return useCallback(
     async ({ path, tag, remove }: NoteTypeChange): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       const source = await readNoteSource(path)
       const { raw } = splitFrontmatter(source)
@@ -58,6 +59,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
       // which stamps exist, and an untyped tag simply has none. Nothing is
       // stamped on the way out — unsetting a type must not date anything.
       const type = remove ? null : await getTagType(tag)
+      const starting = await startingValuesFor(tag, type)
       await commitNoteBodyTransform(
         path,
         (current) => {
@@ -68,7 +70,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
           if (tagged === null) {
             return current
           }
-          return upsertFrontmatter(tagged, missingCreatedStamps(tagged, type))
+          return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
         },
         generation,
       )

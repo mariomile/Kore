@@ -8,14 +8,14 @@
 FROM rust:1-bookworm AS cli
 WORKDIR /src
 COPY . .
-RUN cargo build --release --locked -p reflect-cli
+RUN cargo build --release --locked -p kore-cli
 
 FROM node:22-bookworm-slim AS indexer
 WORKDIR /src
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile --filter @reflect/core... \
- && pnpm --filter @reflect/core build:indexer
+RUN pnpm install --frozen-lockfile --filter @kore/core... \
+ && pnpm --filter @kore/core build:indexer
 
 FROM node:22-bookworm-slim
 RUN apt-get update \

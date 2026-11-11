@@ -6,7 +6,7 @@ import type { IpcBridge } from '../ipc/bridge'
 
 /**
  * An {@link IpcBridge} over newline-delimited JSON, for a headless host that
- * runs `@reflect/core` in Node and answers its native commands from another
+ * runs `@kore/core` in Node and answers its native commands from another
  * process: the `kore index` CLI spawns Node with pipes and serves every
  * request with the same Rust code the desktop app's commands use.
  *

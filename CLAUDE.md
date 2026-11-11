@@ -20,12 +20,13 @@ CLI and `kore mcp`, `$KORE_GRAPH`, the agent skills, `kore://` links, the
 vault's `.kore/` directory, `*.kore.md` asset descriptions, the `kore/` config
 dir, `kore.*` storage keys and `kore-asset://`. The old Reflect-era stored
 names are migrated on first open; never write them again. **Reflect** (the
-upstream project this repo forked from) survives only in internal code
-identifiers (`@reflect/*` packages, `reflect-*` crates) until the mechanical
-internal rename lands. The Apple identity is `app.kore.*` (`iCloud.app.kore`,
-`group.app.kore`) and the keychain service is `"kore"`; the old `app.lore.*`
-data folder and `"lore"` keychain entries are read as migration fallbacks
-only. See AGENTS.md, Naming.
+upstream project this repo forked from) survives only where it means that
+upstream app (the Reflect V1 importer, upstream docs) and in history;
+packages are `@kore/*`, crates `kore-*`. `pnpm lint:names` fails when a file
+gains a new "reflect" name. The Apple identity is `app.kore.*`
+(`iCloud.app.kore`, `group.app.kore`) and the keychain service is `"kore"`;
+the old `app.lore.*` data folder and `"lore"` keychain entries are read as
+migration fallbacks only. See AGENTS.md, Naming.
 
 ## Layering rules
 
@@ -34,13 +35,13 @@ getting them wrong is the most common way a change is rejected in review:
 
 - **Business logic lives in `packages/core`.** No file, DB, or AI logic in React
   components, hooks, or Tauri command handlers. Components call typed
-  `@reflect/core` bindings; `#[tauri::command]` handlers are thin wrappers over
+  `@kore/core` bindings; `#[tauri::command]` handlers are thin wrappers over
   native primitives. Tiny dependency-free helpers shared across packages go in
-  `@reflect/utils`.
+  `@kore/utils`.
 - **Rust owns capabilities, TypeScript owns policy.** A Rust command never
   encodes a product rule beyond the primitive it exposes — the watcher emits
   events; *what* to reindex is decided in core.
-- **`@reflect/core` and `@reflect/db` never import `@tauri-apps/*`.** A host
+- **`@kore/core` and `@kore/db` never import `@tauri-apps/*`.** A host
   installs a transport at startup via `setBridge`
   (`packages/core/src/ipc/bridge.ts`): the desktop app adapts Tauri
   (`apps/desktop/src/lib/tauri-bridge.ts`), plain-browser dev installs the
@@ -55,20 +56,20 @@ getting them wrong is the most common way a change is rejected in review:
 in AGENTS.md. These additional gates are what actually turn CI red:
 
 - **Generated DB types.** After changing the SQLite schema
-  (`crates/index-schema/`), run `pnpm --filter @reflect/db db:codegen` and commit
+  (`crates/index-schema/`), run `pnpm --filter @kore/db db:codegen` and commit
   `packages/db/src/schema.gen.ts`. CI fails when it is stale.
 - **Rust is `fmt` + `clippy` + `test`.** `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`, then
   `cargo test --workspace`. Warnings are errors. Stage the sidecars once per
-  checkout first (`pnpm --filter @reflect/desktop sidecar`) or anything that
+  checkout first (`pnpm --filter @kore/desktop sidecar`) or anything that
   compiles the desktop crate fails inside tauri-build.
 - **iOS bindings.** Rust touching `apps/desktop/src-tauri` must also pass
-  `cargo check -p reflect-open --lib --target aarch64-apple-ios --no-default-features`.
+  `cargo check -p kore-open --lib --target aarch64-apple-ios --no-default-features`.
   The TestFlight workflow is the only full iOS build and it never runs on PRs.
 - **Both browser engines.** The `browser` Vitest project runs on Chromium *and*
   WebKit (the production Tauri webview engine) on every PR. Verify a `.test.tsx`
   on both:
-  `REFLECT_TEST_BROWSER=webkit pnpm exec vitest run --project browser <path>`.
+  `KORE_TEST_BROWSER=webkit pnpm exec vitest run --project browser <path>`.
 - The eslint pass runs under `node --max-old-space-size=4096` deliberately — its
   type-aware rules peak just past the default heap on a stock runner, and
   without the flag the job dies with "JavaScript heap out of memory" instead of

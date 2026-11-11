@@ -8,7 +8,7 @@ import {
   resolveAttachmentSource,
   separateCalloutTitles,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { decorateCallouts } from '@/editor/callout-dom'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'
@@ -69,7 +69,7 @@ body {
   color: var(--text, #17181c);
   -webkit-font-smoothing: antialiased;
 }
-.lore-export-page {
+.kore-export-page {
   box-sizing: border-box;
   max-width: 46rem;
   min-height: 100vh;
@@ -77,10 +77,10 @@ body {
   padding: 3.5rem 2rem 6rem;
   background: var(--surface, #ffffff);
 }
-.lore-export-title {
+.kore-export-title {
   margin: 0 0 1.5rem;
 }
-.lore-export-print {
+.kore-export-print {
   position: fixed;
   right: 1.25rem;
   bottom: 1.25rem;
@@ -98,13 +98,13 @@ body {
   body {
     background: #ffffff;
   }
-  .lore-export-page {
+  .kore-export-page {
     max-width: none;
     min-height: 0;
     padding: 0;
     background: #ffffff;
   }
-  .lore-export-print {
+  .kore-export-print {
     display: none;
   }
 }
@@ -134,7 +134,7 @@ export function buildExportDocument(input: ExportDocumentInput): string {
     .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
     .join('')
   const heading = input.addTitleHeading
-    ? `<h1 class="lore-export-title">${escapeHtml(input.title)}</h1>\n`
+    ? `<h1 class="kore-export-title">${escapeHtml(input.title)}</h1>\n`
     : ''
   return `<!doctype html>
 <html${attrs}>
@@ -150,10 +150,10 @@ ${EXPORT_CSS}
 </style>
 </head>
 <body>
-<main class="lore-export-page">
+<main class="kore-export-page">
 ${heading}${input.bodyHtml}
 </main>
-<button type="button" class="lore-export-print" onclick="window.print()">Print / Save as PDF</button>
+<button type="button" class="kore-export-print" onclick="window.print()">Print / Save as PDF</button>
 </body>
 </html>
 `
@@ -225,7 +225,7 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
             const attachment = resolveAttachmentSource(src)
             return attachment === null ? undefined : (assetUrl(generation, attachment) ?? undefined)
           },
-          className: 'reflect-editor',
+          className: 'kore-editor',
         }),
       )
     })

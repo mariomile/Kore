@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { useGraph } from '@/providers/graph-provider'
 

@@ -16,7 +16,7 @@ import {
   isNotePath,
   loadGithubAuth,
   parseGithubRemote,
-  ReflectError,
+  KoreError,
   subscribeFileChanges,
   type ChangedFile,
   type GithubRepoRef,
@@ -24,7 +24,7 @@ import {
   type SyncEngine,
   type SyncStatus,
   type Unlisten,
-} from '@reflect/core'
+} from '@kore/core'
 import { setBackupFlusher } from '@/lib/backup-flush'
 import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { startOperation } from '@/lib/operations'
@@ -367,7 +367,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
         onLargeFilesSkipped: (files) => {
           // Surface the guardrail loudly: these files are NOT in the backup.
           const names = files.map((file) => file.path).join(', ')
-          startOperation('Backing up').fail(`Too large to back up (kept local): ${names}`)
+          startOperation('Syncing').fail(`Too large to sync (kept local): ${names}`)
         },
         onRemoteChanges,
       })
@@ -420,7 +420,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
   async function requireToken(): Promise<string> {
     const token = await getGithubToken(providerFetch)
     if (token === null) {
-      throw new ReflectError('auth', 'Connect GitHub first (no credential stored)')
+      throw new KoreError('auth', 'Connect GitHub first (no credential stored)')
     }
     return token
   }
@@ -447,7 +447,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
       }
       const [owner, repoName, ...rest] = repo.fullName.split('/')
       if (owner === undefined || repoName === undefined || rest.length > 0) {
-        throw new ReflectError('parse', `unexpected repository name from GitHub: ${repo.fullName}`)
+        throw new KoreError('parse', `unexpected repository name from GitHub: ${repo.fullName}`)
       }
       // Align with the account's default branch for new repos so the first
       // push creates the branch GitHub already considers the default.

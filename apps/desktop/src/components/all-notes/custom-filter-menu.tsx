@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { foldTag, isTagName, type NoteTagFacet } from '@reflect/core'
+import { foldTag, isTagName, type NoteTagFacet } from '@kore/core'
 import { ChevronDown } from '@/components/icons'
 import {
   Command,
@@ -68,7 +68,7 @@ export function CustomFilterMenu({
       <PopoverTrigger
         aria-pressed={activeTag !== null}
         className={cn(
-          'flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-medium transition-colors duration-100',
+          'flex h-6 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium transition-colors duration-100',
           activeTag !== null
             ? 'bg-surface text-text shadow-sm'
             : 'text-text-muted hover:text-text-secondary',

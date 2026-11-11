@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { Chart, Check, FolderOpen, History, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
@@ -50,11 +50,11 @@ function backupDot(backup: BackupState): { className: string; label: string } | 
   }
   switch (backup.status.state) {
     case 'syncing':
-      return { className: 'bg-accent motion-safe:animate-pulse', label: 'Backing up' }
+      return { className: 'bg-accent motion-safe:animate-pulse', label: 'Syncing' }
     case 'offline':
-      return { className: 'bg-warning', label: 'Backup waiting for a connection' }
+      return { className: 'bg-warning', label: 'Sync waiting for a connection' }
     case 'error':
-      return { className: 'bg-danger', label: 'Backup failed — see Settings' }
+      return { className: 'bg-danger', label: 'Sync failed — see Settings' }
   }
 }
 
@@ -126,7 +126,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           />
           <TooltipContent>{displayGraphPath(graph.root, home ?? undefined)}</TooltipContent>
         </Tooltip>
-        <DropdownMenuContent aria-label="Switch graph" side="top" sideOffset={6}>
+        <DropdownMenuContent aria-label="Switch vault" side="top" sideOffset={6}>
           {recents.map((recent, index) => {
             const current = recent.root === graph.root
             const binding = graphSwitchBindingFor(index)
@@ -180,9 +180,9 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className={MENU_ITEM_CLASS}>
               <GraphSwatch color={currentColor} className="size-3.5 rounded-sm" />
-              <span className="min-w-0 flex-1 truncate">Graph color</span>
+              <span className="min-w-0 flex-1 truncate">Vault color</span>
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent aria-label="Graph color">
+            <DropdownMenuSubContent aria-label="Vault color">
               {GRAPH_COLOR_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.id}
@@ -207,13 +207,13 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             className={MENU_ITEM_CLASS}
           >
             <Locate aria-hidden className="size-3.5 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">Reveal graph in Finder</span>
+            <span className="min-w-0 flex-1 truncate">Reveal vault in Finder</span>
           </DropdownMenuItem>
           {/* Graph switching re-roots every window; note windows hide it. */}
           {isMainWindow() ? (
             <DropdownMenuItem onClick={() => void chooseGraph()} className={MENU_ITEM_CLASS}>
               <FolderOpen aria-hidden className="size-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">Open another graph…</span>
+              <span className="min-w-0 flex-1 truncate">Open another vault…</span>
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem

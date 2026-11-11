@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactElement } from 'react'
 import { ChevronRight, Note } from '@/components/icons'
-import { displayNoteTitle, noteDirectiveTitle } from '@reflect/core'
+import { displayNoteTitle, noteDirectiveTitle } from '@kore/core'
 import { isModEvent } from '@meowdown/core'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useNoteRow } from '@/hooks/use-note-row'

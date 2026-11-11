@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Check, Close } from '@/components/icons'
-import { errorMessage, type ChatTurn, type NoteEditDecision } from '@reflect/core'
+import { errorMessage, type ChatTurn, type NoteEditDecision } from '@kore/core'
 import { Kbd } from '@/components/kbd'
 import { Button } from '@/components/ui/button'
 import { NoteSaveRetryError } from '@/editor/note-save-retry-error'

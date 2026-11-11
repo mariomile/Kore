@@ -2,8 +2,8 @@ import { renderHook } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getNote = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   getNote,
 }))
 vi.mock('@/providers/settings-provider', () => ({

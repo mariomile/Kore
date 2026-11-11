@@ -1,8 +1,8 @@
 //! `kore index` — build or refresh `.kore/index.sqlite` without the app.
 //!
 //! The projection is the desktop app's, not a second implementation: parsing
-//! and extraction run in `@reflect/core` (the bundled `kore-indexer.mjs`,
-//! executed by Node), and every row write goes through `reflect-index-store`,
+//! and extraction run in `@kore/core` (the bundled `kore-indexer.mjs`,
+//! executed by Node), and every row write goes through `kore-index-store`,
 //! the same crate the app's Tauri commands call. This module is the host in
 //! between: it spawns Node with piped stdio and answers the core's native
 //! commands (file listing, note reads, index reads and writes) over the
@@ -15,13 +15,14 @@
 use std::io::{BufRead, Write};
 use std::path::{Component, Path, PathBuf};
 
-use reflect_index_store::query::{open_read_connection, run_query};
-use reflect_index_store::scan::scan_reconcile;
-use reflect_index_store::write::{
-    apply_notes, clear_index, move_note_rows, remove_notes, set_index_meta, touch_notes,
-    IndexedNote, MovedNoteAddress, MtimeTouch,
+use kore_index_store::query::{open_read_connection, run_query};
+use kore_index_store::scan::scan_reconcile;
+use kore_index_store::write::{
+    apply_notes, clear_index, move_note_rows, remove_notes, set_index_meta,
+    set_tag_type_resolutions, touch_notes, IndexedNote, MovedNoteAddress, MtimeTouch,
+    TagTypeResolution,
 };
-use reflect_index_store::{FileMeta, StoreError};
+use kore_index_store::{FileMeta, StoreError};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -166,6 +167,11 @@ struct TouchArgs {
     entries: Vec<MtimeTouch>,
 }
 
+#[derive(Deserialize)]
+struct ResolveArgs {
+    rows: Vec<TagTypeResolution>,
+}
+
 fn parse_args<T: serde::de::DeserializeOwned>(command: &str, args: &Value) -> Result<T, HostError> {
     serde_json::from_value(args.clone()).map_err(|err| HostError {
         kind: "parse",
@@ -177,7 +183,7 @@ impl Host {
     /// Open (creating and migrating as needed) the graph's index for writing,
     /// plus a guarded read-only connection for the core's queries.
     pub fn open(root: &Path) -> Result<Self, CliError> {
-        let writer = reflect_index_schema::open_index_at(root)
+        let writer = kore_index_schema::open_index_at(root)
             .map_err(|err| CliError::runtime(format!("could not open the index: {err}")))?;
         let reader = open_read_connection(root)
             .map_err(|err| CliError::runtime(format!("could not open the index: {err}")))?;
@@ -292,6 +298,11 @@ impl Host {
                 touch_notes(&mut self.writer, &entries)?;
                 Ok(Value::Null)
             }
+            "index_tag_types_resolve" => {
+                let ResolveArgs { rows } = parse_args(command, args)?;
+                set_tag_type_resolutions(&mut self.writer, &rows)?;
+                Ok(Value::Null)
+            }
             "index_reconcile_scan" => {
                 let files = self.note_files();
                 self.stats.notes = files.len();
@@ -340,7 +351,7 @@ impl Host {
     }
 
     fn note_files(&self) -> Vec<FileMeta> {
-        reflect_graph_paths::walk_catalog(&self.root)
+        kore_graph_paths::walk_catalog(&self.root)
             .notes
             .into_iter()
             .map(FileMeta::from)

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { errorMessage, icloudDownloadPending, icloudPendingCount } from '@reflect/core'
+import { errorMessage, icloudDownloadPending, icloudPendingCount } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGraph } from '@/providers/graph-provider'
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { isDeviceFlowConfigured, saveGithubAuth, type GithubUser } from '@reflect/core'
+import { isDeviceFlowConfigured, saveGithubAuth, type GithubUser } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -170,10 +170,10 @@ export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): Rea
                   the <strong>{repoName}</strong> repository
                 </>
               ) : (
-                'your backup repository'
+                'your sync repository'
               )}{' '}
               (GitHub → Settings → Developer settings → Fine-grained tokens). It is stored in your
-              OS keychain, never in your graph.
+              OS keychain, never in your vault.
             </p>
             <label className="flex flex-col gap-1">
               <span className={FIELD_LABEL_CLASS}>Personal access token</span>

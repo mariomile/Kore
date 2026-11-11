@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { SearchFilterChip } from '@reflect/core'
+import type { SearchFilterChip } from '@kore/core'
 import { Badge } from '@/components/ui/badge'
 
 export interface SearchFilterChipsProps {

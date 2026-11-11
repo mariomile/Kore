@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { OpenTab } from '@reflect/core'
+import type { OpenTab } from '@kore/core'
 import {
   dropTab,
   resolveTabDrop,

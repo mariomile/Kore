@@ -1,5 +1,5 @@
 {
-  "name": "@reflect/core",
+  "name": "@kore/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,26 +18,26 @@
     "@ai-sdk/google": "^4.0.57",
     "@ai-sdk/openai": "^4.0.51",
     "@ai-sdk/openai-compatible": "^3.0.40",
+    "@kore/db": "workspace:*",
+    "@kore/utils": "workspace:*",
     "@meowdown/markdown": "^0.72.0",
     "@post-embed/exporter": "^0.5.0",
     "@post-embed/types": "^0.5.0",
-    "@reflect/db": "workspace:*",
-    "@reflect/utils": "workspace:*",
     "ai": "^7.0.84",
     "defuddle": "^0.19.1",
     "kysely": "^0.28.17",
     "ulidx": "^2.4.1",
     "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@ai-sdk/provider": "^4.0.7",
     "@ocavue/tsconfig": "^0.7.1",
-    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/browser-playwright": "^4.1.12",
     "playwright": "^1.62.1",
     "sqlite-vec": "^0.1.9",
     "typescript": "~6.0.3",
     "vite": "^8.2.4",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   }
 }

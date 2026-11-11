@@ -11,7 +11,7 @@ use unicode_general_category::{get_general_category, GeneralCategory};
 use crate::frontmatter_values::parse_mapping;
 use crate::keys::fold_tag;
 use crate::write::line_ending;
-use reflect_note_policy::split_frontmatter;
+use kore_note_policy::split_frontmatter;
 
 /// Unicode `\p{L}`, as the TS tag and property-key regexes spell it.
 pub fn is_letter(character: char) -> bool {

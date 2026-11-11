@@ -1,3 +1,4 @@
+import { noteLinkBlockId } from '../markdown/block-ids'
 import { foldKey } from '../markdown/keys'
 import { isNotePath, isSafeVisibleGraphPath } from './paths'
 
@@ -143,7 +144,7 @@ export function wikiNoteReference(target: string): NoteReference | null {
 /**
  * Reduce a Markdown href. `/x` is vault-root relative; everything else is
  * source-relative, which is what CommonMark says and what every tool that
- * wrote these files assumed. Reflect has never emitted a Markdown note link,
+ * wrote these files assumed. Kore has never emitted a Markdown note link,
  * so there is no legacy root-relative spelling to keep working here.
  */
 export function markdownNoteReference(sourcePath: string, href: string): NoteReference | null {
@@ -191,6 +192,20 @@ export function noteLinkHeading(target: string): string | null {
       .at(-1) ?? ''
   ).trim()
   return heading === '' || heading.startsWith('^') ? null : heading
+}
+
+/**
+ * What a followed note link should reveal: its heading
+ * ({@link noteLinkHeading}), or `^id` for a block reference
+ * (`[[Plan#^a1b2]]`, Plan 33 C3), or null for neither.
+ */
+export function noteLinkFragment(target: string): string | null {
+  const heading = noteLinkHeading(target)
+  if (heading !== null) {
+    return heading
+  }
+  const id = noteLinkBlockId(target)
+  return id === null ? null : `^${id}`
 }
 
 /** The filename-stem key a note publishes as its weakest address. */

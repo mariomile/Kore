@@ -8,15 +8,15 @@
    than in a box, and only lifts on hover. A page reads as title, description
    and site; a post (X) reads as the post: author, words, then counts. */
 
-.reflect-editor .kore-link-card-source:not(.is-editing) {
+.kore-editor .kore-link-card-source:not(.is-editing) {
   display: none;
 }
-.reflect-editor .kore-link-card-source.is-editing {
+.kore-editor .kore-link-card-source.is-editing {
   color: var(--text-muted);
   font-size: 0.85em;
 }
 
-.reflect-editor .kore-link-card {
+.kore-editor .kore-link-card {
   display: flex;
   gap: 1.25rem;
   align-items: flex-start;
@@ -26,24 +26,27 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: background-color 120ms var(--ease-swift, ease);
+  /* No transition on the hover lift: while a note scrolls under a resting
+     pointer every card passing it would start a fade, repainting the card
+     for 120ms on the way in and again on the way out. That alone dropped
+     about six times as many frames in the daily stream. */
 }
-.reflect-editor .kore-link-card:hover {
+.kore-editor .kore-link-card:hover {
   background-color: var(--surface-hover);
 }
-.reflect-editor .kore-link-card[data-kind='post'] {
+.kore-editor .kore-link-card[data-kind='post'] {
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.reflect-editor .kore-link-card-body {
+.kore-editor .kore-link-card-body {
   display: flex;
   min-width: 0;
   flex: 1;
   flex-direction: column;
   gap: 0.3rem;
 }
-.reflect-editor .kore-link-card-title {
+.kore-editor .kore-link-card-title {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -52,7 +55,7 @@
   font-weight: 650;
   line-height: 1.3;
 }
-.reflect-editor .kore-link-card-description {
+.kore-editor .kore-link-card-description {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -61,7 +64,7 @@
   font-size: 0.92em;
   line-height: 1.4;
 }
-.reflect-editor .kore-link-card-thumb {
+.kore-editor .kore-link-card-thumb {
   width: clamp(9rem, 30%, 15rem);
   max-height: 10rem;
   flex-shrink: 0;
@@ -71,7 +74,7 @@
 }
 
 /* Footer: the site's mark and name, and for a post its counts. */
-.reflect-editor .kore-link-card-site {
+.kore-editor .kore-link-card-site {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -81,59 +84,59 @@
   font-size: 0.82em;
   white-space: nowrap;
 }
-.reflect-editor .kore-link-card-site > span {
+.kore-editor .kore-link-card-site > span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.reflect-editor .kore-link-card-icon {
+.kore-editor .kore-link-card-icon {
   width: 1.05rem;
   height: 1.05rem;
   flex-shrink: 0;
   border-radius: 3px;
 }
-.reflect-editor .kore-link-card-icon[data-brand='x'] {
+.kore-editor .kore-link-card-icon[data-brand='x'] {
   width: 0.95rem;
   color: var(--text-secondary);
 }
-.reflect-editor .kore-link-card-icon[data-brand='linkedin'] {
+.kore-editor .kore-link-card-icon[data-brand='linkedin'] {
   color: #0a66c2;
 }
 
 /* Post (X): the author row, then the post's words as written. */
-.reflect-editor .kore-link-card-author {
+.kore-editor .kore-link-card-author {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 0.75rem;
 }
-.reflect-editor .kore-link-card-avatar {
+.kore-editor .kore-link-card-avatar {
   width: 2.75rem;
   height: 2.75rem;
   flex-shrink: 0;
   border-radius: var(--radius-md, 6px);
   object-fit: cover;
 }
-.reflect-editor .kore-link-card-names {
+.kore-editor .kore-link-card-names {
   display: flex;
   min-width: 0;
   flex-direction: column;
   line-height: 1.3;
 }
-.reflect-editor .kore-link-card-name {
+.kore-editor .kore-link-card-name {
   overflow: hidden;
   color: var(--text);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.reflect-editor .kore-link-card-handle {
+.kore-editor .kore-link-card-handle {
   overflow: hidden;
   color: var(--text-muted);
   font-size: 0.9em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.reflect-editor .kore-link-card-text {
+.kore-editor .kore-link-card-text {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -143,13 +146,13 @@
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
-.reflect-editor .kore-link-card-media {
+.kore-editor .kore-link-card-media {
   max-width: 100%;
   max-height: 20rem;
   border-radius: var(--radius-md, 6px);
   object-fit: cover;
 }
 
-.reflect-editor .kore-link-card img[hidden] {
+.kore-editor .kore-link-card img[hidden] {
   display: none;
 }

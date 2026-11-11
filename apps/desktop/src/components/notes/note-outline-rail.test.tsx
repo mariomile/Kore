@@ -6,13 +6,13 @@ import { NoteOutlineRail } from './note-outline-rail'
 /**
  * Like the sidebar outline section, the rail reads the rendered document, so
  * these tests build the surface the editor produces — a `.ProseMirror` root
- * under `.reflect-note-surface` — rather than mocking a hook.
+ * under `.kore-note-surface` — rather than mocking a hook.
  */
 let surface: HTMLDivElement | null = null
 
 function mountSurface(html: string): HTMLElement {
   surface = document.createElement('div')
-  surface.className = 'reflect-note-surface'
+  surface.className = 'kore-note-surface'
   surface.innerHTML = `<div class="ProseMirror">${html}</div>`
   document.body.append(surface)
   return surface

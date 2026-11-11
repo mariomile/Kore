@@ -1,4 +1,4 @@
-import { splitFrontmatter } from '@reflect/core'
+import { splitFrontmatter } from '@kore/core'
 
 /** Exact frontmatter bytes (may be empty) and the body that follows them. */
 export function splitDoc(content: string): { header: string; body: string } {

@@ -8,7 +8,7 @@ import {
   upsertFrontmatter,
   type TagProperty,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { parseCsv, sniffCsvDelimiter } from '@/lib/csv'
 import { startOperation } from '@/lib/operations'

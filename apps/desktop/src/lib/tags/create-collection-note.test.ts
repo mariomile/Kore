@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const createNoteIfAbsent = vi.hoisted(() => vi.fn(async () => ({ kind: 'created' as const })))
 const readNote = vi.hoisted(() => vi.fn<(path: string, generation?: number) => Promise<string>>())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteIfAbsent,
   readNote,
 }))
@@ -76,6 +76,30 @@ describe('createTypedCollectionNote', () => {
     await createTypedCollectionNote('book', 1, { started: '2020-05-05' }, type, VALUES)
     const [, second] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(second).toContain('started: 2020-05-05')
+  })
+
+  it('writes the fields’ starting values under the caller’s own', async () => {
+    const type = {
+      properties: [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'select' as const,
+          options: ['to-read', 'done'],
+          default: 'to-read',
+        },
+        { name: 'Met', key: 'met', type: 'date' as const, default: 'today' },
+      ],
+    }
+    await createTypedCollectionNote('book', 1, {}, type, VALUES)
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(seed).toContain('status: to-read')
+    expect(seed).toMatch(/met: \d{4}-\d{2}-\d{2}/)
+
+    createNoteIfAbsent.mockClear()
+    await createTypedCollectionNote('book', 1, { status: 'done' }, type, VALUES)
+    const [, lane] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(lane).toContain('status: done')
   })
 })
 

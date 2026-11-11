@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { subscribeOwnWrites, type FileChange } from '@reflect/core'
+import { subscribeOwnWrites, type FileChange } from '@kore/core'
 import { enableNoteContentCache, invalidateCachedNote } from '@/editor/note-content-cache'
 import { useFileChanges } from '@/lib/use-file-changes'
 

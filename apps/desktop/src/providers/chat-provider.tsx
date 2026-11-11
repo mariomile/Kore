@@ -22,7 +22,7 @@ import {
   type ChatModelSelection,
   type ChatTurn,
   type GraphInfo,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
@@ -54,7 +54,7 @@ import { useChatConversationRestore } from '@/providers/use-chat-conversation-re
  * model history are one record, and the history a new turn resends is derived
  * from them.
  *
- * Conversations persist to the graph's index DB (`@reflect/core`'s chat
+ * Conversations persist to the graph's index DB (`@kore/core`'s chat
  * store): each turn is saved when sent (the user half) and again when it
  * settles, so a relaunch restores the conversation exactly. On mount the
  * latest conversation is resumed unless it has been idle past

@@ -526,7 +526,7 @@ pub async fn index_tag_types_resolve<R: tauri::Runtime>(
     background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task =
-        background_task::scoped(&background_tasks, "Reflect index tag type resolve");
+        background_task::scoped(&background_tasks, "Kore index tag type resolve");
     let applied = crate::blocking::run_blocking({
         let app = app.clone();
         move || {

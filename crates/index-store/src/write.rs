@@ -161,6 +161,9 @@ pub struct IndexedTask {
     /// Local `HH:MM` on `due_date` from `@HH:MM` after the date link, or None.
     #[serde(default)]
     pub due_time: Option<String>,
+    /// Nearest top-level heading above the task (level 2+), or None.
+    #[serde(default)]
+    pub section: Option<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -259,7 +262,7 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
     }
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
         for task in &note.tasks {
             let breadcrumbs = serde_json::to_string(&task.breadcrumbs)
@@ -272,7 +275,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 task.raw,
                 i64::from(task.checked),
                 task.due_date,
-                task.due_time
+                task.due_time,
+                task.section
             ])?;
         }
     }
@@ -530,6 +534,46 @@ pub fn touch_notes(conn: &mut Connection, entries: &[MtimeTouch]) -> StoreResult
     let tx = conn.transaction()?;
     for entry in entries {
         touch_note(&tx, &entry.path, entry.mtime)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// One tag type's inheritance result (Plan 33 B2), computed in TypeScript
+/// (`resolveTagTypes`); Rust only stores it. JSON strings, or `None` for a
+/// private definition's public columns. Mirrors `tagTypeResolutionSchema`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagTypeResolution {
+    pub tag_key: String,
+    pub resolved_json: String,
+    pub public_resolved_json: Option<String>,
+    pub descendants_json: String,
+    pub public_descendants_json: String,
+}
+
+/// Store every tag type's inheritance result in one transaction. A key whose
+/// `tag_types` row vanished in between updates nothing.
+pub fn set_tag_type_resolutions(
+    conn: &mut Connection,
+    rows: &[TagTypeResolution],
+) -> StoreResult<()> {
+    let tx = conn.transaction()?;
+    {
+        let mut stmt = tx.prepare_cached(
+            "UPDATE tag_types SET resolved_json = ?2, public_resolved_json = ?3,
+                    descendants_json = ?4, public_descendants_json = ?5
+             WHERE tag_key = ?1",
+        )?;
+        for row in rows {
+            stmt.execute(params![
+                row.tag_key,
+                row.resolved_json,
+                row.public_resolved_json,
+                row.descendants_json,
+                row.public_descendants_json
+            ])?;
+        }
     }
     tx.commit()?;
     Ok(())

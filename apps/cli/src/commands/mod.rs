@@ -9,6 +9,7 @@
 pub mod active;
 pub mod append;
 pub mod backlinks;
+pub mod brain;
 pub mod capture;
 pub mod collection;
 pub mod done;
@@ -25,6 +26,7 @@ pub mod new;
 pub mod open;
 pub mod path;
 pub mod properties;
+pub mod proposals;
 pub mod recent;
 pub mod route;
 pub mod search;

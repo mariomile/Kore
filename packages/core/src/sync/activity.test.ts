@@ -42,4 +42,22 @@ describe('groupSittings', () => {
     expect(grok.notes).toEqual([{ path: 'notes/a.md', kind: 'added', commit: 'd' }])
     expect([grok.startMs, grok.endMs]).toEqual([80 * MINUTE, 90 * MINUTE])
   })
+
+  it('leaves out the proposals Kore keeps in .kore/, never a note', () => {
+    const sittings = groupSittings([
+      commit('c', 30, 'Grok', [{ path: '.kore/proposals/1-a.json', kind: 'added' }], 'Grok'),
+      commit(
+        'b',
+        20,
+        'Grok',
+        [
+          { path: 'notes/a.md', kind: 'modified' },
+          { path: '.kore/proposals/1-a.json', kind: 'deleted' },
+        ],
+        'Grok',
+      ),
+    ])
+    expect(sittings.map((sitting) => sitting.commits)).toEqual([['b']])
+    expect(sittings[0]?.notes.map((note) => note.path)).toEqual(['notes/a.md'])
+  })
 })

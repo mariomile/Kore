@@ -232,7 +232,7 @@ pub struct SearchHit {
 /// SQL parameters bound positionally: each `push` returns its `?N`.
 #[derive(Default)]
 pub struct Binds {
-    values: Vec<Value>,
+    pub(crate) values: Vec<Value>,
 }
 
 impl Binds {
@@ -241,7 +241,7 @@ impl Binds {
         format!("?{}", self.values.len())
     }
 
-    fn text(&mut self, value: &str) -> String {
+    pub(crate) fn text(&mut self, value: &str) -> String {
         self.push(Value::Text(value.to_owned()))
     }
 }
@@ -274,7 +274,7 @@ fn escape_like(value: &str) -> String {
 /// A tag key that is `tag` itself or nested beneath it (`tagMatchSql`): the
 /// nested half is a range so it stays on the `tag_key` index (`0` is the
 /// code point after `/`).
-fn tag_match_sql(column: &str, tag: &str, binds: &mut Binds) -> String {
+pub(crate) fn tag_match_sql(column: &str, tag: &str, binds: &mut Binds) -> String {
     let exact = binds.text(tag);
     let low = binds.text(&format!("{tag}/"));
     let high = binds.text(&format!("{tag}0"));

@@ -9,11 +9,9 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent } from '@/components/ui/popover'
-import { useGraph } from '@/providers/graph-provider'
 import {
-  createRelationRow,
-  creatableRowTitle,
   EditorTrigger,
+  useRelationCreateEntry,
   useRelationSuggestions,
   type PropertyEditorProps,
 } from './property-editor-shared'
@@ -41,26 +39,15 @@ export function RelationPropertyEditor({
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const { graph } = useGraph()
   const currentTarget = value === undefined ? null : relationTarget(value.value)
   // `person` scopes to its default collection even with no explicit target.
   const target = relationTargetOf(property)
   const suggestions = useRelationSuggestions(open, query, target)
-  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
-  const canCreate =
-    newRowTitle !== null &&
-    graph !== null &&
-    !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
+  const createEntry = useRelationCreateEntry(property, open, query, suggestions)
 
   const choose = (insertText: string): void => {
     onCommit(relationValue(insertText))
     setOpen(false)
-  }
-  const createAndChoose = async (): Promise<void> => {
-    if (target === undefined || newRowTitle === null || graph === null) {
-      return
-    }
-    choose(await createRelationRow(target, newRowTitle, graph.generation))
   }
   const clear = (): void => {
     onCommit(undefined)
@@ -115,11 +102,13 @@ export function RelationPropertyEditor({
                   ) : null}
                 </CommandItem>
               ))}
-              {canCreate ? (
-                <CommandItem value="__create" onSelect={() => void createAndChoose()}>
-                  <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{target}
-                  </span>
+              {createEntry !== null ? (
+                <CommandItem
+                  value="__create"
+                  onSelect={() => void createEntry.create().then(choose)}
+                >
+                  {/* Wraps instead of truncating: the collection name is the point. */}
+                  <span className="min-w-0 flex-1 break-words">{createEntry.label}</span>
                 </CommandItem>
               ) : null}
               {value !== undefined ? (

@@ -84,6 +84,14 @@ pub fn split_frontmatter(source: &str) -> FrontmatterSplit<'_> {
     no_block
 }
 
+/// The TS `isSensitivityPrivate`: `sensitivity: private` (cyber-brain's
+/// privacy level) is the same hard block as `private: true`. Only the exact
+/// word counts; `personal` and `shareable` stay public.
+fn sensitivity_private(node: &Yaml) -> bool {
+    node.as_str()
+        .is_some_and(|text| text.trim().eq_ignore_ascii_case("private"))
+}
+
 /// The TS `coercePrivate`: explicit truthy boolean/number/string only; the
 /// YAML 1.1 words (`yes`/`on`) a 1.2 loader reads as strings are honoured.
 /// Anything unrecognized is **not** private.
@@ -150,7 +158,10 @@ pub fn parse_frontmatter(raw: Option<&str>) -> Frontmatter {
             .unwrap_or_default(),
         private: document
             .as_mapping_get("private")
-            .is_some_and(coerce_private),
+            .is_some_and(coerce_private)
+            || document
+                .as_mapping_get("sensitivity")
+                .is_some_and(sensitivity_private),
     }
 }
 
@@ -220,6 +231,16 @@ mod tests {
 
     /// Parity with the zod schema: bad aliases degrade to none; bad YAML
     /// degrades to defaults instead of failing the note.
+    #[test]
+    fn sensitivity_private_is_the_same_hard_block() {
+        assert!(parse("---\nsensitivity: private\n---\n").private);
+        assert!(parse("---\nsensitivity: \" Private \"\n---\n").private);
+        assert!(!parse("---\nsensitivity: personal\n---\n").private);
+        assert!(!parse("---\nsensitivity: shareable\n---\n").private);
+        assert!(!parse("---\nsensitivity: [private]\n---\n").private);
+        assert!(parse("---\nprivate: false\nsensitivity: private\n---\n").private);
+    }
+
     #[test]
     fn tolerant_parsing_degrades_gracefully() {
         assert_eq!(parse("---\naliases: [a, b]\n---\n").aliases, vec!["a", "b"]);

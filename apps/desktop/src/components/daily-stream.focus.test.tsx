@@ -1,7 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
+import { setBridge } from '@reflect/core'
 import { todayIso } from '@/lib/dates'
 import { createDayWindow, neighborDate } from '@/lib/day-window'
 import { RouterProvider, useRouter, type NavigateOptions } from '@/routing/router'
@@ -87,6 +89,9 @@ vi.mock('@/components/note-pane', () => ({
     )
   },
 }))
+vi.mock('@/providers/graph-provider', () => ({
+  useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexing: false }),
+}))
 vi.mock('@/providers/settings-provider', () => ({
   // The stream reads the pane model to decide whether an arrival may take the
   // caret, and that module's graph reaches back into this one's query key.
@@ -97,6 +102,14 @@ vi.mock('@/providers/settings-provider', () => ({
     updateSettingsWith: () => {},
   }),
 }))
+
+// Reads never resolve: a day that is not running its editor stays an empty
+// static placeholder, so every probe on the page is a day the stream chose
+// to run live.
+setBridge({
+  invoke: () => new Promise(() => {}),
+  listen: async () => () => {},
+})
 
 beforeEach(() => {
   focusLog.calls.length = 0
@@ -116,17 +129,20 @@ async function renderStream() {
   let navigate: Navigate = () => {
     throw new Error('navigate not ready')
   }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const view = await render(
-    <div style={{ height: 800 }}>
-      <RouterProvider initialRoute={{ kind: 'today' }}>
-        <DailyStream target={{ kind: 'today' }} />
-        <NavigateProbe
-          onReady={(run) => {
-            navigate = run
-          }}
-        />
-      </RouterProvider>
-    </div>,
+    <QueryClientProvider client={client}>
+      <div style={{ height: 800 }}>
+        <RouterProvider initialRoute={{ kind: 'today' }}>
+          <DailyStream target={{ kind: 'today' }} />
+          <NavigateProbe
+            onReady={(run) => {
+              navigate = run
+            }}
+          />
+        </RouterProvider>
+      </div>
+    </QueryClientProvider>,
   )
   const paneFor = (date: string) => page.locate(`[data-testid="pane-probe"][data-date="${date}"]`)
   return {

@@ -207,7 +207,7 @@ and decisions) when they exist.\n\
 \n\
 ## Rules\n\
 \n\
-- A note with `private: true` in its frontmatter is off limits: never read, quote or \
+- A note with `private: true` or `sensitivity: private` in its frontmatter is off limits: never read, quote or \
 send it anywhere.\n\
 - Never delete or rewrite the user's own text. Append, link, or ask first.\n\
 - Link related notes with [[wiki links]] and reuse existing #tags.\n\

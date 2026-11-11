@@ -189,7 +189,7 @@ fn copy_tree(
 ) -> AppResult<(PathBuf, VaultCopyStats)> {
     let root = root
         .canonicalize()
-        .map_err(|err| AppError::io(format!("cannot open the graph: {err}")))?;
+        .map_err(|err| AppError::io(format!("cannot open the vault: {err}")))?;
     let dest = existing_dir(destination)?;
     if overlaps(&root, &dest) {
         return Err(AppError::io(

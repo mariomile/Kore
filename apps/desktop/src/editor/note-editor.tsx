@@ -36,6 +36,7 @@ import {
   type WikilinkSearchHandler,
 } from '@meowdown/react'
 import { EditorInputTraits } from '@/editor/editor-input-traits'
+import { FocusedEditorTracker } from './focused-editor'
 import { BlockActionToolbar } from '@/editor/block-action-toolbar'
 import { FormattingToolbarBridge } from '@/editor/formatting-toolbar-bridge'
 import {
@@ -54,6 +55,8 @@ import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
+import { revealBlockId } from '@/editor/block-id-plugin'
+import { resolveWikilink } from '@/editor/resolve-wikilink'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
@@ -65,6 +68,11 @@ type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<Reac
  * the top of the view the way Obsidian lands on a linked heading.
  */
 function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
+  if (fragment.startsWith('^')) {
+    // A block reference (`[[Note#^id]]`, Plan 33 C3) names a line, not a heading.
+    const view = handle?.editor?.view
+    return view !== undefined && revealBlockId(view, fragment.slice(1))
+  }
   if (handle?.revealHeading(fragment) !== true) {
     return false
   }
@@ -158,6 +166,13 @@ export interface NoteEditorHandle {
   getSelection?(): SelectionJSON
   /** Restore an exact selection, or move the caret to a document edge. */
   setSelection(selection: SelectionJSON | 'start' | 'end'): void
+  /**
+   * Move the caret to the text under a viewport point, as a click there
+   * would. False when the point is not over this editor. For a press that
+   * arrived before the editor existed (a daily day still drawn as static
+   * text, which lays out the same).
+   */
+  setSelectionAtPoint?(x: number, y: number): boolean
   /** The current selection's text (blocks separated by blank lines). */
   getSelectedText(): string
   /** Open the selection AI menu (no-op on an empty selection). */
@@ -179,8 +194,9 @@ export interface NoteEditorHandle {
   /** Redo the latest undone editor transaction. */
   redo(): void
   /**
-   * Move the caret to the heading a link fragment names (text or slug) and
-   * scroll it into view; false when the note has no such heading.
+   * Move the caret to the heading a link fragment names (text or slug), or to
+   * the line a `^id` fragment names, and scroll it into view; false when the
+   * note has no such heading or line.
    */
   revealHeading?(fragment: string): boolean
 }
@@ -415,6 +431,14 @@ export function NoteEditor({
       focus: () => innerRef.current?.focus(),
       getSelection: () => innerRef.current?.getSelection() ?? { type: 'text', anchor: 0, head: 0 },
       setSelection: (selection) => innerRef.current?.setSelection(selection),
+      setSelectionAtPoint: (x, y) => {
+        const found = innerRef.current?.editor?.view.posAtCoords({ left: x, top: y }) ?? null
+        if (found === null) {
+          return false
+        }
+        innerRef.current?.setSelection({ type: 'text', anchor: found.pos, head: found.pos })
+        return true
+      },
       getSelectedText: () => innerRef.current?.getSelectedText() ?? '',
       openSelectionMenu: () => innerRef.current?.openSelectionMenu(),
       startPendingReplacement: (options) =>
@@ -608,6 +632,7 @@ export function NoteEditor({
           resolveXPost={postEmbeds.resolveXPost}
           resolveYouTubeVideo={postEmbeds.resolveYouTubeVideo}
           resolveWikiEmbed={resolveWikiEmbed}
+          resolveWikilink={resolveWikilink}
           onFilePaste={handleFilePaste}
           {...(resolveFileLink !== undefined ? { resolveFileLink } : {})}
           resolveFileInfo={handleResolveFileInfo}
@@ -615,6 +640,7 @@ export function NoteEditor({
           onExitBoundary={handleExitBoundary}
         >
           <EditorInputTraits />
+          <FocusedEditorTracker />
           {/* Only a pane that persists files gets the toolbar's attach button;
             `handleFilePaste` is the same handler meowdown pastes through. */}
           <FormattingToolbarBridge

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { errorMessage, type SnippetTask } from '@reflect/core'
+import { errorMessage, withoutBlockIds, type SnippetTask } from '@reflect/core'
 import type { TaskClickHandler, TaskClickPayload } from '@meowdown/react'
 import { toggleTask } from '@/lib/note-task'
 import { startOperation } from '@/lib/operations'
@@ -21,7 +21,12 @@ interface SnippetToggleInput {
  */
 function anchorFor(tasks: readonly SnippetTask[], payload: TaskClickPayload): SnippetTask | null {
   const anchor = tasks[payload.index]
-  if (anchor === undefined || anchor.checked !== payload.checked || anchor.text !== payload.text) {
+  // The view renders the snippet without `^id` markers (Plan 33 C3).
+  if (
+    anchor === undefined ||
+    anchor.checked !== payload.checked ||
+    withoutBlockIds(anchor.text) !== withoutBlockIds(payload.text)
+  ) {
     return null
   }
   return anchor

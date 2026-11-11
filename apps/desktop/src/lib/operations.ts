@@ -35,7 +35,7 @@ export interface OperationOptions {
 
 export interface OperationHandle {
   progress: (done: number, total: number) => void
-  /** The operation completed; its entry disappears. */
+  /** The operation completed; its entry disappears (after a linger when it offers an action). */
   done: () => void
   /** The operation completed with caveats; its warning lingers briefly. */
   warn: (message: string) => void
@@ -117,7 +117,8 @@ export function startOperation(label: string, options: OperationOptions = {}): O
   }
   return {
     progress: (done, total) => patch(id, { progress: { done, total } }),
-    done: () => removeAfterMinimum(0),
+    // An entry with an action ("Open") stays long enough to be clicked.
+    done: () => removeAfterMinimum(options.action === undefined ? 0 : LINGER_MS),
     warn: (message) => {
       patch(id, { status: 'warning', message })
       removeAfterMinimum(LINGER_MS)

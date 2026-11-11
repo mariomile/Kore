@@ -37,6 +37,10 @@ export interface TaskKeyboardOptions {
   onCyclePriority: () => void
   /** `q`: open Quick Add (Todoist). */
   onQuickAdd?: () => void
+  /** `m` (or ⌘⇧M, which also works from an open row editor) on a selection: move it to a project (Todoist). */
+  onMove?: (tasks: OpenTask[]) => void
+  /** ⌘Z: undo the last move, when there is one to undo. */
+  onUndoMove?: () => boolean
   /** The open view — Return's insert target depends on it. */
   view?: TaskView
   /** `g` then `i`/`t`/`u`/`p`/`a`: switch to Inbox / Today / Upcoming / Projects / All (Todoist). */
@@ -68,7 +72,8 @@ const OWNS_KEYS = '[data-task-editor], [role="menu"], [role="dialog"], [role="li
  * The map: Return adds a task (to the selected task's note, else today's daily),
  * ⌘A select all, ↑/↓ move a single selection (Shift to extend the range), ⌘↵
  * complete the selection, ⌘⇧↵ archive (stop showing the session's completed
- * tasks), ⌘⇧K convert the selection to plain bullets (drop the checkbox), ⌘⌫
+ * tasks), ⌘⇧K convert the selection to plain bullets (drop the checkbox), `m` or ⌘⇧M move
+ * it to a project (⌘Z undoes the last move), ⌘⌫
  * delete (plain ⌫ deletes only empty rows, so a stray Backspace can't lose
  * content), Esc clears the selection then the search box.
  *
@@ -100,6 +105,8 @@ export function useTaskKeyboard({
   onConvertToBullet,
   onCyclePriority,
   onQuickAdd,
+  onMove,
+  onUndoMove,
   view = 'all',
   onGoToView,
 }: TaskKeyboardOptions): void {
@@ -166,6 +173,25 @@ export function useTaskKeyboard({
       ) {
         return
       }
+      // ⌘⇧M opens "Move to…" for the selection. Checked after the surface
+      // scope (another panel keeps the chord) but before the editor bail, so
+      // it works while a sole selected row's editor is open, where plain `m`
+      // types a letter.
+      if (
+        onMove !== undefined &&
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        (event.key === 'm' || event.key === 'M')
+      ) {
+        const tasks = [...selection.selected]
+          .map((key) => tasksByKey.get(key))
+          .filter((task): task is OpenTask => task !== undefined)
+        if (tasks.length > 0) {
+          event.preventDefault()
+          onMove(tasks)
+        }
+        return
+      }
       // Back off when a focused control inside the surface owns the key: the inline
       // editor (it owns its keys, and a ⌘⌫ there must not race its commit-on-unmount)
       // or a portaled overlay (filters menu, dialog, ⌘K palette).
@@ -185,7 +211,11 @@ export function useTaskKeyboard({
           : undefined
       }
       const selectExclusively = (key: string): void => {
-        selection.clickSelect(key, { metaKey: false, ctrlKey: false, shiftKey: false })
+        selection.clickSelect(key, {
+          metaKey: false,
+          ctrlKey: false,
+          shiftKey: false,
+        })
         scrollToKey(key)
       }
       const mod = event.metaKey || event.ctrlKey
@@ -221,6 +251,20 @@ export function useTaskKeyboard({
       if (plain && onQuickAdd !== undefined && event.key === 'q') {
         event.preventDefault()
         onQuickAdd()
+        return
+      }
+      if (plain && onMove !== undefined && event.key === 'm') {
+        const tasks = selectedTasks()
+        if (tasks.length > 0) {
+          event.preventDefault()
+          onMove(tasks)
+        }
+        return
+      }
+      if (mod && !event.shiftKey && !event.altKey && (event.key === 'z' || event.key === 'Z')) {
+        if (onUndoMove?.() === true) {
+          event.preventDefault()
+        }
         return
       }
       if (mod && event.key === 'Enter') {

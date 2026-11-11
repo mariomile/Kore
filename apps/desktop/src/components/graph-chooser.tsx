@@ -250,9 +250,9 @@ function IcloudCard({
         tinted
       >
         {existing.length > 0
-          ? 'Open an existing graph from iCloud Drive.'
+          ? 'Open an existing vault from iCloud Drive.'
           : available
-            ? 'Syncs across your Mac and iPhone. Backed up automatically.'
+            ? 'Syncs across your Mac and iPhone.'
             : status === undefined
               ? 'Checking iCloud…'
               : 'Sign in to iCloud on this Mac to sync your notes across devices.'}
@@ -279,7 +279,7 @@ function IcloudCard({
         // Compact create row under the list: a new graph next to the
         // existing ones is the secondary action here, not the headline.
         <div className="mt-auto space-y-2">
-          <ChooserDivider>or create new graph</ChooserDivider>
+          <ChooserDivider>or create a new vault</ChooserDivider>
           <div className="flex gap-2">
             <Input
               aria-label="Name"

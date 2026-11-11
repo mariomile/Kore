@@ -189,8 +189,6 @@ try {
       .getByText('Kore V2')
       .click()
     await page.getByText('sync over Git.').first().waitFor()
-    // The sidebar's Open section mirrors the same tabs.
-    await page.getByRole('button', { name: 'Open', exact: true }).waitFor()
   })
   await page.screenshot({ path: `${SHOTS}06-tabs.png` })
 
@@ -271,6 +269,8 @@ try {
   })
 
   await step('the Graph view maps the seeded notes and links', async () => {
+    // The agent step leaves Settings open, and Settings covers the sidebar.
+    await page.getByRole('button', { name: 'Close settings' }).click()
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Graph').click()
     await page.getByRole('heading', { name: 'Graph', exact: true }).waitFor()
     // The seeded graph has linked notes; exact counts vary with earlier steps,

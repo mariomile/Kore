@@ -7,6 +7,7 @@ import {
   Layers,
   LayoutGrid,
   Note,
+  Notebook,
   Paperclip,
   Pencil,
   Search,
@@ -19,6 +20,7 @@ import {
   type AssistantPart,
   type ChatTurn,
   type NoteHitSummary,
+  type MemoryToolName,
   type NoteToolCall,
   type NoteToolResult,
 } from '@reflect/core'
@@ -52,6 +54,15 @@ function assetName(path: string): string {
 }
 
 /** A browse chip labels the page by host — the full URL adds only noise. */
+/** What each memory tool did, for the chip's sentence once it landed. */
+const MEMORY_ACTION_DONE: Record<MemoryToolName, string> = {
+  remember: 'Remembered',
+  open_loop: 'Opened loop',
+  update_loop: 'Updated loop',
+  close_loop: 'Closed loop',
+  record_decision: 'Recorded decision',
+}
+
 function pageHost(url: string): string {
   try {
     return new URL(url).hostname
@@ -410,6 +421,25 @@ export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): 
           </>
         ) : null}
         {failed !== null ? ` — ${failed}` : ''}
+      </ChipFrame>
+    )
+  }
+
+  // A cyber-brain memory write: what the kit kept, or why it refused.
+  if (call.tool === 'memory') {
+    const result = part.result?.tool === 'memory' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    const verb =
+      failed !== null
+        ? 'Couldn’t save to memory'
+        : pending
+          ? 'Saving to memory'
+          : MEMORY_ACTION_DONE[call.action]
+    return (
+      <ChipFrame pending={pending} icon={<Notebook aria-hidden className="size-3.5" />} wrap>
+        {verb}
+        {call.label !== '' ? `: ${call.label}` : ''}
+        {failed !== null ? <span> — {failed}</span> : null}
       </ChipFrame>
     )
   }

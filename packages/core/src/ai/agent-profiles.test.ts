@@ -12,6 +12,7 @@ const {
   listAgentProfiles,
   loadAgentContext,
   parsePendingMemory,
+  withMemoryTools,
   withoutPendingProposal,
 } = await import('./agent-profiles')
 
@@ -118,6 +119,31 @@ describe('loadAgentContext', () => {
     expect((await loadAgentContext(null)).vaultContract).toBeNull()
   })
 
+  it('a cyber-brain vault keeps one memory: the kit’s (Plan 35)', async () => {
+    const kitContract = '---\ncyber_brain: "0.1"\npaths:\n  system: System\n---\n# Vault rules\n'
+    readNote.mockImplementation(async (path: string) => {
+      if (path === 'AGENTS.md') return kitContract
+      if (path === 'agents/user.md') return '- Prefers Italian\n'
+      if (path === 'agents/memory/facts.md') return '- [certain] old fact\n'
+      if (path === 'System/skills/remember/SKILL.md') return '# Remember\n\nSteps\n'
+      throw new Error('missing')
+    })
+    listFiles.mockResolvedValue([
+      { path: 'agents/skills/kore.md' },
+      { path: 'System/skills/remember/SKILL.md' },
+    ])
+    const context = await loadAgentContext(null)
+    expect(context.memoryKit).toEqual({
+      contractPath: 'AGENTS.md',
+      skills: { dir: 'System/skills', kind: 'folder' },
+      tools: false,
+    })
+    expect(context.userMemory).toBeNull()
+    expect(context.sharedFacts).toBeNull()
+    expect(context.skills.map((skill) => skill.path)).toEqual(['System/skills/remember/SKILL.md'])
+    expect(withMemoryTools(context).memoryKit?.tools).toBe(true)
+  })
+
   it('honors private: a private soul or memory never loads', async () => {
     readNote.mockImplementation(async (path: string) => {
       if (path === 'agents/riley/soul.md') return '---\nprivate: true\n---\n# Riley\nsecret\n'
@@ -163,6 +189,33 @@ describe('agentContextPromptLines', () => {
     expect(lines.indexOf('Speak plainly.')).toBeLessThan(lines.indexOf('Decisions go in'))
     expect(lines).toContain('where the vault contract says it goes')
     expect(lines).not.toContain('[certain|likely|speculative]')
+  })
+
+  it('a kit vault writes memory only through the memory tools', () => {
+    const kit = {
+      ...context,
+      userMemory: null,
+      sharedFacts: null,
+      sharedLog: null,
+      agentMemory: null,
+      memoryKit: {
+        contractPath: 'AGENTS.md',
+        skills: { dir: 'System/skills', kind: 'folder' as const },
+        tools: true,
+      },
+    }
+    const withTools = agentContextPromptLines(kit, { canEdit: true, writeApproval: true }).join(
+      '\n',
+    )
+    expect(withTools).toContain('remember, open_loop, update_loop, close_loop, record_decision')
+    expect(withTools).toContain('YYYY-MM-DD')
+    expect(withTools).not.toContain('agents/memory/pending.md')
+    expect(withTools).not.toContain('[certain|likely|speculative]')
+
+    const noTools = { ...kit, memoryKit: { ...kit.memoryKit, tools: false } }
+    const suggest = agentContextPromptLines(noTools, { canEdit: true }).join('\n')
+    expect(suggest).toContain('this run cannot write it')
+    expect(suggest).not.toContain('open_loop')
   })
 
   it('puts the soul first and routes upkeep across all memory files', () => {

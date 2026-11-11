@@ -26,6 +26,8 @@ export type Route =
   | { kind: 'tasks' }
   | { kind: 'chat' }
   | { kind: 'insights' }
+  /** What a cyber-brain vault remembers (Plan 35): NOW, loops, decisions, runs. */
+  | { kind: 'memory' }
   // The vault's activity log: what you and each agent changed (Plan 33).
   | { kind: 'activity' }
   // The link map over the whole graph (not the graph *switcher* below).
@@ -102,6 +104,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'tasks':
     case 'chat':
     case 'insights':
+    case 'memory':
     case 'activity':
     case 'graphs':
     case 'terminal':

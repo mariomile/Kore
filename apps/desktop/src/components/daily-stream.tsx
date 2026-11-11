@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { dailyPath } from '@reflect/core'
-import { NotePane } from '@/components/note-pane'
+import { DailyDay } from '@/components/daily-day'
 import { DailyDatePill } from '@/components/daily-date-pill'
 import { ScrollVeil } from '@/components/scroll-veil'
 import type { NoteEditorHandle } from '@/editor/note-editor'
@@ -22,6 +22,20 @@ import { useSetFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { usePaneIsActive } from '@/providers/panes-provider'
 import { useRouter } from '@/routing/router'
 import { clamp } from '@ocavue/utils'
+
+/**
+ * How long the scroll must rest before the days on screen become editors.
+ * Long enough that a wheel or trackpad gesture (events every few
+ * milliseconds, momentum included) never trips it, short enough that the
+ * editors are there before a hand reaches the keyboard.
+ */
+const LIVE_AFTER_REST_MS = 150
+
+/** Days this close to the viewport go live with the ones inside it. */
+const LIVE_MARGIN_PX = 200
+
+/** Where a focus lands in a day: a document edge, or a pressed point. */
+type DayFocusPosition = 'start' | 'end' | { x: number; y: number }
 
 /** The size guess virtua uses for a row it has not measured yet. */
 export const ESTIMATED_DAY_HEIGHT = 220
@@ -68,6 +82,11 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   // For the veil: the scroll element itself, in state, so its listener
   // attaches on the first real mount.
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
+  const scrollElementRef = useRef<HTMLDivElement | null>(null)
+  const attachScrollElement = useCallback((element: HTMLDivElement | null) => {
+    scrollElementRef.current = element
+    setScrollElement(element)
+  }, [])
   const today = useToday()
   const targetDate = target.kind === 'today' ? today : target.date
   const { settings } = useSettings()
@@ -125,12 +144,33 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   // carries the target caret position, applied when the neighbor row mounts and
   // registers. This is independent of the `⌘D` autofocus path (`focusPending`).
   const dayHandlesRef = useRef(new Map<string, NoteEditorHandle>())
-  const pendingFocusRef = useRef<{ date: string; position: 'start' | 'end' } | null>(null)
+  const pendingFocusRef = useRef<{ date: string; position: DayFocusPosition } | null>(null)
 
-  const focusDay = useCallback((handle: NoteEditorHandle, position: 'start' | 'end') => {
+  // Which days run an editor (see `DailyDay`). A day mounts as static text
+  // while the stream moves; once it rests, the days on screen go live.
+  const [live, setLive] = useState<ReadonlySet<number>>(() => new Set())
+  /** Give `date` its editor now, with a focus waiting for it. */
+  const wakeDay = useCallback(
+    (date: string, position: DayFocusPosition) => {
+      pendingFocusRef.current = { date, position }
+      const index = indexOfDate(dayWindow, date)
+      setLive((current) => (current.has(index) ? current : new Set(current).add(index)))
+    },
+    [dayWindow],
+  )
+
+  const focusDay = useCallback((handle: NoteEditorHandle, position: DayFocusPosition) => {
     handle.focus()
+    // A press on a day still drawn as static text: the caret goes where
+    // the press landed, as it would have in the editor.
+    if (
+      typeof position !== 'string' &&
+      handle.setSelectionAtPoint?.(position.x, position.y) === true
+    ) {
+      return
+    }
     // meowdown's setSelection also scrolls the caret into view.
-    handle.setSelection(position)
+    handle.setSelection(typeof position === 'string' ? position : 'end')
   }, [])
 
   const registerHandle = useCallback(
@@ -168,9 +208,9 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       // The row is on screen but its lazy editor hasn't mounted yet: queue the
       // focus for `registerHandle`. Set after the container's pointerdown
       // clear (click fires on pointerup), so the slot survives to the mount.
-      pendingFocusRef.current = { date, position: 'start' }
+      wakeDay(date, 'start')
     },
-    [focusDay],
+    [focusDay, wakeDay],
   )
 
   const handleExitBoundary = useCallback(
@@ -261,15 +301,62 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     return Array.from(keepMounted).sort((left, right) => left - right)
   }, [focusIndex, dayWindow.count])
 
+  // Once the scroll rests, the days on screen go live. A day already live
+  // stays live while its row is mounted: taking an editor away from a row
+  // that is still there would be work with nothing to show for it.
+  const restTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promoteVisible = useCallback(() => {
+    const scroller = scrollElementRef.current
+    if (scroller === null) {
+      return
+    }
+    const view = scroller.getBoundingClientRect()
+    setLive((current) => {
+      const next = new Set<number>()
+      for (const row of scroller.querySelectorAll<HTMLElement>('section[data-index]')) {
+        const index = Number(row.dataset.index)
+        const box = row.getBoundingClientRect()
+        const near =
+          box.bottom > view.top - LIVE_MARGIN_PX && box.top < view.bottom + LIVE_MARGIN_PX
+        if (near || current.has(index)) {
+          next.add(index)
+        }
+      }
+      return next.size === current.size && [...next].every((index) => current.has(index))
+        ? current
+        : next
+    })
+  }, [])
+  const scheduleRest = useCallback(() => {
+    if (restTimer.current !== null) {
+      clearTimeout(restTimer.current)
+    }
+    restTimer.current = setTimeout(promoteVisible, LIVE_AFTER_REST_MS)
+  }, [promoteVisible])
+  useEffect(() => {
+    if (!warm) {
+      return
+    }
+    scheduleRest()
+    return () => {
+      if (restTimer.current !== null) {
+        clearTimeout(restTimer.current)
+      }
+    }
+  }, [warm, scheduleRest, arrivalSeq, entryId])
+  const keepMountedSet = useMemo(() => new Set(keepMounted), [keepMounted])
   return (
     // The wrapper anchors the scroll veil to the stream's top edge; the
     // scrolling element itself keeps the testid and every handler.
     <div className="relative h-full">
       <div
-        ref={setScrollElement}
+        ref={attachScrollElement}
         data-testid="daily-stream"
         className="reflect-daily-stream h-full overflow-auto"
-        onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
+        onScroll={(event) => {
+          saveScrollState(event.currentTarget.scrollTop)
+          scheduleRest()
+        }}
         // An explicit click/touch picks its own focus target — a focus still
         // pending for a day whose editor hasn't mounted yet must not steal the
         // caret later. Typing is deliberately not a cancel: ⌘D-then-type should
@@ -298,6 +385,13 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
             const focusSelection =
               pendingFocus !== null && pendingFocus.date === date ? pendingFocus.selection : null
             const autoFocus = focusSelection !== null
+            // The day the caret is in (or is about to be in) and its
+            // neighbors always run their editor, like `keepMounted`.
+            const isLive =
+              autoFocus ||
+              keepMountedSet.has(index) ||
+              live.has(index) ||
+              pendingFocusRef.current?.date === date
             return (
               <section
                 key={date}
@@ -328,7 +422,9 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
                     {formatDayLabel(date, settings.dateFormat)}
                   </span>
                 </h2>
-                <NotePane
+                <DailyDay
+                  live={isLive}
+                  onActivate={wakeDay}
                   path={dailyPath(date)}
                   dailyDate={date}
                   registerHandle={registerHandle}

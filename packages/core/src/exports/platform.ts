@@ -88,12 +88,15 @@ export {
   remoteAccessToken,
   remoteAgents,
   removeRemoteAgent,
+  setRemoteAgentAccess,
+  REMOTE_AGENT_ACCESS,
   remoteMcpStatus,
   rotateRemoteAccessToken,
   startRemoteAccess,
   stopRemoteAccess,
   type RemoteAccessState,
   type RemoteAgent,
+  type RemoteAgentAccess,
   type RemoteMcpStatus,
   type RemoteTunnel,
 } from '../app/remote-access'
@@ -160,6 +163,7 @@ export {
   wikiNoteReference,
   markdownNoteReference,
   noteLinkHeading,
+  noteLinkFragment,
   noteBasenameKey,
   type NoteReference,
 } from '../graph/note-reference'
@@ -224,6 +228,7 @@ export {
   captureSharedInboxRelay,
   promoteCaptureScreenshot,
 } from '../graph/commands'
+export { conflictCopyPath, saveConflictCopy } from '../graph/conflict-copy'
 export {
   DEFAULT_VAULT_LAYOUT,
   getVaultLayout,
@@ -319,6 +324,7 @@ export {
   browserSearchHomeUrl,
   browserSearchUrl,
   browserOpenLinksInAppSchema,
+  pasteCollects,
   weekStartDow,
   allNotesFilterTagsSchema,
   savedSearchSchema,

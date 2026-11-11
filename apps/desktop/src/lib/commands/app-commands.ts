@@ -49,8 +49,8 @@ const GRAPH_SWITCH_COMMANDS: AppCommand[] = Array.from({ length: 9 }, (_, index)
   const position = index + 1
   return {
     id: `graph.switch${position}`,
-    title: `Switch to graph ${position}`,
-    keywords: ['graph', 'workspace', 'switch', 'recent'],
+    title: `Switch to vault ${position}`,
+    keywords: ['vault', 'graph', 'workspace', 'switch', 'recent'],
     keybinding: `Meta-${position}`,
     run: (context) => context.switchGraph(index),
   }
@@ -171,6 +171,12 @@ const APP_COMMANDS: AppCommand[] = [
     title: 'Insights',
     keywords: ['stats', 'statistics', 'activity', 'graph', 'metrics', 'heatmap'],
     run: (context) => context.navigate({ kind: 'insights' }),
+  },
+  {
+    id: 'nav.memory',
+    title: 'Memory',
+    keywords: ['cyber-brain', 'loops', 'decisions', 'facts', 'now', 'remember', 'runs'],
+    run: (context) => context.navigate({ kind: 'memory' }),
   },
   {
     id: 'nav.activity',

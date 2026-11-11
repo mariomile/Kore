@@ -22,7 +22,7 @@
 
 ## TL;DR
 
-**A tag can now own a type.** Creating `tags/<name>.md` with a `lore: tag`
+**A tag can now own a type.** Creating `tags/<name>.md` with a `kore: tag`
 frontmatter marker turns the tag into a type with a property schema; every
 note carrying `#<name>` becomes a row in that tag's Collection — a table with
 one typed column per schema property, whose values live in each note's own
@@ -33,11 +33,13 @@ frontmatter.
 ## Decision 1 — The definition is a markdown note in the graph
 
 A tag's schema lives in `tags/<name>.md` (the folded tag name), marked
-`lore: tag`, with the schema under a `properties:` frontmatter key:
+`kore: tag`, with the schema under a `properties:` frontmatter key (the
+marker was `lore: tag` before the Kore rename; it is still read, and the next
+schema save rewrites it as `kore: tag`):
 
 ```yaml
 ---
-lore: tag
+kore: tag
 properties:
   - { name: Author, key: author, type: text }
   - { name: Rating, key: rating, type: number }
@@ -87,7 +89,7 @@ any schema. Indexing only schema-declared keys was rejected: it would make
 row contents depend on the mutable state of a definition note, so every
 schema edit would demand re-indexing every note carrying the tag. Reserved
 keys (`id`, `title`, `aliases`, `private`, `pinned`, `gist`,
-`ignoredContacts`, `lore`, `properties`) are never projected and never
+`ignoredContacts`, `kore`, `lore`, `properties`) are never projected and never
 writable through a properties patch (`frontmatterPatchToYaml` drops them).
 
 `tag_types` projects each definition's parsed schema (`schema_json`), so

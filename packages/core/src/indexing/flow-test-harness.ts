@@ -143,8 +143,8 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
 
   const insertTask = database.prepare(
     `INSERT INTO tasks(
-      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time, section
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const task of indexed.tasks) {
     insertTask.run(
@@ -156,6 +156,7 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
       encodeTaskBreadcrumbs(task.breadcrumbs),
       task.dueDate,
       task.dueTime,
+      task.section,
     )
   }
 }
@@ -168,6 +169,33 @@ export function project(path: string, source: string, mtime: number): IndexedNot
   })
 }
 
+/** Store a tag inheritance pass's rows the way `set_tag_type_resolutions` does. */
+function storeTagTypeResolutions(database: DatabaseSync, rows: unknown): void {
+  const statement = database.prepare(
+    `UPDATE tag_types SET resolved_json = ?, public_resolved_json = ?,
+       descendants_json = ?, public_descendants_json = ? WHERE tag_key = ?`,
+  )
+  for (const row of rows as Record<string, string | null>[]) {
+    statement.run(
+      row['resolvedJson']!,
+      row['publicResolvedJson'] ?? null,
+      row['descendantsJson']!,
+      row['publicDescendantsJson']!,
+      row['tagKey']!,
+    )
+  }
+}
+
+/** Insert a definition note's `tag_types` row, as `apply_note` does. */
+export function applyTagTypeRow(database: DatabaseSync, indexed: IndexedNote): void {
+  if (indexed.tagType === null) {
+    return
+  }
+  database
+    .prepare('INSERT OR REPLACE INTO tag_types(tag_key, note_path, schema_json) VALUES (?, ?, ?)')
+    .run(indexed.tagType.tagKey, indexed.path, indexed.tagType.schemaJson)
+}
+
 export function connectIndex(database: DatabaseSync): void {
   setBridge({
     invoke: (command, args) => {
@@ -178,6 +206,10 @@ export function connectIndex(database: DatabaseSync): void {
       }
       if (command === 'note_read' || command === 'note_read_local') {
         return Promise.reject({ kind: 'notFound', message: 'not on disk' })
+      }
+      if (command === 'index_tag_types_resolve') {
+        storeTagTypeResolutions(database, args['rows'])
+        return Promise.resolve(null)
       }
       if (command !== 'db_query') {
         return Promise.reject(new Error(`unexpected command: ${command}`))

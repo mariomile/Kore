@@ -117,7 +117,7 @@ function NoteContextMenuItems({ path }: { path: string }): ReactElement {
   const generation = graph?.generation
   const withGeneration = (label: string, run: (generation: number) => Promise<void>) => () => {
     if (generation === undefined) {
-      startOperation(label).fail('No graph is open.')
+      startOperation(label).fail('No vault is open.')
       return
     }
     void run(generation)

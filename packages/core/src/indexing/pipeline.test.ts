@@ -397,6 +397,24 @@ describe('syncIndex', () => {
     expect(order.at(-1)).toBe(`meta:${PROJECTION_VERSION}`)
   })
 
+  it('runs the tag inheritance pass once at the end, so a failed earlier pass heals', async () => {
+    metaRows = [{ value: String(PROJECTION_VERSION) }]
+    const fallback = mockInvoke.getMockImplementation()!
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === 'index_tag_types_resolve') {
+        return null
+      }
+      if (command === 'db_query' && String(args['sql']).includes('"tag_types"."schema_json"')) {
+        return [{ tag_key: 'contact', schema_json: '[]', is_private: 0 }]
+      }
+      return await fallback(command, args)
+    })
+    await syncIndex({ generation: 2 })
+    const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
+    expect(commands.filter((cmd) => cmd === 'index_tag_types_resolve')).toHaveLength(1)
+    expect(commands.at(-1)).toBe('index_tag_types_resolve')
+  })
+
   it('rebuilds and stamps when the index predates the current projection', async () => {
     metaRows = [] // never stamped (or written by an older app)
     await syncIndex({ generation: 3 })

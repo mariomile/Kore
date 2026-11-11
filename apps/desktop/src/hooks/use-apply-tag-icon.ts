@@ -38,7 +38,7 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
   return useCallback(
     async ({ tag, icon, previousIcon }: TagIconChange): Promise<void> => {
       if (generation === null) {
-        throw new Error('No graph is open.')
+        throw new Error('No vault is open.')
       }
       const definition = await readTagDefinition(tag)
       // Same channel `readTagDefinition` read from (live session first), so a
@@ -57,7 +57,7 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
       if (definition.icon !== previousIcon) {
         throw new Error(STALE_TAG_ICON_MESSAGE)
       }
-      await saveTagType(tag, definition.properties, generation, definition.template, icon)
+      await saveTagType(tag, definition.properties, generation, { icon })
       invalidateOnNextIndexApply()
     },
     [generation],

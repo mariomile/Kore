@@ -16,6 +16,7 @@ import {
   Note,
   Pencil,
   Search,
+  Notebook,
   Terminal,
 } from '@/components/icons'
 
@@ -66,6 +67,8 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
       return <Checklist aria-hidden className={className} />
     case 'insights':
       return <Chart aria-hidden className={className} />
+    case 'memory':
+      return <Notebook aria-hidden className={className} />
     case 'activity':
       return <History aria-hidden className={className} />
     case 'graphMap':

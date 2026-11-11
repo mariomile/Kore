@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
 import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
 import { runAgentCliCommand } from './agent-cli'
@@ -78,7 +78,8 @@ describe('runAgentCliCommand', () => {
     await Promise.resolve()
     const requestId = requestIdOf(fake)
     controller.abort()
-    expect(fake.stops).toEqual([requestId])
+    // The stop is delivered once `agent_cli_run` has registered the child.
+    await vi.waitFor(() => expect(fake.stops).toEqual([requestId]))
     fake.emit?.({ kind: 'done', requestId, code: null })
     await expect(pending).resolves.toMatchObject({ code: null })
   })

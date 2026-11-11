@@ -16,6 +16,7 @@ import {
   isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
+  wikiLinkTargetForTitle,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
@@ -47,6 +48,9 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { BlockIds } from '@/editor/block-ids'
+import { BlockZoom } from '@/editor/block-zoom'
+import { MoveBranch } from '@/editor/move-branch-picker'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -77,7 +81,7 @@ const EmbeddedCollection = lazy(() =>
   })),
 )
 
-interface NotePaneProps {
+export interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
   path: string
   /**
@@ -234,6 +238,14 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
+  const noteLinkTarget =
+    noteRow === null
+      ? null
+      : (noteRow.dailyDate ?? (noteRow.title === '' ? null : wikiLinkTargetForTitle(noteRow.title)))
+  const openMovedTo = useCallback(
+    (movedTo: string) => navigate({ kind: 'note', path: movedTo }),
+    [navigate],
+  )
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -554,6 +566,14 @@ export function NotePaneComponent({
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
         <CollectionFenceGuard />
+        <BlockZoom />
+        <BlockIds linkTarget={noteLinkTarget} />
+        <MoveBranch
+          notePath={path}
+          linkTarget={noteLinkTarget}
+          generation={generation}
+          openNote={openMovedTo}
+        />
         {/* Fetching a link's preview reaches the linked host, so a private
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}

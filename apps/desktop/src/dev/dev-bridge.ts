@@ -33,6 +33,17 @@ const metaArgsSchema = z.object({ key: z.string(), value: z.string() })
 const touchArgsSchema = z.object({
   entries: z.array(z.object({ path: z.string(), mtime: z.number() })),
 })
+const resolveArgsSchema = z.object({
+  rows: z.array(
+    z.object({
+      tagKey: z.string(),
+      resolvedJson: z.string(),
+      publicResolvedJson: z.string().nullable(),
+      descendantsJson: z.string(),
+      publicDescendantsJson: z.string(),
+    }),
+  ),
+})
 const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
 const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
@@ -365,6 +376,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         }
         return null
       }
+      case 'index_tag_types_resolve': {
+        index.setTagTypeResolutions(resolveArgsSchema.parse(args).rows)
+        return null
+      }
       case 'index_reconcile_scan':
         return reconcileScan(files, index)
       case 'index_clear': {
@@ -394,6 +409,13 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         secrets.delete(secretNameArgsSchema.parse(args).name)
         return null
       }
+
+      // No bundled CLI in the browser harness: no agent has proposed anything.
+      case 'proposals_run':
+        if (args.action === 'list') {
+          return []
+        }
+        throw new ReflectError('notFound', 'dev bridge: no proposals')
 
       case 'git_status':
         return {
@@ -470,6 +492,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // Video transcripts need YouTube; the harness is offline, which is
         // exactly what a real fetch reports when there is no network.
         throw new ReflectError('network', 'dev bridge: no network for capture_data_fetch')
+
+      case 'kit_script_status':
+        // No vault kit script runs in the browser harness (Plan 35).
+        return null
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)

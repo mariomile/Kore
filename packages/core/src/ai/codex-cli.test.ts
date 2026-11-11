@@ -210,7 +210,7 @@ describe('codexAppServerHandshakePrompt', () => {
   it('opens with initialize, initialized, and an ephemeral thread', () => {
     const prompt = codexAppServerHandshakePrompt({ graphRoot: '/g', model: 'gpt-5.5' })
     expect(prompt).toContain('"method":"initialize"')
-    expect(prompt).toContain('"name":"lore"')
+    expect(prompt).toContain('"name":"kore"')
     expect(prompt).toContain('"title":"Kore"')
     expect(prompt).toContain('"version"')
     expect(prompt).toContain('"method":"initialized"')

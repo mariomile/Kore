@@ -182,15 +182,17 @@ counts "reflect" per file against `scripts/legacy-names-baseline.json` and
 fails when a file goes over it. When you remove names, lower the baseline
 with `node scripts/check-legacy-names.mjs --update` in the same commit.
 
-Two exceptions keep older spellings on purpose, and renaming either one
-breaks working installs:
+Earlier builds used older spellings, kept only as migration fallbacks so an
+upgrade loses nothing:
 
-- Apple technical identity stays `app.lore.*` and `iCloud.app.lore` —
-  changing it breaks signing and iCloud, and macOS would treat the build as
-  a different app.
-- The keychain service in `apps/desktop/src-tauri/src/secrets.rs` stays
-  `"lore"`: renaming it orphans every API key already stored by an
-  installed app.
+- Apple identity is `app.kore.*`, `iCloud.app.kore` and `group.app.kore`
+  (previously `app.lore.*`, inherited from upstream). On launch the desktop
+  app moves `<data dir>/app.lore.<flavor>` into `app.kore.<flavor>`
+  without overwriting (`apps/desktop/src-tauri/src/app_dir.rs`, which also
+  moves the `reflect-open` config dir to `kore`).
+- The keychain service in `apps/desktop/src-tauri/src/secrets.rs` is
+  `"kore"`; reads fall back to `"lore"` and `"reflect-open"` and copy the
+  entry forward, keeping the old one for now so a rollback still finds it.
 
 ### Product Principles
 
@@ -501,7 +503,7 @@ pnpm release:ios testflight --build-number=123 --wait  # Build and upload the iO
 The mobile app is the Tauri iOS target of `apps/desktop`, not a separate
 package. Use `pnpm tauri:ios:dev "iPhone 17 Pro"` from the repo root (or
 `pnpm tauri:ios:dev --host` for a physical device); debug builds are the dev
-flavor (`app.lore.ios.dev`, shown as `Kore Dev`) and need that script's
+flavor (`app.kore.ios.dev`, shown as `Kore Dev`) and need that script's
 config overlay, so do not run plain `tauri ios dev`. List
 available simulator names with `xcrun simctl list devices available`. The first
 run can be quiet while Xcode compiles Rust, Swift plugin code, and native
@@ -517,7 +519,7 @@ and `altool` unless debugging the helper itself. Start with
 `pnpm release:ios testflight --build-number=<number> --wait` or upload an
 existing IPA with `pnpm release:ios upload --ipa=<path> --wait`.
 
-The iOS bundle identifier is `app.lore.ios`, intentionally separate from the
+The iOS bundle identifier is `app.kore.ios`, intentionally separate from the
 old Capacitor TestFlight app (`app.reflect.ReflectMobile`). The release helper
 verifies the IPA bundle identifier and `ITSAppUsesNonExemptEncryption=false`
 before upload. See `docs/ios-testflight.md` for App Store Connect setup, local

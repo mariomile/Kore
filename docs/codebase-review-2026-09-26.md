@@ -152,7 +152,7 @@ Passing the existing tests does not refute these findings: the missing coverage 
 
 ### Environment and evidence boundary
 
-These checks used the actual macOS application `app.lore.desktop`, through its native accessibility surface and screenshots, rather than a browser preview. About Kore reported **0.73.0 (0.73.0)**; the update notification offered **0.74.0**. No update was installed. Consequently, native observations below are established on 0.73.0, while R1–R6 above concern `origin/master` 0.74.0. They are not interchangeable release evidence.
+These checks used the actual macOS application `app.kore.desktop`, through its native accessibility surface and screenshots, rather than a browser preview. About Kore reported **0.73.0 (0.73.0)**; the update notification offered **0.74.0**. No update was installed. Consequently, native observations below are established on 0.73.0, while R1–R6 above concern `origin/master` 0.74.0. They are not interchangeable release evidence.
 
 The active graph was Kore Brain. Changes were confined to two newly created synthetic notes. No external AI request was initiated, and no destructive, sync-conflict or disk-failure test was performed against the real graph. The ordinary background index and backup remained active. Persistence here means successful navigation away and reopening, updated indexed surfaces, and visible backup-history entries; a cold process restart and independent disk-byte audit were not performed.
 

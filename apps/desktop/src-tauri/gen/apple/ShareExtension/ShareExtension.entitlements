@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.app.lore</string>
+		<string>group.app.kore</string>
 	</array>
 </dict>
 </plist>

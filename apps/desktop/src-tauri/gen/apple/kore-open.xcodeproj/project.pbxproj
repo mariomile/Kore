@@ -531,15 +531,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					665EB942B5F6FB93F8DF2A57 = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 					85FC564C07724F1F4E282538 = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 					E2CEE6E5CCFA69CBA5F9AA3F = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -707,14 +707,14 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.share;
 				PRODUCT_NAME = ShareExtension;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -734,7 +734,7 @@
 				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "789ULN5MZB";
+				DEVELOPMENT_TEAM = "ZQG9377GFQ";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -748,7 +748,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -826,7 +826,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -834,7 +834,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -848,14 +848,14 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.share;
 				PRODUCT_NAME = ShareExtension;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -869,7 +869,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -877,7 +877,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -897,7 +897,7 @@
 				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.dev.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "789ULN5MZB";
+				DEVELOPMENT_TEAM = "ZQG9377GFQ";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -911,7 +911,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;

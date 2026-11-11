@@ -362,9 +362,9 @@ pub async fn capture_inbox_reject<R: tauri::Runtime>(
 /// debug configuration compiles the Rust dev profile, so `debug_assertions`
 /// tracks the flavor exactly.
 #[cfg(all(target_os = "ios", debug_assertions))]
-const SHARED_GROUP_ID: &str = "group.app.lore.dev";
+const SHARED_GROUP_ID: &str = "group.app.kore.dev";
 #[cfg(all(target_os = "ios", not(debug_assertions)))]
-const SHARED_GROUP_ID: &str = "group.app.lore";
+const SHARED_GROUP_ID: &str = "group.app.kore";
 
 /// The envelope spool directory inside the App Group container. The extension
 /// creates it lazily; a missing directory relays as zero.

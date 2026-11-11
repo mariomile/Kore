@@ -60,9 +60,9 @@ enum CaptureInbox {
     /// group so a dev install never drains the production app's inbox; the
     /// Rust side switches on `debug_assertions` the same way.
     #if DEBUG
-        static let groupId = "group.app.lore.dev"
+        static let groupId = "group.app.kore.dev"
     #else
-        static let groupId = "group.app.lore"
+        static let groupId = "group.app.kore"
     #endif
 
     /// Where envelopes spool inside the container; the Rust relay reads the

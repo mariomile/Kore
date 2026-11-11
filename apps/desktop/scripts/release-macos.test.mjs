@@ -388,7 +388,7 @@ test('macOS signing keeps app entitlements and adds only profile identity entitl
     'com.apple.security.device.audio-input': true,
   }
   const profileEntitlements = {
-    'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop.beta',
+    'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop.beta',
     'com.apple.developer.team-identifier': '789ULN5MZB',
     'keychain-access-groups': ['789ULN5MZB.*'],
   }
@@ -396,12 +396,12 @@ test('macOS signing keeps app entitlements and adds only profile identity entitl
   expect(
     mergeMacosProfileIdentityEntitlements({
       appEntitlements,
-      bundleIdentifier: 'app.lore.desktop.beta',
+      bundleIdentifier: 'app.kore.desktop.beta',
       profileEntitlements,
     }),
   ).toEqual({
     ...appEntitlements,
-    'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop.beta',
+    'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop.beta',
     'com.apple.developer.team-identifier': '789ULN5MZB',
   })
 })
@@ -410,33 +410,33 @@ test('macOS signing rejects a provisioning profile for another flavor', () => {
   expect(() =>
     mergeMacosProfileIdentityEntitlements({
       appEntitlements: { 'com.apple.security.device.audio-input': true },
-      bundleIdentifier: 'app.lore.desktop.beta',
+      bundleIdentifier: 'app.kore.desktop.beta',
       profileEntitlements: {
-        'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop',
+        'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop',
         'com.apple.developer.team-identifier': '789ULN5MZB',
       },
     }),
-  ).toThrow('does not match bundle identifier "app.lore.desktop.beta"')
+  ).toThrow('does not match bundle identifier "app.kore.desktop.beta"')
 })
 
 test('macOS signing compares the full profile bundle identifier, not only its suffix', () => {
   expect(() =>
     mergeMacosProfileIdentityEntitlements({
       appEntitlements: {},
-      bundleIdentifier: 'app.lore.desktop.beta',
+      bundleIdentifier: 'app.kore.desktop.beta',
       profileEntitlements: {
-        'com.apple.application-identifier': '789ULN5MZB.other.app.lore.desktop.beta',
+        'com.apple.application-identifier': '789ULN5MZB.other.app.kore.desktop.beta',
         'com.apple.developer.team-identifier': '789ULN5MZB',
       },
     }),
-  ).toThrow('does not match bundle identifier "app.lore.desktop.beta"')
+  ).toThrow('does not match bundle identifier "app.kore.desktop.beta"')
 })
 
 test.each(['com.apple.application-identifier', 'com.apple.developer.team-identifier'])(
   'macOS signing rejects a profile missing %s',
   (missingEntitlement) => {
     const profileEntitlements = {
-      'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop.beta',
+      'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop.beta',
       'com.apple.developer.team-identifier': '789ULN5MZB',
     }
     delete profileEntitlements[missingEntitlement]
@@ -444,7 +444,7 @@ test.each(['com.apple.application-identifier', 'com.apple.developer.team-identif
     expect(() =>
       mergeMacosProfileIdentityEntitlements({
         appEntitlements: {},
-        bundleIdentifier: 'app.lore.desktop.beta',
+        bundleIdentifier: 'app.kore.desktop.beta',
         profileEntitlements,
       }),
     ).toThrow(`missing string entitlement "${missingEntitlement}"`)
@@ -455,9 +455,9 @@ test('macOS signing rejects a conflicting identity in the app entitlement file',
   expect(() =>
     mergeMacosProfileIdentityEntitlements({
       appEntitlements: { 'com.apple.developer.team-identifier': 'WRONGTEAM' },
-      bundleIdentifier: 'app.lore.desktop',
+      bundleIdentifier: 'app.kore.desktop',
       profileEntitlements: {
-        'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop',
+        'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop',
         'com.apple.developer.team-identifier': '789ULN5MZB',
       },
     }),
@@ -467,13 +467,13 @@ test('macOS signing rejects a conflicting identity in the app entitlement file',
 test('macOS verification rejects a signed app that lost a profile identity entitlement', () => {
   expect(() =>
     assertMacosProfileIdentityEntitlements({
-      bundleIdentifier: 'app.lore.desktop.beta',
+      bundleIdentifier: 'app.kore.desktop.beta',
       profileEntitlements: {
-        'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop.beta',
+        'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop.beta',
         'com.apple.developer.team-identifier': '789ULN5MZB',
       },
       signedEntitlements: {
-        'com.apple.application-identifier': '789ULN5MZB.app.lore.desktop.beta',
+        'com.apple.application-identifier': '789ULN5MZB.app.kore.desktop.beta',
       },
     }),
   ).toThrow('signed app entitlement "com.apple.developer.team-identifier" is undefined')

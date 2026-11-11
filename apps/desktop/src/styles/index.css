@@ -17,6 +17,7 @@ Cascade layer order, low to high priority.
 @import '@meowdown/react/style.css';
 @import './callouts.css';
 @import './link-cards.css';
+@import './line-authors.css';
 @import './block-zoom.css';
 @import './block-ids.css';
 @import './post-embeds.css';

@@ -5,6 +5,7 @@ import { db } from '../indexing/db'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { FetchFn } from '../sync/github-api'
 import { renderNotePlacement } from './pattern'
+import { connectorFileStem } from './markdown'
 import type { Connector, ConnectorNote } from './types'
 
 /**
@@ -130,13 +131,30 @@ async function mergeInto(
   return 'updated'
 }
 
+/**
+ * The filename stem when the user's pattern renders to nothing: the
+ * connector's default pattern, else its name and the item's id.
+ */
+function fallbackStem(connector: Connector, note: ConnectorNote): string {
+  return renderNotePlacement(
+    connector.defaultPattern,
+    note.fields,
+    connectorFileStem(`${connector.label} ${note.sourceId}`, 'Untitled'),
+  ).stem
+}
+
 function candidatePath(
+  connector: Connector,
   folder: string,
   pattern: string,
   note: ConnectorNote,
   ordinal: number,
 ): string {
-  const { dir: subfolder, stem } = renderNotePlacement(pattern, note.fields, note.fileStem)
+  const { dir: subfolder, stem } = renderNotePlacement(
+    pattern,
+    note.fields,
+    fallbackStem(connector, note),
+  )
   const name = ordinal === 1 ? `${stem}.md` : `${stem} ${ordinal}.md`
   const dir = [folder, subfolder].filter((part) => part !== '').join('/')
   return dir === '' ? name : `${dir}/${name}`
@@ -177,7 +195,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
       }
     }
     for (let ordinal = 1; ordinal <= MAX_PATH_ATTEMPTS; ordinal += 1) {
-      const path = candidatePath(folder, pattern, note, ordinal)
+      const path = candidatePath(connector, folder, pattern, note, ordinal)
       const outcome = await createNoteIfAbsent(path, note.source, generation)
       if (outcome.kind === 'created') {
         placed.set(note.sourceId, path)
@@ -192,7 +210,10 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
         return await mergeInto(path, existing, note, generation)
       }
     }
-    throw new KoreError('io', `no free filename for "${note.fileStem}" in ${folder || 'the graph'}`)
+    throw new KoreError(
+      'io',
+      `no free filename for "${fallbackStem(connector, note)}" in ${folder || 'the graph'}`,
+    )
   }
 
   let created = 0

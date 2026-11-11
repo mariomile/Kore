@@ -3546,6 +3546,36 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-11 — Quality refactor, no behavior change. Link text is a lookup:
+  `LINK_TEXT_SITES` in `actions/link-text.ts` says which sites keep nothing
+  (X, LinkedIn) or a transcript (YouTube), and any other link keeps its
+  article. The card template (`actions/resource-card.ts`) owns both writing
+  a card's title and retitling it, so link text no longer does string
+  surgery on another module's output. The session's tried-cards memo is
+  capped at 500, and the private-note gate lives only in core (a private
+  note's cards are private, and `saveLinkText` skips them).
+
+- 2026-11-11 — Quality refactor, no behavior change. `ConnectorNote` loses
+  `fileStem`: when the user's pattern renders to nothing, the sync engine
+  names the file with the connector's default pattern (the same names the
+  connectors built by hand), else `<label> <sourceId>`. Tags have one
+  default: the engine resolves them, and the Readwise and Granola renderers
+  no longer default them a second time.
+- 2026-11-11 — Plan 33: A1 ✓ (#343), A2 ✓ (#350), A3 ✓ (#387, who wrote each
+  line, off by default). Next: B2 (tags that extend tags).
+- 2026-11-11 — Internal rename merged (#355): `@kore/*` packages, `kore-*`
+  crates, desktop crate and Xcode project `kore-open`; release-please branch
+  is now `release-please--branches--master--components--kore-open`. The next
+  mobile bump needs a TestFlight run because the Xcode project was renamed.
+- 2026-11-11 — Quality refactor, no behavior change. Chat attachment media
+  types live in one table (`ATTACHMENT_KINDS` in
+  `ai/chat/attachment-types.ts`: media type, extensions, channel image /
+  document / text); the extension maps, the composer's re-encode check and
+  each engine's accepted types derive from it. Engines declare the channels
+  they read (Claude image + document, Codex image) and an attachment carries
+  its channel, so encoders no longer branch on `application/pdf`. A core
+  test holds the Rust store's closed extension lists to the table.
+
 - 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
   that agent-CLI chat runs (Claude Code, Codex) never see the in-process
   tools of `ai/chat/tools.ts`, so the tools live in `kore mcp` instead and

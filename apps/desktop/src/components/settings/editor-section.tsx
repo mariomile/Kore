@@ -287,6 +287,13 @@ export function EditorSection(): ReactElement {
       />
 
       <SettingsSwitchField
+        legend="Show who wrote each line"
+        description="Shade the lines an agent or the Kore host last changed, from the vault's backup history."
+        checked={settings.editorLineAuthors}
+        onCheckedChange={(checked) => updateSettings({ editorLineAuthors: checked })}
+      />
+
+      <SettingsSwitchField
         legend="Spell check"
         description="Underline misspelled words while you type."
         checked={settings.editorSpellCheck}

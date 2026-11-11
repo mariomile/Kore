@@ -25,6 +25,7 @@ describe('settingsSchema', () => {
       editorSmoothCaretAnimation: true,
       editorTextSize: 'small',
       editorFullWidth: false,
+      editorLineAuthors: false,
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
@@ -137,6 +138,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.editorSmoothCaretAnimation).toBe(true)
     expect(DEFAULT_SETTINGS.editorTextSize).toBe('small')
     expect(DEFAULT_SETTINGS.editorFullWidth).toBe(false)
+    expect(DEFAULT_SETTINGS.editorLineAuthors).toBe(false)
     expect(DEFAULT_SETTINGS.sidebarWidth).toBe(260)
     expect(DEFAULT_SETTINGS.contextSidebarWidth).toBe(320)
     expect(DEFAULT_SETTINGS.semanticSearchEnabled).toBe(false)
@@ -210,6 +212,7 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ editorTextSize: 'large' }).editorTextSize).toBe('large')
     expect(settingsSchema.parse({ editorFullWidth: false }).editorFullWidth).toBe(false)
     expect(settingsSchema.parse({ editorFullWidth: true }).editorFullWidth).toBe(true)
+    expect(settingsSchema.parse({ editorLineAuthors: true }).editorLineAuthors).toBe(true)
     expect(settingsSchema.parse({ sidebarWidth: 300 }).sidebarWidth).toBe(300)
     expect(settingsSchema.parse({ sidebarWidth: 200 }).sidebarWidth).toBe(200)
     expect(settingsSchema.parse({ sidebarWidth: 480 }).sidebarWidth).toBe(480)
@@ -335,6 +338,7 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ editorTextSize: 3 }).editorTextSize).toBe('small')
     expect(settingsSchema.parse({ editorFullWidth: 'yes' }).editorFullWidth).toBe(false)
     expect(settingsSchema.parse({ editorFullWidth: 1 }).editorFullWidth).toBe(false)
+    expect(settingsSchema.parse({ editorLineAuthors: 'yes' }).editorLineAuthors).toBe(false)
     expect(settingsSchema.parse({ sidebarWidth: 'wide' }).sidebarWidth).toBe(260)
     // Out-of-range numbers clamp instead of resetting: a near-miss hand-edit
     // keeps its intent.
@@ -431,6 +435,7 @@ describe('settingsSchema', () => {
       editorSmoothCaretAnimation: true,
       editorTextSize: 'small',
       editorFullWidth: false,
+      editorLineAuthors: false,
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,

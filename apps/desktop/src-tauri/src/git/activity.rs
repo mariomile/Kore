@@ -125,7 +125,7 @@ fn describe(
 
 /// `Key: value` lines of the final paragraph, when every line there has
 /// that shape and the message has more than one paragraph.
-fn trailers(message: &str) -> Vec<Trailer> {
+pub(super) fn trailers(message: &str) -> Vec<Trailer> {
     let paragraphs: Vec<&str> = message
         .trim()
         .split("\n\n")

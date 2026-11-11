@@ -445,6 +445,7 @@ pub fn run() {
             git::git_commit_all,
             git::git_commit_paths,
             git::git_activity,
+            git::git_blame,
             git::git_undo_preview,
             git::git_agent_writes,
             git::git_agent_writes_clear,

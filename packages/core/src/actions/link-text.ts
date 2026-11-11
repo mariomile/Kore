@@ -1,12 +1,12 @@
 import { toAppError } from '../errors'
 import { captureMetaFetch, readNote, writeNote } from '../graph/commands'
 import { appendHeadingSection } from '../markdown/append-section'
-import { wikiLinkSafe } from '../markdown/edit'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { XPost } from '@post-embed/types'
 import { extractArticleFromHtml } from './article-text'
 import { isLinkedInUrl, xPostId } from './link-preview-providers'
 import { youtubeVideoId } from './oembed'
+import { retitleLinkCard } from './resource-card'
 import { resolveXPostEmbed } from './post-embed'
 import { fetchYouTubeTranscript } from './youtube-transcript'
 
@@ -43,10 +43,46 @@ function bounded(markdown: string): string {
   return `${markdown.slice(0, cut > 0 ? cut : MAX_TEXT_CHARS)}\n\n*Text cut at ${MAX_TEXT_CHARS} characters.*`
 }
 
+async function youtubeTranscript(videoId: string): Promise<LinkText | null> {
+  const transcript = await fetchYouTubeTranscript(videoId)
+  if (transcript === null) return null
+  return {
+    kind: 'transcript',
+    title: transcript.title,
+    markdown: bounded(`*Captions: ${transcript.trackName}*\n\n${transcript.markdown}`),
+  }
+}
+
+async function articleText(url: string): Promise<LinkText | null> {
+  const article = extractArticleFromHtml(await captureMetaFetch(url), url)
+  if (article.markdown.length < MIN_ARTICLE_CHARS) return null
+  return { kind: 'article', title: article.title, markdown: bounded(article.markdown) }
+}
+
+/**
+ * The sites whose links keep something other than the page's article text,
+ * checked in order: `text` is `null` for a site with nothing to fetch. X
+ * posts keep their words in the embed snapshot, and LinkedIn answers a
+ * sign-in wall. Any other link keeps its article.
+ */
+const LINK_TEXT_SITES: readonly {
+  readonly matches: (url: URL) => boolean
+  readonly text: ((url: URL) => Promise<LinkText | null>) | null
+}[] = [
+  { matches: (url) => xPostId(url.href) !== null, text: null },
+  { matches: (url) => isLinkedInUrl(url.href), text: null },
+  {
+    matches: (url) => youtubeVideoId(url) !== null,
+    text: async (url) => {
+      const videoId = youtubeVideoId(url)
+      return videoId === null ? null : await youtubeTranscript(videoId)
+    },
+  },
+]
+
 /**
  * Fetch the text one link should keep, or `null` when there is none worth
- * keeping. X posts keep theirs in the embed snapshot, and LinkedIn answers
- * a sign-in wall, so neither is fetched. Propagates the transport's typed
+ * keeping (see {@link LINK_TEXT_SITES}). Propagates the transport's typed
  * errors (`network` is transient).
  */
 export async function fetchLinkText(url: string): Promise<LinkText | null> {
@@ -56,20 +92,9 @@ export async function fetchLinkText(url: string): Promise<LinkText | null> {
   } catch {
     return null
   }
-  if (xPostId(url) !== null || isLinkedInUrl(url)) return null
-  const videoId = youtubeVideoId(parsed)
-  if (videoId !== null) {
-    const transcript = await fetchYouTubeTranscript(videoId)
-    if (transcript === null) return null
-    return {
-      kind: 'transcript',
-      title: transcript.title,
-      markdown: bounded(`*Captions: ${transcript.trackName}*\n\n${transcript.markdown}`),
-    }
-  }
-  const article = extractArticleFromHtml(await captureMetaFetch(url), url)
-  if (article.markdown.length < MIN_ARTICLE_CHARS) return null
-  return { kind: 'article', title: article.title, markdown: bounded(article.markdown) }
+  const site = LINK_TEXT_SITES.find((candidate) => candidate.matches(parsed))
+  if (site === undefined) return await articleText(url)
+  return site.text === null ? null : await site.text(parsed)
 }
 
 const SAVED_TEXT_HEADING = new RegExp(
@@ -79,24 +104,10 @@ const SAVED_TEXT_HEADING = new RegExp(
 
 /**
  * Swap the card's placeholder title (the link's host, which a card starts
- * with) for the page's own, in the H1 and the link label. A title the user
- * already changed stays.
+ * with) for the page's own. A title the user already changed stays.
  */
 function retitled(source: string, url: string, title: string | null): string {
-  const placeholder = wikiLinkSafe(new URL(url).hostname)
-  const safeTitle = title === null ? '' : wikiLinkSafe(title)
-  if (safeTitle === '') return source
-  const { bodyOffset } = splitFrontmatter(source)
-  const head = source.slice(0, bodyOffset)
-  const body = source.slice(bodyOffset)
-  if (!body.startsWith(`# ${placeholder}\n`)) return source
-  const label = safeTitle.replaceAll(/[[\]]/g, '')
-  return (
-    head +
-    body
-      .replace(`# ${placeholder}\n`, `# ${safeTitle}\n`)
-      .replace(`[${placeholder}](`, `[${label}](`)
-  )
+  return title === null ? source : retitleLinkCard(source, new URL(url).hostname, title)
 }
 
 /** How much of a post's text an X card's title keeps before it trails off. */
@@ -122,8 +133,19 @@ export function xPostTitle(post: XPost): string | null {
   return `${author}: ${start.replace(/[\s.,;:!?-]+$/, '')}…`
 }
 
+/** How many tried cards the session remembers; the oldest is forgotten first. */
+const MAX_ATTEMPTED = 500
+
 /** Cards already tried this session, so a dead page is not refetched on every paste. */
 const attempted = new Set<string>()
+
+function markAttempted(key: string): void {
+  attempted.add(key)
+  if (attempted.size > MAX_ATTEMPTED) {
+    const oldest = attempted.values().next().value
+    if (oldest !== undefined) attempted.delete(oldest)
+  }
+}
 
 /**
  * Save the text behind one `#link` card into the card, once. Skips private
@@ -134,7 +156,7 @@ const attempted = new Set<string>()
 export async function saveLinkText(cardPath: string, generation: number): Promise<boolean> {
   const key = `${generation}:${cardPath}`
   if (attempted.has(key)) return false
-  attempted.add(key)
+  markAttempted(key)
   const source = await readNote(cardPath, generation)
   const { raw, body } = splitFrontmatter(source)
   const frontmatter = parseFrontmatter(raw)

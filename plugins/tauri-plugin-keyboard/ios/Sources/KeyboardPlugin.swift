@@ -4,7 +4,7 @@ import Tauri
 import UIKit
 import WebKit
 
-/// Reflect's keyboard webview tuning (Plan 19, decision 8).
+/// Kore's keyboard webview tuning (Plan 19, decision 8).
 ///
 /// Tauri has no iOS keyboard handling (tauri#9907): by default the system
 /// nudges the webview's scroll view around when the keyboard animates in,
@@ -14,7 +14,7 @@ import WebKit
 /// avoidance lives entirely on the web side, driven by `visualViewport`
 /// (decision 0003); no keyboard state crosses the bridge.
 ///
-/// As Reflect's only native UIKit touch bridge, it also carries the app's
+/// As Kore's only native UIKit touch bridge, it also carries the app's
 /// tiny haptics surface (`impactLight`) — WKWebView has no
 /// `navigator.vibrate`, so JS cannot fire haptics on its own.
 class KeyboardPlugin: Plugin {
@@ -40,11 +40,11 @@ class KeyboardPlugin: Plugin {
       scrollView.setContentOffset(.zero, animated: false)
     }
     // iOS injects a form-assistant bar (‹ › field stepper + Done) above the
-    // keyboard for any focused field or contenteditable. Reflect edits one
+    // keyboard for any focused field or contenteditable. Kore edits one
     // continuous document, so the bar is meaningless chrome — strip it.
     Self.suppressInputAccessoryBar()
     // WebKit only raises the keyboard for a focus() that runs inside a user
-    // gesture; Reflect's deliberate programmatic focuses (the task sheet's
+    // gesture; Kore's deliberate programmatic focuses (the task sheet's
     // "+" add flow, new-note autofocus) run after an async write, so they
     // landed with the keyboard down. Lift the restriction.
     Self.allowProgrammaticFocus()
@@ -87,7 +87,7 @@ class KeyboardPlugin: Plugin {
 
   /// WebKit gates keyboard presentation on `userIsInteracting`: a `focus()`
   /// outside a user gesture's event loop moves DOM focus but leaves the
-  /// keyboard down. Reflect reserves programmatic focus for explicit write
+  /// keyboard down. Kore reserves programmatic focus for explicit write
   /// gestures whose focus target only exists after an async hop (navigation
   /// never focuses — the PR #575 contract), so every such focus should
   /// present the keyboard: rewrite `WKContentView`'s focus notification to

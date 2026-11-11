@@ -37,9 +37,9 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
     function clearPlacement(): void {
       clearMembershipParagraphCss(host)
-      root?.classList.remove('reflect-editor-has-properties')
+      root?.classList.remove('kore-editor-has-properties')
       root?.style.removeProperty('--reflect-note-properties-space')
-      host?.classList.remove('reflect-note-properties-host')
+      host?.classList.remove('kore-note-properties-host')
       slotElement.style.removeProperty('top')
       delete slotElement.dataset.positioned
     }
@@ -66,8 +66,8 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
       const top = titleRect.bottom - hostRect.top + titleMargin
       const space = slotElement.getBoundingClientRect().height
 
-      host.classList.add('reflect-note-properties-host')
-      root.classList.add('reflect-editor-has-properties')
+      host.classList.add('kore-note-properties-host')
+      root.classList.add('kore-editor-has-properties')
       applyMembershipParagraphCss(host, root)
       root.style.setProperty('--reflect-note-properties-space', `${space}px`)
       slotElement.style.setProperty('top', `${top}px`)
@@ -106,7 +106,7 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
   }, [editor])
 
   return (
-    <div ref={slotRef} className={cn('reflect-note-properties-slot', className)}>
+    <div ref={slotRef} className={cn('kore-note-properties-slot', className)}>
       <NotePropertiesHeader path={path} />
     </div>
   )

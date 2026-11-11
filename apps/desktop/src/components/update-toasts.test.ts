@@ -55,7 +55,7 @@ describe('attachUpdateToasts', () => {
 
     expect(toast.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'reflect-update',
+        id: 'kore-update',
         title: 'Update available',
         description: 'Kore 1.2.3 is ready to install.',
         timeout: 0,
@@ -72,13 +72,13 @@ describe('attachUpdateToasts', () => {
   it('updates the same toast while downloading and when ready', () => {
     const { controller, setState } = createFakeController()
     attachUpdateToasts(controller)
-    expect(toast.close).toHaveBeenCalledWith('reflect-update')
+    expect(toast.close).toHaveBeenCalledWith('kore-update')
 
     setState({ phase: 'available', version: '1.2.3' })
     setState({ phase: 'downloading', version: '1.2.3', percent: 42 })
     expect(toast.add).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        id: 'reflect-update',
+        id: 'kore-update',
         title: 'Downloading update',
         description: '42%',
         type: 'loading',
@@ -95,7 +95,7 @@ describe('attachUpdateToasts', () => {
     setState({ phase: 'ready', version: '1.2.3' })
     expect(toast.add).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        id: 'reflect-update',
+        id: 'kore-update',
         title: 'Update ready',
         type: 'success',
         actionProps: expect.objectContaining({ children: 'Restart' }),
@@ -108,13 +108,13 @@ describe('attachUpdateToasts', () => {
     attachUpdateToasts(controller)
 
     setState({ phase: 'error', message: 'offline', during: 'check' })
-    expect(toast.close).toHaveBeenCalledWith('reflect-update')
+    expect(toast.close).toHaveBeenCalledWith('kore-update')
     expect(toast.add).not.toHaveBeenCalled()
 
     setState({ phase: 'error', message: 'signature failed', during: 'install' })
     expect(toast.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'reflect-update',
+        id: 'kore-update',
         title: 'Update failed',
         description: 'signature failed',
         type: 'error',

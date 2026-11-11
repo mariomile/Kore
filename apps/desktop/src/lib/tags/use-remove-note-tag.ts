@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { errorMessage, removeNoteTag } from '@reflect/core'
+import { errorMessage, removeNoteTag } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { useGraph } from '@/providers/graph-provider'

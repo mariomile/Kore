@@ -7,7 +7,7 @@ import {
   getVaultLayout,
   noteFileStem,
   type TemplatePlaceholderValues,
-} from '@reflect/core'
+} from '@kore/core'
 import { formatDayLabel, formatTimeOfDay } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
 import { useSettings } from '@/providers/settings-provider'

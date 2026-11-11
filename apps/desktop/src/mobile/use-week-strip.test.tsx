@@ -1,6 +1,6 @@
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { WeekStartDay } from '@reflect/core'
+import type { WeekStartDay } from '@kore/core'
 import { createWeekWindow, weekAtIndex, weekIndexOf, weekStartOf } from './calendar'
 import { shouldRecenterWeeks, useWeekStrip } from './use-week-strip'
 import { act } from '@/test-utils/act'

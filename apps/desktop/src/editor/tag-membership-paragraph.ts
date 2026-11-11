@@ -27,7 +27,7 @@ export function isTagOnlyParagraph(paragraph: HTMLElement): boolean {
 const HIDE_RULE =
   '{height:0;margin:0;padding:0;overflow:hidden;border:0;visibility:hidden;pointer-events:none}'
 
-const MEMBERSHIP_STYLE_ID = 'reflect-tag-membership-style'
+const MEMBERSHIP_STYLE_ID = 'kore-tag-membership-style'
 
 /**
  * CSS that collapses the editor's leading and trailing tag-only paragraphs.
@@ -55,9 +55,7 @@ export function membershipParagraphCss(root: HTMLElement): string {
     if (childIndex === 0) {
       continue
     }
-    selectors.push(
-      `.reflect-editor.reflect-editor-has-properties > :nth-child(${String(childIndex)})`,
-    )
+    selectors.push(`.kore-editor.kore-editor-has-properties > :nth-child(${String(childIndex)})`)
   }
   if (selectors.length === 0) {
     return ''

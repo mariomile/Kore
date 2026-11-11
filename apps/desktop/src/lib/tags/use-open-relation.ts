@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { resolveWikiTarget } from '@reflect/core'
+import { resolveWikiTarget } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { routeForPath } from '@/routing/route'

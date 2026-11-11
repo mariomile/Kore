@@ -6,7 +6,7 @@ import {
   type OpenTask,
   type TaskGroup,
   type TaskView,
-} from '@reflect/core'
+} from '@kore/core'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 import type { TaskFilters } from '@/lib/tasks/task-filters'
 

@@ -1,6 +1,6 @@
 import { Fragment, type ReactElement } from 'react'
 import { Plus } from '@/components/icons'
-import { groupTaskContexts, type OpenTask, type TaskGroup } from '@reflect/core'
+import { groupTaskContexts, type OpenTask, type TaskGroup } from '@kore/core'
 import { TaskBreadcrumbs } from '@/components/tasks/task-breadcrumbs'
 import { formatDayLabel } from '@/lib/dates'
 import {

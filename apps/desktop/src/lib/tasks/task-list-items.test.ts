@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupTasks, groupTasksForView, type TaskGroup } from '@reflect/core'
+import { groupTasks, groupTasksForView, type TaskGroup } from '@kore/core'
 import { makeOpenTask as task } from './open-task-fixture'
 import { taskKey } from './task-identity'
 import { flattenTaskGroups, taskListItemKey } from './task-list-items'

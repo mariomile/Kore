@@ -1,7 +1,7 @@
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { isDeviceFlowConfigured, runDeviceFlow, setBridge } from '@reflect/core'
+import { isDeviceFlowConfigured, runDeviceFlow, setBridge } from '@kore/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { fireEvent } from '@/test-utils/fire-event'
@@ -21,8 +21,8 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
   isNativeShell: () => true,
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   runDeviceFlow: vi.fn(),
   isDeviceFlowConfigured: vi.fn(() => true),
 }))

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { resetOperations, useOperations, type Operation } from '@/lib/operations'
 import {
   LARGE_FILE_BYTES,

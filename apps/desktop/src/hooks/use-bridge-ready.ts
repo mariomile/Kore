@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { hasBridge, subscribeBridgeChanges } from '@reflect/core'
+import { hasBridge, subscribeBridgeChanges } from '@kore/core'
 
 /**
  * Reactive `hasBridge()` for React code. The Tauri bridge installs before the

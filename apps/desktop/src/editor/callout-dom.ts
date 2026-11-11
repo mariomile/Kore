@@ -1,4 +1,4 @@
-import { calloutLabel, parseCalloutMarker } from '@reflect/core'
+import { calloutLabel, parseCalloutMarker } from '@kore/core'
 
 /**
  * Callouts in read-only renderings (`MarkdownView`: previews, transclusions,

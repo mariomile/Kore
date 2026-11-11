@@ -1,4 +1,4 @@
-import { createDb, type Database } from '@reflect/db'
+import { createDb, type Database } from '@kore/db'
 import type { Kysely } from 'kysely'
 import { toAppError } from '../errors'
 import { getBridge } from '../ipc/bridge'

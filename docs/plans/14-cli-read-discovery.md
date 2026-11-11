@@ -8,7 +8,7 @@ sidecar.
 **Depends on:** Plan 02 (graph layout), Plan 03 (doc-model contracts), Plan 04 (index
 schema). **Supersedes** the earlier decision (here and in
 [Architecture & Conventions](architecture-conventions.md)) that the CLI would be a Node
-TS app reusing `@reflect/core` — see "Architecture" below for why.
+TS app reusing `@kore/core` — see "Architecture" below for why.
 **Unlocks:** `~/.agents` discovery workflows; terminal/automation access; Plan 15 bundles
 and distributes the binary.
 
@@ -32,7 +32,7 @@ mutates notes.
 
 ## Architecture: a self-contained Rust binary
 
-The CLI is a **Rust crate at `apps/cli`** (package `reflect-cli`, binary **`reflect`**)
+The CLI is a **Rust crate at `apps/cli`** (package `kore-cli`, binary **`reflect`**)
 that reads the graph's markdown files itself and opens `.reflect/index.sqlite` itself —
 no Node runtime, no running desktop app, no IPC.
 
@@ -53,7 +53,7 @@ Why Rust here, despite the "business logic lives in TS core" rule
   into distribution.
 
 The cost is deliberate, bounded duplication: the read-side contract exists in TS
-(`@reflect/core`) and now also in Rust. It is guarded by **parity tests** (below) and
+(`@kore/core`) and now also in Rust. It is guarded by **parity tests** (below) and
 documented as a frozen contract; the CLI must never grow its own parser/indexer beyond it.
 
 ### Workspace & crate layout
@@ -66,7 +66,7 @@ reflect-open/
 ├── Cargo.toml                  # [workspace] members; resolver = "2"; root Cargo.lock
 ├── apps/
 │   ├── desktop/src-tauri/      # existing app crate (reflect-open) — joins the workspace
-│   └── cli/                    # NEW: package `reflect-cli`, [[bin]] name = "reflect"
+│   └── cli/                    # NEW: package `kore-cli`, [[bin]] name = "reflect"
 └── crates/
     └── index-schema/           # NEW: shared schema crate (see below)
 ```
@@ -229,7 +229,7 @@ specifics, and how we wire it:
   compiles, **dev included**). It: no-ops when `TAURI_ENV_PLATFORM` is ios/android;
   resolves the triple from `TAURI_ENV_TARGET_TRIPLE` (set by Tauri for before-commands),
   falling back to `rustc --print host-tuple`; runs
-  `cargo build --release -p reflect-cli --target <triple>` — the **explicit `--target`
+  `cargo build --release -p kore-cli --target <triple>` — the **explicit `--target`
   matters**: it keeps the artifact in `target/<triple>/release/`, away from
   `target/release/` where tauri-build copies the de-suffixed sidecar (a known
   overwrite clash), and is what makes cross-compilation work; then copies the artifact to
@@ -304,7 +304,7 @@ specifics, and how we wire it:
 
 ## Acceptance criteria
 
-- `cargo build -p reflect-cli` yields a single self-contained `reflect`; `today`,
+- `cargo build -p kore-cli` yields a single self-contained `reflect`; `today`,
   `search`, `show`, `path` work against a graph with no desktop app running, resolved
   from the cwd by default or `--graph`/`REFLECT_GRAPH` explicitly.
 - `today`/`show`/`path` succeed with `.reflect/index.sqlite` absent; `search` exits 4

@@ -1,4 +1,4 @@
-# `@reflect/design-system`
+# `@kore/design-system`
 
 The tokens the app is built on: CSS custom properties for color, typography,
 spacing, radii, shadow and motion, plus the Inter Variable webfont. How they

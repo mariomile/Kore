@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
-import { tagPropertyTypeSchema, type TagPropertyType } from '@reflect/core'
+import { tagPropertyTypeSchema, type TagPropertyType } from '@kore/core'
 import { Plus } from '@/components/icons'
 import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'
 import { Input } from '@/components/ui/input'

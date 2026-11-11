@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
-import { setBridge, upsertFrontmatter } from '@reflect/core'
+import { setBridge, upsertFrontmatter } from '@kore/core'
 import { PaletteProvider, usePalette } from '@/components/command-palette/palette-provider'
 import { flushOpenDocuments } from '@/editor/open-documents'
 import type { NoteEditorHandle } from '@/editor/note-editor'
@@ -88,8 +88,8 @@ const indexFns = vi.hoisted(() => ({
   })),
   relatedNotes: vi.fn(async () => []),
 }))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getBacklinksWithContext: indexFns.getBacklinksWithContext,
   relatedNotes: indexFns.relatedNotes,

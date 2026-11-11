@@ -24,7 +24,7 @@ re-weights the whole glyph.
 1. Find the glyph in Solar. Only `-linear` ids are eligible — the `-bold`,
    `-outline`, and `-broken` families are a different hand and will look it.
 2. Add `ComponentName: 'solar-id-linear'` to `scripts/icon-manifest.mjs`.
-3. Run `pnpm --filter @reflect/desktop icons` and commit the regenerated
+3. Run `pnpm --filter @kore/desktop icons` and commit the regenerated
    `solar-icons.gen.tsx`.
 
 If Solar has no linear equivalent, draw one in `custom-icons.tsx` on the same

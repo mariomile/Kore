@@ -10,7 +10,7 @@ Cascade layer order, low to high priority.
 @layer theme, base, components, utilities, design, meowdown;
 
 @import 'tailwindcss';
-@import '@reflect/design-system/styles.css' layer(design);
+@import '@kore/design-system/styles.css' layer(design);
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@meowdown/core/style.css';
@@ -49,7 +49,7 @@ Cascade layer order, low to high priority.
    product code writes `text-text-muted` / `bg-surface-hover` instead of
    arbitrary `text-[color:var(--text-muted)]` escapes. `inline` makes the
    utilities reference the live token (`color: var(--text-muted)`), keeping
-   `.dark` / `.reflect-space` runtime theming intact. */
+   `.dark` / `.kore-space` runtime theming intact. */
 @theme inline {
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);
@@ -182,7 +182,7 @@ Cascade layer order, low to high priority.
 }
 
 /* shadcn semantic tokens, bridged onto the DS tokens so both vocabularies
-   describe one theme and `.dark` / `.reflect-space` keep working untouched.
+   describe one theme and `.dark` / `.kore-space` keep working untouched.
    `--accent`, `--border`, `--destructive`, and `--radius` are NOT redefined
    here: the DS already owns those names (and `--accent` is the brand color,
    not shadcn's hover wash; see the @theme note above). Chart colors have no
@@ -274,12 +274,12 @@ body {
   textarea,
   [contenteditable],
   [contenteditable] *,
-  .reflect-editor,
-  .reflect-editor *,
-  .reflect-chat-message,
-  .reflect-chat-message *,
-  .reflect-protected-note,
-  .reflect-protected-note * {
+  .kore-editor,
+  .kore-editor *,
+  .kore-chat-message,
+  .kore-chat-message *,
+  .kore-protected-note,
+  .kore-protected-note * {
     -webkit-user-select: text;
     user-select: text;
     -webkit-touch-callout: default;
@@ -353,7 +353,7 @@ body {
 
 /* ---- Editor (Plan 05) ------------------------------------------------------
    meowdown reads its theme from `--meowdown-*` variables; we remap them to
-   Reflect tokens. This lives on `html:root`, not `.reflect-editor`: meowdown
+   Reflect tokens. This lives on `html:root`, not `.kore-editor`: meowdown
    renders the block handle and slash/tag/wikilink menus as DOM siblings of the
    editable element (menus hoist into the top layer via the Popover API), so
    element-scoped vars never reach them, which is why the popover surface vars
@@ -766,7 +766,7 @@ html:root {
 }
 
 /* Editor reading size (Settings → Editor → "Text size"). The size lives in a
-   variable on the document root so the `.reflect-editor` rules below resolve
+   variable on the document root so the `.kore-editor` rules below resolve
    whatever the user picked; `EditorTextSizeEffect` mirrors the setting onto
    `[data-editor-text-size]`. Medium is the DS prose default (16px); small and
    large step one DS size down/up. The `:root` fallback keeps medium before the
@@ -800,7 +800,7 @@ html:root {
    contract as the editor size above: `ChatTextSizeEffect` mirrors the
    setting onto `[data-chat-text-size]`, and the `:root` fallback keeps the
    chat's stock 14px before the effect has run. Applied through the
-   `.reflect-chat-message` class every chat text surface carries; un-layered,
+   `.kore-chat-message` class every chat text surface carries; un-layered,
    so it beats the Tailwind `text-sm` utilities on the same elements. */
 :root {
   --chat-font-size: var(--text-sm);
@@ -814,7 +814,7 @@ html:root {
 :root[data-chat-text-size='large'] {
   --chat-font-size: var(--text-base);
 }
-.reflect-chat-message {
+.kore-chat-message {
   font-size: var(--chat-font-size, var(--text-sm));
 }
 
@@ -844,20 +844,20 @@ html:root {
    override only the base prose line-height on the primary note surface —
    headings, code blocks, and read-only previews keep their own values. These
    rules are un-layered, so they beat meowdown's layered `.ProseMirror` rule. */
-:root[data-editor-line-spacing='compact'] .reflect-note-surface .ProseMirror {
+:root[data-editor-line-spacing='compact'] .kore-note-surface .ProseMirror {
   line-height: 1.45;
 }
-:root[data-editor-line-spacing='relaxed'] .reflect-note-surface .ProseMirror {
+:root[data-editor-line-spacing='relaxed'] .kore-note-surface .ProseMirror {
   line-height: 1.95;
 }
 
-.reflect-editor {
+.kore-editor {
   /* The panes own all spacing, so cancel the theme's editor padding (no
      floating UI of ours needs the `--meowdown-gutter`). Font size is left to
      inherit so the compact read-only MarkdownView surfaces that also carry
-     `reflect-editor` (backlink snippets, palette previews, task rows) keep
+     `kore-editor` (backlink snippets, palette previews, task rows) keep
      their context's smaller size; the primary note editor opts into the
-     reading size via `.reflect-note-surface` below. meowdown is layered
+     reading size via `.kore-note-surface` below. meowdown is layered
      (`@layer meowdown`), so this unlayered rule wins with no `.ProseMirror`
      compound. */
   padding: 0;
@@ -868,9 +868,9 @@ html:root {
 /* The primary note editor (the note pane and every daily-stream row, both via
    NotePane) reads at the user's chosen text size (Settings, Editor, "Text size";
    default 16px) instead of inheriting <body>'s 14px chrome size. Scoped to this
-   class, never bare `.reflect-editor`, so read-only previews keep their own
+   class, never bare `.kore-editor`, so read-only previews keep their own
    compact sizes. */
-.reflect-note-surface {
+.kore-note-surface {
   font-size: var(--editor-font-size, var(--text-base));
 }
 
@@ -887,20 +887,20 @@ html:root {
      share one column and line up.
    Un-layered, so it beats both the `padding: 0` reset above and meowdown's layered
    `--meowdown-gutter` padding. */
-.reflect-content-gutter {
+.kore-content-gutter {
   padding-inline: var(--editor-content-gutter, max(2rem, calc((100% - 42rem) / 2)));
 }
 
-/* Mobile note-body gutter. This mirrors `.reflect-content-gutter`'s cascade
+/* Mobile note-body gutter. This mirrors `.kore-content-gutter`'s cascade
    role with a fixed phone-sized inset: the class must be un-layered so it beats
-   `.reflect-editor { padding: 0; }` on the contenteditable itself. */
-.reflect-mobile-content-gutter {
+   `.kore-editor { padding: 0; }` on the contenteditable itself. */
+.kore-mobile-content-gutter {
   padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
 }
 
 /* Block spacing comes from the element margins below, not the theme's
    uniform sibling gap. */
-.reflect-editor > * + * {
+.kore-editor > * + * {
   margin-top: 0;
 }
 
@@ -915,39 +915,39 @@ html:root {
    so a section heading reads as subordinate to the title, not a second one:
    auto-appended sections (`## [[Links]]`, `## [[Audio memos]]`) land at H2;
    H3 sits at body size, carried by weight rather than scale. */
-.reflect-editor h1,
-.reflect-editor h2,
-.reflect-editor h3 {
+.kore-editor h1,
+.kore-editor h2,
+.kore-editor h3 {
   margin: 1.25em 0 0.4em;
 }
-.reflect-editor h2,
-.reflect-editor h3 {
+.kore-editor h2,
+.kore-editor h3 {
   font-weight: 650;
   letter-spacing: var(--tracking-snug, -0.01em);
 }
-.reflect-editor h1,
-.reflect-editor .reflect-note-title {
+.kore-editor h1,
+.kore-editor .kore-note-title {
   @apply text-note-subject;
   font-weight: 700;
   letter-spacing: var(--tracking-tight, -0.02em);
 }
-.reflect-editor h2 {
+.kore-editor h2 {
   font-size: var(--text-lg, 1.125rem);
 } /* 18px */
-.reflect-editor h3 {
+.kore-editor h3 {
   font-size: var(--text-base, 1rem);
 } /* 16px */
-.reflect-editor h1:first-child {
+.kore-editor h1:first-child {
   margin-top: 0;
 }
 
 /* Typed note fields live below the editable H1 without becoming part of the
    Markdown document. The host slot is an editor sibling; its measured height
    extends the title's normal bottom margin so the body continues beneath it. */
-.reflect-note-properties-host {
+.kore-note-properties-host {
   position: relative;
 }
-.reflect-note-properties-slot {
+.kore-note-properties-slot {
   position: absolute;
   z-index: 1;
   right: 0;
@@ -955,35 +955,35 @@ html:root {
   visibility: hidden;
   padding-bottom: 1rem;
 }
-.reflect-note-properties-slot[data-positioned='true'] {
+.kore-note-properties-slot[data-positioned='true'] {
   visibility: visible;
 }
-.reflect-note-properties-slot > [aria-label='Properties'] {
+.kore-note-properties-slot > [aria-label='Properties'] {
   margin-bottom: 0;
 }
 /* A note with no type and no properties offers only "Add a type", shown
    while the title is hovered, the control is hovered or focused, or its picker
    is open. The slot's bottom padding shrinks so a fresh note keeps its title
    and body close together. */
-.reflect-note-properties-slot:has([data-bare-properties]) {
+.kore-note-properties-slot:has([data-bare-properties]) {
   padding-bottom: 0.25rem;
 }
-.reflect-note-add-type {
+.kore-note-add-type {
   opacity: 0;
 }
-.reflect-note-properties-host:has(h1:first-child:hover) .reflect-note-add-type,
-.reflect-note-add-type:hover,
-.reflect-note-add-type:focus-visible,
-.reflect-note-add-type[data-popup-open] {
+.kore-note-properties-host:has(h1:first-child:hover) .kore-note-add-type,
+.kore-note-add-type:hover,
+.kore-note-add-type:focus-visible,
+.kore-note-add-type[data-popup-open] {
   opacity: 1;
 }
 /* Touch screens never hover, so the control stays visible there. */
 @media (hover: none) {
-  .reflect-note-add-type {
+  .kore-note-add-type {
     opacity: 1;
   }
 }
-.reflect-editor.reflect-editor-has-properties > h1:first-child {
+.kore-editor.kore-editor-has-properties > h1:first-child {
   margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
 }
 
@@ -1030,7 +1030,7 @@ html:root {
 /* The new-note flow's name field: ghost "Untitled" over the seeded empty H1
    (`editor/title-placeholder.ts`) without occupying layout, so the caret
    blinks at the line start as if the ghost text weren't there. */
-.reflect-editor .reflect-title-placeholder::before {
+.kore-editor .kore-title-placeholder::before {
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -1044,13 +1044,13 @@ html:root {
    thousand elements each for a long daily, twice per scroll gesture. Pinning
    the computed value keeps the flip from cascading (the container's inherited
    style no longer changes), and the editors stay hoverable mid-scroll. */
-.reflect-daily-stream > div {
+.kore-daily-stream > div {
   pointer-events: auto !important;
 }
 
 /* The daily note's date heading (V1 renders the date as the note's subject)
    without living inside the editor DOM. */
-.reflect-daily-subject {
+.kore-daily-subject {
   @apply text-note-subject;
   font-family: var(--font-reading, var(--font-sans));
   font-weight: 700;
@@ -1063,7 +1063,7 @@ html:root {
    against the dark canvas — and float on the same DS shadow. Unlayered plain
    CSS on purpose: the card's CSS-module defaults are unlayered too, so
    layered Tailwind utilities could not override them. */
-.reflect-hover-card {
+.kore-hover-card {
   border-color: color-mix(in oklab, var(--foreground) 10%, transparent);
   box-shadow: var(--shadow-md);
 }
@@ -1074,27 +1074,27 @@ html:root {
    re-scales here: the subject one step above body, section headings at body
    size carried by weight — the same hierarchy, compressed. Unlayered, so
    these win over meowdown's `@layer meowdown` theme rules. */
-.reflect-hover-preview .reflect-editor h1,
-.reflect-hover-preview .reflect-daily-subject {
+.kore-hover-preview .kore-editor h1,
+.kore-hover-preview .kore-daily-subject {
   font-size: var(--text-sm, 0.875rem);
 }
-.reflect-hover-preview .reflect-editor h2,
-.reflect-hover-preview .reflect-editor h3 {
+.kore-hover-preview .kore-editor h2,
+.kore-hover-preview .kore-editor h3 {
   font-size: var(--text-xs, 0.75rem);
 }
-.reflect-hover-preview .reflect-editor h1,
-.reflect-hover-preview .reflect-editor h2,
-.reflect-hover-preview .reflect-editor h3 {
+.kore-hover-preview .kore-editor h1,
+.kore-hover-preview .kore-editor h2,
+.kore-hover-preview .kore-editor h3 {
   margin: 1em 0 0.35em;
 }
-.reflect-hover-preview .reflect-editor h1:first-child {
+.kore-hover-preview .kore-editor h1:first-child {
   margin-top: 0;
 }
-.reflect-hover-preview .reflect-editor input[type='checkbox'] {
+.kore-hover-preview .kore-editor input[type='checkbox'] {
   width: 0.75rem;
   height: 0.75rem;
 }
-.reflect-hover-preview .reflect-editor img {
+.kore-hover-preview .kore-editor img {
   max-height: 7rem;
   width: auto;
   border-radius: var(--radius-sm, 0.25rem);
@@ -1102,7 +1102,7 @@ html:root {
 /* A body taller than the card fades out at the clipped edge instead of
    slicing a line of text in half. Applied only while actually overflowing,
    so a short note keeps its last line at full strength. */
-.reflect-hover-preview-overflowing {
+.kore-hover-preview-overflowing {
   -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
   mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
 }
@@ -1111,19 +1111,19 @@ html:root {
    revealing a layout skeleton only when a load is genuinely slow. Opacity
    only, so the placeholder keeps its layout size while a fast local read
    completes. */
-.reflect-note-loading {
+.kore-note-loading {
   opacity: 0;
-  animation: reflect-note-loading-reveal 160ms var(--ease-standard, ease) 180ms forwards;
+  animation: kore-note-loading-reveal 160ms var(--ease-standard, ease) 180ms forwards;
 }
 
 /* AppBootScreen's gem: a slow opacity breathe so the splash says "working"
    without a rectangular sheen clipping the transparent mark. */
-.reflect-boot-mark img {
+.kore-boot-mark img {
   display: block;
-  animation: reflect-boot-breathe 2.2s var(--ease-in-out, ease-in-out) infinite;
+  animation: kore-boot-breathe 2.2s var(--ease-in-out, ease-in-out) infinite;
 }
 
-@keyframes reflect-boot-breathe {
+@keyframes kore-boot-breathe {
   0%,
   100% {
     opacity: 1;
@@ -1133,51 +1133,51 @@ html:root {
   }
 }
 
-@keyframes reflect-note-loading-reveal {
+@keyframes kore-note-loading-reveal {
   to {
     opacity: 1;
   }
 }
 
-.reflect-editor p {
+.kore-editor p {
   margin: 0.4em 0;
 }
 
 /* The Tasks inline editor (TaskEditor) shares each row's single-line leading-6
    box with the read-only TaskText, which renders the content in a marginless
-   span. The editor wraps it in a paragraph, so the `.reflect-editor p` block
+   span. The editor wraps it in a paragraph, so the `.kore-editor p` block
    margin above would grow the row the moment it enters edit mode. Zero it (same
    0-1-1 specificity, later source order wins the tie) so focusing a task never
    shifts its height. */
-.reflect-task-editor p {
+.kore-task-editor p {
   margin: 0;
 }
 
 /* Unfocused task rows use the read-only markdown preview, but the row still owns
    selection and checked styling. Keep the preview visually in the same compact
    line box as the inline editor. */
-.reflect-task-preview {
+.kore-task-preview {
   color: inherit;
   font-size: var(--text-sm, 0.875rem);
   line-height: 1.5rem;
 }
-.reflect-task-preview p,
-.reflect-task-preview h1,
-.reflect-task-preview h2,
-.reflect-task-preview h3,
-.reflect-task-preview h4,
-.reflect-task-preview h5,
-.reflect-task-preview h6,
-.reflect-task-preview blockquote,
-.reflect-task-preview pre {
+.kore-task-preview p,
+.kore-task-preview h1,
+.kore-task-preview h2,
+.kore-task-preview h3,
+.kore-task-preview h4,
+.kore-task-preview h5,
+.kore-task-preview h6,
+.kore-task-preview blockquote,
+.kore-task-preview pre {
   margin: 0;
 }
-.reflect-task-preview h1,
-.reflect-task-preview h2,
-.reflect-task-preview h3,
-.reflect-task-preview h4,
-.reflect-task-preview h5,
-.reflect-task-preview h6 {
+.kore-task-preview h1,
+.kore-task-preview h2,
+.kore-task-preview h3,
+.kore-task-preview h4,
+.kore-task-preview h5,
+.kore-task-preview h6 {
   color: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -1185,30 +1185,30 @@ html:root {
 }
 /* meowdown bottoms atom previews; in compact task rows that drops wiki-link text
    below the surrounding task copy. */
-.reflect-task-preview .md-wikilink-view-preview {
+.kore-task-preview .md-wikilink-view-preview {
   vertical-align: baseline;
 }
 /* The hidden raw-source span (font-size 0) still carries the 24px line box on
    its own zero-height baseline, which grows a row holding a [[date]] by ~5px.
    Collapse it so every row keeps the same height. */
-.reflect-task-preview .md-atom-view-content {
+.kore-task-preview .md-atom-view-content {
   line-height: 0;
 }
-.line-through .reflect-task-preview .md-link,
-.line-through .reflect-task-preview .md-wikilink-view-label,
-.line-through .reflect-task-preview .md-tag {
+.line-through .kore-task-preview .md-link,
+.line-through .kore-task-preview .md-wikilink-view-label,
+.line-through .kore-task-preview .md-tag {
   text-decoration-line: line-through;
 }
 
 /* Incoming-backlink snippet (BacklinkSnippet): one referencing line rendered as
-   rich text through MarkdownView. The view carries `reflect-editor` so chips and
+   rich text through MarkdownView. The view carries `kore-editor` so chips and
    inline marks share the editor's styling; these rules keep it in the panel's
    compact 12px line box (the wrapper clamps it to two lines). meowdown is
    layered, so these unlayered rules win without a `.ProseMirror` compound. */
-.reflect-backlink-snippet .reflect-editor :is(p, ul, ol, blockquote, pre) {
+.kore-backlink-snippet .kore-editor :is(p, ul, ol, blockquote, pre) {
   margin: 0;
 }
-.reflect-backlink-snippet .reflect-editor :is(h1, h2, h3, h4, h5, h6) {
+.kore-backlink-snippet .kore-editor :is(h1, h2, h3, h4, h5, h6) {
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
@@ -1218,12 +1218,12 @@ html:root {
 /* Only round `+ [ ]` Reflect tasks write back from a snippet (V1's backlink
    checkboxes were Reflect tasks); a square GFM box is plain markdown, so its
    checkbox stays inert — no click, no hover grow. */
-.reflect-backlink-snippet
+.kore-backlink-snippet
   .prosemirror-flat-list[data-list-kind='task']:not([data-list-marker='+'])
   > .list-marker {
   pointer-events: none;
 }
-.reflect-backlink-snippet
+.kore-backlink-snippet
   .prosemirror-flat-list[data-list-kind='task'][data-list-marker='+']
   > .list-marker {
   cursor: pointer;
@@ -1233,7 +1233,7 @@ html:root {
    restate the thinner accent border and the block margin (the per-element spacing
    the `> * + *` reset above relies on). meowdown's muted text already matches
    `--text-secondary`, so we no longer set the color. */
-.reflect-editor blockquote {
+.kore-editor blockquote {
   border-left: 2px solid var(--accent-soft, var(--border));
   margin: 0.6em 0;
   padding-left: 1em;
@@ -1241,14 +1241,14 @@ html:root {
 
 /* A thematic break is content, not chrome: stronger than the app hairline,
    and drawn in the theme's own ink so Paper and Ink get a warm rule. */
-.reflect-editor hr {
+.kore-editor hr {
   border-top-color: var(--rule);
 }
 
 /* Inline code now inherits meowdown's neutral default (text color + the
    `--meowdown-code-bg` surface we map below), so it needs no override. The code
    block keeps Reflect's radius/padding and its block margin. */
-.reflect-editor pre {
+.kore-editor pre {
   border-radius: var(--radius-md, 6px);
   margin: 0.6em 0;
   padding: 0.75em 1em;
@@ -1257,10 +1257,10 @@ html:root {
 /* Inline images: meowdown renders `![alt](src)` through a mark view
    (`.md-image-view-preview`). Round corners to Reflect's scale via meowdown's
    theming variable. */
-.reflect-editor {
+.kore-editor {
   --meowdown-image-radius: var(--radius-md, 6px);
 }
-.reflect-editor .md-image-view-preview img {
+.kore-editor .md-image-view-preview img {
   cursor: zoom-in;
 }
 
@@ -1271,19 +1271,19 @@ html:root {
 ::view-transition-new(root) {
   animation-duration: 0s;
 }
-::view-transition-group(reflect-image-lightbox) {
+::view-transition-group(kore-image-lightbox) {
   animation-duration: 180ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
-::view-transition-old(reflect-image-lightbox),
-::view-transition-new(reflect-image-lightbox) {
+::view-transition-old(kore-image-lightbox),
+::view-transition-new(kore-image-lightbox) {
   height: 100%;
   object-fit: contain;
   overflow: clip;
 }
 
 /* Read-only view for notes the editor can't faithfully round-trip yet. */
-.reflect-protected-note {
+.kore-protected-note {
   font-family: var(--font-mono, monospace);
   color: var(--text-secondary);
 }
@@ -1303,13 +1303,13 @@ html:root {
 }
 
 button:hover .sidebar-icon-slot,
-.reflect-palette-item:hover .sidebar-icon-slot {
+.kore-palette-item:hover .sidebar-icon-slot {
   color: var(--text);
 }
 
 button[aria-current='page'] .sidebar-icon-slot,
 button[aria-selected='true'] .sidebar-icon-slot,
-.reflect-palette-item[data-selected='true'] .sidebar-icon-slot {
+.kore-palette-item[data-selected='true'] .sidebar-icon-slot {
   color: var(--accent);
 }
 
@@ -1355,17 +1355,14 @@ html[data-sidebar-resizing] aside {
       baseline.
 
    meowdown does not fold this gap into its default yet, so it stays a Reflect
-   override; meowdown is layered, so the unlayered `.reflect-editor` rules win. */
-.reflect-editor .prosemirror-flat-list[data-list-kind='task'] > .list-content {
+   override; meowdown is layered, so the unlayered `.kore-editor` rules win. */
+.kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-content {
   margin-inline-start: 1lh;
 }
-.reflect-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker {
+.kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker {
   justify-content: start;
 }
-.reflect-editor
-  .prosemirror-flat-list[data-list-kind='task']
-  > .list-marker
-  input[type='checkbox'] {
+.kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
   transform: translateY(-0.06em);
 }
 
@@ -1375,7 +1372,7 @@ html[data-sidebar-resizing] aside {
    layer blur, the deepest shadow tier — which also means Liquid Glass reaches
    it for free. `--radius-xl` rather than a literal so the Appearance corner
    setting does too. */
-.reflect-palette {
+.kore-palette {
   overflow: hidden;
   border: 1px solid var(--border, rgb(0 0 0 / 10%));
   border-radius: var(--radius-xl, 0.75rem);
@@ -1384,7 +1381,7 @@ html[data-sidebar-resizing] aside {
   backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
   box-shadow: var(--shadow-pop, 0 16px 48px rgb(0 0 0 / 18%));
 }
-.reflect-palette-input {
+.kore-palette-input {
   width: 100%;
   padding: 0.875rem 1rem;
   border: none;
@@ -1392,20 +1389,20 @@ html[data-sidebar-resizing] aside {
   background: transparent;
   font-size: 0.9375rem;
 }
-.reflect-palette-list {
+.kore-palette-list {
   max-height: 20rem;
   overflow-y: auto;
   padding: 0.375rem;
 }
 /* Note modes pair the list with a live preview: the flex row owns the height,
    the list becomes a fixed-width column inside it. */
-.reflect-palette-list-split {
+.kore-palette-list-split {
   max-height: none;
   height: 100%;
   width: 40%;
   flex-shrink: 0;
 }
-.reflect-palette-group [cmdk-group-heading] {
+.kore-palette-group [cmdk-group-heading] {
   padding: 0.375rem 0.625rem 0.125rem;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -1413,15 +1410,15 @@ html[data-sidebar-resizing] aside {
   text-transform: uppercase;
   color: var(--text-muted);
 }
-.reflect-palette-item {
+.kore-palette-item {
   padding: 0.4375rem 0.625rem;
   border-radius: var(--radius-sm, 0.375rem);
   cursor: pointer;
 }
-.reflect-palette-item[data-selected='true'] {
+.kore-palette-item[data-selected='true'] {
   background: var(--accent-soft, rgb(99 102 241 / 12%));
 }
-.reflect-palette-empty {
+.kore-palette-empty {
   padding: 1.25rem;
   text-align: center;
   font-size: 0.875rem;
@@ -1630,12 +1627,12 @@ html[data-sidebar-resizing] aside {
 
 /* A rendered collection fence never shows its source: the widget is the
    whole block, and the caret is kept out of it by CollectionFenceGuard. */
-.reflect-editor div:has(> [data-meowdown-code-block-custom]) > pre {
+.kore-editor div:has(> [data-meowdown-code-block-custom]) > pre {
   display: none;
 }
 
 /* Embedded views use application typography, not Markdown heading styles. */
-.reflect-editor [data-testid='collection-embed'] h2.text-xs {
+.kore-editor [data-testid='collection-embed'] h2.text-xs {
   margin: 0;
   font-size: var(--text-xs, 0.75rem);
   font-weight: 500;
@@ -1646,11 +1643,11 @@ html[data-sidebar-resizing] aside {
 
 /* Static daily days (daily-day.tsx): an empty paragraph keeps the line it has in
    the editor, where ProseMirror fills it with a trailing break. */
-[data-static-day] .reflect-editor p:empty::before {
+[data-static-day] .kore-editor p:empty::before {
   content: '\200b';
 }
 /* The editor root keeps its children's outer margins inside it
    (a contenteditable is its own formatting context); the static root must too. */
-[data-static-day] .reflect-editor {
+[data-static-day] .kore-editor {
   display: flow-root;
 }

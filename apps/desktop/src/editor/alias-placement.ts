@@ -1,4 +1,4 @@
-import { nextAliases, parseNote, readNote, upsertFrontmatter, writeNote } from '@reflect/core'
+import { nextAliases, parseNote, readNote, upsertFrontmatter, writeNote } from '@kore/core'
 import { openSession } from './open-documents'
 
 /**

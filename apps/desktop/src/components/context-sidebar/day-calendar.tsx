@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { dailyDatesInRange, weekStartDow } from '@reflect/core'
+import { dailyDatesInRange, weekStartDow } from '@kore/core'
 import { CalendarDays, ChevronLeft, ChevronRight } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'

@@ -12,7 +12,7 @@ import {
   type AiProviderConfig,
   type AiProviderId,
   type AppError,
-} from '@reflect/core'
+} from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 
 /**

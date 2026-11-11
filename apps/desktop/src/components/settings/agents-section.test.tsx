@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setBridge } from '@reflect/core'
+import { setBridge } from '@kore/core'
 import { AgentsSection } from './agents-section'
 
 // A browser-mode module mock materializes value exports once, so this file
@@ -16,7 +16,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 
 vi.mock('@/providers/settings-provider', async () => {
-  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { DEFAULT_SETTINGS } = await import('@kore/core')
   return { useSettings: () => ({ settings: DEFAULT_SETTINGS, updateSettings: () => {} }) }
 })
 

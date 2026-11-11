@@ -9,7 +9,7 @@ import {
   type ActivityAuthor,
   type ActivitySitting,
   type SittingNote,
-} from '@reflect/core'
+} from '@kore/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { UndoSittingDialog } from '@/components/activity/undo-sitting-dialog'
 import { WaitingProposals } from '@/components/activity/waiting-proposals'

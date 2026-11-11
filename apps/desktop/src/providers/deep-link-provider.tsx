@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
-import type { GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@kore/core'
 import { handleDeepLink, type DeepLinkIo } from '@/lib/deep-links/handle'
 import { setDeepLinkHandler } from '@/lib/deep-links/intake'
 import { parseDeepLink } from '@/lib/deep-links/parse'

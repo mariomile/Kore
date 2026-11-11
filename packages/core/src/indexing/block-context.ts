@@ -278,7 +278,7 @@ export interface BlockContextSource {
   readonly body: string
   /** Character offset of `body` within the original file. */
   readonly bodyOffset: number
-  /** `body` parsed with the canonical Reflect grammar. */
+  /** `body` parsed with the canonical Kore grammar. */
   readonly tree: Tree
   /** Frontmatter authors a `title:`, so no H1 is the note's title. */
   readonly frontmatterTitled: boolean

@@ -1,4 +1,4 @@
-import { listNotesWithProperty, propertyRowValue, type CollectionValue } from '@reflect/core'
+import { listNotesWithProperty, propertyRowValue, type CollectionValue } from '@kore/core'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
 /**

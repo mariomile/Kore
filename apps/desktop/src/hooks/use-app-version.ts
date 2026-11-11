@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getAppVersion } from '@reflect/core'
+import { getAppVersion } from '@kore/core'
 
 /** The native app version for display, or `null` until (unless) it resolves. */
 export function useAppVersion(): string | null {

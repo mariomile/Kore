@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { listStaged } from '@reflect/core'
+import { listStaged } from '@kore/core'
 import { isNativeShell } from '@/lib/platform'
 import {
   claimStagedPath,

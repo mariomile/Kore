@@ -1,4 +1,4 @@
-import type { TaskMarker } from '@reflect/core'
+import type { TaskMarker } from '@kore/core'
 import type { FrontmatterPatch } from './note-session-frontmatter'
 import type { RoundTripFidelity } from './roundtrip'
 
@@ -49,7 +49,7 @@ export const INITIAL_NOTE_SNAPSHOT: NoteSessionSnapshot = {
   error: null,
 }
 
-/** File access injected by the host (the hook binds `@reflect/core` commands). */
+/** File access injected by the host (the hook binds `@kore/core` commands). */
 export interface NoteSessionIo {
   read: (path: string) => Promise<string>
   /**

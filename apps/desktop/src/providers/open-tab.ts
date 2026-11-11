@@ -1,4 +1,4 @@
-import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@reflect/core'
+import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@kore/core'
 import { isSettingsPage, routeForPath, routesEqual, type Route } from '@/routing/route'
 
 /**

@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   readExistingNoteSource: vi.fn(),
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   resolveExistingWikiTarget: mocks.resolveExistingWikiTarget,
 }))
 

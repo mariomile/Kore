@@ -32,7 +32,7 @@ export const AUDIO_MEMOS_DIR = 'audio-memos'
 const RESERVED_NOTE_TREES = new Set([ASSETS_DIR, AUDIO_MEMOS_DIR])
 
 /**
- * Local attachment formats Reflect can render or open: Obsidian-compatible
+ * Local attachment formats Kore can render or open: Obsidian-compatible
  * media plus common document, text, data, and archive formats. Never
  * executable or script formats. Must stay identical to the Rust list in
  * `crates/graph-paths/src/lib.rs` and the fixture generator in

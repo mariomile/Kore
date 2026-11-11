@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { assetContentIdentity, createNoteIfAbsent, readNote, writeNote } from '../graph/commands'
-import { isReflectManagedNote } from '../graph/note-management'
+import { isKoreManagedNote } from '../graph/note-management'
 import { parseNote } from '../markdown/extract'
 import { collectResourceFile, collectResourceLink, resourceUrl } from './resource-collection'
 
@@ -43,7 +43,7 @@ describe('automatic resource collections', () => {
       sourcePath: 'daily/2026-09-05.md',
     })
     expect(repeated).toBe(path)
-    expect(isReflectManagedNote(path, notes.get(path)!)).toBe(false)
+    expect(isKoreManagedNote(path, notes.get(path)!)).toBe(false)
     expect(notes.get(path)).toContain('My annotation')
     expect(notes.get(path)).toContain('[[daily/2026-09-05]]')
     expect(notes.get('tags/link.md')).toContain('key: url')

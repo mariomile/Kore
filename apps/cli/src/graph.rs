@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use reflect_index_schema::KORE_DIR;
+use kore_index_schema::KORE_DIR;
 
 use crate::error::CliError;
 
@@ -20,14 +20,14 @@ const NO_GRAPH_HELP: &str = "no graph found — run inside a graph (a directory 
      pass --graph <path>, or set KORE_GRAPH";
 
 fn is_graph(path: &Path) -> bool {
-    reflect_index_schema::has_runtime_dir(path)
+    kore_index_schema::has_runtime_dir(path)
 }
 
 fn canonical_graph(path: &Path) -> Result<Graph, CliError> {
     let root = path
         .canonicalize()
         .map_err(|err| CliError::Runtime(format!("cannot resolve {}: {err}", path.display())))?;
-    reflect_index_schema::migrate_legacy_dir(&root).map_err(|err| {
+    kore_index_schema::migrate_legacy_dir(&root).map_err(|err| {
         CliError::Runtime(format!(
             "cannot move {}/.reflect to {KORE_DIR}: {err}",
             root.display()

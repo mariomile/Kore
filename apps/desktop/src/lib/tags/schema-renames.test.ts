@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CollectionValue } from '@reflect/core'
+import type { CollectionValue } from '@kore/core'
 
 const listNotesWithProperty = vi.hoisted(() =>
   vi.fn<(key: string) => Promise<{ notePath: string; value: CollectionValue }[]>>(),
 )
 const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   listNotesWithProperty,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))

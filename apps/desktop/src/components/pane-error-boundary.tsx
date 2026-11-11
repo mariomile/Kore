@@ -1,5 +1,5 @@
 import { Component, Fragment, type ErrorInfo, type ReactNode } from 'react'
-import { logWebview } from '@reflect/core'
+import { logWebview } from '@kore/core'
 import { PaneErrorCard } from '@/components/pane-error-card'
 
 interface PaneErrorBoundaryProps {

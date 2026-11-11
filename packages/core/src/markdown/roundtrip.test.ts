@@ -4,7 +4,7 @@ import { parseNote } from './extract'
 
 /**
  * Golden corpus + non-destructiveness gates (Plan 03). Markdown is the source of
- * truth and files may be edited outside Reflect, so the bar is: every input
+ * truth and files may be edited outside Kore, so the bar is: every input
  * parses into a usable note, and position-based edits touch only what they must.
  */
 const CORPUS = {

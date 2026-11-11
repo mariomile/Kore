@@ -1,4 +1,4 @@
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask } from '@kore/core'
 
 /**
  * An open-task row with sensible defaults for tests; override only what a

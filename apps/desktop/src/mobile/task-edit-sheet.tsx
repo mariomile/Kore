@@ -11,7 +11,7 @@ import {
 } from '@/components/icons'
 import { Priority } from '@meowdown/core'
 import { useKeymap } from '@meowdown/react'
-import type { OpenTask, TaskPriority } from '@reflect/core'
+import type { OpenTask, TaskPriority } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { markModeFromSyntax } from '@/editor/mark-mode'
@@ -258,7 +258,7 @@ export function MobileTaskEditSheet({
               onTagClick={openTag}
               onWikilinkSearch={onWikilinkSearch}
               onTagSearch={onTagSearch}
-              className="reflect-task-editor min-h-12 text-base leading-6"
+              className="kore-task-editor min-h-12 text-base leading-6"
               handleRef={handleEditorRef}
             >
               <TaskSheetKeymap onDone={finishEdit} />

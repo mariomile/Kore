@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
-import { parseRating } from '@reflect/core'
+import { parseRating } from '@kore/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import { getNote, parseNote, readNoteLocal } from '@reflect/core'
+import { getNote, parseNote, readNoteLocal } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { registerKeymap } from '@/editor/keymap'

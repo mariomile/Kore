@@ -21,7 +21,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { setBridge, type OpenColumn } from '@reflect/core'
+import { setBridge, type OpenColumn } from '@kore/core'
 import type { CommandContext } from '@/lib/commands/types'
 import { dropTab, resolveTabDrop, zoneDropId } from '@/lib/tab-drop'
 import { tabDropCollision } from '@/lib/tab-drop-collision'

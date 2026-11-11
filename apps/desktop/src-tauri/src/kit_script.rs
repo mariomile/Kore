@@ -1,7 +1,7 @@
 //! The vault's own kit script (Plan 35): run one Node script that lives in
 //! the open graph — cyber-brain's `System/scripts/brain.mjs` — with an argv
 //! the caller builds, never through a shell. Which script and which
-//! arguments is `@reflect/core`'s policy (`cyber-brain/script.ts`); this
+//! arguments is `@kore/core`'s policy (`cyber-brain/script.ts`); this
 //! module owns only the capability: find `node`, keep the script inside the
 //! graph, run it in the graph root, bound it, and hand back exit code and
 //! capped output.
@@ -57,10 +57,10 @@ pub struct KitScriptStatus {
 }
 
 fn status_of(root: &Path) -> AppResult<Option<KitScriptStatus>> {
-    let Some(kit) = reflect_kit_script::detect(root) else {
+    let Some(kit) = kore_kit_script::detect(root) else {
         return Ok(None);
     };
-    let state = reflect_kit_script::trust_state(root, &kit)
+    let state = kore_kit_script::trust_state(root, &kit)
         .map_err(|err| AppError::io(format!("could not read {}: {err}", kit.scripts_dir())))?;
     Ok(Some(KitScriptStatus {
         version: kit.version,
@@ -107,7 +107,7 @@ fn allow(root: &Path, digest: &str) -> AppResult<Option<KitScriptStatus>> {
             "the memory script changed while you were looking at it: check it again",
         ));
     }
-    reflect_kit_script::trust(root, digest)
+    kore_kit_script::trust(root, digest)
         .map_err(|err| AppError::io(format!("could not record the allowed script: {err}")))?;
     status_of(root)
 }
@@ -117,19 +117,19 @@ fn allow(root: &Path, digest: &str) -> AppResult<Option<KitScriptStatus>> {
 /// it writes into no private note, and the user allowed the scripts as
 /// they are now.
 fn gate(root: &Path, script: &str, args: &[String]) -> AppResult<()> {
-    let kit = reflect_kit_script::detect(root)
+    let kit = kore_kit_script::detect(root)
         .ok_or_else(|| AppError::not_found("this vault has no cyber-brain kit"))?;
     if kit.script != script {
         return Err(AppError::io(format!(
             "not the vault's kit script: {script}"
         )));
     }
-    reflect_kit_script::check_kit_args(args).map_err(AppError::io)?;
-    reflect_kit_script::check_kit_target(root, &kit, args).map_err(AppError::io)?;
-    let state = reflect_kit_script::trust_state(root, &kit)
+    kore_kit_script::check_kit_args(args).map_err(AppError::io)?;
+    kore_kit_script::check_kit_target(root, &kit, args).map_err(AppError::io)?;
+    let state = kore_kit_script::trust_state(root, &kit)
         .map_err(|err| AppError::io(format!("could not read {}: {err}", kit.scripts_dir())))?;
     if !state.is_trusted() {
-        return Err(AppError::io(reflect_kit_script::untrusted_message(&state)));
+        return Err(AppError::io(kore_kit_script::untrusted_message(&state)));
     }
     Ok(())
 }

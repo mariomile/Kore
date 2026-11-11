@@ -11,7 +11,7 @@ NotePane / DailyStream / MobileNote     components — composition only
   ├─ useNoteDocument()                  React adapter (use-note-document.ts)
   │    ├─ createDocumentBinding()       create/adopt/teardown/hand-off policy
   │    └─ createNoteSession()           pure document state machine (note-session.ts)
-  │         └─ readNote / writeNote     @reflect/core typed commands
+  │         └─ readNote / writeNote     @kore/core typed commands
   ├─ useWikiLinkNavigation()            [[link]] click → route / create
   ├─ useWikiLinkHoverPreview()          [[link]] hover → passive local preview
   ├─ useImagePersistence()              paste/drop → assets/ write
@@ -21,7 +21,7 @@ NotePane / DailyStream / MobileNote     components — composition only
 The load-bearing split is **session vs. adapter**: `note-session.ts` owns every
 save/conflict/protection rule as a pure state machine — no React, no editor, no
 IPC (file access is injected) — and `use-note-document.ts` only wires it to
-React state, the `@reflect/core` commands, the watcher stream, and the editor's
+React state, the `@kore/core` commands, the watcher stream, and the editor's
 imperative handle. `document-binding.ts` owns the pane lifecycle around that
 session: create, adopt after a rename-following route change, teardown, and the
 microtask hand-off when a moved note is not adopted. Tests drive the session

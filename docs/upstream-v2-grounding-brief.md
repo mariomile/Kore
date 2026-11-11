@@ -8,7 +8,7 @@
 
 **Purpose:** Provide a broad, implementation-oriented overview of the current Reflect app so a V2 agent can understand the existing product model, feature surface, UX assumptions, constraints, and likely migration implications.
 
-**Decision status:** This brief is grounding material from the V1/Academy docs. It is not the source of truth for V2 product decisions. When this brief conflicts with the newer V2 decision docs, defer to [Reflect V2 Product Vision](./reflect-v2-product-vision.md), [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md), and [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md).
+**Decision status:** This brief is grounding material from the V1/Academy docs. It is not the source of truth for V2 product decisions. When this brief conflicts with the newer V2 decision docs, defer to [Reflect V2 Product Vision](./upstream-v2-product-vision.md), [Reflect V2 Indexing Strategy](./upstream-v2-indexing-strategy.md), and [Reflect V2 Sync Strategy](./upstream-v2-sync-strategy.md).
 
 **Primary sources:** Reflect Academy / Notion pages browsed via the Notion connector on 2026-06-08. Source links are listed at the end.
 

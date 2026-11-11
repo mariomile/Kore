@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { isCalendarDate, type CollectionEntry, type TagType } from '@reflect/core'
+import { isCalendarDate, type CollectionEntry, type TagType } from '@kore/core'
 import { Check } from '@/components/icons'
 import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { formatShortDate } from '@/lib/dates'

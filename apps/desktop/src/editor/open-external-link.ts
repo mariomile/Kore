@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { LinkClickHandler } from '@meowdown/core'
-import { errorMessage, openBrowserWindow } from '@reflect/core'
+import { errorMessage, openBrowserWindow } from '@kore/core'
 import { openInAppBrowser } from '@/lib/browser-session'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'

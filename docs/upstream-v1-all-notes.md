@@ -4,7 +4,7 @@ This document describes the **All Notes** view in Reflect V1, as a reference for
 V2 rewrite. All file paths in this document refer to the **V1 codebase**
 (`~/repos/reflect`, a Next.js + MobX-Keystone app), not this repository.
 
-For the broader product context, see [Reflect V1 Overview](./reflect-v1-overview.md).
+For the broader product context, see [Reflect V1 Overview](./upstream-v1-overview.md).
 This document zooms into one surface: the dense, table-style list of notes.
 
 ## What It Is

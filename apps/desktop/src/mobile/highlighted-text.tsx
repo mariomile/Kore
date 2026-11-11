@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { HighlightSegment } from '@reflect/core'
+import type { HighlightSegment } from '@kore/core'
 
 /**
  * Render search-highlight segments as `<mark>` chips. Shared by the All-tab

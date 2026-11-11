@@ -1,7 +1,7 @@
 //! The journal `kore mcp` keeps of the notes each agent wrote
 //! (`.kore/agent-writes.jsonl`, one JSON object per line). Reading and
 //! trimming it are primitives; deciding how to commit the entries is the
-//! sync engine's policy in `@reflect/core`.
+//! sync engine's policy in `@kore/core`.
 
 use std::fs;
 use std::io::Write;

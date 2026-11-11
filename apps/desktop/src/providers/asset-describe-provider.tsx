@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
-import type { AiProvidersState, GraphInfo } from '@reflect/core'
+import type { AiProvidersState, GraphInfo } from '@kore/core'
 import { createAssetDescribeController } from '@/lib/asset-describe-controller'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import { useSettings } from '@/providers/settings-provider'

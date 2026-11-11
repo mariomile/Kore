@@ -4,11 +4,11 @@ This document is a handoff for an agent or engineer building a second version of
 
 For deeper implementation notes, see:
 
-- [Mobile app](./reflect-v1-mobile-overview.md)
+- [Mobile app](./upstream-v1-mobile-overview.md)
 - [Search](./search.md)
 - [Note sync](./note-sync.md)
 - [SQLite persistence](./sqlite-persistence.md)
-- [Mobile audio memos](./reflect-v1-mobile-audio-memos.md)
+- [Mobile audio memos](./upstream-v1-mobile-audio-memos.md)
 
 ## Product Summary
 
@@ -89,7 +89,7 @@ The list is backed by virtualized placeholder rows from the local model pool. Th
 
 ### Note Editor
 
-The editor is built on `@team-reflect/reflect-editor` and ProseMirror/Yjs document state. It is the core interaction surface of the app.
+The editor is built on `@team-reflect/kore-editor` and ProseMirror/Yjs document state. It is the core interaction surface of the app.
 
 Important editor capabilities:
 

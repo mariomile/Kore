@@ -1,16 +1,16 @@
 import { differenceInCalendarDays, format, parse } from 'date-fns'
-import type { DateFormat, TimeFormat } from '@reflect/core'
+import type { DateFormat, TimeFormat } from '@kore/core'
 
 /**
  * The app's date layer (Plan 06). Daily notes are keyed by **local** calendar
  * dates as ISO `YYYY-MM-DD` strings — "today" follows the user's clock. Pure
- * calendar arithmetic (`addDaysIso`, `isIsoDate`) lives in `@reflect/utils` and
+ * calendar arithmetic (`addDaysIso`, `isIsoDate`) lives in `@kore/utils` and
  * is re-exported here; this module owns the date-fns-backed *display* formatting
  * and the local clock. Nothing else in the app may compute dates by hand.
  */
 
 // Pure calendar math is shared with the indexing layer — one implementation.
-export { addDaysIso, isIsoDate } from '@reflect/utils'
+export { addDaysIso, isIsoDate } from '@kore/utils'
 
 const ISO_DATE_FORMAT = 'yyyy-MM-dd'
 

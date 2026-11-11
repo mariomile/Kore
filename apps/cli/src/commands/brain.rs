@@ -6,7 +6,7 @@
 //! loop or decision written through Kore (its chat, `kore mcp` for ChatGPT
 //! or Grok) lands exactly as one Claude Code writes, with its run record
 //! and commit. Kore adds three things and nothing else: only the kit's
-//! write commands pass ([`reflect_kit_script::check_kit_args`]), the run
+//! write commands pass ([`kore_kit_script::check_kit_args`]), the run
 //! record is signed with the calling agent's name, and the script runs only
 //! once the user allowed its current content (`kore brain trust`).
 //!
@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use reflect_kit_script::{
+use kore_kit_script::{
     agent_slug, check_kit_args, check_kit_target, detect, trust, trust_state, untrusted_message,
     Kit,
 };

@@ -1,6 +1,6 @@
 import { useMemo, type ReactElement, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { canReadCalendars, requestCalendarAccess, type CalendarInfo } from '@reflect/core'
+import { canReadCalendars, requestCalendarAccess, type CalendarInfo } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'

@@ -1,5 +1,5 @@
 import { useRef, type ReactElement } from 'react'
-import { CHAT_ATTACHMENT_ACCEPT } from '@reflect/core'
+import { CHAT_ATTACHMENT_ACCEPT } from '@kore/core'
 import { Note, Paperclip, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

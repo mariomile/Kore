@@ -1,4 +1,4 @@
-//! Shared graph-relative path policy for Reflect's native surfaces.
+//! Shared graph-relative path policy for Kore's native surfaces.
 //!
 //! Markdown can live anywhere in an opened vault. The durable boundary is
 //! deliberately lexical, with **one canonical representation**: a
@@ -17,14 +17,14 @@ pub use obsidian::{read_obsidian_file, ObsidianExclusions};
 
 pub use walk::{
     has_pruned_component, is_pruned_dir_name, walk_catalog, FileCatalog, FileEntry,
-    KORE_IGNORE_FILE, REFLECT_IGNORE_FILE,
+    KORE_IGNORE_FILE, LEGACY_IGNORE_FILE,
 };
 
-/// Root trees reserved for Reflect-managed attachments and recordings.
+/// Root trees reserved for Kore-managed attachments and recordings.
 /// Markdown under either tree is content, not a note.
 pub const RESERVED_NOTE_TREES: [&str; 2] = ["assets", "audio-memos"];
 
-/// Local attachment formats supported by Reflect: Obsidian-compatible media
+/// Local attachment formats supported by Kore: Obsidian-compatible media
 /// plus common document, text, data, and archive formats. Never executable or
 /// script formats. Must stay identical to the TypeScript list in
 /// `packages/core/src/graph/paths.ts` and the fixture generator in

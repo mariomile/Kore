@@ -7,7 +7,7 @@
 //! - a bounded run of `tailscale status` / `tailscale funnel` with its output.
 //!
 //! Which port, whether to publish, how to read Tailscale's answers, and where
-//! the token lives are `@reflect/core` policy (`app/remote-access.ts`).
+//! the token lives are `@kore/core` policy (`app/remote-access.ts`).
 
 use std::io::Read;
 use std::path::PathBuf;

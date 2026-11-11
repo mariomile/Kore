@@ -43,7 +43,7 @@ argv and never a shell, a timeout kills the whole process tree, and core
 only ever runs the subcommands listed in `cyber-brain/script.ts`.
 
 Since step 4 the script also runs only once the user allowed its exact
-content. `reflect-kit-script` hashes the whole scripts folder (the entry
+content. `kore-kit-script` hashes the whole scripts folder (the entry
 point imports its siblings; hidden entries and `node_modules` are skipped,
 a symlink counts by its target) and compares the digest with the one the
 user allowed on this machine (`.kore/kit-trust.json`). A new vault or any

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { settingsSchema, untitledNotePath, type OpenTab } from '@reflect/core'
+import { settingsSchema, untitledNotePath, type OpenTab } from '@kore/core'
 import { routesEqual } from '@/routing/route'
 import { openTabForRoute, routeForOpenTab, tabKey } from './open-tab'
 

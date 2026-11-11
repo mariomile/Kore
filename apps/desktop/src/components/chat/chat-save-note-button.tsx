@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { NotePlus } from '@/components/icons'
-import { createNoteWithTitle, errorMessage } from '@reflect/core'
+import { createNoteWithTitle, errorMessage } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { startOperation } from '@/lib/operations'

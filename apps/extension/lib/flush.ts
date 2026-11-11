@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser'
-import type { CaptureWireMessage } from '@reflect/core/capture-envelope'
+import type { CaptureWireMessage } from '@kore/core/capture-envelope'
 import type { FlushResult } from './messages'
 import { sendToHost } from './native'
 import {

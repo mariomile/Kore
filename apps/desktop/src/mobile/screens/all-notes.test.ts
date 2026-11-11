@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { FilteredSearchHit, NoteTagFacet } from '@reflect/core'
+import type { FilteredSearchHit, NoteTagFacet } from '@kore/core'
 import { matchingTagFacets, rowForHit } from './all-notes'
 
 function hit(overrides: Partial<FilteredSearchHit>): FilteredSearchHit {

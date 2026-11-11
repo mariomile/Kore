@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { foldTag, type NoteListFilter, type NoteTagFacet } from '@reflect/core'
+import { foldTag, type NoteListFilter, type NoteTagFacet } from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
 import { CustomFilterMenu } from './custom-filter-menu'
 import { FilterTab } from './filter-tab'

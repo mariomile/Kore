@@ -4,7 +4,7 @@ import { definePlugin } from '@prosekit/core'
 import { Plugin } from '@prosekit/pm/state'
 import type { EditorView } from '@prosekit/pm/view'
 import { useExtension, useKeymap } from '@meowdown/react'
-import { suggestWikiTargets, type WikiSuggestion } from '@reflect/core'
+import { suggestWikiTargets, type WikiSuggestion } from '@kore/core'
 import { ArrowUturnRight } from '@/components/icons'
 import {
   Command,

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { siClaude, siCursor, siGooglegemini, siOpenrouter } from 'simple-icons'
 import { Plug } from '@/components/icons'
-import type { AiProviderId } from '@reflect/core'
+import type { AiProviderId } from '@kore/core'
 import { cn } from '@/lib/utils'
 
 /**

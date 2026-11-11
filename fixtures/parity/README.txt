@@ -1,7 +1,7 @@
 # TS ↔ Rust parity corpus
 
 The `reflect` CLI (`apps/cli`) mirrors a thin read-side contract from
-`@reflect/core`: frontmatter splitting and coercions, title derivation, fold
+`@kore/core`: frontmatter splitting and coercions, title derivation, fold
 keys, content hashing, and FTS match-expression building. This corpus is the
 single source of truth that keeps the two implementations in lockstep.
 
@@ -17,7 +17,7 @@ How it works:
   Regenerate with:
 
   ```bash
-  UPDATE_PARITY=1 pnpm --filter @reflect/core test --run parity
+  UPDATE_PARITY=1 pnpm --filter @kore/core test --run parity
   ```
 
 - **The Rust side only consumes** — `apps/cli/tests/parity.rs` runs the same

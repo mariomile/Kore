@@ -1,4 +1,4 @@
-import { logWebview, type WebviewLogLevel } from '@reflect/core'
+import { logWebview, type WebviewLogLevel } from '@kore/core'
 import { isNativeShell } from '@/lib/platform'
 
 /**

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { errorMessage, icloudAdoptGraph, icloudStatus } from '@reflect/core'
+import { errorMessage, icloudAdoptGraph, icloudStatus } from '@kore/core'
 import { Cloud } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { ConnectGithubDialog } from '@/components/settings/connect-github-dialog'

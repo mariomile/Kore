@@ -9,7 +9,7 @@ the durable source of truth. Everything else reads and writes through this contr
 
 **Architecture:** atomic file IO, OS-trash delete, and the path-traversal guard are Rust
 primitives; the `notes`/`graph` **setters** that orchestrate writes + reindex live in
-`@reflect/core`. See [Architecture & Conventions](architecture-conventions.md).
+`@kore/core`. See [Architecture & Conventions](architecture-conventions.md).
 
 **Libraries:** `tempfile` (atomic write), `trash` (delete-to-OS-trash), `dirs`
 (OS app-config) — Rust; `ulid` (Rust) / `ulidx` (TS) for note IDs. See

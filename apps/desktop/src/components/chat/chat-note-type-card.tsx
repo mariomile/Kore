@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactElement } from 'react'
 import { Hash } from '@/components/icons'
-import type { ChatTurn, NoteToolResult } from '@reflect/core'
+import type { ChatTurn, NoteToolResult } from '@kore/core'
 import { useApplyNoteType } from '@/hooks/use-apply-note-type'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'

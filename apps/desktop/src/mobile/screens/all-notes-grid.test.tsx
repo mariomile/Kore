@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useState, type ReactElement, type ReactNode } from 'react'
-import type { FilteredSearchHit } from '@reflect/core'
+import type { FilteredSearchHit } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { EMPTY_ALL_NOTES_FILTERS } from '@/mobile/search-filters/filter-state'
 import '@/test-utils/locator'
@@ -22,8 +22,8 @@ const settingsState = vi.hoisted((): { allNotesView: 'list' | 'grid' } => ({
   allNotesView: 'list',
 }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   searchWithFilters,
   listNoteTags,

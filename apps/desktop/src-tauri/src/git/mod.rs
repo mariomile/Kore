@@ -2,7 +2,7 @@
 //!
 //! Rust owns the *capabilities* — init/adopt, commit, fetch, merge, push —
 //! while the sync **policy** (debounce cadence, retry loop, product states,
-//! GitHub specifics) lives in `@reflect/core` `sync/`. Nothing here is
+//! GitHub specifics) lives in `@kore/core` `sync/`. Nothing here is
 //! GitHub-specific: remotes are URLs, credentials arrive per call through a
 //! callback (never embedded in the URL, so never on disk).
 //!
@@ -57,7 +57,7 @@ pub struct GitStatus {
     pub ahead: usize,
     pub behind: usize,
     /// The repository state is not `Clean` — a merge/rebase the user started
-    /// outside Reflect (e.g. via the git CLI) is in progress. Sync refuses to
+    /// outside Kore (e.g. via the git CLI) is in progress. Sync refuses to
     /// run until it is finished or aborted.
     pub in_progress: bool,
 }

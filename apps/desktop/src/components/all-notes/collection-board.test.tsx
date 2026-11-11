@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@kore/core'
 import {
   boardColumns,
   boardProperty,
@@ -15,8 +15,8 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperties: () => commitProperties,
 }))
 const createNoteIfAbsent = vi.hoisted(() => vi.fn(async () => ({ kind: 'created' })))
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteIfAbsent,
 }))
 vi.mock('@/providers/graph-provider', () => ({

@@ -9,7 +9,7 @@ import {
   splitFrontmatter,
   suggestContactForTitle,
   type ContactMatch,
-} from '@reflect/core'
+} from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'

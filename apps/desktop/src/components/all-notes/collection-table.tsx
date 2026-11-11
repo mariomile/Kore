@@ -20,7 +20,7 @@ import {
   type TagProperty,
   type TagPropertyType,
   type TagType,
-} from '@reflect/core'
+} from '@kore/core'
 import { ArrowDown, ArrowUp, Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import type { ListSelection } from '@/lib/selection/use-list-selection'

@@ -4,7 +4,7 @@ import {
   TAG_DEFINITION_UNMARKED_ERROR,
   parseFrontmatter,
   splitFrontmatter,
-} from '@reflect/core'
+} from '@kore/core'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'

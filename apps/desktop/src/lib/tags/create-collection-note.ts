@@ -14,7 +14,7 @@ import {
   upsertFrontmatter,
   type TagType,
   type TemplatePlaceholderValues,
-} from '@reflect/core'
+} from '@kore/core'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
 /**

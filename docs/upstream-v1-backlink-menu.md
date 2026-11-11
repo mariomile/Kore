@@ -5,7 +5,7 @@ This document describes the **behavior** of the backlink autocomplete menu in Re
 **date suggestions** (the "3 days ago", "next Friday", "1 week from now" entries). It is
 a reference for the V2 rewrite, captured as observable behavior rather than implementation.
 
-For broader product context see [Reflect V1 Overview](./reflect-v1-overview.md).
+For broader product context see [Reflect V1 Overview](./upstream-v1-overview.md).
 
 ## What It Is
 

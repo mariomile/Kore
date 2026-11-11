@@ -61,7 +61,7 @@ chat" slice; see `docs/STATE.md`.)
 
 ## Architecture
 
-Everything lives in `apps/cli` (crate `reflect-cli`). One new library module,
+Everything lives in `apps/cli` (crate `kore-cli`). One new library module,
 `frontmatter_write.rs`, plus one new command file per command under
 `src/commands/`. Rejected: putting frontmatter writing in `crates/note-policy`
 for sharing — the desktop writes frontmatter in TypeScript
@@ -246,8 +246,8 @@ collapse rule is unchanged.
 ## Implementation plan
 
 Single-threaded, one PR per layer or one PR total; each task ends with
-`cargo test -p reflect-cli`, `cargo fmt --all -- --check`, and
-`cargo clippy -p reflect-cli --all-targets -- -D warnings` green. Tests are
+`cargo test -p kore-cli`, `cargo fmt --all -- --check`, and
+`cargo clippy -p kore-cli --all-targets -- -D warnings` green. Tests are
 integration tests in `apps/cli/tests/cli.rs` against the real binary and
 fixture graphs (existing `Fixture` helpers; add `insert_tag`,
 `insert_tag_type`, `insert_property`, `insert_link` helpers that mirror the

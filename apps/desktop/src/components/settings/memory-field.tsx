@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { errorMessage, memoryReport } from '@reflect/core'
+import { errorMessage, memoryReport } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatBytes } from '@/lib/format-bytes'

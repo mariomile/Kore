@@ -11,7 +11,7 @@ import {
   isHttpBaseUrl,
   normalizeOpenAICompatibleBaseUrl,
   validateApiKey,
-} from '@reflect/core'
+} from '@kore/core'
 import { providerFetch } from '@/lib/provider-fetch'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
 

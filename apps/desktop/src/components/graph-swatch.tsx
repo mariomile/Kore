@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { GraphColor } from '@reflect/core'
+import type { GraphColor } from '@kore/core'
 import { graphColorCss } from '@/lib/graph-colors'
 import { cn } from '@/lib/utils'
 

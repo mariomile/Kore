@@ -102,7 +102,7 @@ commands (with dependencies installed):
 pnpm check
 pnpm build
 pnpm test graph-frame-scheduler chat-provider-delete note-list
-REFLECT_TEST_BROWSER=webkit pnpm test --project browser chat-provider-delete
+KORE_TEST_BROWSER=webkit pnpm test --project browser chat-provider-delete
 ```
 
 A release candidate still needs native macOS validation: render the graph, let it

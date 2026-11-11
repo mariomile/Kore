@@ -4,7 +4,7 @@ import {
   QUICK_PROPERTY_TYPES,
   type TagProperty,
   type TagPropertyType,
-} from '@reflect/core'
+} from '@kore/core'
 import { Settings } from '@/components/icons'
 import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'

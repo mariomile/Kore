@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TAG_SYMBOL_CATALOG } from '@reflect/core'
+import { TAG_SYMBOL_CATALOG } from '@kore/core'
 import { TAG_SYMBOL_ICONS } from './tag-symbol-icons.gen'
 
 describe('TAG_SYMBOL_ICONS', () => {

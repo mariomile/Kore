@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { TRANSCRIPTION_PROVIDERS, type AiProviderInfo } from '@reflect/core'
+import { TRANSCRIPTION_PROVIDERS, type AiProviderInfo } from '@kore/core'
 import { openUrlSync } from '@/lib/open-url'
 import { PRIVACY_POLICY_URL } from '@/mobile/legal-urls'
 

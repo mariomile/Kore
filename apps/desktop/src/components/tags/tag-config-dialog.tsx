@@ -6,7 +6,7 @@ import {
   listTagParentCandidates,
   listTemplates,
   type TemplateEntry,
-} from '@reflect/core'
+} from '@kore/core'
 import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {

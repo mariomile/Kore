@@ -2,15 +2,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
-import type { NoteRow } from '@reflect/core'
+import type { NoteRow } from '@kore/core'
 import { getNoteRowOverlay, resetNoteRowOverlays, setNoteRowOverlay } from './note-row-overlay'
 import { useNoteRow } from './use-note-row'
 
 const GENERATION = 5
 
 const getNote = vi.hoisted(() => vi.fn<(path: string) => Promise<NoteRow | undefined>>())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getNote,
 }))

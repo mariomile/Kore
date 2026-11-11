@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { Plug, Trash } from '@/components/icons'
-import { deleteSecret, errorMessage, mcpSecretName, setSecret, type McpServer } from '@reflect/core'
+import { deleteSecret, errorMessage, mcpSecretName, setSecret, type McpServer } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'

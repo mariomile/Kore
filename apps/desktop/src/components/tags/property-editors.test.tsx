@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@reflect/core'
+import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@kore/core'
 import { PropertyValueEditor } from './property-editors'
 
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
@@ -12,8 +12,8 @@ const getTagType = vi.hoisted(() => vi.fn())
 const getWikiAddressForPath = vi.hoisted(() => vi.fn())
 const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteWithTitle,
   getTagType,
   getWikiAddressForPath,

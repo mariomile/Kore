@@ -4,7 +4,7 @@ import {
   PRIVATE_NOTE_EDIT_ERROR,
   TAG_DEFINITION_UNMARKED_ERROR,
   type TagProperty,
-} from '@reflect/core'
+} from '@kore/core'
 
 const AUTHOR: TagProperty = { name: 'Author', key: 'author', type: 'text' }
 const WRITTEN_BY: TagProperty = { name: 'Written by', key: 'written-by', type: 'text' }

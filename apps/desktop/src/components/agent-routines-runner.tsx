@@ -36,7 +36,7 @@ import {
   type AgentRoutine,
   type FileChange,
   type RoutineRun,
-} from '@reflect/core'
+} from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { setRunningRoutine } from '@/lib/agent-routine-running'
 import { todayIso } from '@/lib/dates'
@@ -60,7 +60,7 @@ export const ROUTINE_RUN_NOW_EVENT = 'agent-routines:run-now'
 
 /**
  * The automations runner: an invisible resident of the workspace that fires
- * due agent routines (see `@reflect/core`'s `agent-routines`) while Kore
+ * due agent routines (see `@kore/core`'s `agent-routines`) while Kore
  * runs — the closed main window is only hidden, and the native minute tick
  * (TDR 0007) keeps schedules firing when a hidden window throttles JS
  * timers. A due routine runs headless through the agent CLI providers in

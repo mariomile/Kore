@@ -7,7 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { OpenPane, OpenTab } from '@reflect/core'
+import type { OpenPane, OpenTab } from '@kore/core'
 import { onChatConversationDeleted } from '@/lib/chat-events'
 import { onNoteMoved } from '@/lib/note-moves'
 import { useOptionalChatSession } from '@/providers/chat-provider'

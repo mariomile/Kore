@@ -17,7 +17,7 @@ import {
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   wikiLinkTargetForTitle,
-} from '@reflect/core'
+} from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
@@ -394,7 +394,7 @@ export function NotePaneComponent({
         role="status"
         aria-label="Opening note"
         className={cn(
-          'reflect-note-loading flex flex-col px-1 py-2',
+          'kore-note-loading flex flex-col px-1 py-2',
           gutterClassName,
           editorClassName,
           className,
@@ -548,10 +548,10 @@ export function NotePaneComponent({
         // Daily notes carry no title semantics (the date is their subject),
         // so an empty leading H1 there is just an empty heading.
         {...(dailyNote ? {} : { titlePlaceholder: 'Untitled' })}
-        // `reflect-note-surface` opts this primary editor into the reading
+        // `kore-note-surface` opts this primary editor into the reading
         // text size (Settings → Editor); compact MarkdownView previews that
-        // also carry `reflect-editor` keep their own context size.
-        className={cn('reflect-note-surface', gutterClassName, editorClassName)}
+        // also carry `kore-editor` keep their own context size.
+        className={cn('kore-note-surface', gutterClassName, editorClassName)}
         handleRef={handleRef}
         onExitBoundary={handleExitBoundary}
       >

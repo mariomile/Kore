@@ -1,4 +1,4 @@
-import { errorMessage } from '@reflect/core'
+import { errorMessage } from '@kore/core'
 
 export interface AdoptGraphToIcloudParams {
   readonly generation: number

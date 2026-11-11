@@ -8,8 +8,8 @@ const runCodexLogin = vi.hoisted(() =>
 )
 const codexLogout = vi.hoisted(() => vi.fn(async () => {}))
 const openUrlSync = vi.hoisted(() => vi.fn())
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   codexLoginStatus,
   runCodexLogin,
   codexLogout,

@@ -58,7 +58,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
             lazy
             autoFocus={arrival.autoFocus}
             className="flex grow flex-col"
-            gutterClassName="reflect-content-gutter"
+            gutterClassName="kore-content-gutter"
             editorClassName="grow"
           />
         </div>

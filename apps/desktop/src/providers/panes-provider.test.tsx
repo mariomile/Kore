@@ -1,7 +1,7 @@
 import { StrictMode, useSyncExternalStore, type ReactNode } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { OpenColumn, OpenTab } from '@reflect/core'
+import type { OpenColumn, OpenTab } from '@kore/core'
 import { emitNoteMoved } from '@/lib/note-moves'
 import type { NoteFindActions } from '@/providers/note-find-provider'
 import type { Route } from '@/routing/route'

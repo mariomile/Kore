@@ -128,7 +128,7 @@ describe('parseNote — links, assets, tags, text', () => {
   })
 
   it('keeps both spellings of an unqualified reference', () => {
-    // Reflect has always written `assets/…` vault-root relative; CommonMark
+    // Kore has always written `assets/…` vault-root relative; CommonMark
     // reads it source-relative. Neither may lose its image.
     const note = parse('![pic](assets/photo.png)')
     expect(note.assets.map((asset) => asset.path)).toEqual([

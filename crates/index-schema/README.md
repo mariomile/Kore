@@ -1,4 +1,4 @@
-# reflect-index-schema
+# kore-index-schema
 
 Shared schema + migrations for `<graph>/.kore/index.sqlite` (Plan 04/14).
 

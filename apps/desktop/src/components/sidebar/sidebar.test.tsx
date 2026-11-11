@@ -13,7 +13,7 @@ import {
   type PinnedNote,
   type Settings,
   type TagTreeNode,
-} from '@reflect/core'
+} from '@kore/core'
 import type { CommandContext } from '@/lib/commands/types'
 import type { Route } from '@/routing/route'
 import type { ReactElement } from 'react'
@@ -62,8 +62,8 @@ const updateSettingsWith = vi.hoisted(() =>
   vi.fn<(updater: (current: Settings) => Partial<Settings>) => void>(),
 )
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   getPinnedNotes,
   getTagTree,

@@ -1,4 +1,4 @@
-import { TEXT_CAPTURE_MAX_LENGTH, type TextCaptureKind } from '@reflect/core'
+import { TEXT_CAPTURE_MAX_LENGTH, type TextCaptureKind } from '@kore/core'
 import type { Route } from '@/routing/route'
 
 /**

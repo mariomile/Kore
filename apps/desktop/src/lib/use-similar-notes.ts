@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { isDaily, relatedNotes, type RetrievalHit } from '@reflect/core'
+import { isDaily, relatedNotes, type RetrievalHit } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { readNoteSource } from '@/lib/note-frontmatter'
 import { isOstensiblyEmptyNoteSource } from '@/lib/note-emptiness'

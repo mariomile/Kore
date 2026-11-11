@@ -16,8 +16,8 @@ Install the published extension from the
 ## Architecture in one breath
 
 popup → `chrome.storage` queue → background `sendNativeMessage` →
-`reflect-capture-host` (Tauri sidecar, registered by the desktop app on every
-launch) → capture inbox → desktop drain (`@reflect/core` `actions/capture`):
+`kore-capture-host` (Tauri sidecar, registered by the desktop app on every
+launch) → capture inbox → desktop drain (`@kore/core` `actions/capture`):
 raw note + daily `## [[Links]]` entry now (resolving or creating that category
 note), meta-scrape + BYOK AI title + description async. The extension stores no
 keys and makes no AI or network calls; its only honest status is **queued** — it
@@ -26,9 +26,9 @@ cannot observe the desktop drain.
 ## Develop
 
 ```bash
-pnpm --filter @reflect/extension dev     # wxt dev server (auto-reloads in Chrome)
-pnpm --filter @reflect/extension build   # production build → .output/chrome-mv3
-pnpm --filter @reflect/extension test    # vitest over lib/
+pnpm --filter @kore/extension dev     # wxt dev server (auto-reloads in Chrome)
+pnpm --filter @kore/extension build   # production build → .output/chrome-mv3
+pnpm --filter @kore/extension test    # vitest over lib/
 ```
 
 Load a build via `chrome://extensions` → Developer mode → **Load unpacked**.
@@ -96,7 +96,7 @@ openssl rsa -in key.pem -pubout -outform DER | shasum -a 256 \
 
 ## Releasing updates to the Chrome Web Store
 
-`pnpm --filter @reflect/extension zip` produces a key-stripped,
+`pnpm --filter @kore/extension zip` produces a key-stripped,
 signed-on-upload package whose manifest declares only the permissions the code
 uses (see the justifications below). Kore has no Chrome Web Store listing yet.
 Use the unpacked extension for local development; publication requires a separate
@@ -104,9 +104,9 @@ Kore listing in the [Developer Dashboard](https://chrome.google.com/webstore/dev
 
 ### Build & upload
 
-1. `pnpm --filter @reflect/extension check` (typecheck + lint) and
-   `pnpm --filter @reflect/extension test` — both must be green.
-2. `pnpm --filter @reflect/extension zip` → upload
+1. `pnpm --filter @kore/extension check` (typecheck + lint) and
+   `pnpm --filter @kore/extension test` — both must be green.
+2. `pnpm --filter @kore/extension zip` → upload
    `.output/reflect-capture-<version>-chrome.zip`. This artifact omits the manifest
    `key` (the store rejects it); a plain `wxt build` keeps it for unpacked loads.
 3. Keep `chrome-extension://ccabifmooehighoonjeiololjfofkhkd/` in
@@ -161,7 +161,7 @@ Each is reviewed individually; every permission below is exercised by the code:
 | --- | --- |
 | `activeTab` | Read the URL/title and grab a screenshot + selection of the tab you capture — only at the moment you click the button or press the shortcut. Avoids any broad host permission. |
 | `scripting` | Run a one-line script in the active tab to read the current selection and, when opted in, extract the page's readable text. |
-| `nativeMessaging` | The only output: hand each capture to the local `reflect-capture-host` the desktop app registers. No network is used. |
+| `nativeMessaging` | The only output: hand each capture to the local `kore-capture-host` the desktop app registers. No network is used. |
 | `storage` | Queue captures locally so a capture survives the app being closed and retries until it spools. |
 | `unlimitedStorage` | Queued captures embed a screenshot data URL, which can exceed the default storage quota while waiting for the app. |
 | `alarms` | A coarse retry timer so held captures flush once Kore is installed/launched later. |

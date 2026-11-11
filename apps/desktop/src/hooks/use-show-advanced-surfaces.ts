@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { vaultScanStats } from '@reflect/core'
+import { vaultScanStats } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { ADVANCED_SURFACE_NOTE_THRESHOLD, showAdvancedSurfaces } from '@/lib/progressive-disclosure'
 import { useGraph } from '@/providers/graph-provider'

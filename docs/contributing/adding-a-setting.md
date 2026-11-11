@@ -8,7 +8,7 @@ responsibilities follows the usual rule:
 - **Rust** (`apps/desktop/src-tauri/src/settings.rs`) persists the document as
   an *opaque* JSON object — atomic writes, corrupt-store-errors-loudly. It has
   no idea what keys exist. **You will not touch Rust to add a setting.**
-- **`@reflect/core`** (`packages/core/src/settings/schema.ts`) owns the known
+- **`@kore/core`** (`packages/core/src/settings/schema.ts`) owns the known
   keys, their defaults, and validation.
 - **The desktop app** consumes settings through `useSettings()`
   (`apps/desktop/src/providers/settings-provider.tsx`) and renders controls in

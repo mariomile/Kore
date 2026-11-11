@@ -9,7 +9,7 @@
 
 This document captures the current V2 sync direction. It focuses on a storage/sync adapter model, with AI-assisted conflict resolution sitting above the adapters.
 
-It complements [Reflect V2 Product Vision](./reflect-v2-product-vision.md).
+It complements [Reflect V2 Product Vision](./upstream-v2-product-vision.md).
 
 > **Status (2026-06-12) — what actually shipped in the first release** (see
 > [Plan 12](./plans/12-backup-and-sync.md) and

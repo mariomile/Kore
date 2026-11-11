@@ -1,4 +1,4 @@
-import { deleteNote, isDaily } from '@reflect/core'
+import { deleteNote, isDaily } from '@kore/core'
 import { openSession } from '@/editor/open-documents'
 
 /**

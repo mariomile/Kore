@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CollectionValue, TagType } from '@reflect/core'
+import type { CollectionValue, TagType } from '@kore/core'
 import { propertyLine } from './property-line'
 
 const BOOK_TYPE: TagType = {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useCommandState } from 'cmdk'
 import { ChevronUpDown } from '@/components/icons'
-import { aiModelLabel, type AiModelOption, type AiProviderId } from '@reflect/core'
+import { aiModelLabel, type AiModelOption, type AiProviderId } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { Button } from '@/components/ui/button'
 import {

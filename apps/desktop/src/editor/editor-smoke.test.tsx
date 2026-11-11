@@ -1,5 +1,5 @@
 import { createRef } from 'react'
-import { setBridge, type IpcBridge } from '@reflect/core'
+import { setBridge, type IpcBridge } from '@kore/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'

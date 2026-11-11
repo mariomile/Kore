@@ -10,7 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { ConnectorsSettings, GraphInfo } from '@reflect/core'
+import type { ConnectorsSettings, GraphInfo } from '@kore/core'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import {
   createConnectorController,

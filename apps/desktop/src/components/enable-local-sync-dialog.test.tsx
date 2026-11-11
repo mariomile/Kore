@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { icloudAdoptGraph, type GraphInfo } from '@reflect/core'
+import { icloudAdoptGraph, type GraphInfo } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
 import '@/test-utils/locator'
 import { EnableLocalSyncDialog } from './enable-local-sync-dialog'
@@ -56,8 +56,8 @@ const sync = vi.hoisted(() => {
   return state
 })
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
   icloudStatus: vi.fn(async () => core.status),
   icloudAdoptGraph: vi.fn(async () => core.adoptedRoot),

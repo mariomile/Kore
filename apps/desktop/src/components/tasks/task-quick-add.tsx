@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactElement } from 'react'
-import { parseQuickAdd, type QuickAdd, type QuickAddToken, type TaskProject } from '@reflect/core'
+import { parseQuickAdd, type QuickAdd, type QuickAddToken, type TaskProject } from '@kore/core'
 import {
   AlarmClock,
   ArrowRight,

@@ -2,7 +2,7 @@ import { DndContext } from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
 import { render } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { LibraryDir, LibraryRoot } from '@reflect/core'
+import type { LibraryDir, LibraryRoot } from '@kore/core'
 import { SidebarLibrary } from './sidebar-library'
 
 const library = vi.hoisted(() => ({

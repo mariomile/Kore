@@ -5,6 +5,9 @@
       "path": "./apps/cloud/tsconfig.json"
     },
     {
+      "path": "./apps/cloud/setup/tsconfig.json"
+    },
+    {
       "path": "./apps/desktop/tsconfig.json"
     },
     {

@@ -119,13 +119,13 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
     const denied = await oauth.denyConsent(request, handle)
     return new Response(null, { status: 302, headers: denied.headers })
   }
-  if (!(await accessKeyMatches((form.get('key') ?? ''), env.KORE_OWNER_KEY))) {
+  if (!(await accessKeyMatches(form.get('key') ?? '', env.KORE_OWNER_KEY))) {
     return consentPage(
       '<h1>That key is not right</h1><p class="muted">Start again from the agent and type the owner key from Kore\'s Settings.</p>',
       401,
     )
   }
-  const agent = cleanAgentName((form.get('agent') ?? ''), 'Agent')
+  const agent = cleanAgentName(form.get('agent') ?? '', 'Agent')
   const access = form.get('access') === 'read' ? 'read' : 'write'
   const approved = await oauth.approveConsent(request, handle, { scope: ['mcp', 'offline_access'] })
   const { redirectTo } = await oauth.completeAuthorization({

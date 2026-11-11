@@ -1,3 +1,4 @@
+import { MAX_REGISTRATIONS_PER_DAY, WORKER_VERSION } from './limits'
 import { OAuthProvider, type OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 import { accessKeyMatches, bearer, consentPage, handleAuthorize } from './consent'
 import { installVaultLayout } from './layout'
@@ -32,9 +33,6 @@ export interface Env {
   OAUTH_PROVIDER: OAuthHelpers
 }
 
-/** The Worker's own version, reported on `/info`; bump with any API change. */
-export const WORKER_VERSION = '0.2.0'
-
 let schemaReady: Promise<void> | null = null
 
 /** The store, with the schema ensured once per isolate. */
@@ -48,14 +46,6 @@ async function storeFor(env: Env): Promise<NoteStore> {
   await schemaReady
   return store
 }
-
-/**
- * Dynamic client registrations allowed per day. Registration is open (the
- * MCP spec requires it) and each one writes to KV, whose free tier allows
- * 1,000 writes a day: a cap far above a person's own agents keeps a stranger
- * with the URL from spending that budget and blocking sign-ins.
- */
-export const MAX_REGISTRATIONS_PER_DAY = 25
 
 function isAllowedRedirect(uri: unknown): boolean {
   if (typeof uri !== 'string') {

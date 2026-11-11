@@ -10,7 +10,7 @@ export default defineProject({
   test: {
     name: 'cloud',
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'setup/**/*.test.ts'],
     // Inlined so the `cloudflare:workers` alias above reaches its import.
     server: { deps: { inline: ['@cloudflare/workers-oauth-provider'] } },
   },

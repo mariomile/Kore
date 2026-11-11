@@ -2,7 +2,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { fakeD1 } from './d1-fake'
 import { fakeKV } from './kv-fake'
-import worker, { MAX_REGISTRATIONS_PER_DAY, WORKER_VERSION, type Env } from './worker'
+import { MAX_REGISTRATIONS_PER_DAY, WORKER_VERSION } from './limits'
+import worker, { type Env } from './worker'
 
 const ORIGIN = 'https://kore-cloud.example.workers.dev'
 const KEY = 'test-access-key'
@@ -228,5 +229,12 @@ describe('client registration', () => {
       }
     }
     expect(accepted).toBe(MAX_REGISTRATIONS_PER_DAY)
+  })
+})
+
+describe('main module', () => {
+  it('exports only the handler, as workerd requires', async () => {
+    // workerd starts every named export as an entrypoint and fails on a constant.
+    expect(Object.keys(await import('./worker'))).toEqual(['default'])
   })
 })

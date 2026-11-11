@@ -1652,3 +1652,16 @@ html[data-sidebar-resizing] aside {
 [data-static-day] .kore-editor {
   display: flow-root;
 }
+/* A static picture takes the box of the editor's resizable image, which never
+   outgrows its line and keeps a 2.5rem square while it has nothing to draw. */
+[data-static-day] .md-image-view-preview img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  vertical-align: bottom;
+}
+[data-static-day] .md-image-view-preview img[data-failed] {
+  display: inline-block;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}

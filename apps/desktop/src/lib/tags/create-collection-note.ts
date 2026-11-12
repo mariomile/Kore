@@ -1,7 +1,7 @@
 import {
-  appendBodyTag,
+  addFrontmatterTag,
   createNoteIfAbsent,
-  createNoteWithTitle,
+  createTypedNoteWithTitle,
   expandTemplatePlaceholders,
   isTemplatePath,
   newNoteId,
@@ -15,13 +15,14 @@ import {
   type TagType,
   type TemplatePlaceholderValues,
 } from '@kore/core'
-import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
 /**
  * Birth a note as a collection row: untitled seed (or the type's bound
- * template), the tag in the body, and any property values the view already
- * knows (a board lane, a calendar day). The path is returned so the caller
- * can open it.
+ * template), the tag in its Type field (frontmatter `tags:`), and any
+ * property values the view already knows (a board lane, a calendar day).
+ * Never a body `#tag` line: the editor hides that line under the Type chips,
+ * so it could be deleted unseen and take the row's type and fields with it.
+ * The path is returned so the caller can open it.
  */
 export async function createCollectionNote(
   tag: string,
@@ -30,8 +31,9 @@ export async function createCollectionNote(
   body = untitledNoteSeed(),
 ): Promise<string> {
   const path = untitledNotePath()
-  const tagged = appendBodyTag(body, tag) ?? body
-  const seed = Object.keys(properties).length === 0 ? tagged : upsertFrontmatter(tagged, properties)
+  const withProperties =
+    Object.keys(properties).length === 0 ? body : upsertFrontmatter(body, properties)
+  const seed = addFrontmatterTag(withProperties, tag) ?? withProperties
   await createNoteIfAbsent(path, seed, generation)
   return path
 }
@@ -61,9 +63,10 @@ export async function createTypedCollectionNote(
 
 /**
  * Birth a row already titled — the table's "+ New" line: a note named
- * `title` at a slug path (like every create-from-title), carrying the tag,
- * the type's `created` stamps and starting values, and its bound template's body with the
- * title expanded into it. Returns the path.
+ * `title` at a slug path (like every create-from-title), carrying the tag
+ * in its Type field, the type's `created` stamps and starting values, and
+ * its bound template's body with the title expanded into it, all in one
+ * atomic create. Returns the path.
  */
 export async function createTitledCollectionNote(
   tag: string,
@@ -78,13 +81,8 @@ export async function createTitledCollectionNote(
   // The untitled seed's placeholder H1 is a bare `#` (no trailing space, by
   // the serializer's round-trip form), which the heading stripper ignores.
   const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
-  const tagged = appendBodyTag(body, tag) ?? body
-  const path = await createNoteWithTitle(title, generation, tagged)
   const stamps = await startingValuesFor(tag, type)
-  if (Object.keys(stamps).length > 0) {
-    await commitNoteFrontmatter(path, { properties: stamps }, generation)
-  }
-  return path
+  return await createTypedNoteWithTitle(title, tag, stamps, generation, body)
 }
 
 /**

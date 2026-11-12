@@ -5,6 +5,7 @@ import {
   createNoteWithTitle,
   createTypedNoteWithTitle,
   isUntitledNotePath,
+  newTypedNoteSource,
   openNoteTabTitle,
   resolveOrCreateNoteWithTitle,
   untitledNotePath,
@@ -193,6 +194,15 @@ describe('createTypedNoteWithTitle', () => {
     const contents = (write?.[1] as { contents: string } | undefined)?.contents
     expect(contents).toMatch(
       /^---\nid: [0-9a-z]{26}\ncreated: 2026-11-12\nindustry: AI\ntags:\n {2}- company\n---\n# DeepAgent\n$/,
+    )
+  })
+})
+
+describe('newTypedNoteSource', () => {
+  it('places a body block under the H1 and the type in the frontmatter', () => {
+    const source = newTypedNoteSource('Dune', 'book', {}, 'A #book I loved.')
+    expect(source).toMatch(
+      /^---\nid: [0-9a-z]{26}\ntags:\n {2}- book\n---\n# Dune\n\nA #book I loved\.\n$/,
     )
   })
 })

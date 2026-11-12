@@ -104,7 +104,7 @@ export {
   frontmatterTagNames,
 } from './extract'
 export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
-export { addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
+export { addFrontmatterTag, addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
 export {
   applyReplaceMatches,
   findReplaceMatches,

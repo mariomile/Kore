@@ -61,6 +61,7 @@ export {
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
 export { resolveTagTypes, tagDescendants } from './tag-inheritance'
+export { TAG_VIEWS_KEY, parseTagViews, tagViewsToYaml } from './tag-views'
 export { localCalendarDate } from './timestamps'
 export {
   STARTING_VALUE_NEXT_NUMBER,

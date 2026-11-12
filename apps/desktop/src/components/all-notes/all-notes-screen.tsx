@@ -11,6 +11,7 @@ import {
   sortNoteList,
   type NoteListFilter,
   type NoteListFolder,
+  type SavedCollectionView,
   type TagPropertyType,
 } from '@kore/core'
 import { Check, Sliders } from '@/components/icons'
@@ -78,6 +79,9 @@ import { isModEvent } from '@meowdown/core'
 interface AllNotesScreenProps {
   filter: NoteListFilter
 }
+
+/** A type with no stored views: one stable list, so the tabs never re-key. */
+const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
@@ -328,6 +332,10 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     shiftSavedView,
   } = useCollectionSavedViews({
     tagKey,
+    typeViews:
+      loadedTagType === undefined || loadedTagType === null
+        ? loadedTagType
+        : (loadedTagType.views ?? NO_TYPE_VIEWS),
     view,
     collectionSorts,
     boardGroupProperty,

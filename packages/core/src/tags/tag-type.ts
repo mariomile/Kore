@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isTemplatePath, TAGS_DIR } from '../graph/paths'
 import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } from '../markdown'
+import { parseTagViews, TAG_VIEWS_KEY, type SavedCollectionView } from './tag-views'
 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
@@ -279,6 +280,12 @@ export interface TagType {
    * on nothing, like `icon`, so the many hand-built types stay valid.
    */
   extends?: readonly string[]
+  /**
+   * The type's saved database views (`views:` on the definition note), in
+   * tab order. Absent when the definition stores none; the tag page then
+   * falls back to its live layout. Never inherited: a child's tabs are its own.
+   */
+  views?: readonly SavedCollectionView[]
 }
 
 /**
@@ -365,11 +372,13 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
       : undefined
   const icon = tagIconValue(frontmatter['icon'])
   const parents = parseTagExtends(frontmatter['extends'])
+  const views = parseTagViews(frontmatter[TAG_VIEWS_KEY])
   return {
     properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
   }
 }
 
@@ -430,7 +439,13 @@ export function tagDisplayName(tag: string): string {
  */
 export function encodeTagTypeJson(type: TagType): string {
   const parents = type.extends ?? []
-  if (type.template === undefined && type.icon === undefined && parents.length === 0) {
+  const views = type.views ?? []
+  if (
+    type.template === undefined &&
+    type.icon === undefined &&
+    parents.length === 0 &&
+    views.length === 0
+  ) {
     return JSON.stringify(type.properties)
   }
   return JSON.stringify({
@@ -438,6 +453,7 @@ export function encodeTagTypeJson(type: TagType): string {
     ...(type.template === undefined ? {} : { template: type.template }),
     ...(type.icon === undefined ? {} : { icon: type.icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
   })
 }
 
@@ -452,17 +468,20 @@ export function decodeTagTypeJson(column: string): TagType {
       template: z.string().min(1).optional(),
       icon: z.string().min(1).optional(),
       extends: z.array(z.string()).optional(),
+      views: z.unknown().optional(),
     })
     .parse(parsed)
   const template =
     object.template !== undefined && isTemplatePath(object.template) ? object.template : undefined
   const icon = tagIconValue(object.icon)
   const parents = parseTagExtends(object.extends)
+  const views = parseTagViews(object.views)
   return {
     properties: object.properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
   }
 }
 

@@ -12,6 +12,7 @@ import {
   type TagType,
 } from '@kore/core'
 import { useSettings } from '@/providers/settings-provider'
+import { useSavedViewsStore } from './use-saved-views-store'
 import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { groupableProperties } from './collection-board'
 import { calendarProperty } from './collection-calendar'
@@ -29,8 +30,6 @@ import {
 const EMPTY_WIDTHS: Record<string, number> = {}
 /** Stable empty chain, so an unsorted tag never re-keys the collection query. */
 const EMPTY_SORTS: readonly CollectionSort[] = []
-/** Stable empty saved-view list, so an unfiltered page never re-keys the effect. */
-const EMPTY_SAVED_VIEWS: SavedCollectionView[] = []
 
 /** The persisted view preferences the All Notes screen renders from. */
 export interface CollectionViewSettings {
@@ -255,6 +254,11 @@ export function useCollectionViewSettings(
 /** The live view state a saved view snapshots (and restores on apply). */
 export interface CollectionSavedViewsOptions {
   tagKey: string | null
+  /**
+   * The views stored in the type's definition note: `null` for an untyped
+   * tag (views stay in local settings), `undefined` while the type loads.
+   */
+  typeViews: readonly SavedCollectionView[] | null | undefined
   view: AllNotesView
   collectionSorts: readonly CollectionSort[]
   boardGroupProperty: TagProperty | null
@@ -307,6 +311,7 @@ export function useCollectionSavedViews(
 ): CollectionSavedViews {
   const {
     tagKey,
+    typeViews,
     view,
     collectionSorts,
     boardGroupProperty,
@@ -322,10 +327,7 @@ export function useCollectionSavedViews(
     setFilterMatch,
   } = options
   const { settings, updateSettingsWith } = useSettings()
-  const savedViews =
-    tagKey === null
-      ? EMPTY_SAVED_VIEWS
-      : (settings.collectionSavedViews?.[tagKey] ?? EMPTY_SAVED_VIEWS)
+  const { views: savedViews, persist: persistSavedViews } = useSavedViewsStore(tagKey, typeViews)
   const storedActiveId = tagKey === null ? undefined : settings.collectionActiveViewId?.[tagKey]
   const pageView = collectionPageViewForAllNotesView(view)
   const resolvedActiveId = resolveActiveCollectionViewId(savedViews, storedActiveId, pageView)
@@ -339,23 +341,20 @@ export function useCollectionSavedViews(
       if (tagKey === null) {
         return
       }
-      updateSettingsWith((current) => {
-        const nextViews = { ...(current.collectionSavedViews ?? {}) }
-        if (views.length === 0) {
-          delete nextViews[tagKey]
-        } else {
-          nextViews[tagKey] = views
-        }
-        return {
-          collectionSavedViews: nextViews,
-          collectionActiveViewId: {
-            ...(current.collectionActiveViewId ?? {}),
-            [tagKey]: activeId,
-          },
-        }
-      })
+      persistSavedViews(views)
+      // Which tab is selected is this device's state, not the type's.
+      updateSettingsWith((current) =>
+        current.collectionActiveViewId?.[tagKey] === activeId
+          ? {}
+          : {
+              collectionActiveViewId: {
+                ...(current.collectionActiveViewId ?? {}),
+                [tagKey]: activeId,
+              },
+            },
+      )
     },
-    [tagKey, updateSettingsWith],
+    [tagKey, persistSavedViews, updateSettingsWith],
   )
 
   const applySavedView = useCallback(

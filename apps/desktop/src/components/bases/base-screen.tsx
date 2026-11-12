@@ -6,6 +6,7 @@ import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { BaseViewContent } from './base-view-content'
 import { BasesIndex } from './bases-index'
+import { ConvertToTypes } from './convert-to-types'
 import { useBaseView } from './use-base-view'
 import { useCreateBaseNote } from './use-create-base-note'
 
@@ -39,6 +40,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
       <header className="px-12 pb-4 pt-8">
         <h1 className="text-2xl font-semibold tracking-tight text-text">{baseDisplayName(path)}</h1>
         <p className="mt-1 truncate text-xs text-text-muted">{path}</p>
+        <ConvertToTypes paths={[path]} label="Convert to type views" />
         {state.status === 'ready' && state.definition.views.length > 1 ? (
           <div role="tablist" aria-label="Views" className="mt-4 flex flex-wrap gap-1">
             {state.definition.views.map((entry, index) => (

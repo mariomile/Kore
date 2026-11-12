@@ -42,7 +42,23 @@ describe('readTagDefinition', () => {
       template: null,
       icon: null,
       parents: [],
+      views: [],
     })
+  })
+
+  it('reports a missing note read as empty as absent too, not as a note to convert', async () => {
+    readNote.mockResolvedValue('')
+    expect(await readTagDefinition('book')).toMatchObject({
+      exists: false,
+      needsConversion: false,
+    })
+  })
+
+  it('reads the saved views from a marked definition', async () => {
+    readNote.mockResolvedValue(
+      '---\nkore: tag\nproperties: []\nviews:\n  - {id: a, name: All, view: table}\n---\n',
+    )
+    expect((await readTagDefinition('book')).views?.map((view) => view.name)).toEqual(['All'])
   })
 
   it('flags an unmarked note at the path as needing conversion', async () => {

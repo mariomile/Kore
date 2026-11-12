@@ -2,7 +2,10 @@ import {
   RESERVED_FRONTMATTER_KEYS,
   TAG_DEFINITION_MARKER,
   TAG_EXTENDS_KEY,
+  TAG_VIEWS_KEY,
+  tagViewsToYaml,
   type GistFrontmatter,
+  type SavedCollectionView,
   type TagProperty,
 } from '@kore/core'
 
@@ -85,6 +88,11 @@ export interface FrontmatterPatch {
    * folded keys. An empty list deletes the key; omitted leaves it alone.
    */
   tagExtends?: readonly string[]
+  /**
+   * A type's saved database views (`views:` on the definition, organization
+   * point 3), in tab order. An empty list deletes the key; omitted leaves it.
+   */
+  tagViews?: readonly SavedCollectionView[]
 }
 
 /**
@@ -133,6 +141,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.tagExtends !== undefined) {
     yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]
+  }
+  if (patch.tagViews !== undefined) {
+    yaml[TAG_VIEWS_KEY] = patch.tagViews.length === 0 ? undefined : tagViewsToYaml(patch.tagViews)
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

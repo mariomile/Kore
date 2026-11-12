@@ -31,7 +31,8 @@ describe('settingsSchema', () => {
       sidebarWidth: 260,
       sidebarSections: ['pinned', 'types', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
-      hiddenSidebarItems: [],
+      hiddenSidebarItems: ['library'],
+      libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -441,7 +442,8 @@ describe('settingsSchema', () => {
       sidebarWidth: 260,
       sidebarSections: ['pinned', 'types', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
-      hiddenSidebarItems: [],
+      hiddenSidebarItems: ['library'],
+      libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -845,8 +847,20 @@ describe('settingsSchema', () => {
     })
     // The retired terminal row drops like any unknown id.
     expect(parsed.sidebarNav).toEqual(['graph', 'daily', 'newNote', 'allNotes', 'tasks', 'memory'])
-    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags'])
-    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([])
+    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags', 'library'])
+    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([
+      'library',
+    ])
+  })
+
+  it('hides the Library shelf once, then respects showing it again', () => {
+    // An existing document from before the default: Library joins the hidden set.
+    const migrated = settingsSchema.parse({ hiddenSidebarItems: ['tasks'] })
+    expect(migrated.hiddenSidebarItems).toEqual(['tasks', 'library'])
+    expect(migrated.libraryShelfDefaulted).toBe(true)
+    // The user showed it again: the saved document carries the marker, so it stays shown.
+    const shown = settingsSchema.parse({ ...migrated, hiddenSidebarItems: ['tasks'] })
+    expect(shown.hiddenSidebarItems).toEqual(['tasks'])
   })
 
   it('keeps the Details arrangement complete and the hidden list clean', () => {

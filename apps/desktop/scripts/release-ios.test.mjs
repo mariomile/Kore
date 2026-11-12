@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
 
@@ -15,6 +16,7 @@ import {
   isFalsePlistValue,
   normalizeApiKeyContent,
   parseDwarfdumpUuids,
+  pngHasAlpha,
   resolveBuildNumber,
 } from './release-ios.mjs'
 
@@ -248,4 +250,46 @@ test('Info.plist export-compliance false values are normalized', () => {
   expect(isFalsePlistValue('NO')).toBe(true)
   expect(isFalsePlistValue('0')).toBe(true)
   expect(isFalsePlistValue('true')).toBe(false)
+})
+
+function pngHeader(colourType, extraChunkType) {
+  const signature = Buffer.from('89504e470d0a1a0a', 'hex')
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4)
+    length.writeUInt32BE(data.length)
+    return Buffer.concat([length, Buffer.from(type, 'latin1'), data, Buffer.alloc(4)])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(1, 0)
+  ihdr.writeUInt32BE(1, 4)
+  ihdr[8] = 8
+  ihdr[9] = colourType
+  const chunks = [chunk('IHDR', ihdr)]
+  if (extraChunkType) chunks.push(chunk(extraChunkType, Buffer.alloc(1)))
+  chunks.push(chunk('IDAT', Buffer.alloc(1)), chunk('IEND', Buffer.alloc(0)))
+  return Buffer.concat([signature, ...chunks])
+}
+
+test('pngHasAlpha flags alpha colour types and tRNS chunks', () => {
+  expect(pngHasAlpha(pngHeader(2))).toBe(false)
+  expect(pngHasAlpha(pngHeader(6))).toBe(true)
+  expect(pngHasAlpha(pngHeader(4))).toBe(true)
+  expect(pngHasAlpha(pngHeader(2, 'tRNS'))).toBe(true)
+  expect(() => pngHasAlpha(Buffer.from('not a png'))).toThrow('not a PNG file')
+})
+
+test('the committed iOS app icons have no alpha channel', () => {
+  const dir = join(
+    import.meta.dirname,
+    '..',
+    'src-tauri',
+    'gen',
+    'apple',
+    'Assets.xcassets',
+    'AppIcon.appiconset',
+  )
+  const transparent = readdirSync(dir)
+    .filter((name) => name.endsWith('.png'))
+    .filter((name) => pngHasAlpha(readFileSync(join(dir, name))))
+  expect(transparent).toEqual([])
 })

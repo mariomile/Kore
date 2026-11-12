@@ -1,5 +1,17 @@
 # Kore working state
 
+## Closing a pane frees its space, Library hidden by default, 2026-11-12
+
+- [x] Dragging a pane divider pinned the left/upper pane to a pixel size, so
+  closing the other pane left the remaining one narrow with an empty hole. The
+  divider now clears its size on unmount (columns and rows); two regression
+  tests in `workspace-pane.test.tsx` (#412).
+- [x] The sidebar Library shelf (coding-agent home folders such as
+  `~/.claude`, `~/.codex`) starts hidden once per settings document
+  (`libraryShelfDefaulted` marker); it can be shown again from the hidden-
+  items menu, which offers it only where agent folders exist (#411).
+- Not verified on a real Mac.
+
 ## Open-note perf, Types shelf, signing pipeline and iOS icons, 2026-11-12
 
 - [x] Opening a note or the daily no longer rescans the whole vault Git

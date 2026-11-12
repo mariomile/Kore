@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The sidebar Library shelf (coding-agent folders) is hidden by default; show
+  it again from the hidden-items menu (#411).
+- Closing a split pane gives its space back to the pane that stays, even after
+  the divider was dragged (#412).
 - Opening a note or the daily no longer rescans the whole vault Git history
   for History (3 to 28 times less CPU per open on a 2,000-commit vault), and
   the macOS Liquid Glass setup no longer re-runs on every navigation (#404).

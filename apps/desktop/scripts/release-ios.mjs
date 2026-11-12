@@ -13,7 +13,15 @@
 // APPLE_API_KEY_PATH. See docs/ios-testflight.md.
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -30,6 +38,14 @@ const appDir = join(here, '..')
 const repoRoot = join(here, '..', '..', '..')
 const iosBuildDir = join(appDir, 'src-tauri', 'gen', 'apple', 'build')
 const iosArchive = join(iosBuildDir, 'kore-open_iOS.xcarchive')
+const iosAppIconDir = join(
+  appDir,
+  'src-tauri',
+  'gen',
+  'apple',
+  'Assets.xcassets',
+  'AppIcon.appiconset',
+)
 const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Kore.app', 'Kore')
 const iosDsymBinary = join(
   iosArchive,
@@ -618,6 +634,45 @@ function verifyAppStoreConnectAppRecord(credentials) {
   log(`App Store Connect app record: ${name} (${appleId})`)
 }
 
+/**
+ * Return true when a PNG can carry transparency: an alpha colour type
+ * (grayscale+alpha or RGBA) or a tRNS chunk. App Store Connect rejects an
+ * app whose large icon has an alpha channel (ITMS-90717), even a fully
+ * opaque one, and only after a full build and upload.
+ */
+export function pngHasAlpha(buffer) {
+  const signature = '89504e470d0a1a0a'
+  if (buffer.length < 33 || buffer.subarray(0, 8).toString('hex') !== signature) {
+    throw new Error('not a PNG file')
+  }
+  const colourType = buffer[25]
+  if (colourType === 4 || colourType === 6) return true
+  let offset = 8
+  while (offset + 8 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset)
+    const type = buffer.subarray(offset + 4, offset + 8).toString('latin1')
+    if (type === 'tRNS') return true
+    if (type === 'IDAT' || type === 'IEND') return false
+    offset += 12 + length
+  }
+  return false
+}
+
+/** Fail before the build when any iOS app icon could be transparent. */
+function verifyAppIconsOpaque() {
+  const transparent = readdirSync(iosAppIconDir)
+    .filter((name) => name.endsWith('.png'))
+    .filter((name) => pngHasAlpha(readFileSync(join(iosAppIconDir, name))))
+  if (transparent.length > 0) {
+    fail(
+      `iOS app icons with an alpha channel: ${transparent.join(', ')}.\n` +
+        '  App Store Connect rejects them (ITMS-90717). Flatten them onto an opaque\n' +
+        '  background (no alpha channel) in gen/apple/Assets.xcassets/AppIcon.appiconset.',
+    )
+  }
+  log('app icons are opaque')
+}
+
 function build({ buildNumberFlag, exportMethod, verbose }) {
   const apiKeyCredentials = resolveApiKeyCredentials({ requirePrivateKey: false })
   try {
@@ -633,6 +688,7 @@ function build({ buildNumberFlag, exportMethod, verbose }) {
 }
 
 function testflight({ buildNumberFlag, exportMethod, wait, verbose }) {
+  verifyAppIconsOpaque()
   const apiKeyCredentials = resolveApiKeyCredentials({ requirePrivateKey: false })
   const uploadCredentials = resolveUploadCredentials()
   try {
@@ -665,6 +721,7 @@ function preflight({ buildNumberFlag }) {
     log(`altool upload auth: ${uploadCredentials.source}`)
     log(`xcodebuild: ${capture('xcodebuild', ['-version']).trim().replaceAll('\n', ' / ')}`)
     verifyAppStoreConnectAppRecord(uploadCredentials)
+    verifyAppIconsOpaque()
     log('preflight passed')
   } finally {
     apiKeyCredentials?.cleanup?.()

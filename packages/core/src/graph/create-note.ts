@@ -1,6 +1,6 @@
 import { ulid } from 'ulidx'
 import { upsertFrontmatter } from '../markdown/frontmatter'
-import { addNoteTag } from '../markdown/note-tag'
+import { addFrontmatterTag } from '../markdown/note-tag'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
 import {
@@ -139,31 +139,34 @@ export function newTypedNoteSource(
   title: string,
   tag: string,
   properties: Record<string, unknown> = {},
+  body?: string,
 ): string {
-  const base = newNoteSource(title)
+  const base = newNoteSource(title, body)
   // The note's own `id:` and type are this function's to write; a starting
   // value can never replace them.
   const fields = Object.fromEntries(
     Object.entries(properties).filter(([key]) => key !== 'id' && key !== 'tags'),
   )
   const withProperties = Object.keys(fields).length === 0 ? base : upsertFrontmatter(base, fields)
-  return addNoteTag(withProperties, tag) ?? withProperties
+  return addFrontmatterTag(withProperties, tag) ?? withProperties
 }
 
 /**
  * Create a note titled `title` whose type is `tag` (see
  * {@link newTypedNoteSource}) at a collision-free slug path in the vault's
- * new-note folder. Returns the new graph-relative path.
+ * new-note folder, optionally with a body block under the H1. Returns the
+ * new graph-relative path.
  */
 export async function createTypedNoteWithTitle(
   title: string,
   tag: string,
   properties: Record<string, unknown>,
   generation: number,
+  body?: string,
 ): Promise<string> {
   const claimed = await claimNotePathForSlug(
     noteFileStemForTitle(title),
-    newTypedNoteSource(title, tag, properties),
+    newTypedNoteSource(title, tag, properties, body),
     generation,
     null,
   )

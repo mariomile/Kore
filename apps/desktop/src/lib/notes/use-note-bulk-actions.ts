@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { appendBodyTag, writeNote } from '@kore/core'
+import { addFrontmatterTag, writeNote } from '@kore/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'
@@ -114,7 +114,7 @@ export function useNoteBulkActions(): NoteBulkActions {
           throw new Error('has unsaved changes')
         }
         const source = await readNoteSource(path)
-        const tagged = appendBodyTag(source, wanted)
+        const tagged = addFrontmatterTag(source, wanted)
         if (tagged === null) {
           return 'skipped' // already carries the tag — leave it byte-identical
         }

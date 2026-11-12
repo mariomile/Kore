@@ -380,7 +380,8 @@ describe('CollectionBoard', () => {
     expect(path).toMatch(/^notes\/.+\.md$/)
     expect(generation).toBe(7)
     expect(seed).toContain('status: done')
-    expect(seed).toContain('#book')
+    expect(seed).toMatch(/\ntags:\n {2}- book\n/)
+    expect(seed).not.toContain('#book')
     await vi.waitFor(() => expect(onOpen).toHaveBeenCalledWith(path))
   })
 

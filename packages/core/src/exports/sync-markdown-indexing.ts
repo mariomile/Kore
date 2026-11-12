@@ -95,6 +95,7 @@ export {
   applyReplaceMatches,
   bodyHasTag,
   removeBodyTag,
+  addFrontmatterTag,
   addNoteTag,
   noteHasTag,
   removeNoteTag,

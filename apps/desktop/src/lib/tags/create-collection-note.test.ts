@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createNoteIfAbsent = vi.hoisted(() => vi.fn(async () => ({ kind: 'created' as const })))
+const createTypedNoteWithTitle = vi.hoisted(() => vi.fn(async () => 'notes/dune.md'))
 const readNote = vi.hoisted(() => vi.fn<(path: string, generation?: number) => Promise<string>>())
 
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteIfAbsent,
+  createTypedNoteWithTitle,
   readNote,
 }))
 
-const { bodyForCollectionCreate, createCollectionNote, createTypedCollectionNote } =
-  await import('./create-collection-note')
+const {
+  bodyForCollectionCreate,
+  createCollectionNote,
+  createTitledCollectionNote,
+  createTypedCollectionNote,
+} = await import('./create-collection-note')
 
 const VALUES = {
   title: '',
@@ -21,6 +27,7 @@ const VALUES = {
 
 beforeEach(() => {
   createNoteIfAbsent.mockClear()
+  createTypedNoteWithTitle.mockClear()
   readNote.mockReset()
 })
 
@@ -38,14 +45,17 @@ describe('createCollectionNote', () => {
     expect(writtenPath).toBe(path)
     expect(generation).toBe(4)
     expect(seed).toContain('status: done')
-    expect(seed).toContain('#book')
+    // The type lives in the Type field, never as a hidden body tag line.
+    expect(seed).toMatch(/\ntags:\n {2}- book\n/)
+    expect(seed).not.toContain('#book')
   })
 
   it('skips a property patch when none are set', async () => {
     await createCollectionNote('book', 1)
 
     const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
-    expect(seed).toContain('#book')
+    expect(seed).toMatch(/\ntags:\n {2}- book\n/)
+    expect(seed).not.toContain('#book')
     expect(seed).not.toContain('status:')
   })
 
@@ -54,8 +64,55 @@ describe('createCollectionNote', () => {
 
     const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(seed).toContain('# Template')
-    expect(seed).toContain('#book')
+    expect(seed).toMatch(/\ntags:\n {2}- book\n/)
     expect(seed).toContain('finished: 2026-08-10')
+  })
+})
+
+describe('createCollectionNote type placement', () => {
+  it('keeps the untitled seed loadable and puts the type only in the frontmatter', async () => {
+    await createCollectionNote('book', 1)
+
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(seed).toMatch(/^---\nid: [0-9a-z]{26}\ntags:\n {2}- book\n---\n#\n$/)
+  })
+
+  it('still types a row whose template mentions the tag in prose', async () => {
+    // A mention is not membership (#401): the row must get the type anyway.
+    await createCollectionNote('book', 1, {}, '# Dune\n\nA #book I loved.\n')
+
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(seed).toMatch(/\ntags:\n {2}- book\n/)
+  })
+})
+
+describe('createTitledCollectionNote', () => {
+  it('births the titled row with type and starting values in one create', async () => {
+    const type = {
+      properties: [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'select' as const,
+          options: ['to-read'],
+          default: 'to-read',
+        },
+      ],
+    }
+    const path = await createTitledCollectionNote('book', 3, 'Dune', type, VALUES)
+
+    expect(path).toBe('notes/dune.md')
+    // One create carries the type (as the Type field) and the starting
+    // values; no second frontmatter write races an editor opening the row.
+    expect(createTypedNoteWithTitle).toHaveBeenCalledTimes(1)
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Dune',
+      'book',
+      { status: 'to-read' },
+      3,
+      '',
+    )
+    expect(createNoteIfAbsent).not.toHaveBeenCalled()
   })
 })
 

@@ -1,5 +1,5 @@
 import {
-  appendBodyTag,
+  addFrontmatterTag,
   createNoteIfAbsent,
   errorMessage,
   newNoteId,
@@ -119,8 +119,8 @@ export async function importCollectionCsv(
   const notes = parseCollectionCsv(text, type)
   for (const note of notes) {
     const body = `# ${note.title}\n`
-    const tagged = appendBodyTag(body, tag) ?? body
-    const source = upsertFrontmatter(tagged, { id: newNoteId(), ...note.properties })
+    const withFields = upsertFrontmatter(body, { id: newNoteId(), ...note.properties })
+    const source = addFrontmatterTag(withFields, tag) ?? withFields
     await createNoteIfAbsent(untitledNotePath(), source, generation)
   }
   invalidateOnNextIndexApply()

@@ -8,6 +8,7 @@ import { PropertyValueEditor } from './property-editors'
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
 const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
 const createNoteWithTitle = vi.hoisted(() => vi.fn())
+const createTypedNoteWithTitle = vi.hoisted(() => vi.fn())
 const getTagType = vi.hoisted(() => vi.fn())
 const getWikiAddressForPath = vi.hoisted(() => vi.fn())
 const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
@@ -15,6 +16,7 @@ const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteWithTitle,
+  createTypedNoteWithTitle,
   getTagType,
   getWikiAddressForPath,
   listNoteTags: async () => vaultTags.current.map((tag) => ({ tag, count: 1 })),
@@ -39,6 +41,7 @@ const onCommit = vi.fn<(value: unknown) => void>()
 beforeEach(() => {
   onCommit.mockClear()
   createNoteWithTitle.mockReset()
+  createTypedNoteWithTitle.mockReset()
   getTagType.mockReset().mockResolvedValue(null)
   getWikiAddressForPath.mockReset()
   vaultTags.current = []
@@ -230,7 +233,7 @@ describe('PropertyValueEditor', () => {
   it('creates a new note from an untargeted relation into the collection named like the field', async () => {
     relationSuggestions.current = []
     vaultTags.current = ['meeting', 'Company']
-    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    createTypedNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
     getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
     const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
     const view = await render(editor(property))
@@ -239,7 +242,10 @@ describe('PropertyValueEditor', () => {
     await userEvent.keyboard('Trade Republic')
     await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
     await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
-    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1, '#company')
+    // The type lands in the new note's Type field in the one create, never
+    // as a hidden body `#company` line that typing in the body could erase.
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 'company', {}, 1)
+    expect(createNoteWithTitle).not.toHaveBeenCalled()
   })
 
   it('creates a plain note from an untargeted relation when no collection matches', async () => {
@@ -307,7 +313,7 @@ describe('PropertyValueEditor', () => {
       },
     ]
     let resolveCreate: ((path: string) => void) | undefined
-    createNoteWithTitle.mockImplementationOnce(
+    createTypedNoteWithTitle.mockImplementationOnce(
       async () =>
         await new Promise<string>((resolve) => {
           resolveCreate = resolve

@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Opening a note or the daily no longer rescans the whole vault Git history
+  for History (3 to 28 times less CPU per open on a 2,000-commit vault), and
+  the macOS Liquid Glass setup no longer re-runs on every navigation (#404).
+- Opening a note no longer animates the Details local graph; it lays out off-
+  screen and paints once (about 30-40% less main-thread work per open). The
+  sync-conflict notice reuses the note row query instead of fetching it again
+  (#407).
+- Sidebar: a Types shelf (each type opens its database) above Tags, folders
+  below; the type picker splits Types and Tags (#405).
+- The Release DMG can be signed and notarized with Kore's Developer ID once
+  the `APPLE_CERTIFICATE` secrets are set (#402).
+- Opaque iOS app icons, checked by `release:ios` (#408).
 - Kore has its own Apple identity, `app.kore.*` (#363). Settings, the app data
   folder and keychain keys move over at first launch. After the update macOS
   asks once more for notification, calendar and contacts permission, and

@@ -72,6 +72,7 @@ fn install_subscriber(file: Option<RollingFileAppender>) {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WebviewLogLevel {
+    Info,
     Warn,
     Error,
 }
@@ -83,6 +84,7 @@ pub enum WebviewLogLevel {
 pub async fn log_webview(level: WebviewLogLevel, message: String, window: tauri::Window) {
     let window = window.label();
     match level {
+        WebviewLogLevel::Info => tracing::info!(target: "webview", window, "{message}"),
         WebviewLogLevel::Warn => tracing::warn!(target: "webview", window, "{message}"),
         WebviewLogLevel::Error => tracing::error!(target: "webview", window, "{message}"),
     }

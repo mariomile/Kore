@@ -94,6 +94,60 @@ export function hasNestedTags(tree: readonly TagTreeNode[]): boolean {
   return tree.some((node) => node.children.length > 0)
 }
 
+/** One row of the sidebar's Types shelf: a tag with a definition note. */
+export interface TypeShelfEntry {
+  /** Folded key — what icons, the route and the definition compare on. */
+  readonly key: string
+  /** Display tag a row navigates to (the tree's casing when notes carry it). */
+  readonly tag: string
+  /** Last segment in display casing. */
+  readonly name: string
+  /** Non-daily member notes, the tree's count; 0 for a type nothing uses yet. */
+  readonly count: number
+}
+
+/**
+ * Splits the tag tree into what notes *are* and what they are *about*: tags
+ * with a definition (`typeKeys`, from `tag_types`) become the flat Types list,
+ * sorted by name, and the rest stay in the tree as topic tags. A type leaves
+ * the tree; a type that still parents topic tags keeps its node so those
+ * children stay reachable, and a parent whose children were all types goes
+ * too (`#type` over `#type/project`, `#type/person`). A defined type no note
+ * carries yet still gets a row, with count 0.
+ */
+export function splitTypesFromTags(
+  tree: readonly TagTreeNode[],
+  typeKeys: readonly string[],
+): { types: TypeShelfEntry[]; tags: TagTreeNode[] } {
+  const wanted = new Set(typeKeys)
+  const found = new Map<string, TagTreeNode>()
+  const prune = (nodes: readonly TagTreeNode[]): TagTreeNode[] => {
+    const kept: TagTreeNode[] = []
+    for (const node of nodes) {
+      const isType = wanted.has(node.key)
+      if (isType) {
+        found.set(node.key, node)
+      }
+      const children = prune(node.children)
+      const emptiedParent = node.children.length > 0 && children.length === 0
+      if (children.length > 0 || (!isType && !emptiedParent)) {
+        kept.push({ ...node, children })
+      }
+    }
+    return kept
+  }
+  const tags = prune(tree)
+  const types = [...wanted]
+    .map((key): TypeShelfEntry => {
+      const node = found.get(key)
+      return node === undefined
+        ? { key, tag: key, name: key.slice(key.lastIndexOf('/') + 1), count: 0 }
+        : { key, tag: node.tag, name: node.name, count: node.count }
+    })
+    .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }))
+  return { types, tags }
+}
+
 interface TagPrefixRow extends TagTreeCount {
   /** 1 when some note carries this exact tag, 0 for a pure parent prefix. */
   readonly used: number

@@ -39,12 +39,12 @@ interface NoteTypePickerProps {
  * The picker behind the Type field: choose what a note *is* instead of typing
  * the hashtag into its prose.
  *
- * Tags carrying a schema come first under "Types", because those are the ones
- * that bring fields with them; every other tag in the graph follows, ranked
- * most-used-first by the same `suggestTags` the editor's `#` menu uses. This
- * is a presentation order, not the "typed tag" distinction TDR 0005
- * Amendment A removed: both groups write the same membership, and a tag from
- * either grows a schema the moment one is saved on its page.
+ * Types (tags with a definition, the sidebar's Types shelf) come first,
+ * because those bring fields and a database with them; every other tag in the
+ * vault follows under "Tags", ranked most-used-first by the same
+ * `suggestTags` the editor's `#` menu uses. Both groups write the same
+ * membership (TDR 0005 Amendment E), and a tag becomes a type the moment its
+ * definition is saved.
  *
  * A query naming no existing tag offers itself, since in Kore a tag exists
  * because a note carries it — there is nothing to create first.
@@ -144,7 +144,7 @@ export function NoteTypePicker({
               </CommandGroup>
             ) : null}
             {others.length > 0 ? (
-              <CommandGroup heading={types.length > 0 ? 'Other types' : 'Types'}>
+              <CommandGroup heading="Tags">
                 {others.map((option) => (
                   <CommandItem
                     key={option.tagKey}

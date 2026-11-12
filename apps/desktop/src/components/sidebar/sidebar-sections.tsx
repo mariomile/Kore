@@ -26,6 +26,7 @@ import { useFolderTree } from '@/hooks/use-folder-tree'
 import { useLibraryRoots } from '@/hooks/use-library'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { useTagTree } from '@/hooks/use-tag-tree'
+import { useTypeShelves } from '@/hooks/use-type-shelves'
 import { INVALIDATE_THROTTLE_MS } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { cn } from '@/lib/utils'
@@ -39,10 +40,12 @@ import {
   type SidebarShelfArrangement,
 } from './sidebar-sortable-section'
 import { SidebarTags } from './sidebar-tags'
+import { SidebarTypes } from './sidebar-types'
 
 /** Each shelf's component, keyed by the id the stored order is written in. */
 const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
   pinned: SidebarPinned,
+  types: SidebarTypes,
   folders: SidebarFolders,
   tags: SidebarTags,
   library: SidebarLibrary,
@@ -51,8 +54,9 @@ const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
 /** Each shelf's header title, also its name in the "hidden" menu. */
 const SECTION_TITLES: Record<SidebarSection, string> = {
   pinned: 'Pinned notes',
+  types: 'Types',
   folders: 'Folders',
-  tags: 'Types',
+  tags: 'Tags',
   library: 'Library',
 }
 
@@ -69,7 +73,7 @@ function sectionForId(id: UniqueIdentifier): SidebarSection | null {
 }
 
 /**
- * The Home surface's shelves — Pinned notes, Folders, Types — stacked in
+ * The Home surface's shelves — Pinned notes, Types, Tags, Folders — stacked in
  * the order the user dragged them into. Each header is its own drag handle (see
  * {@link import('./sidebar-sortable-section').SidebarSortableSection}) and the
  * drop persists through the `sidebarSections` setting, so the arrangement
@@ -92,6 +96,7 @@ export function SidebarSections(): ReactElement {
   const { indexing } = useGraph()
   const folderTree = useFolderTree()
   const tagTree = useTagTree()
+  const shelves = useTypeShelves()
   const pinned = usePinnedNotes()
   const libraryRoots = useLibraryRoots()
   const settling = useSettleWindow(indexing)
@@ -133,11 +138,21 @@ export function SidebarSections(): ReactElement {
     const shown: Record<SidebarSection, boolean> = {
       pinned: pinned.length > 0,
       folders: folderTree !== null && hasOwnFolders(folderTree),
-      tags: tagTree.length > 0,
+      // Types shows (with its how-to line) whenever the vault has tags.
+      types: shelves.types.length > 0 || tagTree.length > 0,
+      tags: shelves.tags.length > 0,
       library: libraryRoots.length > 0,
     }
     return SIDEBAR_SECTION_IDS.filter((id) => shown[id] && !hidden.includes(id))
-  }, [pinned.length, folderTree, tagTree.length, libraryRoots.length, hidden])
+  }, [
+    pinned.length,
+    folderTree,
+    tagTree.length,
+    shelves.types.length,
+    shelves.tags.length,
+    libraryRoots.length,
+    hidden,
+  ])
   const arrangement = useMemo<SidebarShelfArrangement>(() => {
     const onScreen = settings.sidebarSections.filter((id) => present.includes(id))
     return {

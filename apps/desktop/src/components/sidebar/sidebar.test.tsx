@@ -30,6 +30,11 @@ const openConversation = vi.hoisted(() => vi.fn(async () => {}))
 const deleteConversation = vi.hoisted(() => vi.fn(async () => {}))
 const newChat = vi.hoisted(() => vi.fn(() => 'chat-new'))
 const getTagTree = vi.hoisted(() => vi.fn<() => Promise<TagTreeNode[]>>(async () => []))
+const listTagTypes = vi.hoisted(() =>
+  vi.fn<() => Promise<{ tagKey: string; notePath: string; type: { properties: [] } }[]>>(
+    async () => [],
+  ),
+)
 const getFolderTree = vi.hoisted(() =>
   vi.fn<() => Promise<FolderTreeFolder>>(async () => ({
     path: '',
@@ -67,6 +72,7 @@ vi.mock('@kore/core', async (importOriginal) => ({
   hasBridge: () => true,
   getPinnedNotes,
   getTagTree,
+  listTagTypes,
   getFolderTree,
   listChatConversations,
   vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
@@ -107,7 +113,7 @@ vi.mock('@/providers/graph-provider', () => ({
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
 const sidebarSections = vi.hoisted(() => ({
-  order: ['pinned', 'folders', 'tags', 'library'],
+  order: ['pinned', 'types', 'tags', 'folders', 'library'],
   nav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
   hidden: [] as string[],
 }))
@@ -174,7 +180,8 @@ beforeEach(() => {
   newChat.mockClear()
   getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
-  sidebarSections.order = ['pinned', 'folders', 'tags', 'library']
+  sidebarSections.order = ['pinned', 'types', 'tags', 'folders', 'library']
+  listTagTypes.mockReset().mockResolvedValue([])
   sidebarSections.nav = ['daily', 'newNote', 'allNotes', 'tasks', 'graph']
   sidebarSections.hidden = []
   updateSettingsWith.mockClear()
@@ -316,7 +323,7 @@ describe('Sidebar', () => {
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
     getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
-    sidebarSections.order = ['tags', 'pinned', 'folders']
+    sidebarSections.order = ['tags', 'pinned', 'types', 'folders']
     const { view } = await renderSidebar()
 
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
@@ -325,13 +332,44 @@ describe('Sidebar', () => {
     )
     // The vault has no folders of its own here, so Folders renders nothing
     // while still holding its place in the stored order.
-    expect(shelves).toEqual(['Types', 'Pinned notes'])
+    expect(shelves).toEqual(['Tags', 'Pinned notes', 'Types'])
   })
 
-  it('hides the Types section while the graph has no tags', async () => {
+  it('hides the Types and Tags sections while the graph has no tags', async () => {
     const { view } = await renderSidebar()
     await vi.waitFor(() => expect(getTagTree).toHaveBeenCalled())
     expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
+    expect(view.container.querySelector('[aria-label="Tags"]')).toBeNull()
+  })
+
+  it('lists tags with a definition under Types and the rest under Tags', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'type', tag: 'type', count: 4 },
+        { key: 'type/project', tag: 'type/project', count: 4 },
+        { key: 'book', tag: 'book', count: 3 },
+      ]),
+    )
+    listTagTypes.mockResolvedValue([
+      { tagKey: 'type/project', notePath: 'tags/type/project.md', type: { properties: [] } },
+    ])
+    const { view } = await renderSidebar()
+
+    const types = view.getByRole('region', { name: 'Types' })
+    const tags = view.getByRole('region', { name: 'Tags' })
+    await expect.element(types.getByRole('button', { name: /^Project\s*4$/ })).toBeVisible()
+    await expect.element(tags.getByRole('button', { name: /^Book\s*3$/ })).toBeVisible()
+    // `type` only parented the type, so it leaves the Tags shelf with it.
+    await expectLocatorToHaveCount(tags.getByRole('button', { name: /^Type\s*4$/ }), 0)
+
+    await types.getByRole('button', { name: /^Project\s*4$/ }).click()
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes:type/project')
+  })
+
+  it('says how to make a type while the vault has only tags', async () => {
+    getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
+    const { view } = await renderSidebar()
+    await expect.element(view.getByText(/No types yet/)).toBeVisible()
   })
 
   it('browses the vault by folder and opens a note from the tree', async () => {
@@ -507,12 +545,12 @@ describe('Sidebar', () => {
     const { view } = await renderSidebar()
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
 
-    await view.getByRole('button', { name: 'Types options' }).click()
-    // Folders is empty here, so one step up passes it and lands above Pinned.
+    await view.getByRole('button', { name: 'Tags options' }).click()
+    // One step up passes the Types shelf right above it.
     await page.getByRole('menuitem', { name: 'Move up' }).click()
     const update = updateSettingsWith.mock.lastCall?.[0]
     expect(update?.(DEFAULT_SETTINGS)).toEqual({
-      sidebarSections: ['tags', 'folders', 'pinned', 'library'],
+      sidebarSections: ['pinned', 'tags', 'types', 'folders', 'library'],
     })
   })
 

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useTagIcons } from '@/hooks/use-tag-icons'
-import { useTagTree } from '@/hooks/use-tag-tree'
+import { useTypeShelves } from '@/hooks/use-type-shelves'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
@@ -26,19 +26,18 @@ interface TagTreeContext {
 }
 
 /**
- * The sidebar's Types section — user-facing copy calls a tag a type: every
- * tag carried by a non-daily note, alphabetical, nested on `/` the way
- * Obsidian nests `#domain/ai` under `#domain`. A child shows its last
- * segment; a parent's count and its page cover its whole subtree, and the
- * chevron beside it expands it (remembered for the session). A row opens
- * All Notes filtered to that tag — the same view its filter tabs land on, so
- * the section is navigation, not a new surface. Hidden entirely while the
- * graph has no tags, like the Pinned shelf. Every tag is a collection, so no
- * row is marked as one; hovering a row reveals its configure button (TDR
- * 0005), which edits the tag's property schema in `tags/<key>.md`.
+ * The sidebar's Tags section: what notes are *about*. Every tag a non-daily
+ * note is a member of, minus the ones with a definition (those are Types, the
+ * shelf above), alphabetical and nested on `/` the way Obsidian nests
+ * `#domain/ai` under `#domain`. A child shows its last segment; a parent's
+ * count and its page cover its whole subtree, and the chevron beside it
+ * expands it (remembered for the session). A row opens All Notes filtered to
+ * that tag. Hidden while no topic tag is left. Hovering a row reveals its
+ * configure button (TDR 0005): saving it writes `tags/<key>.md`, which makes
+ * the tag a type and moves it up to the Types shelf.
  */
 export function SidebarTags(): ReactElement | null {
-  const tree = useTagTree()
+  const { tags: tree } = useTypeShelves()
   const icons = useTagIcons()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
@@ -59,7 +58,7 @@ export function SidebarTags(): ReactElement | null {
     configure: setConfiguring,
   }
   return (
-    <SidebarSortableSection id="tags" title="Types" label="Types">
+    <SidebarSortableSection id="tags" title="Tags" label="Tags">
       <ul className="mt-2 flex flex-col space-y-1">
         {tree.map((node) => (
           <TagRow key={node.key} node={node} depth={0} context={context} />

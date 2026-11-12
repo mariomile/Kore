@@ -112,6 +112,8 @@ const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Pro
 
 /** The tags that build on `#book`, as the inheritance pass stored them. */
 let bookDescendants: string[] = []
+/** `#book`'s stored type, as `tag_types` holds it (views included when set). */
+let bookTypeJson = BOOK_SCHEMA_JSON
 
 setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 
@@ -125,6 +127,7 @@ beforeEach(() => {
   updateSettingsWith.mockReset()
   mockInvoke.mockReset()
   bookDescendants = []
+  bookTypeJson = BOOK_SCHEMA_JSON
   mockInvoke.mockImplementation(async (command, args) => {
     if (command === 'note_read') {
       return DISPOSSESSED_SOURCE
@@ -150,9 +153,9 @@ beforeEach(() => {
         {
           tag_key: 'book',
           note_path: 'tags/book.md',
-          schema_json: BOOK_SCHEMA_JSON,
-          resolved_json: BOOK_SCHEMA_JSON,
-          public_resolved_json: BOOK_SCHEMA_JSON,
+          schema_json: bookTypeJson,
+          resolved_json: bookTypeJson,
+          public_resolved_json: bookTypeJson,
         },
       ]
     }
@@ -243,6 +246,118 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await expect
       .element(view.getByRole('tab', { name: 'Kanban', selected: true }))
       .toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('reads the tabs from the type file and writes a new one back into it', async () => {
+    bookTypeJson = JSON.stringify({
+      properties: JSON.parse(BOOK_SCHEMA_JSON) as unknown[],
+      views: [{ id: 'f1', name: 'Reading list', view: 'table' }],
+    })
+    const view = await render(<Screen />)
+
+    await expect
+      .element(view.getByRole('tab', { name: 'Reading list', selected: true }))
+      .toBeInTheDocument()
+
+    await view.getByRole('button', { name: 'Add a view' }).click()
+    await view.getByRole('menuitem', { name: 'Board' }).click()
+    await expect.element(view.getByRole('tab', { name: 'Board' })).toBeInTheDocument()
+
+    // The type's tabs live in its definition note, not in this device's settings.
+    await vi.waitFor(() => {
+      const write = mockInvoke.mock.calls.find(
+        ([command, args]) => command === 'note_write' && args['path'] === 'tags/book.md',
+      )
+      expect(write).toBeDefined()
+      const content = String(write![1]['contents'])
+      expect(content).toContain('views:')
+      expect(content).toContain('name: Reading list')
+      expect(content).toContain('view: board')
+    })
+    type SavedViewsState = { collectionSavedViews: Record<string, unknown[]> }
+    const localWrite = updateSettingsWith.mock.calls.find((call) => {
+      const updater = call[0] as
+        | ((current: SavedViewsState) => Partial<SavedViewsState>)
+        | undefined
+      return (
+        typeof updater === 'function' &&
+        updater({ collectionSavedViews: {} }).collectionSavedViews?.['book'] !== undefined
+      )
+    })
+    expect(localWrite).toBeUndefined()
+    await view.unmount()
+  })
+
+  it('moves views saved on this device into the type file once', async () => {
+    settingsState.collectionSavedViews = {
+      book: [
+        {
+          id: 'v1',
+          name: 'Queue',
+          view: 'table',
+          sorts: [],
+          group: null,
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+      ],
+    }
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('tab', { name: 'Queue' })).toBeInTheDocument()
+    await vi.waitFor(() => {
+      const write = mockInvoke.mock.calls.find(
+        ([command, args]) => command === 'note_write' && args['path'] === 'tags/book.md',
+      )
+      expect(write).toBeDefined()
+      expect(String(write![1]['contents'])).toContain('name: Queue')
+    })
+    await view.unmount()
+  })
+
+  it('drops the local copy once the type file holds the views', async () => {
+    bookTypeJson = JSON.stringify({
+      properties: JSON.parse(BOOK_SCHEMA_JSON) as unknown[],
+      views: [{ id: 'v1', name: 'Queue', view: 'table' }],
+    })
+    settingsState.collectionSavedViews = {
+      book: [
+        {
+          id: 'v1',
+          name: 'Queue',
+          view: 'table',
+          sorts: [],
+          group: null,
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+      ],
+    }
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('tab', { name: 'Queue' })).toBeInTheDocument()
+    type SavedViewsState = { collectionSavedViews: Record<string, unknown[]> }
+    await vi.waitFor(() => {
+      const cleared = updateSettingsWith.mock.calls.some((call) => {
+        const updater = call[0] as
+          | ((current: SavedViewsState) => Partial<SavedViewsState>)
+          | undefined
+        if (typeof updater !== 'function') {
+          return false
+        }
+        const next = updater({ collectionSavedViews: { book: [{}] } }).collectionSavedViews
+        return next !== undefined && !('book' in next)
+      })
+      expect(cleared).toBe(true)
+    })
+    expect(
+      mockInvoke.mock.calls.some(
+        ([command, args]) => command === 'note_write' && args['path'] === 'tags/book.md',
+      ),
+    ).toBe(false)
     await view.unmount()
   })
 

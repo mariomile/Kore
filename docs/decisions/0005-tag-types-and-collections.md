@@ -342,6 +342,26 @@ about the tag (an Area picker offering meeting notes that mentioned `#area`).
   nested tags and `extends` descendants (`collectionTagKeys`), sorted by title
   when nothing is typed, up to 50.
 
+## Amendment F (2026-11-12) — A type keeps its saved views in its definition note
+
+A typed tag's named tabs (layout, sort chain, board or table grouping,
+filters and how they combine) are stored under `views:` in `tags/<type>.md`,
+next to `properties`. They travel with the vault, so every device, `kore`
+and agents read the same database tabs. `views` is not a reserved key (a
+note may still have a `views` field); it means saved views only on a marked
+definition, and it is never inherited through `extends`. Which tab is
+selected, column widths and the live lens stay per device in settings, and
+an untyped tag (no definition note) keeps its tabs in settings too: saving a
+tab never creates a definition. Views saved locally before this amendment
+move into the definition the first time the type's page opens.
+
+Obsidian bases stay read-only. A base that lists one tag's notes
+(`file.hasTag("x")`, plus simple comparisons) can be converted: its views
+become that type's tabs and its plain columns become fields typed from the
+values the notes hold. Formulas, folder rules and `file.*` expressions are
+reported, not translated; a base that narrows a tag to a folder is left as a
+base. The `.base` file is never written.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

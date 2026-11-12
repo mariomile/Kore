@@ -148,6 +148,10 @@ fn app_platform() -> &'static str {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Launch timing: the page-load hook below logs how long the main window
+    // took to load from here (the webview adds its own milestones).
+    #[cfg(desktop)]
+    let process_start = std::time::Instant::now();
     let context = tauri::generate_context!();
 
     // Move the pre-rename `app.lore.*` data folder into place before any
@@ -256,6 +260,10 @@ pub fn run() {
                 return;
             }
             revealed.call_once(|| {
+                tracing::info!(
+                    "launch: main window loaded {} ms after process start",
+                    process_start.elapsed().as_millis()
+                );
                 windows::surface_main_window(webview.app_handle());
             });
         })

@@ -145,8 +145,8 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
 
   const insertTask = database.prepare(
     `INSERT INTO tasks(
-      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time, section
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time, section, tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const task of indexed.tasks) {
     insertTask.run(
@@ -159,6 +159,7 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
       task.dueDate,
       task.dueTime,
       task.section,
+      JSON.stringify(task.tags),
     )
   }
 }

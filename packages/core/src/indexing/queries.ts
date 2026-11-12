@@ -24,6 +24,7 @@ export {
   getCompletedTasks,
   getOpenTasks,
   getOpenTasksForNote,
+  getTasksForTag,
   getProjectNotePaths,
   getTaskProjectLinks,
   type NoteTaskRef,

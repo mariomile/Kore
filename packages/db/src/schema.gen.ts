@@ -158,6 +158,7 @@ export interface Tasks {
   notePath: string;
   raw: string;
   section: string | null;
+  tags: Generated<string>;
   text: string;
 }
 

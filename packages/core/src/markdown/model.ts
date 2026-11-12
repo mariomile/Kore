@@ -242,6 +242,13 @@ export interface ParsedTask extends TaskMarker {
    * The Projects view lists a project's tasks under these, like Todoist.
    */
   section: string | null
+  /**
+   * The folded tags written on the task's own marker line (`- [ ] call
+   * Andrea #lead`), first-seen order, code excluded. A tag there makes the
+   * line a row of that tag's database (organization point 4); it stays a
+   * mention for the note, which only frontmatter or a tag line makes a member.
+   */
+  tags: readonly string[]
 }
 
 /** Version of the extraction contract; bump on breaking shape changes.
@@ -258,8 +265,9 @@ export interface ParsedTask extends TaskMarker {
  * plugin syntax, for list-row previews.
  * 9 — `tasks[].section`: the nearest top-level heading above the task.
  * 10 — `memberTags`: the tags that make the note a member (frontmatter
- * `tags:` and a tag-only first or last paragraph), apart from mentions. */
-export const PARSED_NOTE_VERSION = 10
+ * `tags:` and a tag-only first or last paragraph), apart from mentions.
+ * 11 — `tasks[].tags`: the tags on a task's own marker line. */
+export const PARSED_NOTE_VERSION = 11
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

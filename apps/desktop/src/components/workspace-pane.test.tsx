@@ -368,6 +368,38 @@ function renderMovableFrame() {
   )
 }
 
+/** A control outside every pane that closes the named pane, as ⌘⇧W or a tab's last close does. */
+function ClosePaneButton({ id }: { id: string }): ReactElement {
+  const { closePane } = usePanes()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        closePane(id)
+      }}
+    >
+      Close pane
+    </button>
+  )
+}
+
+/** The same tree, plus a control that closes the second pane. */
+function renderClosableFrame() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <DragHarness>
+        <SidebarProvider>
+          <PanesProvider>
+            <ClosePaneButton id="pane-2" />
+            <PaneGrid />
+          </PanesProvider>
+        </SidebarProvider>
+      </DragHarness>
+    </QueryClientProvider>,
+  )
+}
+
 function renderPanes() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -515,6 +547,46 @@ describe('WorkspacePane', () => {
     for (const pane of view.getByTestId('workspace-pane').all()) {
       expect(getComputedStyle(pane.element()).minHeight).toBe('200px')
     }
+
+    await view.unmount()
+  })
+
+  it('closing the pane after a dragged divider hands the full width back to the survivor', async () => {
+    settingsStore.seed(SPLIT_PANES)
+    const view = await renderClosableFrame()
+    const handle = view.getByRole('separator', { name: 'Resize columns' }).element()
+    const left = view.getByTestId('workspace-column').all()[0]!.element()
+
+    firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientX: 500 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientX: 400 })
+    firePointer(handle, 'pointerup', { pointerId: 1 })
+    expect(left.style.flex).not.toBe('')
+
+    await userEvent.click(view.getByRole('button', { name: 'Close pane' }))
+    await expect.poll(() => view.getByTestId('workspace-column').all()).toHaveLength(1)
+    // The surviving column is the same element, back on the grid's flex-1:
+    // a pinned width would leave the closed pane's share as an empty hole.
+    expect(view.getByTestId('workspace-column').all()[0]!.element()).toBe(left)
+    expect(left.style.flex).toBe('')
+
+    await view.unmount()
+  })
+
+  it('closing the lower pane after a dragged divider hands the full height back', async () => {
+    settingsStore.seed(STACKED_PANES)
+    const view = await renderClosableFrame()
+    const handle = view.getByRole('separator', { name: 'Resize rows' }).element()
+    const above = view.getByTestId('workspace-pane').all()[0]!.element()
+
+    firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientY: 400 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientY: 300 })
+    firePointer(handle, 'pointerup', { pointerId: 1 })
+    expect(above.style.flex).not.toBe('')
+
+    await userEvent.click(view.getByRole('button', { name: 'Close pane' }))
+    await expect.poll(() => view.getByTestId('workspace-pane').all()).toHaveLength(1)
+    expect(view.getByTestId('workspace-pane').all()[0]!.element()).toBe(above)
+    expect(above.style.flex).toBe('')
 
     await view.unmount()
   })

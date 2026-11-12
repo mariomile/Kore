@@ -3,7 +3,6 @@ import { captureMetaFetch, readNote, writeNote } from '../graph/commands'
 import { appendHeadingSection } from '../markdown/append-section'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { XPost } from '@post-embed/types'
-import { extractArticleFromHtml } from './article-text'
 import { isLinkedInUrl, xPostId } from './link-preview-providers'
 import { youtubeVideoId } from './oembed'
 import { retitleLinkCard } from './resource-card'
@@ -54,7 +53,13 @@ async function youtubeTranscript(videoId: string): Promise<LinkText | null> {
 }
 
 async function articleText(url: string): Promise<LinkText | null> {
-  const article = extractArticleFromHtml(await captureMetaFetch(url), url)
+  // Defuddle is the biggest dependency on the launch path and only a pasted
+  // link needs it, so it loads on the first article fetch, not at startup.
+  const [{ extractArticleFromHtml }, html] = await Promise.all([
+    import('./article-text'),
+    captureMetaFetch(url),
+  ])
+  const article = extractArticleFromHtml(html, url)
   if (article.markdown.length < MIN_ARTICLE_CHARS) return null
   return { kind: 'article', title: article.title, markdown: bounded(article.markdown) }
 }

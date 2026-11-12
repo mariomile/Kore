@@ -23,8 +23,15 @@ export default defineConfig({
     __KORE_VERSION__: JSON.stringify(pkg.version),
   },
 
-  // If the target is below Safari 17.5, Lightning CSS downlevels `light-dark()` to a broken polyfill.
-  build: { cssTarget: 'safari17.5', sourcemap: 'hidden' },
+  build: {
+    // If the target is below Safari 17.5, Lightning CSS downlevels `light-dark()` to a broken polyfill.
+    cssTarget: 'safari17.5',
+    // No source maps: Tauri embeds every file in dist/ into the app binary,
+    // and the maps were 4x the size of the code they describe (~10 MB of a
+    // release binary, read by nothing). For profiling a production bundle,
+    // build with `vite build --sourcemap hidden`.
+    sourcemap: false,
+  },
 
   resolve: {
     alias: {

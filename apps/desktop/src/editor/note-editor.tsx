@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useImperativeHandle,
   useInsertionEffect,
   useRef,
@@ -57,6 +58,7 @@ import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 import { revealBlockId } from '@/editor/block-id-plugin'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
+import { markLaunch } from '@/lib/launch-timing'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
@@ -382,6 +384,9 @@ export function NoteEditor({
 }: NoteEditorProps): ReactElement {
   const innerRef = useRef<EditorHandle>(null)
   const followDeepLink = useFollowDeepLink()
+  useEffect(() => {
+    markLaunch('editor')
+  }, [])
 
   // The handlers below keep a stable identity for meowdown's lifetime — a new
   // identity rebuilds its extensions, which an uncontrolled editor cannot

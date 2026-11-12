@@ -1,5 +1,6 @@
 import { ulid } from 'ulidx'
 import { upsertFrontmatter } from '../markdown/frontmatter'
+import { addNoteTag } from '../markdown/note-tag'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
 import {
@@ -116,6 +117,53 @@ export async function createNoteWithTitle(
   const claimed = await claimNotePathForSlug(
     noteFileStemForTitle(title),
     newNoteSource(title, body),
+    generation,
+    null,
+  )
+  return claimed.path
+}
+
+/**
+ * The on-disk source for a brand-new note of type `tag`: `id:`, the type in
+ * the frontmatter `tags:` list (the Type field, where #401 says a note's
+ * type lives) and any starting `properties`, then the H1. One string, so the
+ * note is born whole in a single atomic create.
+ *
+ * The type deliberately does not ride a `#tag` line in the body: the editor
+ * hides that line under the Type chips, so ordinary typing in the body could
+ * delete it unseen, and with it the note's type and every field the type
+ * brings (the "frontmatter broke" report on a Company created from a
+ * Person's Company field).
+ */
+export function newTypedNoteSource(
+  title: string,
+  tag: string,
+  properties: Record<string, unknown> = {},
+): string {
+  const base = newNoteSource(title)
+  // The note's own `id:` and type are this function's to write; a starting
+  // value can never replace them.
+  const fields = Object.fromEntries(
+    Object.entries(properties).filter(([key]) => key !== 'id' && key !== 'tags'),
+  )
+  const withProperties = Object.keys(fields).length === 0 ? base : upsertFrontmatter(base, fields)
+  return addNoteTag(withProperties, tag) ?? withProperties
+}
+
+/**
+ * Create a note titled `title` whose type is `tag` (see
+ * {@link newTypedNoteSource}) at a collision-free slug path in the vault's
+ * new-note folder. Returns the new graph-relative path.
+ */
+export async function createTypedNoteWithTitle(
+  title: string,
+  tag: string,
+  properties: Record<string, unknown>,
+  generation: number,
+): Promise<string> {
+  const claimed = await claimNotePathForSlug(
+    noteFileStemForTitle(title),
+    newTypedNoteSource(title, tag, properties),
     generation,
     null,
   )

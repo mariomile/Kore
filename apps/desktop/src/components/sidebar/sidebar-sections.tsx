@@ -181,6 +181,10 @@ export function SidebarSections(): ReactElement {
     [updateSettingsWith],
   )
 
+  // Library starts hidden everywhere; offering it back only makes sense on a
+  // machine that has agent folders (never on mobile).
+  const restorable = libraryRoots.length > 0 ? hidden : hidden.filter((id) => id !== 'library')
+
   if (waitingForIndex) {
     return <ShelvesPlaceholder />
   }
@@ -199,7 +203,7 @@ export function SidebarSections(): ReactElement {
           </SortableContext>
         </DndContext>
       </SidebarShelfArrangementContext>
-      {hidden.length === 0 ? null : <HiddenItemsMenu items={hidden} onShow={show} />}
+      {restorable.length === 0 ? null : <HiddenItemsMenu items={restorable} onShow={show} />}
     </div>
   )
 }

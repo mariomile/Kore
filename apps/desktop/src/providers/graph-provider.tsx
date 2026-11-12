@@ -36,6 +36,7 @@ import { useDesktopGraphBoot } from './use-desktop-graph-boot'
 import { useMobileGraphBoot } from './use-mobile-graph-boot'
 import { useNoteWindowBoot } from './use-note-window-boot'
 import { useReconcileRequests } from './use-reconcile-requests'
+import { markLaunch } from '@/lib/launch-timing'
 
 export { useGraph, type GraphStatus } from './graph-context'
 
@@ -231,6 +232,7 @@ export function GraphProvider({
           setIndexGeneration(generation)
           setIndexReady(false)
           setStatus('ready')
+          markLaunch('vault')
           opened = true
           // Onboarding, considered exactly once per graph (the per-seed meta
           // markers): an empty graph gets the pinned "How to use Kore" note

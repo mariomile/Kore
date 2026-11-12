@@ -7,6 +7,17 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A note created from a relation field's Create entry keeps its type in the
+  frontmatter Type field, with its starting values, instead of a hidden #tag
+  line in the body (#416).
+- Smaller download and less JavaScript at launch: no source maps, stripped
+  Rust symbols, Defuddle loaded on first use (#417).
+- Launch timings are written to the local log (`launch:` lines) to measure
+  startup on a real Mac (#418).
+- The sidebar Library shelf (coding-agent folders) is hidden by default; show
+  it again from the hidden-items menu (#411).
+- Closing a split pane gives its space back to the pane that stays, even after
+  the divider was dragged (#412).
 - Opening a note or the daily no longer rescans the whole vault Git history
   for History (3 to 28 times less CPU per open on a 2,000-commit vault), and
   the macOS Liquid Glass setup no longer re-runs on every navigation (#404).

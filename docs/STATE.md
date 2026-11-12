@@ -1,5 +1,32 @@
 # Kore working state
 
+## Relation-created notes keep their type, smaller app, launch timings, 2026-11-12
+
+- [x] A note created from a relation field's Create entry (Person > Company >
+  Create DeepAgent) gets its type in the frontmatter Type field (`tags:`) plus
+  its starting values in one atomic create, instead of a hidden #tag line in
+  the body that could be deleted unseen (#416).
+- [x] Release builds ship without source maps and with stripped Rust symbols
+  (frontend 52.6 MB → 11 MB, DMG est. 45.6 MB → ~30 MB); Defuddle loads on the
+  first pasted-link fetch instead of at launch (entry JS 1,869 → 1,573 KB)
+  (#417). DMG size to confirm on the first release after it.
+- [x] The main window logs `launch:` timings to the local log (process start
+  to window loaded, app script, vault ready, first note editor) so launch
+  speed can be measured on a real Mac (#418).
+- Not verified on a real Mac.
+
+## Closing a pane frees its space, Library hidden by default, 2026-11-12
+
+- [x] Dragging a pane divider pinned the left/upper pane to a pixel size, so
+  closing the other pane left the remaining one narrow with an empty hole. The
+  divider now clears its size on unmount (columns and rows); two regression
+  tests in `workspace-pane.test.tsx` (#412).
+- [x] The sidebar Library shelf (coding-agent home folders such as
+  `~/.claude`, `~/.codex`) starts hidden once per settings document
+  (`libraryShelfDefaulted` marker); it can be shown again from the hidden-
+  items menu, which offers it only where agent folders exist (#411).
+- Not verified on a real Mac.
+
 ## Open-note perf, Types shelf, signing pipeline and iOS icons, 2026-11-12
 
 - [x] Opening a note or the daily no longer rescans the whole vault Git

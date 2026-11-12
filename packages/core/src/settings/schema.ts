@@ -602,6 +602,33 @@ function migrateOpenTabs(value: unknown): unknown {
   return { ...Object.fromEntries(entries), openTabs: value.openNoteTabs }
 }
 
+/**
+ * The Library shelf (coding agents' home folders) starts hidden: it lists every
+ * agent tool installed on the Mac, which reads as clutter to anyone not
+ * browsing their skills. Applied once per settings document, marked by
+ * `libraryShelfDefaulted`, so a user who shows it again from the "hidden"
+ * menu keeps it. Fresh installs get the same default.
+ */
+function hideLibraryShelfOnce(value: unknown): unknown {
+  const doc =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {}
+  if (doc.libraryShelfDefaulted === true) {
+    return value
+  }
+  const hidden = Array.isArray(doc.hiddenSidebarItems) ? doc.hiddenSidebarItems : []
+  return {
+    ...doc,
+    hiddenSidebarItems: hidden.includes('library') ? hidden : [...hidden, 'library'],
+    libraryShelfDefaulted: true,
+  }
+}
+
+function migrateSettings(value: unknown): unknown {
+  return hideLibraryShelfOnce(migrateOpenTabs(value))
+}
+
 const settingsDocumentSchema = z.looseObject({
   editorMarkdownSyntax: editorMarkdownSyntaxSchema,
   editorSpellCheck: editorSpellCheckSchema,
@@ -617,6 +644,7 @@ const settingsDocumentSchema = z.looseObject({
   sidebarSections: sidebarSectionsSchema,
   sidebarNav: sidebarNavSchema,
   hiddenSidebarItems: hiddenSidebarItemsSchema,
+  libraryShelfDefaulted: z.boolean().catch(false),
   contextSidebarWidth: contextSidebarWidthSchema,
   detailsSections: detailsSectionsSchema,
   hiddenDetailsSections: hiddenDetailsSectionsSchema,
@@ -684,7 +712,7 @@ const settingsDocumentSchema = z.looseObject({
   connectors: connectorsSchema,
 })
 
-export const settingsSchema = z.preprocess(migrateOpenTabs, settingsDocumentSchema)
+export const settingsSchema = z.preprocess(migrateSettings, settingsDocumentSchema)
 
 export type Settings = z.infer<typeof settingsSchema>
 

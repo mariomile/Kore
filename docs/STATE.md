@@ -1,5 +1,25 @@
 # Kore working state
 
+## Open-note perf, Types shelf, signing pipeline and iOS icons, 2026-11-12
+
+- [x] Opening a note or the daily no longer rescans the whole vault Git
+  history for History: 3 to 28 times less CPU per open on a 2,000-commit
+  vault; the macOS Liquid Glass setup no longer re-runs on every navigation
+  (#404).
+- [x] The Details local graph lays out off-screen and paints once instead of
+  animating, about 30-40% less main-thread work per open; the sync-conflict
+  notice reuses the note row query (#407).
+- [x] Note organization step 2 (#405): sidebar Types shelf (tags with a
+  definition, each opens its database) above Tags (topics only), folders
+  below; the type picker splits Types and Tags; the large seed is typed
+  through frontmatter `tags:`.
+- [x] Release DMG signs and notarizes with Kore's Developer ID when
+  `APPLE_CERTIFICATE` is set, else builds ad-hoc as before (#402). 0.102.0
+  still built ad-hoc: the secret is not set.
+- [x] iOS app icons are opaque, and `release:ios` checks them (#408). First
+  TestFlight build uploaded (run 43128582607).
+- Not verified on a real Mac.
+
 ## Cover position, daily pictures and tag mentions, 2026-11-11
 
 Ask: Mario, Lotion phase 1 step 3, the daily scroll follow-up and note

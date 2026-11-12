@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   createNoteWithTitle,
+  createTypedNoteWithTitle,
   startingValuesFor,
   decodeStoredList,
   foldTag,
@@ -18,7 +19,6 @@ import {
   type WikiLinkSuggestion,
 } from '@kore/core'
 import { PopoverTrigger } from '@/components/ui/popover'
-import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -201,12 +201,15 @@ export function useRelationCreateEntry(
 
 /**
  * Create the note a relation picker's "Create" entry names: a note titled
- * `title`, carrying `#targetTag` in the body when the field files into a
- * collection (else a plain note), born at a collision-free slug path like
- * every create-from-title. Returns the wiki
- * insert text for the new note — its verified address when the index has it
- * already (the local-write echo usually has), else the title itself, which
- * the new note claims as soon as the projection lands.
+ * `title` at a collision-free slug path like every create-from-title. When
+ * the field files into a collection the note is born with that type in its
+ * Type field (frontmatter `tags:`) plus the type's `created` stamps (Plan 29
+ * T1) and starting values (Plan 33 B4), all in one atomic create, so there
+ * is no second write to race the editor and no hidden `#tag` body line that
+ * typing could erase. Returns the wiki insert text for the new note — its
+ * verified address when the index has it already (the local-write echo
+ * usually has), else the title itself, which the new note claims as soon as
+ * the projection lands.
  */
 async function createRelationRow(
   targetTag: string | undefined,
@@ -216,18 +219,15 @@ async function createRelationRow(
   if (targetTag === undefined) {
     return await insertTextFor(await createNoteWithTitle(title, generation), title)
   }
-  const path = await createNoteWithTitle(title, generation, `#${targetTag}`)
-  // A row born from the picker carries its `created` stamps (Plan 29 T1)
-  // and starting values (Plan 33 B4) too — best-effort: a failed stamp
-  // never loses the created note.
+  // Best-effort: a type that cannot be read still gets its note, just
+  // without starting values, which can be filled by hand.
+  let stamps: Record<string, unknown> = {}
   try {
-    const stamps = await startingValuesFor(targetTag, await getTagType(targetTag))
-    if (Object.keys(stamps).length > 0) {
-      await commitNoteFrontmatter(path, { properties: stamps }, generation)
-    }
+    stamps = await startingValuesFor(targetTag, await getTagType(targetTag))
   } catch {
-    // The note exists; the stamp can be filled by hand.
+    stamps = {}
   }
+  const path = await createTypedNoteWithTitle(title, targetTag, stamps, generation)
   return await insertTextFor(path, title)
 }
 

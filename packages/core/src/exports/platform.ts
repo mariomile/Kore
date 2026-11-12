@@ -266,6 +266,8 @@ export {
   openNoteTabTitle,
   createNoteWithTitle,
   createNoteWithSource,
+  createTypedNoteWithTitle,
+  newTypedNoteSource,
   resolveOrCreateNoteWithTitle,
   type ResolveOrCreateNoteResult,
 } from '../graph/create-note'

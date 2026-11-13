@@ -47,6 +47,11 @@ dependency floors rather than local workarounds:
   `llvm-objcopy`: run `rustup component add llvm-tools` once, or the link
   fails with undefined symbols from the Swift plugins. Do not wrap
   `swift` with `--build-system native`.
+- The simulator runtime must be at least the Xcode SDK version (iOS 27.2
+  for Xcode 27.2). With only an older runtime (say iOS 26.5) tauri-cli
+  warns `Xcode Simulator SDK 27.2 is not installed`, opens Xcode and waits
+  without building. Install it with `xcodebuild -downloadPlatform iOS` (or
+  Xcode > Settings > Components) and run the iPhone 17 Pro on it.
 
 To see simulator names:
 

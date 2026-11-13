@@ -215,6 +215,39 @@ describe('createNoteSession', () => {
     expect(snapshots.at(-1)?.dirty).toBe(false)
   })
 
+  it('a save never overwrites an external change the watcher has not reported yet', async () => {
+    // iCloud can replace the file during the save debounce (or before the
+    // watcher starts at launch): the buffer was edited against the old
+    // version, so writing it would silently drop the other device's change.
+    const { session, writes, snapshots, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Hello mine\n')
+    setDisk('# Hello from the phone\n') // no externalChanged(): event not seen yet
+    await settled()
+
+    expect(writes).toEqual([])
+    expect(snapshots.at(-1)).toMatchObject({ conflict: '# Hello from the phone\n', dirty: true })
+
+    session.keepMine()
+    await settled()
+    expect(writes.at(-1)?.contents).toBe('# Hello mine\n')
+    expect(snapshots.at(-1)).toMatchObject({ conflict: null, dirty: false })
+  })
+
+  it('closing over an unreported external change keeps the buffer as a conflict copy', async () => {
+    const { session, writes, copies, setDisk } = harness()
+    session.load()
+    await settled()
+    session.editorChanged('# Hello mine\n')
+    setDisk('# Hello from the phone\n')
+
+    await session.flushOnClose()
+
+    expect(writes).toEqual([])
+    expect(copies).toEqual([{ path: 'notes/a.md', contents: '# Hello mine\n' }])
+  })
+
   it('closing under a parked conflict saves the buffer as a copy and leaves the note alone', async () => {
     const { session, writes, copies, setDisk } = harness()
     session.load()
@@ -454,6 +487,11 @@ describe('frontmatter ownership (Plan 07b)', () => {
 
   it('keeps newer typing when a body transform write fails and saves it on retry', async () => {
     let finishWrite: (() => void) | undefined
+    const untilWriteStarts = async (previous: (() => void) | undefined): Promise<void> => {
+      for (let tick = 0; tick < 20 && finishWrite === previous; tick += 1) {
+        await Promise.resolve()
+      }
+    }
     const h = harness({
       disk: '# Hello\n',
       beforeWrite: () =>
@@ -468,7 +506,8 @@ describe('frontmatter ownership (Plan 07b)', () => {
     try {
       const commit = h.session.commitBodyTransform((source) => `${source}Transformed\n`)
       const rejected = expect(commit).rejects.toThrow('disk full')
-      await Promise.resolve()
+      // The save re-reads the file before writing (compare before write).
+      await untilWriteStarts(undefined)
       expect(finishWrite).toBeDefined()
       h.session.editorChanged('# Hello\nTransformed\nNew typing\n')
       finishWrite?.()
@@ -478,8 +517,9 @@ describe('frontmatter ownership (Plan 07b)', () => {
       expect(h.applied).toEqual(['# Hello\nTransformed\n'])
       expect(h.snapshots.at(-1)).toMatchObject({ dirty: true, error: 'disk full' })
       h.failWrites(null)
+      const firstWrite = finishWrite
       const retry = h.session.flush()
-      await Promise.resolve()
+      await untilWriteStarts(firstWrite)
       finishWrite?.()
       await retry
       expect(h.writes.at(-1)?.contents).toBe('# Hello\nTransformed\nNew typing\n')

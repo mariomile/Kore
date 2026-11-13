@@ -1,6 +1,7 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { tagDisplayName, type NoteTagEntry } from '@kore/core'
 import { Close, Plus } from '@/components/icons'
+import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { useRemoveNoteTag } from '@/lib/tags/use-remove-note-tag'
@@ -29,6 +30,8 @@ interface NoteTypeFieldProps {
  * editor collapses a leading or trailing tag-only paragraph whenever this
  * header renders — so a tag missing from this row would be hidden with
  * nothing left to show it. Removing a chip strips `#tag` from the body.
+ * Tapping a chip's name opens that type's configuration: on the phone it is
+ * the one way to give a type its first field.
  */
 export function NoteTypeField({
   path,
@@ -38,6 +41,7 @@ export function NoteTypeField({
   const addTag = useAddNoteTag()
   const removeTag = useRemoveNoteTag()
   const carried = tags.map((entry) => entry.tagKey)
+  const [configuring, setConfiguring] = useState<string | null>(null)
 
   return (
     <li className="flex min-h-7 items-center gap-2">
@@ -51,12 +55,20 @@ export function NoteTypeField({
               {/* The icon already says "tag" (the `#` glyph when none is
                   chosen), so the name reads plain, the way the sidebar's
                   Types list shows it: `# Meeting`, never `# #meeting`. */}
-              <TagIcon
-                icon={entry.type?.icon}
-                className="mr-0.5 size-3.5"
-                emojiClassName="mr-0.5"
-              />
-              <span className="truncate">{tagDisplayName(entry.tag)}</span>
+              <button
+                type="button"
+                aria-label={`Configure #${entry.tagKey}`}
+                title={`Edit the #${entry.tagKey} fields`}
+                className="flex min-w-0 items-center rounded-full transition-colors hover:text-text"
+                onClick={() => setConfiguring(entry.tag)}
+              >
+                <TagIcon
+                  icon={entry.type?.icon}
+                  className="mr-0.5 size-3.5"
+                  emojiClassName="mr-0.5"
+                />
+                <span className="truncate">{tagDisplayName(entry.tag)}</span>
+              </button>
               <button
                 type="button"
                 aria-label={`Remove #${entry.tagKey}`}
@@ -89,6 +101,9 @@ export function NoteTypeField({
           </NoteTypePicker>
         </li>
       </ul>
+      {configuring !== null ? (
+        <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
+      ) : null}
     </li>
   )
 }

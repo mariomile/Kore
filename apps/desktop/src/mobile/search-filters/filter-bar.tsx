@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { foldTag, type NoteTagFacet } from '@kore/core'
+import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { FilterChip } from './filter-chip'
 import {
   EMPTY_ALL_NOTES_FILTERS,
@@ -53,6 +54,8 @@ export function FilterBar({
   onClearRouteTag,
 }: FilterBarProps): ReactElement {
   const [openDrawer, setOpenDrawer] = useState<OpenDrawer>(null)
+  // The type whose configuration sheet is open, from a Types drawer gear.
+  const [configuring, setConfiguring] = useState<string | null>(null)
   const active = hasActiveFilters(filters) || routeTag !== null
 
   const patch = (changes: Partial<AllNotesFilters>): void => {
@@ -117,6 +120,10 @@ export function FilterBar({
         onOpenChange={(open) => setOpenDrawer(open ? 'tags' : null)}
         facets={facets}
         selected={filters.tags}
+        onConfigure={(tag) => {
+          setOpenDrawer(null)
+          setConfiguring(tag)
+        }}
         onToggle={(tagKey) =>
           patch({
             tags: filters.tags.includes(tagKey)
@@ -145,6 +152,9 @@ export function FilterBar({
         current={filters.updated}
         onApply={(updated) => patch({ updated })}
       />
+      {configuring !== null ? (
+        <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
+      ) : null}
     </>
   )
 }

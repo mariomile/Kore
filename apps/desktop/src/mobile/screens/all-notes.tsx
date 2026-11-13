@@ -1,6 +1,6 @@
-import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
+import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, LayoutGrid, List, Note, SearchOff } from '@/components/icons'
+import { ChevronLeft, LayoutGrid, List, Note, SearchOff, Settings } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
@@ -10,6 +10,7 @@ import {
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
+import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -101,6 +102,8 @@ export function MobileAllNotes({
   const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
+  // A tag page's gear opens that type's configuration sheet.
+  const [configuring, setConfiguring] = useState(false)
 
   // The All-tab double-tap (`focusEditor` arrivals) lands in the search bar,
   // the tab's capture surface — the daily double-tap's All-flavored twin.
@@ -217,6 +220,17 @@ export function MobileAllNotes({
             onFocus={searchHeaderFocus.onFocus}
             onBlur={searchHeaderFocus.onBlur}
           />
+          {tag !== null && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0"
+              aria-label={`Configure #${foldTag(tag)}`}
+              onClick={() => setConfiguring(true)}
+            >
+              <Settings />
+            </Button>
+          )}
           <AllNotesLayoutToggle
             view={view}
             onChange={(next) => {
@@ -277,6 +291,9 @@ export function MobileAllNotes({
           onDeleted={removeDeletedRow}
         />
       )}
+      {configuring && tag !== null ? (
+        <TagConfigDialog tag={tag} onClose={() => setConfiguring(false)} />
+      ) : null}
     </div>
   )
 }

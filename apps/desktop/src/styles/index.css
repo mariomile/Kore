@@ -985,7 +985,11 @@ html:root {
   }
 }
 .kore-editor.kore-editor-has-properties > h1:first-child {
-  margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
+  margin-bottom: calc(0.4em + var(--kore-note-properties-space, 0px));
+}
+/* A typed note with no title line shows its fields above the body. */
+.kore-editor.kore-editor-properties-top {
+  padding-top: var(--kore-note-properties-space, 0px);
 }
 
 /* Membership `#tag` lines sit in Type above the body. Leading or trailing

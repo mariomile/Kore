@@ -13,6 +13,10 @@ import { useGraph } from '@/providers/graph-provider'
 interface TagTasksSectionProps {
   /** The routed tag, or `null` off a tag page (renders nothing). */
   tag: string | null
+  /** Keep only these rows (a fence's "this note" view); all rows when unset. */
+  include?: ((row: OpenTask) => boolean) | undefined
+  /** Replaces the page layout's padding (a fence sits in a bordered box). */
+  className?: string | undefined
 }
 
 /** The row's text without the tag the page is about: on #lead, "call Andrea". */
@@ -32,19 +36,24 @@ function rowText(text: string, tagKey: string): string {
  * behind a toggle. Each row names the note it lives in, which opens on
  * click. Renders nothing when no checkbox carries the tag.
  */
-export function TagTasksSection({ tag }: TagTasksSectionProps): ReactElement | null {
+export function TagTasksSection({
+  tag,
+  include,
+  className,
+}: TagTasksSectionProps): ReactElement | null {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const queryClient = useQueryClient()
   const { openSource } = useBacklinkNavigation()
   const [showDone, setShowDone] = useState(false)
   const queryKey = [INDEX_QUERY_SCOPE, graph?.root, 'tag-tasks', tag === null ? '' : foldTag(tag)]
-  const { data: rows } = useQuery({
+  const { data: allRows } = useQuery({
     queryKey,
     queryFn: () => getTasksForTag(tag ?? ''),
     enabled: bridgeReady && graph !== null && tag !== null,
   })
 
+  const rows = include === undefined || allRows === undefined ? allRows : allRows.filter(include)
   if (tag === null || rows === undefined || rows.length === 0) {
     return null
   }
@@ -111,7 +120,10 @@ export function TagTasksSection({ tag }: TagTasksSectionProps): ReactElement | n
   )
 
   return (
-    <section aria-label={`Tasks tagged #${tag}`} className="flex-none pb-3 pl-12 pr-7">
+    <section
+      aria-label={`Tasks tagged #${tag}`}
+      className={className ?? 'flex-none pb-3 pl-12 pr-7'}
+    >
       <h2 className="text-xs font-medium text-text-muted">
         {open.length === 0
           ? 'Tasks'

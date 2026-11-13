@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { linkKind, linkKindInfo, videoPlayerUrl } from './link-kind'
+import { linkKind, linkKindInfo } from './link-kind'
 
 describe('linkKind', () => {
   it('reads a video host', () => {
@@ -50,31 +50,5 @@ describe('linkKind', () => {
   it('gives every kind a label and a tag name', () => {
     expect(linkKindInfo('repo')).toEqual({ label: 'Repository', tag: 'repo' })
     expect(linkKindInfo('social').tag).toBe('post')
-  })
-})
-
-describe('videoPlayerUrl', () => {
-  it('builds a cookie-less YouTube player', () => {
-    expect(videoPlayerUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(
-      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-    )
-    expect(videoPlayerUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(
-      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-    )
-    expect(videoPlayerUrl('https://www.youtube.com/shorts/abc123')).toBe(
-      'https://www.youtube-nocookie.com/embed/abc123',
-    )
-  })
-
-  it('builds a Vimeo player only for a numeric id', () => {
-    expect(videoPlayerUrl('https://vimeo.com/76979871')).toBe(
-      'https://player.vimeo.com/video/76979871',
-    )
-    expect(videoPlayerUrl('https://vimeo.com/channels/staffpicks')).toBeNull()
-  })
-
-  it('has no player for other hosts', () => {
-    expect(videoPlayerUrl('https://example.com/clip.mp4')).toBeNull()
-    expect(videoPlayerUrl('nonsense')).toBeNull()
   })
 })

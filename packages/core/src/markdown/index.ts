@@ -52,10 +52,10 @@ export {
   linkKindInfo,
   LINK_KIND_FALLBACK,
   LINK_KINDS,
-  videoPlayerUrl,
   type LinkKind,
   type LinkKindInfo,
 } from './link-kind'
+export { embedPlayer, startSeconds, type EmbedPlayer } from './embed-player'
 export {
   blockIdsIn,
   blockLinkLabel,

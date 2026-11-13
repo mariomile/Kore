@@ -45,7 +45,7 @@ dependency floors rather than local workarounds:
   'AppKit'`). swift-rs 1.0.9 passes `--triple` instead. On Xcode 27 it also
   re-exports the `@_cdecl` symbols SwiftPM now hides, with rustup's
   `llvm-objcopy`: run `rustup component add llvm-tools` once, or the link
-  fails with undefined `_init_plugin_*` / `_ios_*` symbols. Do not wrap
+  fails with undefined symbols from the Swift plugins. Do not wrap
   `swift` with `--build-system native`.
 
 To see simulator names:

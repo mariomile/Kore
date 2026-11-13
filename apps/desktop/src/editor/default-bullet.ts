@@ -8,7 +8,9 @@
  * back to nothing (`docToMarkdown` drops it) — so the editor shows a bullet
  * while the document still reads as empty. Nothing is written until the user
  * types real content, which keeps a not-yet-created daily-note placeholder
- * uncreated (the lazy no-litter contract). The seam lives here, at the editor,
+ * uncreated (the lazy no-litter contract). Once touched (typed into and erased,
+ * Tab-indented) the bullet serializes to `-` instead, which the session also
+ * reads as empty (`isBlankListSkeleton`). The seam lives here, at the editor,
  * rather than in the save pipeline: seeding the document model with the literal
  * `- ` markdown would classify lossy and open the note read-only.
  */

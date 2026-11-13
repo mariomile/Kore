@@ -1,6 +1,6 @@
 # Running the iOS simulator
 
-Reflect mobile is the iOS target of `apps/desktop`, so the simulator dev loop
+Kore mobile is the iOS target of `apps/desktop`, so the simulator dev loop
 uses Tauri's iOS command rather than a separate app package.
 
 From the repo root:
@@ -8,6 +8,16 @@ From the repo root:
 ```bash
 pnpm tauri:ios:dev "iPhone 17 Pro"
 ```
+
+Or, for the default simulator, just:
+
+```bash
+pnpm tauri:ios:dev:sim
+```
+
+which builds the app, installs it on the "iPhone 17 Pro" simulator, boots
+the simulator if needed and launches it, with the frontend on
+`localhost:1420`.
 
 The root `tauri:ios:dev` script delegates to `apps/desktop`, so the command
 runs the usual sidecar step and starts Vite through Tauri's
@@ -20,6 +30,28 @@ icon, own `group.app.reflect.dev` App Group, no iCloud), so they coexist with
 the TestFlight/App Store app instead of colliding with its install record.
 Plain `tauri ios dev` no longer works on its own: it would build the dev
 bundle id but try to launch `app.reflect.ios`.
+
+### Xcode 27
+
+Xcode 27 changed two things the dev loop depends on, and both are fixed by
+dependency floors rather than local workarounds:
+
+- `devicectl` now lists simulators too. `@tauri-apps/cli` before 2.12
+  (cargo-mobile2 before 0.22.5) took the simulator for a physical iPhone:
+  it asked for a signed archive and a provisioning profile and pointed the
+  app at the Mac's LAN IP. Keep `@tauri-apps/cli` at 2.12.4 or later.
+- SwiftPM appends the host SDK after swift-rs' per-`swiftc` overrides, so
+  Tauri's Swift package was compiled for macOS (`could not build module
+  'AppKit'`). swift-rs 1.0.9 passes `--triple` instead. On Xcode 27 it also
+  re-exports the `@_cdecl` symbols SwiftPM now hides, with rustup's
+  `llvm-objcopy`: run `rustup component add llvm-tools` once, or the link
+  fails with undefined symbols from the Swift plugins. Do not wrap
+  `swift` with `--build-system native`.
+- The simulator runtime must be at least the Xcode SDK version (iOS 27.2
+  for Xcode 27.2). With only an older runtime (say iOS 26.5) tauri-cli
+  warns `Xcode Simulator SDK 27.2 is not installed`, opens Xcode and waits
+  without building. Install it with `xcodebuild -downloadPlatform iOS` (or
+  Xcode > Settings > Components) and run the iPhone 17 Pro on it.
 
 To see simulator names:
 

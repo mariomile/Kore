@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   EMPTY_TAG_TYPE,
   foldTag,
+  hasThisNoteFilter,
+  hostStartingValues,
+  textLinksToHostNote,
   type CollectionEmbed,
   type CollectionEmbedView,
   type CollectionEntry,
@@ -51,6 +54,8 @@ import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { CollectionDefinitionDialog } from '@/components/notes/collection-definition-dialog'
 import { ReusableCollectionActions } from '@/components/notes/reusable-collection-actions'
+import { useEmbedHost } from '@/components/notes/embed-host-context'
+import { TagTasksSection } from '@/components/all-notes/tag-tasks-section'
 import { useCollection } from '@/hooks/use-collection'
 import { useReusableCollection } from '@/hooks/use-reusable-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -165,15 +170,16 @@ function EmbeddedTagCollection({
     () => queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, tag) }),
     [queryClient, graph?.root, tag],
   )
+  const host = useEmbedHost()
   const unfiltered = useCollection(tagType === undefined ? null : tag, embed.sorts)
   const entries = useMemo(() => {
     if (unfiltered === undefined || tagType === undefined) {
       return unfiltered
     }
     // The fence's filter lines share the filter menu's vocabulary, so the
-    // one applier serves both surfaces.
-    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match)
-  }, [unfiltered, tagType, embed.filters, embed.match])
+    // one applier serves both surfaces. `key = this` reads the host note.
+    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match, host)
+  }, [unfiltered, tagType, embed.filters, embed.match, host])
   // `group:` renders the fence's table with shelf rows (Plan 29 V1b) — only
   // a key the schema declares as single-valued groupable; anything else
   // stays flat, never a broken widget.
@@ -288,6 +294,7 @@ function EmbeddedTagCollection({
             onChange={(filters) => onChange({ ...embed, filters })}
             match={embed.match}
             onMatchChange={(match) => onChange({ ...embed, match })}
+            host={host}
           />
           {(view === 'table' || view === 'board') && groupProperties.length > 0 ? (
             <Select
@@ -386,12 +393,15 @@ function EmbeddedTagCollection({
               if (graph === null) {
                 return
               }
+              // A row added under `project = this` is born linked to this
+              // note, so it stays in the view it was typed into.
               await createTitledCollectionNote(
                 tag,
                 graph.generation,
                 title,
                 tagType,
                 await resolveTemplateValues(null),
+                host === null ? {} : hostStartingValues(embed.filters, tagType.properties, host),
               )
             }}
             groups={groups}
@@ -400,6 +410,15 @@ function EmbeddedTagCollection({
           />
         )}
       </div>
+      {host !== null && hasThisNoteFilter(embed.filters) ? (
+        // A "this note" view also lists the checkboxes tagged with its tag
+        // that live in this note or link to it (organization point 4).
+        <TagTasksSection
+          tag={tag}
+          include={(row) => row.notePath === host.path || textLinksToHostNote(row.text, host)}
+          className="border-t border-border/60 px-3 pt-2 pb-3"
+        />
+      ) : null}
       {editingSchema ? <TagConfigDialog tag={tag} onClose={() => setEditingSchema(false)} /> : null}
     </section>
   )

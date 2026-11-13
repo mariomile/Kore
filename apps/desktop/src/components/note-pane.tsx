@@ -17,7 +17,9 @@ import {
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   wikiLinkTargetForTitle,
+  type EmbedHostNote,
 } from '@kore/core'
+import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
@@ -383,30 +385,40 @@ export function NotePaneComponent({
     }
   }, [dailyDate, onExitBoundary])
 
-  const renderCodeBlock = useCallback<CodeBlockRenderer>(({ language, code, updateCode }) => {
-    if (language !== 'collection') {
-      return null
-    }
-    const embed = parseCollectionEmbedBody(code)
-    if (embed === null) {
-      return null
-    }
-    return (
-      <CollectionFenceRemoval>
-        {(remove) => (
-          <Suspense fallback={null}>
-            <EmbeddedCollection
-              embed={embed}
-              onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
-              // Touch has no block grip to delete the fence with; desktop
-              // keeps its grip menu and Backspace on the selected block.
-              onRemove={isTouchEditorSurface() ? remove : undefined}
-            />
-          </Suspense>
-        )}
-      </CollectionFenceRemoval>
-    )
-  }, [])
+  // The note a collection fence sits in, for its `key = this` filters.
+  const embedHost = useMemo<EmbedHostNote>(
+    () => ({ path, linkTarget: noteLinkTarget }),
+    [path, noteLinkTarget],
+  )
+  const renderCodeBlock = useCallback<CodeBlockRenderer>(
+    ({ language, code, updateCode }) => {
+      if (language !== 'collection') {
+        return null
+      }
+      const embed = parseCollectionEmbedBody(code)
+      if (embed === null) {
+        return null
+      }
+      return (
+        <EmbedHostContext value={embedHost}>
+          <CollectionFenceRemoval>
+            {(remove) => (
+              <Suspense fallback={null}>
+                <EmbeddedCollection
+                  embed={embed}
+                  onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+                  // Touch has no block grip to delete the fence with; desktop
+                  // keeps its grip menu and Backspace on the selected block.
+                  onRemove={isTouchEditorSurface() ? remove : undefined}
+                />
+              </Suspense>
+            )}
+          </CollectionFenceRemoval>
+        </EmbedHostContext>
+      )
+    },
+    [embedHost],
+  )
 
   if (document.status === 'loading') {
     // Keep fast local reads invisible; a genuinely slow read gets a layout

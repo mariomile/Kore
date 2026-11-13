@@ -1,5 +1,14 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import type { CollectionEntry, TagProperty, TagType } from '@kore/core'
+import {
+  acceptsThisNoteFilter,
+  isThisNoteFilterText,
+  linksToHostNote,
+  THIS_NOTE_FILTER_TEXT,
+  type CollectionEntry,
+  type EmbedHostNote,
+  type TagProperty,
+  type TagType,
+} from '@kore/core'
 import { Close, Filter, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,6 +52,11 @@ interface CollectionFilterMenuProps {
   onChange: (filters: CollectionFilter[]) => void
   match: CollectionFilterMatch
   onMatchChange: (match: CollectionFilterMatch) => void
+  /**
+   * Set when the view is a fence inside a note: relation fields then offer
+   * a "This note" pick, written as `key = this`.
+   */
+  host?: EmbedHostNote | null
 }
 
 const MAX_VALUES_PER_PROPERTY = 12
@@ -87,8 +101,22 @@ function compare(property: TagProperty, text: string, against: string): number {
   return text.localeCompare(against)
 }
 
-function matches(property: TagProperty, entry: CollectionEntry, filter: CollectionFilter): boolean {
+function matches(
+  property: TagProperty,
+  entry: CollectionEntry,
+  filter: CollectionFilter,
+  host: EmbedHostNote | null,
+): boolean {
   const value = entry.properties[filter.key]
+  // `key = this`: the row links to the note the fence sits in. Outside a
+  // note there is no "this", so the filter keeps nothing.
+  if (
+    filter.operator === 'is' &&
+    acceptsThisNoteFilter(property) &&
+    isThisNoteFilterText(filter.text)
+  ) {
+    return host !== null && linksToHostNote(value, host)
+  }
   const text = readCellValue(property, value).text
   switch (filter.operator) {
     case 'is':
@@ -118,6 +146,7 @@ export function applyCollectionFilters(
   entries: readonly CollectionEntry[],
   filters: readonly CollectionFilter[],
   match: CollectionFilterMatch = 'all',
+  host: EmbedHostNote | null = null,
 ): CollectionEntry[] {
   if (filters.length === 0) {
     return [...entries]
@@ -127,7 +156,7 @@ export function applyCollectionFilters(
     return entries.filter((entry) =>
       filters.some((filter) => {
         const property = propertiesByKey.get(filter.key)
-        return property !== undefined && matches(property, entry, filter)
+        return property !== undefined && matches(property, entry, filter, host)
       }),
     )
   }
@@ -144,15 +173,24 @@ export function applyCollectionFilters(
       const equals = keyFilters.filter((filter) => filter.operator === 'is')
       const others = keyFilters.filter((filter) => filter.operator !== 'is')
       const anyEqual =
-        equals.length === 0 || equals.some((filter) => matches(property, entry, filter))
-      return anyEqual && others.every((filter) => matches(property, entry, filter))
+        equals.length === 0 || equals.some((filter) => matches(property, entry, filter, host))
+      return anyEqual && others.every((filter) => matches(property, entry, filter, host))
     }),
   )
 }
 
 /** The chip's text for one filter. */
 function filterLabel(type: TagType, filter: CollectionFilter): string {
-  const name = type.properties.find((property) => property.key === filter.key)?.name ?? filter.key
+  const property = type.properties.find((candidate) => candidate.key === filter.key)
+  const name = property?.name ?? filter.key
+  if (
+    filter.operator === 'is' &&
+    property !== undefined &&
+    acceptsThisNoteFilter(property) &&
+    isThisNoteFilterText(filter.text)
+  ) {
+    return `${name}: this note`
+  }
   if (filter.operator === 'empty' || filter.operator === 'notEmpty') {
     return `${name} ${OPERATOR_LABELS[filter.operator]}`
   }
@@ -176,6 +214,7 @@ export function CollectionFilterMenu({
   onChange,
   match,
   onMatchChange,
+  host = null,
 }: CollectionFilterMenuProps): ReactElement | null {
   const [open, setOpen] = useState(false)
   // Every property joins the condition builder — a checkbox filters as
@@ -208,12 +247,12 @@ export function CollectionFilterMenu({
           values.add(text)
         }
       }
-      if (values.size > 0) {
+      if (values.size > 0 || (host !== null && acceptsThisNoteFilter(property))) {
         inventory.set(property.key, [...values].slice(0, MAX_VALUES_PER_PROPERTY))
       }
     }
     return inventory
-  }, [inventoried, entries])
+  }, [inventoried, entries, host])
 
   if (filterable.length === 0 && filters.length === 0) {
     return null
@@ -388,6 +427,17 @@ export function CollectionFilterMenu({
                 const property = type.properties.find((entry) => entry.key === key)
                 return (
                   <CommandGroup key={key} heading={property?.name ?? key}>
+                    {host !== null && property !== undefined && acceptsThisNoteFilter(property) ? (
+                      <CommandItem
+                        value={`${property.name} this note`}
+                        onSelect={() => toggleEquality(key, THIS_NOTE_FILTER_TEXT)}
+                      >
+                        <span className="min-w-0 flex-1 truncate">This note</span>
+                        {isActive(key, THIS_NOTE_FILTER_TEXT) ? (
+                          <Close aria-hidden className="size-3 shrink-0 text-text-muted" />
+                        ) : null}
+                      </CommandItem>
+                    ) : null}
                     {values.map((text) => (
                       <CommandItem
                         key={text}

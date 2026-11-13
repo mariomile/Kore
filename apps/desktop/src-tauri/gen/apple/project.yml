@@ -303,10 +303,12 @@ targets:
     deploymentTarget: '16.2'
     sources:
       - path: RecordingWidget/RecordingWidgetBundle.swift
+      - path: RecordingWidget/DailyNoteWidget.swift
       - path: RecordingWidget/RecordAudioWidget.swift
       - path: RecordingWidget/RecordingActivityWidget.swift
       - path: Sources/kore-open/StopRecordingLiveActivityIntent.swift
       - path: ../../../../../plugins/tauri-plugin-recording/ios/Sources/RecordingActivityAttributes.swift
+      - path: ../../../../../plugins/tauri-plugin-recording/ios/Sources/DailyWidgetSnapshot.swift
     info:
       path: RecordingWidget/Info.plist
       properties:

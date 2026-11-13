@@ -22,6 +22,7 @@ export {
   recordingStatus,
   startRecording,
   stopRecording,
+  updateDailyWidget,
   subscribeRecordingLevel,
   subscribeRecordingNativeAction,
   subscribeRecordingStopped,

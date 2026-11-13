@@ -6,6 +6,9 @@ import WebKit
 #if canImport(ActivityKit)
   import ActivityKit
 #endif
+#if canImport(WidgetKit)
+  import WidgetKit
+#endif
 
 /// The payload of the plugin's ~10 Hz `recordingLevel` event.
 struct RecordingLevel: Encodable {
@@ -42,7 +45,7 @@ struct RecordingStatus: Encodable {
 /// home-screen quick action, the lock-screen widget's `kore://` URL)
 /// asked for something only the webview can present.
 struct NativeAction: Encodable {
-  /// Currently only `recordAudio`.
+  /// `recordAudio` or `openDaily`.
   let action: String
 }
 
@@ -83,6 +86,11 @@ struct StartArgs: Decodable {
 
 struct StagedPathArgs: Decodable {
   let path: String
+}
+
+struct UpdateDailyWidgetArgs: Decodable {
+  /// A `DailyWidgetSnapshot`, serialized by the app.
+  let json: String
 }
 
 struct TranscribeArgs: Decodable {
@@ -402,6 +410,25 @@ class RecordingPlugin: Plugin {
         invoke.reject("on-device transcription failed: \(error.localizedDescription)")
       }
     }
+  }
+
+  /// Store the daily-note widget's snapshot (`DailyWidgetStore`) and ask
+  /// WidgetKit to redraw that widget. The app only calls this when the
+  /// digest changed, which keeps it inside WidgetKit's reload budget.
+  @objc public func updateDailyWidget(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(UpdateDailyWidgetArgs.self)
+    do {
+      try DailyWidgetStore.write(json: args.json)
+    } catch {
+      invoke.reject("updating the daily widget failed: \(error.localizedDescription)")
+      return
+    }
+    #if canImport(WidgetKit)
+      if #available(iOS 14.0, *) {
+        WidgetCenter.shared.reloadTimelines(ofKind: DailyWidgetStore.widgetKind)
+      }
+    #endif
+    invoke.resolve()
   }
 
   /// The extension AVFoundation needs to pick a container parser; `nil` for

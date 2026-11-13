@@ -81,6 +81,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
 }))
 
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: false, isNativeShell: () => true }))
+const navigate = vi.hoisted(() => vi.fn())
+vi.mock('@/routing/router', () => ({ useRouter: () => ({ navigate }) }))
 // The native shell is on, so pin the window role instead of reading Tauri's
 // window metadata, which the test browser does not have.
 vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
@@ -541,6 +543,21 @@ describe('MobileAudioMemoProvider', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('the daily widget tap (openDaily) shows today and confirms at once', async () => {
+    await renderHook(() => useMobileAudioMemo(), { wrapper })
+    await vi.waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('plugin:recording|actions_ready', {})
+    })
+
+    await act(async () => {
+      pluginEvents.emit('nativeAction', { action: 'openDaily' })
+    })
+
+    expect(navigate).toHaveBeenCalledWith({ kind: 'today' })
+    expect(invoke).toHaveBeenCalledWith('plugin:recording|action_performed', {})
+    expect(recorderControls.startSpy).not.toHaveBeenCalled()
   })
 
   it('unknown native actions are ignored', async () => {

@@ -12,6 +12,7 @@ const COMMANDS: &[&str] = &[
     "read_staged",
     "delete_staged",
     "transcribe_on_device",
+    "update_daily_widget",
     "registerListener",
     "remove_listener",
 ];

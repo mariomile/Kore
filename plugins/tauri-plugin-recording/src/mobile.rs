@@ -112,6 +112,13 @@ impl<R: Runtime> Recording<R> {
             .map_err(Into::into)
     }
 
+    /// Store the daily-note widget snapshot and reload the widget.
+    pub fn update_daily_widget(&self, request: UpdateDailyWidgetRequest) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin("updateDailyWidget", request)
+            .map_err(Into::into)
+    }
+
     /// Remove a staged file — called after its bytes landed in the graph.
     pub fn delete_staged(&self, request: StagedPathRequest) -> crate::Result<()> {
         self.0

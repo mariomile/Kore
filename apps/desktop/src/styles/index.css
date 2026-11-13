@@ -1351,9 +1351,12 @@ html[data-sidebar-resizing] aside {
       `.95rem` checkbox flush-left lands its right edge ~where a centered bullet
       dot's sits, so the checkbox<->label gap matches a bullet's. The breathing
       room comes from the marker, not from indenting the text.
-   3. The input itself is raised slightly to optically center both square
-      checklist boxes (`- [ ]`) and round task boxes (`+ [ ]`) against the text
-      baseline.
+   3. The input is lowered a hair below the line box's center. A box centered
+      on the line box lands on the cap-height middle, which reads high next to
+      lowercase text (the eye centers on the x-height). Sitting between the
+      cap-height and x-height middles optically centers both square checklist
+      boxes (`- [ ]`) and round task boxes (`+ [ ]`) on their label. It used to
+      be raised by .06em, which put the box visibly above the text on the Mac.
 
    meowdown does not fold this gap into its default yet, so it stays a Reflect
    override; meowdown is layered, so the unlayered `.kore-editor` rules win. */
@@ -1364,7 +1367,7 @@ html[data-sidebar-resizing] aside {
   justify-content: start;
 }
 .kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
-  transform: translateY(-0.06em);
+  transform: translateY(0.02em);
 }
 
 /* ---- ⌘K palette (Plan 08) ---------------------------------------------- */

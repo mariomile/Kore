@@ -7,6 +7,19 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone types open in a native configuration sheet, and fields stay visible
+  when a note has a blank line before its title (#431).
+- Rows created from a table, board or calendar view, CSV import and bulk Add
+  type keep their type in the frontmatter Type field (#419).
+- A type keeps its saved database views in its own file, and single-tag
+  `.base` files convert into that type's views (#415).
+- Spotify, Apple Music, Apple Podcasts, Figma, Loom and CodePen embeds play
+  inside the note (#430).
+- Touching an empty bullet on a future day no longer creates a daily file; an
+  image on a text line takes its own line (#429).
+- Mobile note grid cards show the first photo, and a note can remove an
+  inserted collection (#425, #427).
+- iOS app extensions carry the app's version on TestFlight builds (#428).
 - A note created from a relation field's Create entry keeps its type in the
   frontmatter Type field, with its starting values, instead of a hidden #tag
   line in the body (#416).

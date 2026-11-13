@@ -34,10 +34,19 @@ const MEMBERSHIP_STYLE_ID = 'kore-tag-membership-style'
  * Selectors use `nth-child` so ProseMirror's document DOM is left untouched
  * (a class on those nodes is stripped on the next view flush and loops).
  */
-export function membershipParagraphCss(root: HTMLElement): string {
+export function membershipParagraphCss(
+  root: HTMLElement,
+  title: HTMLElement | null = root.querySelector<HTMLElement>(':scope > h1:first-child'),
+): string {
   const paragraphs = [...root.querySelectorAll(':scope > p')]
-  const lead = root.querySelector(':scope > h1:first-child + p')
-  const first = root.querySelector(':scope > p:first-child')
+  // The paragraph right under the title (which may follow blank lines), or
+  // with no title the first non-blank one.
+  const next = title?.nextElementSibling
+  const lead = next?.tagName === 'P' ? next : null
+  const first =
+    title === null
+      ? ([...root.children].find((child) => (child.textContent ?? '').trim() !== '') ?? null)
+      : root.querySelector(':scope > p:first-child')
   const last = root.querySelector(':scope > p:last-child')
   const children = [...root.children]
   const selectors: string[] = []
@@ -67,8 +76,12 @@ export function membershipParagraphCss(root: HTMLElement): string {
  * Write (or clear) the collapse stylesheet on the meowdown host — outside
  * ProseMirror's document, so the next view flush cannot strip it.
  */
-export function applyMembershipParagraphCss(host: HTMLElement, root: HTMLElement): void {
-  const css = membershipParagraphCss(root)
+export function applyMembershipParagraphCss(
+  host: HTMLElement,
+  root: HTMLElement,
+  title: HTMLElement | null,
+): void {
+  const css = membershipParagraphCss(root, title)
   const existing = host.querySelector(`#${MEMBERSHIP_STYLE_ID}`)
   if (css === '') {
     existing?.remove()

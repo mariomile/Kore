@@ -236,6 +236,40 @@ describe('EmbeddedCollection', () => {
     expect(view.getByText('The Dispossessed').query()).toBeNull()
   })
 
+  const TAG_EMBED = {
+    selection: { kind: 'tag' as const, tag: 'book' },
+    view: 'table' as const,
+    sorts: [],
+    group: null,
+    filters: [],
+    match: 'all' as const,
+  }
+
+  it('shows no remove button when the host cannot delete the fence', async () => {
+    const view = await render(<EmbeddedCollection embed={TAG_EMBED} />)
+    await expect.element(view.getByText('Dune')).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Remove collection from note' }).query()).toBeNull()
+  })
+
+  it('removes a tag collection from the note on request', async () => {
+    const onRemove = vi.fn()
+    const view = await render(<EmbeddedCollection embed={TAG_EMBED} onRemove={onRemove} />)
+    await view.getByRole('button', { name: 'Remove collection from note' }).click()
+    expect(onRemove).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes a named collection from the note on request', async () => {
+    const onRemove = vi.fn()
+    const view = await render(
+      <EmbeddedCollection
+        embed={{ ...TAG_EMBED, selection: { kind: 'definition', reference: '01COLLECTION' } }}
+        onRemove={onRemove}
+      />,
+    )
+    await view.getByRole('button', { name: 'Remove collection from note' }).click()
+    expect(onRemove).toHaveBeenCalledTimes(1)
+  })
+
   it('renders the live table for a typed tag fence', async () => {
     const view = await render(
       <EmbeddedCollection

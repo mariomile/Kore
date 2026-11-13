@@ -109,8 +109,8 @@ describe('FilterBar', () => {
     })
 
     await userEvent.click(view.getByRole('button', { name: 'Types' }))
-    await userEvent.click(view.getByRole('button', { name: /#Book/ }))
-    await userEvent.click(view.getByRole('button', { name: /#work/ }))
+    await userEvent.click(view.getByRole('button', { name: /^#Book/ }))
+    await userEvent.click(view.getByRole('button', { name: /^#work/ }))
 
     expect(changes.at(-1)?.tags).toEqual(['book', 'work'])
     await expect.element(view.getByRole('button', { name: '#Book +1' })).toBeVisible()

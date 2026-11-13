@@ -1,4 +1,10 @@
-import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@kore/core'
+import {
+  detectConflictMarkers,
+  errorMessage,
+  isAppError,
+  isBlankListSkeleton,
+  upsertFrontmatter,
+} from '@kore/core'
 import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
@@ -210,11 +216,13 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     const previous = buffer
     buffer = markdown
     dirty = header + markdown !== disk
-    if (missing && markdown.trim() === '') {
+    if (missing && isBlankListSkeleton(markdown)) {
       // A still-unwritten note cleared back to nothing (e.g. the seeded
       // empty-title template deleted wholesale) stays unwritten: creating an
-      // empty file would break the lazy no-litter contract. Dirtiness — and
-      // the file's birth — resume with the next real content.
+      // empty file would break the lazy no-litter contract. That includes a
+      // touched seed bullet, which serializes to `-` (or `- -` once
+      // Tab-indented) rather than to nothing. Dirtiness — and the file's
+      // birth — resume with the next real content.
       dirty = false
     }
     emit()

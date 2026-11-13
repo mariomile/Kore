@@ -36,13 +36,48 @@ describe('EmbeddedMedia', () => {
   it('holds a video behind Play instead of loading the player on open', async () => {
     const view = await renderEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
-    await expect.element(view.getByText('Video')).toBeVisible()
+    await expect.element(view.getByText('YouTube', { exact: true })).toBeVisible()
     expect(document.querySelector('iframe')).toBeNull()
 
     await userEvent.click(view.getByRole('button', { name: 'Play' }))
 
     const frame = document.querySelector('iframe')
-    expect(frame?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+    expect(frame?.getAttribute('src')).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
+    )
+    // The player may run its scripts and open the provider, never navigate the app.
+    expect(frame?.getAttribute('sandbox')).toContain('allow-scripts')
+    expect(frame?.getAttribute('sandbox')).not.toContain('allow-top-navigation')
+  })
+
+  it('holds a Spotify track behind Play in a compact frame', async () => {
+    const view = await renderEmbed('https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT')
+
+    await expect.element(view.getByText('Spotify', { exact: true })).toBeVisible()
+    expect(document.querySelector('iframe')).toBeNull()
+
+    await userEvent.click(view.getByRole('button', { name: 'Play' }))
+
+    const frame = document.querySelector('iframe')
+    expect(frame?.getAttribute('src')).toBe(
+      'https://open.spotify.com/embed/track/4cOdK2wGLETKBW3PvgPWqT',
+    )
+    expect(frame?.style.height).toBe('152px')
+  })
+
+  it('holds a Figma file behind Show, not Play', async () => {
+    const file = 'https://www.figma.com/design/abc123/Kore-UI'
+    const view = await renderEmbed(file)
+
+    await expect.element(view.getByText('Figma', { exact: true })).toBeVisible()
+    expect(view.getByRole('button', { name: 'Play' }).query()).toBeNull()
+
+    await userEvent.click(view.getByRole('button', { name: 'Show' }))
+
+    const frame = document.querySelector('iframe')
+    expect(frame?.getAttribute('src')).toBe(
+      `https://www.figma.com/embed?embed_host=kore&url=${encodeURIComponent(file)}`,
+    )
   })
 
   it('offers no Play for a video with no known player', async () => {

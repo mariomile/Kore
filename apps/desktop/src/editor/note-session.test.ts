@@ -621,6 +621,28 @@ describe('missing-note seed (new ordinary notes)', () => {
     expect(h.snapshots.at(-1)?.missing).toBe(false)
   })
 
+  it('a touched seed bullet writes nothing — an empty daily is never born from swiping by', async () => {
+    const h = harness({ disk: null, createIfMissing: true })
+    h.session.load()
+    await settled()
+
+    // Typing into the seed bullet and erasing it leaves `-`; Tab-indenting it
+    // leaves nested empty markers. Neither is content.
+    for (const touched of ['-\n', '- -\n    -\n', '- -\n    - -\n        -\n']) {
+      h.session.editorChanged(touched)
+      await h.session.flush()
+      await settled()
+    }
+
+    expect(h.writes).toEqual([])
+    expect(h.snapshots.at(-1)?.dirty).toBe(false)
+    expect(h.snapshots.at(-1)?.missing).toBe(true)
+
+    h.session.editorChanged('- idea\n')
+    await settled()
+    expect(h.writes).toEqual([{ path: 'notes/a.md', contents: '- idea\n' }])
+  })
+
   it('a real edit creates the file with the full content and clears missing', async () => {
     const h = harness({ disk: null, createIfMissing: true, missingSeed: SEED })
     h.session.load()

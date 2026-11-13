@@ -6,6 +6,7 @@ import {
   applyMembershipParagraphCss,
   clearMembershipParagraphCss,
 } from './tag-membership-paragraph'
+import { applyNoteTitleCss, clearNoteTitleCss, findNoteTitle } from './note-title-placement'
 import { whenEditorMounted } from './when-editor-mounted'
 
 interface EditorNotePropertiesProps {
@@ -37,8 +38,9 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
     function clearPlacement(): void {
       clearMembershipParagraphCss(host)
-      root?.classList.remove('kore-editor-has-properties')
-      root?.style.removeProperty('--reflect-note-properties-space')
+      clearNoteTitleCss(host)
+      root?.classList.remove('kore-editor-has-properties', 'kore-editor-properties-top')
+      root?.style.removeProperty('--kore-note-properties-space')
       host?.classList.remove('kore-note-properties-host')
       slotElement.style.removeProperty('top')
       delete slotElement.dataset.positioned
@@ -46,30 +48,47 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
     function measure(): void {
       if (root === null || host === null) return
-      const title = root.querySelector<HTMLElement>(':scope > h1:first-child')
+      // The title may sit behind blank lines (a blank line after the
+      // frontmatter, the way Obsidian writes notes, parses as an empty
+      // paragraph), and a note may have no H1 at all (its name is the file
+      // name). Either way a typed note still shows its fields: below the
+      // title when there is one, at the top of the body when there is not.
+      const title = findNoteTitle(root)
       const properties = slotElement.querySelector<HTMLElement>(
         ':scope > [aria-label="Properties"]',
       )
-      if (title === null || properties === null) {
+      // A title-less note with nothing to show keeps no slot: "Add a type"
+      // is offered beside a title, never above an arbitrary first line.
+      const bare = properties?.hasAttribute('data-bare-properties') ?? false
+      if (properties === null || (title === null && bare)) {
         clearPlacement()
         return
       }
 
       const hostRect = host.getBoundingClientRect()
-      const titleRect = title.getBoundingClientRect()
-      const appliedSpace =
-        Number.parseFloat(root.style.getPropertyValue('--reflect-note-properties-space')) || 0
-      const titleMargin = Math.max(
-        0,
-        (Number.parseFloat(getComputedStyle(title).marginBottom) || 0) - appliedSpace,
-      )
-      const top = titleRect.bottom - hostRect.top + titleMargin
       const space = slotElement.getBoundingClientRect().height
+      let top: number
+      if (title !== null) {
+        const titleRect = title.getBoundingClientRect()
+        const appliedSpace =
+          Number.parseFloat(root.style.getPropertyValue('--kore-note-properties-space')) || 0
+        const titleMargin = Math.max(
+          0,
+          (Number.parseFloat(getComputedStyle(title).marginBottom) || 0) - appliedSpace,
+        )
+        top = titleRect.bottom - hostRect.top + titleMargin
+        root.classList.remove('kore-editor-properties-top')
+        applyNoteTitleCss(host, root, title)
+      } else {
+        top = root.getBoundingClientRect().top - hostRect.top
+        root.classList.add('kore-editor-properties-top')
+        clearNoteTitleCss(host)
+      }
 
       host.classList.add('kore-note-properties-host')
       root.classList.add('kore-editor-has-properties')
-      applyMembershipParagraphCss(host, root)
-      root.style.setProperty('--reflect-note-properties-space', `${space}px`)
+      applyMembershipParagraphCss(host, root, title)
+      root.style.setProperty('--kore-note-properties-space', `${space}px`)
       slotElement.style.setProperty('top', `${top}px`)
       slotElement.dataset.positioned = 'true'
     }
@@ -84,15 +103,15 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
       mutationObserver = new MutationObserver(() => {
         resizeObserver?.disconnect()
-        const title = root?.querySelector<HTMLElement>(':scope > h1:first-child')
-        if (title !== null && title !== undefined) resizeObserver?.observe(title)
+        const title = root === null ? null : findNoteTitle(root)
+        if (title !== null) resizeObserver?.observe(title)
         resizeObserver?.observe(slotElement)
         measure()
       })
       mutationObserver.observe(root, { childList: true, subtree: true })
       mutationObserver.observe(slotElement, { childList: true, subtree: true })
 
-      const title = root.querySelector<HTMLElement>(':scope > h1:first-child')
+      const title = findNoteTitle(root)
       if (title !== null) resizeObserver.observe(title)
       measure()
     })

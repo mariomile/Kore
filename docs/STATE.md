@@ -1,5 +1,36 @@
 # Kore working state
 
+## Embeds play in the note, type views in the type file, 2026-11-13
+
+- [x] Rows created from a collection view (table + New, board lane, calendar
+  day), CSV import and bulk Add type write the type to the frontmatter Type
+  field (`tags:`) through the new core `addFrontmatterTag`, never a hidden
+  #tag line in the body. + New is one atomic create with type and starting
+  values; a note that only mentions the tag in prose now gets typed too.
+  Existing notes are untouched (#419).
+- [x] Organization point 3: a type keeps its saved database views in its own
+  file (`tags/<type>.md`, `views:`), so they follow the vault to every device
+  and to agents; views saved locally move there on first open. 'Convert to
+  type views' turns single-tag `.base` files into tabs and fields of that
+  type; formulas and folder-scoped bases are reported and left as bases, and
+  `.base` files are never changed (#415).
+- [x] Embed cards play Spotify, Apple Music, Apple Podcasts, Figma, Loom and
+  CodePen inline behind a click; the Vimeo player is fixed (#430).
+- [x] Daily notes: touching the empty bullet of a future day no longer creates
+  an empty or nested-bullet file, and an image pasted on the same line as text
+  renders below it (#429).
+- [x] Mobile: note grid cards show the note's first photo (#425), and a note
+  can remove a collection inserted into it (#427).
+- [x] iOS: the share extension and widget carry the app's version, so App
+  Store Connect stops warning about the mismatch (#428).
+- [x] iPhone: types open in a native sheet (add and reorder fields, presets
+  for empty types) from the type chip, the Types gear or the tag list gear;
+  fields are no longer hidden when a note has a blank line before the title,
+  on the Mac too (#431).
+- [x] 0.103.1 confirmed the #417 size drop: DMG 45.6 MB to 32.8 MB, updater
+  archive 46.3 MB to 33.6 MB.
+- Not verified on a real Mac.
+
 ## Relation-created notes keep their type, smaller app, launch timings, 2026-11-12
 
 - [x] A note created from a relation field's Create entry (Person > Company >

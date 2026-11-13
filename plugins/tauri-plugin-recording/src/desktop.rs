@@ -52,6 +52,13 @@ impl<R: Runtime> Recording<R> {
         Err(crate::Error::UnsupportedPlatform)
     }
 
+    pub fn transcribe_on_device(
+        &self,
+        _request: TranscribeRequest,
+    ) -> crate::Result<TranscribeResponse> {
+        Err(crate::Error::UnsupportedPlatform)
+    }
+
     pub fn delete_staged(&self, _request: StagedPathRequest) -> crate::Result<()> {
         Err(crate::Error::UnsupportedPlatform)
     }

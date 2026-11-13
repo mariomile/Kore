@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-transcribe-on-device"
+description = "Enables the transcribe_on_device command without any pre-configured scope."
+commands.allow = ["transcribe_on_device"]
+
+[[permission]]
+identifier = "deny-transcribe-on-device"
+description = "Denies the transcribe_on_device command without any pre-configured scope."
+commands.deny = ["transcribe_on_device"]

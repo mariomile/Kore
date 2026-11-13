@@ -12,7 +12,8 @@ import {
 } from '../ai/audio-memo-title'
 import { enrichSessionTranscript } from '../ai/audio-memo-transcript'
 import { APP_REVIEW_STUB_KEY, stubTranscriptBody } from '../ai/app-review-demo'
-import { transcriptionModelFor } from '../ai/transcribe'
+import { transcribeAudio, transcriptionModelFor } from '../ai/transcribe'
+import { isOnDeviceTranscriptionUnavailable } from '../ai/transcribe-on-device'
 import type { TranscriptionModels } from '../settings/schema'
 import { listDir, listFiles, readNote, writeNote } from '../graph/commands'
 import {
@@ -22,6 +23,7 @@ import {
   transcribeSessionParts,
   type AudioMemoPart,
   type AudioMemoSession,
+  type SegmentTranscriber,
 } from './audio-memo-session'
 import { audioMemoPartFromPath, type AudioMemoIdentity } from './audio-memo-identity'
 import { AUDIO_MEMOS_DIR, dailyPath } from '../graph/paths'
@@ -41,7 +43,8 @@ import { ensureBacklinkTarget } from './backlink-target'
  * 2. **Reconcile** ({@link reconcileAudioMemos}): a memo's transcription is a
  *    note with the **same basename** (`notes/<base>.md`). Any memo without
  *    one resolves or creates the `Audio memos` category note, is transcribed
- *    (BYOK provider), optionally formatted and named in one best-effort
+ *    (BYOK provider, or the device's own speech engine when no key is
+ *    configured), optionally formatted and named in one best-effort
  *    small-model pass, written to its transcription note, and backlinked from
  *    its day's daily note — transcript note first,
  *    because it carries the result: a failure between
@@ -64,7 +67,7 @@ import { ensureBacklinkTarget } from './backlink-target'
  *
  * Privacy: the captured audio and its fresh transcript (for naming and optional
  * formatting) are sent to user-configured providers — never any existing note
- * content. All output is written locally, so recording is allowed even when the
+ * content. On-device transcription sends nothing anywhere. All output is written locally, so recording is allowed even when the
  * daily note is `private: true`.
  */
 
@@ -228,6 +231,11 @@ export interface ReconcileAudioMemosInput {
   formatTranscript: boolean
   /** Per-provider speech-to-text model overrides; blank entries use the default. */
   transcriptionModels: TranscriptionModels
+  /**
+   * The host's keyless speech engine (iOS: Apple's on-device recognizer).
+   * Used when no cloud provider has a key; absent where the platform has none.
+   */
+  onDeviceTranscriber?: SegmentTranscriber | undefined
   /** Host transport for the provider call (the Tauri HTTP plugin's fetch). */
   fetchFn?: typeof fetch
   /** Abort gate, checked between memos (graph switch / unmount). */
@@ -294,6 +302,9 @@ export async function reconcileAudioMemos(
     return key
   }
   const target = await resolveTranscriptionTarget(input.providers, getKey)
+  if (typeof target === 'string' && input.onDeviceTranscriber !== undefined) {
+    return await transcribeSessions(sessions, input, input.onDeviceTranscriber, null, null)
+  }
   if (target === 'no-provider') {
     return {
       pending: sessions.length,
@@ -329,7 +340,32 @@ export async function reconcileAudioMemos(
       : fallbackEnrichmentConfig !== null
         ? { config: fallbackEnrichmentConfig, apiKey }
         : null
+  const model = transcriptionModelFor(input.transcriptionModels, config.provider)
+  const transcribe: SegmentTranscriber = async (audio, mimeType) =>
+    await transcribeAudio({
+      provider: config.provider,
+      apiKey,
+      model,
+      audio: new Blob([audio], { type: mimeType }),
+      mimeType,
+      fetchFn: input.fetchFn,
+      isStale: input.isStale,
+    })
+  return await transcribeSessions(sessions, input, transcribe, apiKey, enrichmentCredentials)
+}
 
+/**
+ * The per-session loop of {@link reconcileAudioMemos}, once the engine is
+ * chosen. `apiKey` is the cloud key (only to spot the App Review stub), and
+ * `null` for on-device runs.
+ */
+async function transcribeSessions(
+  sessions: AudioMemoSession[],
+  input: ReconcileAudioMemosInput,
+  transcribe: SegmentTranscriber,
+  apiKey: string | null,
+  enrichmentCredentials: AudioMemoEnrichmentCredentials | null,
+): Promise<ReconcileAudioMemosOutcome> {
   let transcribed = 0
   let rejected = 0
   let sawOversize = false
@@ -374,11 +410,8 @@ export async function reconcileAudioMemos(
       }
       const parts = await transcribeSessionParts({
         session,
-        provider: config.provider,
-        apiKey,
-        model: transcriptionModelFor(input.transcriptionModels, config.provider),
+        transcribe,
         generation: input.generation,
-        fetchFn: input.fetchFn,
         isStale: stale,
       })
       if (parts.status === 'stale') {
@@ -440,7 +473,11 @@ export async function reconcileAudioMemos(
         pending: sessions.length,
         transcribed,
         rejected,
-        stopped: { reason: toAppError(cause).kind, message: errorMessage(cause) },
+        stopped: {
+          // Speech access off or no language model: waits like a missing key.
+          reason: isOnDeviceTranscriptionUnavailable(cause) ? 'config' : toAppError(cause).kind,
+          message: errorMessage(cause),
+        },
       }
     }
   }

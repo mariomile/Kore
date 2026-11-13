@@ -11,6 +11,7 @@ const COMMANDS: &[&str] = &[
     "list_staged",
     "read_staged",
     "delete_staged",
+    "transcribe_on_device",
     "registerListener",
     "remove_listener",
 ];

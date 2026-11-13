@@ -1,5 +1,5 @@
 [default]
-description = "Record audio memos natively, manage the staging directory, and subscribe to recording events"
+description = "Record audio memos natively, manage the staging directory, transcribe on device, and subscribe to recording events"
 permissions = [
   "allow-start-recording",
   "allow-stop-recording",
@@ -10,6 +10,7 @@ permissions = [
   "allow-list-staged",
   "allow-read-staged",
   "allow-delete-staged",
+  "allow-transcribe-on-device",
   "allow-registerListener",
   "allow-remove-listener",
 ]

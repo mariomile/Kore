@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { errorMessage, isAppError } from '../errors'
-import { TRANSCRIPTION_MAX_SEGMENT_BYTES, type TranscriptionProvider } from '../ai/provider-config'
-import { transcribeAudio } from '../ai/transcribe'
+import { TRANSCRIPTION_MAX_SEGMENT_BYTES } from '../ai/provider-config'
 import { isTranscriptionOversize, isTranscriptionRejected } from '../ai/transcribe-http'
 import { base64ToBytes } from '../lib/base64'
 import {
@@ -195,14 +194,21 @@ async function writePartTranscript(
   await writeTranscriptCache(partTranscriptName(part), encodePartResult(result), generation)
 }
 
+/**
+ * One segment's speech-to-text call: a cloud provider (BYOK) or the OS
+ * engine on the device. Throws `TranscriptionRejectedError` for bytes that
+ * can never transcribe, anything else for a retryable failure.
+ */
+export type SegmentTranscriber = (
+  audio: Uint8Array<ArrayBuffer>,
+  mimeType: string,
+) => Promise<string>
+
 export interface TranscribeSessionPartsInput {
   session: AudioMemoSession
-  provider: TranscriptionProvider
-  apiKey: string
-  /** The speech-to-text model, already resolved against its default. */
-  model: string
+  /** The engine every uncached segment goes through. */
+  transcribe: SegmentTranscriber
   generation: number
-  fetchFn?: typeof fetch | undefined
   /** Abort gate, consulted before and after every slow await. */
   isStale: () => boolean
 }
@@ -257,16 +263,7 @@ export async function transcribeSessionParts(
     }
     let result: AudioMemoPartResult
     try {
-      const text = await transcribeAudio({
-        provider: input.provider,
-        apiKey: input.apiKey,
-        model: input.model,
-        audio: new Blob([bytes], { type: part.memo.mimeType }),
-        mimeType: part.memo.mimeType,
-        fetchFn: input.fetchFn,
-        isStale: input.isStale,
-      })
-      result = { text }
+      result = { text: await input.transcribe(bytes, part.memo.mimeType) }
     } catch (cause) {
       if (isTranscriptionOversize(cause)) {
         return { status: 'oversize' }

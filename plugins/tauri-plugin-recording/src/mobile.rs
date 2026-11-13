@@ -102,6 +102,16 @@ impl<R: Runtime> Recording<R> {
             .map_err(Into::into)
     }
 
+    /// Transcribe one recording on the device (Apple's speech engine).
+    pub fn transcribe_on_device(
+        &self,
+        request: TranscribeRequest,
+    ) -> crate::Result<TranscribeResponse> {
+        self.0
+            .run_mobile_plugin("transcribeOnDevice", request)
+            .map_err(Into::into)
+    }
+
     /// Remove a staged file — called after its bytes landed in the graph.
     pub fn delete_staged(&self, request: StagedPathRequest) -> crate::Result<()> {
         self.0

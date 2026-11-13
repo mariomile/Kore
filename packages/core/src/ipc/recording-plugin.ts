@@ -29,6 +29,14 @@ export type StagedRecordingFile = z.infer<typeof stagedFileSchema>
 const listStagedSchema = z.object({ files: z.array(stagedFileSchema) })
 const readStagedSchema = z.object({ base64: z.string() })
 
+/** Mirrors `TranscribeResponse`: `unavailable` is an expected outcome, not an error. */
+const transcribeResponseSchema = z.object({
+  status: z.enum(['ok', 'unavailable']),
+  text: z.string(),
+  reason: z.string(),
+})
+export type OnDeviceTranscribeResponse = z.infer<typeof transcribeResponseSchema>
+
 // Command args mirror the serde request models (`StartRequest`,
 // `StagedPathRequest`) under the command's `request` parameter.
 const startRecordingCommand = definePluginCommand<{ request: StartRecordingOptions }, unknown>(
@@ -75,6 +83,11 @@ const deleteStagedCommand = definePluginCommand<{ request: { path: string } }, u
   'delete_staged',
   ignoredResult,
 )
+
+const transcribeOnDeviceCommand = definePluginCommand<
+  { request: { base64: string; mimeType: string } },
+  OnDeviceTranscribeResponse
+>('recording', 'transcribe_on_device', transcribeResponseSchema)
 
 export interface StartRecordingOptions {
   /** Auto-stop cap in ms, enforced natively even if JS never wakes. */
@@ -126,6 +139,18 @@ export async function readStaged(path: string): Promise<string> {
 /** Remove a staged recording once its bytes are durable in the graph. */
 export async function deleteStaged(path: string): Promise<void> {
   await deleteStagedCommand({ request: { path } })
+}
+
+/**
+ * Transcribe one recording with the OS speech engine on the device (iOS):
+ * no audio leaves the phone, no API key. Rejects only on an engine failure;
+ * a denied permission or missing language model resolves `unavailable`.
+ */
+export async function transcribeOnDevice(
+  base64: string,
+  mimeType: string,
+): Promise<OnDeviceTranscribeResponse> {
+  return await transcribeOnDeviceCommand({ request: { base64, mimeType } })
 }
 
 /** Mirrors Swift `RecordingLevel` (~10 Hz while recording, foreground only). */

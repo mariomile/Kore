@@ -427,10 +427,22 @@
           "markdownDescription": "Denies the stop_recording command without any pre-configured scope."
         },
         {
-          "description": "Record audio memos natively, manage the staging directory, and subscribe to recording events\n#### This default permission set includes:\n\n- `allow-start-recording`\n- `allow-stop-recording`\n- `allow-cancel-recording`\n- `allow-recording-status`\n- `allow-actions-ready`\n- `allow-action-performed`\n- `allow-list-staged`\n- `allow-read-staged`\n- `allow-delete-staged`\n- `allow-registerListener`\n- `allow-remove-listener`",
+          "description": "Enables the transcribe_on_device command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-transcribe-on-device",
+          "markdownDescription": "Enables the transcribe_on_device command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the transcribe_on_device command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-transcribe-on-device",
+          "markdownDescription": "Denies the transcribe_on_device command without any pre-configured scope."
+        },
+        {
+          "description": "Record audio memos natively, manage the staging directory, transcribe on device, and subscribe to recording events\n#### This default permission set includes:\n\n- `allow-start-recording`\n- `allow-stop-recording`\n- `allow-cancel-recording`\n- `allow-recording-status`\n- `allow-actions-ready`\n- `allow-action-performed`\n- `allow-list-staged`\n- `allow-read-staged`\n- `allow-delete-staged`\n- `allow-transcribe-on-device`\n- `allow-registerListener`\n- `allow-remove-listener`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Record audio memos natively, manage the staging directory, and subscribe to recording events\n#### This default permission set includes:\n\n- `allow-start-recording`\n- `allow-stop-recording`\n- `allow-cancel-recording`\n- `allow-recording-status`\n- `allow-actions-ready`\n- `allow-action-performed`\n- `allow-list-staged`\n- `allow-read-staged`\n- `allow-delete-staged`\n- `allow-registerListener`\n- `allow-remove-listener`"
+          "markdownDescription": "Record audio memos natively, manage the staging directory, transcribe on device, and subscribe to recording events\n#### This default permission set includes:\n\n- `allow-start-recording`\n- `allow-stop-recording`\n- `allow-cancel-recording`\n- `allow-recording-status`\n- `allow-actions-ready`\n- `allow-action-performed`\n- `allow-list-staged`\n- `allow-read-staged`\n- `allow-delete-staged`\n- `allow-transcribe-on-device`\n- `allow-registerListener`\n- `allow-remove-listener`"
         }
       ]
     }

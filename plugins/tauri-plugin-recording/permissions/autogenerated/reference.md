@@ -1,6 +1,6 @@
 ## Default Permission
 
-Record audio memos natively, manage the staging directory, and subscribe to recording events
+Record audio memos natively, manage the staging directory, transcribe on device, and subscribe to recording events
 
 #### This default permission set includes the following:
 
@@ -13,6 +13,7 @@ Record audio memos natively, manage the staging directory, and subscribe to reco
 - `allow-list-staged`
 - `allow-read-staged`
 - `allow-delete-staged`
+- `allow-transcribe-on-device`
 - `allow-registerListener`
 - `allow-remove-listener`
 
@@ -307,6 +308,32 @@ Enables the stop_recording command without any pre-configured scope.
 <td>
 
 Denies the stop_recording command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`recording:allow-transcribe-on-device`
+
+</td>
+<td>
+
+Enables the transcribe_on_device command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`recording:deny-transcribe-on-device`
+
+</td>
+<td>
+
+Denies the transcribe_on_device command without any pre-configured scope.
 
 </td>
 </tr>

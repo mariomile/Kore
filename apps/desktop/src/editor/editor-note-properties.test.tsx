@@ -64,4 +64,43 @@ describe('EditorNoteProperties', () => {
         { text: 'See also #project later.', hidden: false },
       ])
   })
+
+  it('places fields under a title that follows a blank line after the frontmatter', async () => {
+    const view = await render(
+      <NoteEditor initialContent={'\n# Project\n\nBody'}>
+        <EditorNoteProperties path="notes/project.md" className="kore-content-gutter" />
+      </NoteEditor>,
+    )
+
+    const properties = view.container.querySelector<HTMLElement>('.kore-note-properties-slot')
+    await expect.poll(() => properties?.dataset.positioned).toBe('true')
+    const title = view.container.querySelector<HTMLElement>('.ProseMirror > h1')
+    const body = [...view.container.querySelectorAll<HTMLElement>('.ProseMirror > p')].find(
+      (node) => node.textContent === 'Body',
+    )
+    expect(title).not.toBeNull()
+    expect(body).toBeDefined()
+    await expect
+      .poll(
+        () =>
+          properties!.getBoundingClientRect().top >= title!.getBoundingClientRect().bottom &&
+          body!.getBoundingClientRect().top >= properties!.getBoundingClientRect().bottom,
+      )
+      .toBe(true)
+  })
+
+  it('shows fields above the body of a note with no title line', async () => {
+    const view = await render(
+      <NoteEditor initialContent={'Body without a title'}>
+        <EditorNoteProperties path="notes/project.md" className="kore-content-gutter" />
+      </NoteEditor>,
+    )
+
+    const properties = view.container.querySelector<HTMLElement>('.kore-note-properties-slot')
+    await expect.poll(() => properties?.dataset.positioned).toBe('true')
+    const body = view.container.querySelector<HTMLElement>('.ProseMirror > p')
+    await expect
+      .poll(() => body!.getBoundingClientRect().top)
+      .toBeGreaterThanOrEqual(properties!.getBoundingClientRect().bottom)
+  })
 })

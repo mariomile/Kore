@@ -3,6 +3,7 @@ import { isTemplatePath } from '@kore/core'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { Plus } from '@/components/icons'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { NoteFieldList } from './note-field-list'
 import { NoteTypePicker } from './note-type-picker'
 
@@ -59,7 +60,13 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
 
   return (
     <section aria-label="Properties" className="mb-5 border-b border-border pb-4">
-      <NoteFieldList path={path} fields={fields} labelClassName="w-32" />
+      {/* A phone is ~390pt wide: the desktop's 128px label column would push
+          every value to the middle of the screen. */}
+      <NoteFieldList
+        path={path}
+        fields={fields}
+        labelClassName={isMobileSurface() ? 'w-24' : 'w-32'}
+      />
     </section>
   )
 }

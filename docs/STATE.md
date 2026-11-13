@@ -1,5 +1,24 @@
 # Kore working state
 
+## Tagged checkboxes are rows, collections filter by this note, 2026-11-13
+
+- [x] Organization point 4: a checkbox line carrying a `#tag` is an object of
+  that tag. `- [ ] Send the deck #task` in a project note shows on the `#task`
+  page as an open task linked to its note, toggles in place and shows its due
+  date; done tasks sit behind a toggle. Plain bullets stay text, Markdown on
+  disk is unchanged, and the vault reindexes once (#423).
+- [x] Organization point 5: a collection fence can point at the note it sits
+  in (`filter: project = this`), so a type's template gives every note its own
+  table of the rows that link to it; new rows from that table carry the link
+  (#439).
+- [x] Kore no longer saves over a note another device changed in the meantime:
+  the change becomes a conflict to resolve (Keep mine / Load theirs) (#437).
+- [x] Mobile: the [[ and slash menus close when the keyboard closes (#434).
+  Task checkboxes sit centered on their label text (#432).
+- [x] Local iOS simulator builds work again on Xcode 27 (`pnpm
+  tauri:ios:dev:sim`) (#435).
+- Not verified on a real Mac.
+
 ## Embeds play in the note, type views in the type file, 2026-11-13
 
 - [x] Rows created from a collection view (table + New, board lane, calendar

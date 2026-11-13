@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A checkbox tagged on its own line is a row of that tag's database, listed on
+  the tag page (#423).
+- A collection in a note can show just the rows linked to that note (`= this`
+  filter) (#439).
+- Kore never saves over a note another device changed; it becomes a conflict
+  to resolve (#437).
+- Mobile [[ and slash menus close with the keyboard; task checkboxes are
+  centered on their label (#434, #432).
+- Local iOS simulator builds work on Xcode 27 (#435).
 - iPhone types open in a native configuration sheet, and fields stay visible
   when a note has a blank line before its title (#431).
 - Rows created from a table, board or calendar view, CSV import and bulk Add

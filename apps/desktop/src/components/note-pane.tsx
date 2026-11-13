@@ -69,6 +69,7 @@ import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { CollectionFenceRemoval } from '@/editor/collection-fence-removal'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
@@ -390,12 +391,19 @@ export function NotePaneComponent({
       return null
     }
     return (
-      <Suspense fallback={null}>
-        <EmbeddedCollection
-          embed={embed}
-          onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
-        />
-      </Suspense>
+      <CollectionFenceRemoval>
+        {(remove) => (
+          <Suspense fallback={null}>
+            <EmbeddedCollection
+              embed={embed}
+              onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+              // Touch has no block grip to delete the fence with; desktop
+              // keeps its grip menu and Backspace on the selected block.
+              onRemove={isTouchEditorSurface() ? remove : undefined}
+            />
+          </Suspense>
+        )}
+      </CollectionFenceRemoval>
     )
   }, [])
 

@@ -18,6 +18,7 @@ import {
   LayoutTemplate,
   Settings,
   Sliders,
+  Trash,
 } from '@/components/icons'
 import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
 import {
@@ -74,6 +75,8 @@ export interface EmbeddedCollectionProps {
   embed: CollectionEmbed
   /** Persist arrangement changes back into this fence's source. */
   onChange?: ((embed: CollectionEmbed) => void) | undefined
+  /** Delete this fence from the note; shows a Remove button when set. */
+  onRemove?: (() => void) | undefined
 }
 
 const VIEW_LABEL: Record<CollectionEmbedView, string> = {
@@ -104,11 +107,34 @@ function gridNotes(entries: readonly CollectionEntry[] | undefined): NoteListEnt
  * underneath the editor. Falls back to the table when the requested view
  * needs a property the tag does not declare.
  */
-export function EmbeddedCollection({ embed, onChange }: EmbeddedCollectionProps): ReactElement {
+export function EmbeddedCollection({
+  embed,
+  onChange,
+  onRemove,
+}: EmbeddedCollectionProps): ReactElement {
   return embed.selection.kind === 'tag' ? (
-    <EmbeddedTagCollection embed={embed} tag={embed.selection.tag} onChange={onChange} />
+    <EmbeddedTagCollection
+      embed={embed}
+      tag={embed.selection.tag}
+      onChange={onChange}
+      onRemove={onRemove}
+    />
   ) : (
-    <EmbeddedReusableCollection embed={embed} onChange={onChange} />
+    <EmbeddedReusableCollection embed={embed} onChange={onChange} onRemove={onRemove} />
+  )
+}
+
+/** The header's "remove this collection from the note" button. */
+function RemoveCollectionButton({ onRemove }: { onRemove: () => void }): ReactElement {
+  return (
+    <button
+      type="button"
+      aria-label="Remove collection from note"
+      className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+      onClick={onRemove}
+    >
+      <Trash aria-hidden className="size-3.5" />
+    </button>
   )
 }
 
@@ -116,7 +142,12 @@ interface EmbeddedTagCollectionProps extends EmbeddedCollectionProps {
   tag: string
 }
 
-function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionProps): ReactElement {
+function EmbeddedTagCollection({
+  embed,
+  tag,
+  onChange,
+  onRemove,
+}: EmbeddedTagCollectionProps): ReactElement {
   // Every tag is a collection: a tag without a definition note embeds as
   // the zero-property table, and its "+" writes the schema in place.
   const loadedTagType = useTagType(tag)
@@ -216,6 +247,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>
+        {onRemove ? <RemoveCollectionButton onRemove={onRemove} /> : null}
       </header>
       {tagType !== undefined && onChange ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-3 pb-2">
@@ -373,7 +405,11 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
   )
 }
 
-function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps): ReactElement {
+function EmbeddedReusableCollection({
+  embed,
+  onChange,
+  onRemove,
+}: EmbeddedCollectionProps): ReactElement {
   const reference = embed.selection.kind === 'definition' ? embed.selection.reference : ''
   const state = useReusableCollection(reference, embed.sorts)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
@@ -595,6 +631,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
         >
           <Settings aria-hidden className="size-3.5" />
         </button>
+        {onRemove ? <RemoveCollectionButton onRemove={onRemove} /> : null}
       </header>
       <div
         className={cn(

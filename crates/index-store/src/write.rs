@@ -166,6 +166,9 @@ pub struct IndexedTask {
     /// Nearest top-level heading above the task (level 2+), or None.
     #[serde(default)]
     pub section: Option<String>,
+    /// Folded tags on the task's own marker line (organization point 4).
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -265,11 +268,13 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
     }
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section, tags) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         )?;
         for task in &note.tasks {
             let breadcrumbs = serde_json::to_string(&task.breadcrumbs)
                 .map_err(|err| StoreError::io(format!("serialize task breadcrumbs: {err}")))?;
+            let tags = serde_json::to_string(&task.tags)
+                .map_err(|err| StoreError::io(format!("serialize task tags: {err}")))?;
             stmt.execute(params![
                 note.path,
                 task.marker_offset,
@@ -279,7 +284,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 i64::from(task.checked),
                 task.due_date,
                 task.due_time,
-                task.section
+                task.section,
+                tags
             ])?;
         }
     }

@@ -362,6 +362,16 @@ values the notes hold. Formulas, folder rules and `file.*` expressions are
 reported, not translated; a base that narrows a tag to a folder is left as a
 base. The `.base` file is never written.
 
+## Amendment G (2026-11-12) — A tag on a checkbox line makes the line a row
+
+A `#tag` written on a checkbox's own line (`- [ ] call Andrea #lead`) makes
+that line a row of the tag's database, wherever the note is: the index stores
+the line's tags on its `tasks` row (`tasks.tags`, migration 0027), and the
+tag page lists those rows above its notes, open first, each tickable and
+naming the note it lives in. For the note the tag stays a mention (Amendment
+E). A line's project still comes from the project it links (#365). Typed
+fields on a line are a later step.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

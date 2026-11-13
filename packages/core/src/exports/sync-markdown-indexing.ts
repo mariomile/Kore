@@ -425,6 +425,7 @@ export {
   countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
+  getTasksForTag,
   getProjectNotePaths,
   getTaskProjectLinks,
   getCompletedTasks,

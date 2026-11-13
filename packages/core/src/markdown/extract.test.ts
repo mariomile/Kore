@@ -208,6 +208,15 @@ describe('parseNote — links, assets, tags, text', () => {
 })
 
 describe('parseNote — tasks', () => {
+  it('records the tags written on a task’s own line, not in code or on child lines', () => {
+    const note = parse(
+      '- [ ] call Andrea #Lead #lead `#code`\n  - [ ] follow up #later\n- [ ] plain\n',
+    )
+    expect(note.tasks.map((task) => task.tags)).toEqual([['lead'], ['later'], []])
+    // The note itself only mentions the tags.
+    expect(note.memberTags).toEqual([])
+  })
+
   it('extracts open and checked round task checkboxes with text, raw, marker offset', () => {
     const note = parse('+ [ ] buy milk\n+ [x] call mum\n')
     expect(note.tasks).toEqual([
@@ -220,6 +229,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
       {
         text: 'call mum',
@@ -230,6 +240,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })
@@ -246,6 +257,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })
@@ -333,6 +345,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })

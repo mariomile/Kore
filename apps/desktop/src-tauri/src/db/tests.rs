@@ -148,6 +148,7 @@ fn task(marker_offset: i64, text: &str, checked: bool) -> IndexedTask {
         due_date: None,
         due_time: None,
         section: None,
+        tags: vec![],
     }
 }
 

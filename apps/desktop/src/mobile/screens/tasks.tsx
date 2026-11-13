@@ -251,7 +251,10 @@ export function MobileTasks({
         <div
           role="tablist"
           aria-label="Task views"
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4"
+          // Inside the header's gutter like the Notes filter row: WebKit drops
+          // a scroller's trailing padding, so a bleed-to-edge row left the
+          // last chip flush against the screen edge.
+          className="flex gap-1.5 overflow-x-auto"
         >
           {TASK_VIEWS.map((entry) => (
             <button

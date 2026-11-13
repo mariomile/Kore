@@ -1050,9 +1050,12 @@ pub struct ObsidianConfig {
     pub daily_notes: Option<String>,
     pub app: Option<String>,
     pub templates: Option<String>,
+    /// The Templater community plugin's settings (`plugins/templater-obsidian/data.json`).
+    pub templater: Option<String>,
 }
 
-/// Read `.obsidian/daily-notes.json`, `app.json` and `templates.json` from `root`.
+/// Read `.obsidian/daily-notes.json`, `app.json`, `templates.json` and
+/// Templater's `data.json` from `root`.
 /// Fixed names only, never a caller-supplied path, and never through a
 /// symlinked `.obsidian` (see `kore_graph_paths::read_obsidian_file`), so
 /// this cannot become a way to read files outside the graph.
@@ -1061,6 +1064,7 @@ pub(crate) fn read_obsidian_config(root: &Path) -> ObsidianConfig {
         daily_notes: kore_graph_paths::read_obsidian_file(root, "daily-notes.json"),
         app: kore_graph_paths::read_obsidian_file(root, "app.json"),
         templates: kore_graph_paths::read_obsidian_file(root, "templates.json"),
+        templater: kore_graph_paths::read_obsidian_plugin_data(root, "templater-obsidian"),
     }
 }
 
@@ -1165,6 +1169,7 @@ mod obsidian_config_tests {
         );
         assert_eq!(config.app, None);
         assert_eq!(config.templates, None);
+        assert_eq!(config.templater, None);
     }
 }
 

@@ -2,6 +2,7 @@ import { Fragment, type ReactElement } from 'react'
 import { Plus } from '@/components/icons'
 import { groupTaskContexts, type OpenTask, type TaskGroup } from '@kore/core'
 import { TaskBreadcrumbs } from '@/components/tasks/task-breadcrumbs'
+import { Button } from '@/components/ui/button'
 import { formatDayLabel } from '@/lib/dates'
 import {
   addTargetForGroup,
@@ -90,6 +91,18 @@ export function MobileTaskGroup({
           </button>
         ) : null}
       </div>
+      {group.tasks.length === 0 ? (
+        // A Todoist-style view's empty bucket (Today with nothing due) keeps
+        // its header; this line says so and offers the header's own "+".
+        <div className="flex items-center gap-3 px-4 py-3">
+          <p className="min-w-0 flex-1 text-sm text-text-muted">{emptyGroupMessage(group)}</p>
+          {addTarget !== null ? (
+            <Button variant="outline" onClick={() => onAdd(addTarget)}>
+              Add a task
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <ul className="flex flex-col">
         {contexts.map((context) => (
           <Fragment key={taskKey(context.tasks[0]!)}>
@@ -115,4 +128,17 @@ export function MobileTaskGroup({
       </ul>
     </section>
   )
+}
+
+/** The empty-bucket line: Today and Inbox read as a clear day, not an error. */
+function emptyGroupMessage(group: TaskGroup): string {
+  switch (group.kind) {
+    case 'today':
+    case 'current':
+      return 'Nothing due today.'
+    case 'inbox':
+      return 'Your inbox is clear.'
+    default:
+      return 'No tasks'
+  }
 }

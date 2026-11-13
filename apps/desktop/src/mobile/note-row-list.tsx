@@ -13,8 +13,9 @@ interface NoteRowListProps {
 }
 
 /**
- * The All tab's virtualized note list: fixed-height rows (title, first
- * content line, relative timestamp, a pin marker on pinned notes) shared by
+ * The All tab's virtualized note list: rows of title, first content line,
+ * relative timestamp and a pin marker on pinned notes (a row with no content
+ * line is one compact line; the virtualizer measures each) shared by
  * the plain list, the filtered feed, and search results — V1's one row shape.
  */
 export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): ReactElement {

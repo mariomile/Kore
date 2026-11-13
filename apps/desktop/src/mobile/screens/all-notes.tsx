@@ -50,7 +50,7 @@ export function rowForHit(hit: FilteredSearchHit): NoteRowModel {
     snippet:
       hit.snippet !== null
         ? parseHighlights(hit.snippet)
-        : hit.preview === ''
+        : hit.preview.trim() === ''
           ? []
           : [{ text: hit.preview, highlighted: false }],
   }

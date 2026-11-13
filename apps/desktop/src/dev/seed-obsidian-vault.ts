@@ -452,6 +452,9 @@ export function seedObsidianVaultFiles(
   files['.obsidian/app.json'] = JSON.stringify({ attachmentFolderPath: 'Resources/_attachments' })
   // Plugin syntax the compatibility report lists (added last, so the random
   // stream above, and every byte it produced, is unchanged).
+  files['.obsidian/plugins/templater-obsidian/data.json'] = JSON.stringify({
+    templates_folder: '_system/templates',
+  })
   files['_system/templates/Meeting.md'] = [
     '---',
     'created: <% tp.date.now("YYYY-MM-DD") %>',

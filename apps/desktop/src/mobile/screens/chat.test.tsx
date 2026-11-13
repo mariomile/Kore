@@ -64,6 +64,7 @@ vi.mock('@/editor/markdown-preview', () => ({
   ),
 }))
 vi.mock('@/lib/provider-fetch', () => ({ providerFetch: vi.fn() }))
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 
 // Keep sheet content inline so this suite isolates the chat flow. Honoring
 // `open` matters: the composer floats over the screen, and a closed sheet's
@@ -168,6 +169,22 @@ describe('MobileChat', () => {
     await expect.element(page.getByText('what did I write?')).toBeVisible()
     // A send that goes through clears the provider-held draft.
     await expect.element(composer).toHaveValue('')
+  })
+
+  it('an empty conversation offers starter questions that send as written', async () => {
+    configureModel()
+    scriptTurn([
+      { type: 'text-delta', text: 'Your week, summarized.' },
+      { type: 'complete', messages: [{ role: 'assistant', content: 'Your week, summarized.' }] },
+    ])
+    await render(<Harness showScreen />)
+
+    await page.getByRole('button', { name: 'Summarize my week' }).click()
+
+    await expect.element(page.getByText('Your week, summarized.')).toBeVisible()
+    await expect
+      .element(page.getByRole('list', { name: 'Suggested questions' }))
+      .not.toBeInTheDocument()
   })
 
   it('keeps the draft and the conversation across a screen unmount (tab switch)', async () => {

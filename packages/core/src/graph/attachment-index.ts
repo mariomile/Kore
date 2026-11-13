@@ -67,6 +67,16 @@ export function noteAttachmentAdded(path: string): void {
   }
 }
 
+/**
+ * Whether a graph-relative attachment path exists in the loaded catalog.
+ * Before a catalog loads (or when listing failed) every path counts as
+ * present, the same benefit of the doubt {@link resolveAttachmentSource}
+ * gives an exact path.
+ */
+export function attachmentCatalogHas(path: string): boolean {
+  return activeIndex === null || activeIndex.paths.has(path)
+}
+
 function decodePath(src: string): string {
   try {
     return decodeURI(src)

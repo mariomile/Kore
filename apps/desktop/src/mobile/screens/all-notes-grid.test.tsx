@@ -16,6 +16,7 @@ import { MobileAllNotes } from './all-notes'
 
 const searchWithFilters = vi.hoisted(() => vi.fn())
 const listNoteTags = vi.hoisted(() => vi.fn())
+const firstImageAssets = vi.hoisted(() => vi.fn())
 const hapticImpactLight = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
 const settingsState = vi.hoisted((): { allNotesView: 'list' | 'grid' } => ({
@@ -27,6 +28,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
   hasBridge: () => true,
   searchWithFilters,
   listNoteTags,
+  firstImageAssets,
+  assetUrl: (_generation: number, path: string) => `kore-asset://localhost/${path}`,
 }))
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight }))
 vi.mock('@/components/ui/drawer', () => ({
@@ -110,6 +113,7 @@ beforeEach(() => {
   updateSettings.mockReset()
   hapticImpactLight.mockReset()
   listNoteTags.mockResolvedValue([])
+  firstImageAssets.mockResolvedValue(new Map())
   searchWithFilters.mockResolvedValue([
     hit(),
     hit({
@@ -165,6 +169,20 @@ describe('MobileAllNotes grid view', () => {
       kind: 'note',
       path: 'notes/health.md',
     })
+  })
+
+  it("tops a card with the note's first image", async () => {
+    settingsState.allNotesView = 'grid'
+    firstImageAssets.mockResolvedValue(new Map([['notes/health.md', 'assets/face.jpg']]))
+    await renderScreen()
+
+    // A decorative thumbnail (alt=""), so it has no img role to query by.
+    const card = page.getByRole('button', { name: 'Health Stacked' })
+    await expect.poll(() => card.element().querySelector('img')).not.toBeNull()
+    expect(card.element().querySelector('img')?.getAttribute('src')).toContain('face.jpg')
+    expect(
+      page.getByRole('button', { name: 'Tokyo Gâteau' }).element().querySelector('img'),
+    ).toBeNull()
   })
 
   it('aligns the first card in each masonry column to the same top edge', async () => {

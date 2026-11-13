@@ -523,6 +523,7 @@ export {
   emptySearchFilters,
   type SearchFilterChip,
   searchWithFilters,
+  firstImageAssets,
   type IndexedNote,
   type IndexedLink,
   type IndexedAlias,

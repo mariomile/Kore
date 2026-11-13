@@ -46,6 +46,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::list_staged,
             commands::read_staged,
             commands::delete_staged,
+            commands::transcribe_on_device,
         ])
         .setup(|app, api| {
             #[cfg(mobile)]

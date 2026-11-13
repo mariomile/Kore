@@ -563,7 +563,7 @@ describe('MobileAudioMemoProvider', () => {
     }
   })
 
-  it('without an OpenAI or Gemini model, toggle opens the drawer for key setup, never the mic', async () => {
+  it('without an OpenAI or Gemini model, the iPhone still records — it transcribes on the device', async () => {
     SETTINGS.current = {
       aiProviders: [
         {
@@ -580,16 +580,12 @@ describe('MobileAudioMemoProvider', () => {
       wrapper,
     })
 
-    // The FAB stays visible (available) so the feature is discoverable; only
-    // the recording itself waits for a key.
     expect(result.current.available).toBe(true)
-    expect(result.current.hasTranscriptionConfig).toBe(false)
+    expect(result.current.hasTranscriptionConfig).toBe(true)
 
     await act(async () => {
       result.current.toggle()
     })
-    expect(result.current.drawerOpen).toBe(true)
-    expect(result.current.phase).toBe('idle')
-    expect(recorderControls.startSpy).not.toHaveBeenCalled()
+    expect(recorderControls.startSpy).toHaveBeenCalledTimes(1)
   })
 })

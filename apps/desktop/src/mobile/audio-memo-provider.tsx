@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { errorMessage, type GraphInfo } from '@kore/core'
+import { errorMessage, nativeOnDeviceTranscriber, type GraphInfo } from '@kore/core'
 import { useAudioMemoPipeline, type PendingAudioCapture } from '@/hooks/use-audio-memo-pipeline'
 import { isNativeShell } from '@/lib/platform'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'
@@ -114,6 +114,9 @@ export function MobileAudioMemoProvider({
   const pipeline = useAudioMemoPipeline({
     graph,
     isErrorSurfaceVisible: () => drawerOpenRef.current,
+    // The iPhone transcribes on the device when no cloud key is set, so
+    // recording never needs one there.
+    onDeviceTranscriber: isNativeShell() ? nativeOnDeviceTranscriber : undefined,
   })
   const enqueuePipeline = pipeline.enqueue
 
@@ -172,8 +175,9 @@ export function MobileAudioMemoProvider({
       return
     }
     setDrawerOpen(true)
-    // Recording never starts without a transcription key: the drawer opens on
-    // its key-setup guidance instead. OS entry points (Siri, the widget, the
+    // Recording never starts without a transcription engine (on the iPhone
+    // there always is one: the device's own): the drawer opens on its
+    // key-setup guidance instead. OS entry points (Siri, the widget, the
     // quick action) funnel through here too, so they surface the same guidance.
     if (!pipeline.hasTranscriptionConfig) {
       return

@@ -7,6 +7,7 @@ import {
   subscribeFileChanges,
   type AiProvidersState,
   type ReconcileStop,
+  type SegmentTranscriber,
   type TranscriptionModels,
 } from '@kore/core'
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
@@ -48,6 +49,8 @@ export interface TranscriptionReconcilerOptions {
   getTranscriptionFormat: () => boolean
   /** Same lazy read for the speech-to-text model overrides. */
   getTranscriptionModels: () => TranscriptionModels
+  /** The platform's keyless speech engine (iOS); passes run without a key when set. */
+  onDeviceTranscriber?: SegmentTranscriber | undefined
 }
 
 /** Build the reconciler for one graph session. `dispose()` is terminal. */
@@ -86,9 +89,13 @@ export function createTranscriptionReconciler(
 
   /** One pass: transcribe pending memos, gated behind a transcription-capable model. */
   const reconcile = async (isStale: () => boolean): Promise<void> => {
-    // Gate before any IO: without a transcription-capable model every pass
-    // would list the graph just to stop on `config`.
-    if (pickTranscriptionConfig(options.getProviders()) === null) {
+    // Gate before any IO: without a transcription-capable model (or the
+    // device's own engine) every pass would list the graph just to stop on
+    // `config`.
+    if (
+      options.onDeviceTranscriber === undefined &&
+      pickTranscriptionConfig(options.getProviders()) === null
+    ) {
       return
     }
     const outcome = await reconcileAudioMemos({
@@ -96,6 +103,7 @@ export function createTranscriptionReconciler(
       generation: options.generation,
       formatTranscript: options.getTranscriptionFormat(),
       transcriptionModels: options.getTranscriptionModels(),
+      onDeviceTranscriber: options.onDeviceTranscriber,
       fetchFn: providerFetch,
       isStale,
       onPending: (count) => setTranscribing(count > 0),

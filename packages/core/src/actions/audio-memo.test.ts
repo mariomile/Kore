@@ -27,6 +27,7 @@ import {
 } from '../graph/commands'
 import { transcribeAudio } from '../ai/transcribe'
 import { TranscriptionRejectedError } from '../ai/transcribe-http'
+import { OnDeviceTranscriptionUnavailableError } from '../ai/transcribe-on-device'
 import { getSecret } from '../secrets/keychain'
 
 const generateAudioMemoTitleMock = vi.hoisted(() =>
@@ -619,6 +620,38 @@ describe('reconcileAudioMemos', () => {
       stopped: { reason: 'config' },
     })
     expect(getSecretMock).not.toHaveBeenCalled()
+  })
+
+  it('transcribes on the device when no cloud key is configured — no provider call', async () => {
+    listDirMock.mockResolvedValue([fileMeta(MEMO.audioPath)])
+    const onDeviceTranscriber = vi.fn().mockResolvedValue('dictated on the phone')
+
+    const outcome = await reconcile({
+      providers: { providers: [], defaultProviderId: null },
+      onDeviceTranscriber,
+    })
+
+    expect(outcome).toEqual({ pending: 1, transcribed: 1, rejected: 0, stopped: null })
+    expect(onDeviceTranscriber).toHaveBeenCalledWith(expect.any(Uint8Array), 'audio/webm')
+    expect(transcribeMock).not.toHaveBeenCalled()
+    expect(writeNoteMock).toHaveBeenCalledWith(
+      MEMO.notePath,
+      expect.stringContaining('dictated on the phone'),
+      3,
+    )
+  })
+
+  it('an unavailable on-device engine stops as config — the memo stays pending', async () => {
+    listDirMock.mockResolvedValue([fileMeta(MEMO.audioPath)])
+    getSecretMock.mockResolvedValue(null)
+    const onDeviceTranscriber = vi
+      .fn()
+      .mockRejectedValue(new OnDeviceTranscriptionUnavailableError('Speech recognition is off'))
+
+    const outcome = await reconcile({ onDeviceTranscriber })
+
+    expect(outcome).toMatchObject({ pending: 1, transcribed: 0, stopped: { reason: 'config' } })
+    expect(writeNoteMock).not.toHaveBeenCalled()
   })
 
   it('reports a missing keychain entry as config', async () => {

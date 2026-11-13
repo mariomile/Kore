@@ -78,3 +78,28 @@ pub struct StagedPathRequest {
     /// Absolute path of the staged file, as returned by a stop or `list_staged`.
     pub path: String,
 }
+
+/// Arguments for `transcribe_on_device` — one recording segment's bytes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TranscribeRequest {
+    /// The recording's bytes, base64-encoded.
+    pub base64: String,
+    /// The recording's MIME type (picks the temp file's extension, which
+    /// AVFoundation uses to choose the container parser).
+    pub mime_type: String,
+}
+
+/// `transcribe_on_device`'s response. `unavailable` is an expected outcome
+/// (speech access denied, no on-device model for the language), not an
+/// error: the memo stays pending until a cloud key or the model appears.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TranscribeResponse {
+    /// `ok` | `unavailable`
+    pub status: String,
+    /// The transcript when `ok` (empty when no speech was heard).
+    pub text: String,
+    /// Why on-device transcription can't run, when `unavailable`.
+    pub reason: String,
+}

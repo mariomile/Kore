@@ -372,7 +372,13 @@ export {
   AUDIO_MEMO_MAX_DURATION_MS,
   AUDIO_MEMO_SEGMENT_MS,
   type AudioMemoSession,
+  type SegmentTranscriber,
 } from '../actions/audio-memo-session'
+export {
+  isOnDeviceTranscriptionUnavailable,
+  nativeOnDeviceTranscriber,
+  OnDeviceTranscriptionUnavailableError,
+} from '../ai/transcribe-on-device'
 export {
   captureAckSchema,
   captureEnvelopeSchema,

@@ -313,7 +313,11 @@ export function MobileSettings(): ReactElement {
           {showAudio ? (
             <SettingsGroup
               header="Audio memos"
-              footer="Uses AI to add punctuation, paragraphs, and light Markdown."
+              footer={
+                transcriptionProviders.length === 0
+                  ? 'Uses AI to add punctuation, paragraphs, and light Markdown once an AI provider is set. Without one, memos are transcribed on this iPhone and the audio never leaves it.'
+                  : 'Uses AI to add punctuation, paragraphs, and light Markdown.'
+              }
               footerId={audioMemoDescriptionId}
             >
               <SettingsSwitchRow

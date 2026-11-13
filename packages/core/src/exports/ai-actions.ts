@@ -375,6 +375,12 @@ export {
   type SegmentTranscriber,
 } from '../actions/audio-memo-session'
 export {
+  DAILY_WIDGET_TASK_LIMIT,
+  dailyWidgetSnapshot,
+  readDailyWidgetSnapshot,
+  type DailyWidgetSnapshot,
+} from '../actions/daily-widget'
+export {
   isOnDeviceTranscriptionUnavailable,
   nativeOnDeviceTranscriber,
   OnDeviceTranscriptionUnavailableError,

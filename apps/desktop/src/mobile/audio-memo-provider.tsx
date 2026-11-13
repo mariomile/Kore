@@ -11,6 +11,7 @@ import {
 import { errorMessage, nativeOnDeviceTranscriber, type GraphInfo } from '@kore/core'
 import { useAudioMemoPipeline, type PendingAudioCapture } from '@/hooks/use-audio-memo-pipeline'
 import { isNativeShell } from '@/lib/platform'
+import { useRouter } from '@/routing/router'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'
 import { hapticImpactLight } from '@/mobile/haptics'
 import {
@@ -262,7 +263,9 @@ export function MobileAudioMemoProvider({
     [recorder.status, stopAndSave, cancelRecorder, setDrawerOpen],
   )
 
-  useNativeRecordAction({ start, enqueueStaged })
+  const { navigate } = useRouter()
+  const openDaily = useCallback((): void => navigate({ kind: 'today' }), [navigate])
+  useNativeRecordAction({ start, enqueueStaged, openDaily })
   useStagedRecordingIngest(enqueueStaged)
 
   // A live capture owns the surface — a background save's failure parks and

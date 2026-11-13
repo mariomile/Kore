@@ -38,6 +38,8 @@ export interface UseNativeRecordActionOptions {
   start: () => Promise<void>
   /** Hand a reconciled recording to the capture pipeline. */
   enqueueStaged: (input: StagedRecordingInput) => void
+  /** Show today's note — the daily-note widget's tap (`openDaily`). */
+  openDaily: () => void
 }
 
 /** Mount the reconcile-then-handshake lifecycle. */
@@ -45,8 +47,10 @@ export function useNativeRecordAction(options: UseNativeRecordActionOptions): vo
   const { enqueueStaged } = options
   // Read at fire time — the provider's start identity changes across renders.
   const startRef = useRef(options.start)
+  const openDailyRef = useRef(options.openDaily)
   useEffect(() => {
     startRef.current = options.start
+    openDailyRef.current = options.openDaily
   })
 
   useEffect(() => {
@@ -78,6 +82,14 @@ export function useNativeRecordAction(options: UseNativeRecordActionOptions): vo
         return
       }
       subscription = subscribeRecordingNativeAction((event) => {
+        if (event.action === 'openDaily') {
+          // Navigation has no UI to survive, so it confirms at once.
+          openDailyRef.current()
+          void actionPerformed().catch((cause: unknown) => {
+            console.warn('confirming a native action failed:', cause)
+          })
+          return
+        }
         if (event.action !== 'recordAudio') {
           return
         }

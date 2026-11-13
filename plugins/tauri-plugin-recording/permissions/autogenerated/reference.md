@@ -1,6 +1,6 @@
 ## Default Permission
 
-Record audio memos natively, manage the staging directory, transcribe on device, and subscribe to recording events
+Record audio memos natively, manage the staging directory, transcribe on device, refresh the daily-note widget, and subscribe to recording events
 
 #### This default permission set includes the following:
 
@@ -14,6 +14,7 @@ Record audio memos natively, manage the staging directory, transcribe on device,
 - `allow-read-staged`
 - `allow-delete-staged`
 - `allow-transcribe-on-device`
+- `allow-update-daily-widget`
 - `allow-registerListener`
 - `allow-remove-listener`
 
@@ -334,6 +335,32 @@ Enables the transcribe_on_device command without any pre-configured scope.
 <td>
 
 Denies the transcribe_on_device command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`recording:allow-update-daily-widget`
+
+</td>
+<td>
+
+Enables the update_daily_widget command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`recording:deny-update-daily-widget`
+
+</td>
+<td>
+
+Denies the update_daily_widget command without any pre-configured scope.
 
 </td>
 </tr>

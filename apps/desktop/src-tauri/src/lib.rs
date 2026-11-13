@@ -558,16 +558,22 @@ pub fn run() {
                     windows::reopen_main_window(app);
                 }
             }
-            // The lock-screen widget opens `kore://record-audio`; hand it
-            // to the recording plugin's persisted action queue (the V1
-            // handshake) so the request survives webview churn and cold
-            // starts. Desktop scheme opens flow through
-            // tauri-plugin-deep-link to the frontend instead.
+            // The widgets open `kore://record-audio` (start a memo) and
+            // `kore://daily` (show today's note); hand them to the recording
+            // plugin's persisted action queue (the V1 handshake) so the
+            // request survives webview churn and cold starts. Desktop scheme
+            // opens flow through tauri-plugin-deep-link to the frontend
+            // instead.
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             tauri::RunEvent::Opened { urls } => {
                 #[cfg(mobile)]
                 for url in urls {
-                    if url.scheme() == "kore" && url.host_str() == Some("record-audio") {
+                    let action = match (url.scheme(), url.host_str()) {
+                        ("kore", Some("record-audio")) => Some("recordAudio"),
+                        ("kore", Some("daily")) => Some("openDaily"),
+                        _ => None,
+                    };
+                    if let Some(action) = action {
                         // This callback runs on the main thread, and
                         // `run_mobile_plugin` blocks its caller until the
                         // Swift command resolves — which `queueAction` does
@@ -577,8 +583,8 @@ pub fn run() {
                         let app = app.clone();
                         tauri::async_runtime::spawn_blocking(move || {
                             use tauri_plugin_recording::RecordingExt;
-                            if let Err(err) = app.recording().queue_action("recordAudio") {
-                                tracing::warn!(error = %err, "queueing the record-audio action failed");
+                            if let Err(err) = app.recording().queue_action(action) {
+                                tracing::warn!(error = %err, action, "queueing a widget action failed");
                             }
                         });
                     }

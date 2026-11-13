@@ -59,6 +59,10 @@ impl<R: Runtime> Recording<R> {
         Err(crate::Error::UnsupportedPlatform)
     }
 
+    pub fn update_daily_widget(&self, _request: UpdateDailyWidgetRequest) -> crate::Result<()> {
+        Err(crate::Error::UnsupportedPlatform)
+    }
+
     pub fn delete_staged(&self, _request: StagedPathRequest) -> crate::Result<()> {
         Err(crate::Error::UnsupportedPlatform)
     }

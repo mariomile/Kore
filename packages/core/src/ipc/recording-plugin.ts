@@ -89,6 +89,12 @@ const transcribeOnDeviceCommand = definePluginCommand<
   OnDeviceTranscribeResponse
 >('recording', 'transcribe_on_device', transcribeResponseSchema)
 
+const updateDailyWidgetCommand = definePluginCommand<{ request: { json: string } }, unknown>(
+  'recording',
+  'update_daily_widget',
+  ignoredResult,
+)
+
 export interface StartRecordingOptions {
   /** Auto-stop cap in ms, enforced natively even if JS never wakes. */
   maxDurationMs: number
@@ -151,6 +157,14 @@ export async function transcribeOnDevice(
   mimeType: string,
 ): Promise<OnDeviceTranscribeResponse> {
   return await transcribeOnDeviceCommand({ request: { base64, mimeType } })
+}
+
+/**
+ * Store the daily-note widget's digest (a serialized `DailyWidgetSnapshot`)
+ * in the App Group container and redraw the widget (iOS).
+ */
+export async function updateDailyWidget(json: string): Promise<void> {
+  await updateDailyWidgetCommand({ request: { json } })
 }
 
 /** Mirrors Swift `RecordingLevel` (~10 Hz while recording, foreground only). */

@@ -76,6 +76,16 @@ pub(crate) async fn transcribe_on_device<R: Runtime>(
     app.recording().transcribe_on_device(request)
 }
 
+/// Store the daily-note widget's snapshot in the App Group container and
+/// ask WidgetKit to redraw it.
+#[command]
+pub(crate) async fn update_daily_widget<R: Runtime>(
+    app: AppHandle<R>,
+    request: UpdateDailyWidgetRequest,
+) -> Result<()> {
+    app.recording().update_daily_widget(request)
+}
+
 /// Remove a staged recording once its bytes are durably in the graph.
 #[command]
 pub(crate) async fn delete_staged<R: Runtime>(

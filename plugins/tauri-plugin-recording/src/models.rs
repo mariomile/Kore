@@ -29,7 +29,7 @@ pub struct StopResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QueueActionRequest {
-    /// Currently only `recordAudio`.
+    /// `recordAudio` or `openDaily`.
     pub action: String,
 }
 
@@ -102,4 +102,13 @@ pub struct TranscribeResponse {
     pub text: String,
     /// Why on-device transcription can't run, when `unavailable`.
     pub reason: String,
+}
+
+/// Arguments for `update_daily_widget` — the daily-note widget's snapshot,
+/// serialized by the app (`DailyWidgetSnapshot` in the Swift sources).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateDailyWidgetRequest {
+    /// The snapshot as JSON; the native side validates it before storing.
+    pub json: String,
 }

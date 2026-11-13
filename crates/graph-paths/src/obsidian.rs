@@ -25,15 +25,37 @@ const SETTINGS_MAX_BYTES: u64 = 256 * 1024;
 /// settings file. `name` is a fixed file name, never a caller's path.
 pub fn read_obsidian_file(root: &Path, name: &str) -> Option<String> {
     let folder = root.join(".obsidian");
-    if !std::fs::symlink_metadata(&folder).is_ok_and(|meta| meta.is_dir()) {
+    if !is_real_dir(&folder) {
         return None;
     }
-    let path = folder.join(name);
-    let meta = std::fs::symlink_metadata(&path).ok()?;
+    read_settings_file(&folder.join(name))
+}
+
+/// Read a community plugin's settings, `<root>/.obsidian/plugins/<plugin>/data.json`,
+/// under the same rules as [`read_obsidian_file`]: every folder on the way
+/// must be a real directory, so a symlinked `plugins` or plugin folder is
+/// never followed. `plugin` is a fixed plugin id, never a caller's path.
+pub fn read_obsidian_plugin_data(root: &Path, plugin: &str) -> Option<String> {
+    let folder = root.join(".obsidian");
+    let plugins = folder.join("plugins");
+    let plugin_dir = plugins.join(plugin);
+    if !(is_real_dir(&folder) && is_real_dir(&plugins) && is_real_dir(&plugin_dir)) {
+        return None;
+    }
+    read_settings_file(&plugin_dir.join("data.json"))
+}
+
+fn is_real_dir(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_dir())
+}
+
+/// A regular file no larger than any real settings file, or `None`.
+fn read_settings_file(path: &Path) -> Option<String> {
+    let meta = std::fs::symlink_metadata(path).ok()?;
     if !meta.is_file() || meta.len() > SETTINGS_MAX_BYTES {
         return None;
     }
-    std::fs::read_to_string(&path).ok()
+    std::fs::read_to_string(path).ok()
 }
 
 /// The parsed exclusion list: path prefixes and `/regex/` filters.
@@ -179,6 +201,32 @@ mod tests {
         assert_eq!(
             read_obsidian_file(real.path(), "app.json").as_deref(),
             Some("{}")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn plugin_data_is_read_only_through_real_folders() {
+        let vault = tempfile::tempdir().unwrap();
+        let plugin = vault.path().join(".obsidian/plugins/templater-obsidian");
+        std::fs::create_dir_all(&plugin).unwrap();
+        std::fs::write(plugin.join("data.json"), "{}").unwrap();
+        assert_eq!(
+            read_obsidian_plugin_data(vault.path(), "templater-obsidian").as_deref(),
+            Some("{}")
+        );
+        assert_eq!(read_obsidian_plugin_data(vault.path(), "missing"), None);
+
+        let linked = tempfile::tempdir().unwrap();
+        std::fs::create_dir(linked.path().join(".obsidian")).unwrap();
+        std::os::unix::fs::symlink(
+            vault.path().join(".obsidian/plugins"),
+            linked.path().join(".obsidian/plugins"),
+        )
+        .unwrap();
+        assert_eq!(
+            read_obsidian_plugin_data(linked.path(), "templater-obsidian"),
+            None
         );
     }
 

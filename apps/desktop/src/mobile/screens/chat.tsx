@@ -4,6 +4,7 @@ import { ChatTurnList } from '@/components/chat/chat-turn-list'
 import { Button } from '@/components/ui/button'
 import { MobileChatComposer } from '@/mobile/chat-composer'
 import { ChatHistoryDrawer } from '@/mobile/chat-history-drawer'
+import { MobileChatSuggestions } from '@/mobile/chat-suggestions'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
@@ -14,7 +15,8 @@ import { useRouter } from '@/routing/router'
  * settled-markdown citations that navigate), over a mobile composer and
  * bottom-sheet history/model pickers. The conversation and draft live in
  * {@link useChatSession} above the screen, so switching tabs and coming back
- * loses nothing. With no AI provider configured the tab is one
+ * loses nothing. An empty conversation offers starter questions
+ * ({@link MobileChatSuggestions}). With no AI provider configured the tab is one
  * call-to-action into Settings, where keys are added per device.
  */
 export function MobileChat(): ReactElement {
@@ -61,7 +63,7 @@ export function MobileChat(): ReactElement {
       </header>
       {hasProvider ? (
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <ChatTurnList />
+          {turns.length > 0 ? <ChatTurnList /> : <MobileChatSuggestions />}
           <MobileChatComposer />
         </div>
       ) : (

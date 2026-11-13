@@ -334,9 +334,11 @@ const obsidianConfigSchema = z.object({
   dailyNotes: z.string().nullable(),
   app: z.string().nullable(),
   templates: z.string().nullable(),
+  /** Templater's `plugins/templater-obsidian/data.json`; optional for hosts that predate it. */
+  templater: z.string().nullable().default(null),
 })
 
-/** The raw `.obsidian/daily-notes.json`, `app.json` and `templates.json` of a vault (`null` when absent). */
+/** The raw `.obsidian/daily-notes.json`, `app.json`, `templates.json` and Templater settings of a vault (`null` when absent). */
 export type ObsidianConfig = z.infer<typeof obsidianConfigSchema>
 
 /** Read the open graph's Obsidian settings files, unparsed. */

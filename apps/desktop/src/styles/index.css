@@ -1264,6 +1264,16 @@ html:root {
 .kore-editor .md-image-view-preview img {
   cursor: zoom-in;
 }
+/* A picture written on the same line as text (`- caption ![](a.png)`, the
+   shape the iPhone's paste leaves) would sit inline on the text's baseline: a
+   screenshot-tall line with the bullet stranded at its top and the words at its
+   bottom. Pictures take their own line under the text instead, like a block. */
+.kore-editor .md-image-view-preview {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-block: 0.25em;
+}
 
 /* Editor image lightbox: zoom the clicked image into the full-window preview
    and back via the View Transition API (an instant swap where unsupported).

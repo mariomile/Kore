@@ -159,6 +159,7 @@ export {
 } from './conflict-markers'
 export { canonicalEmail, canonicalEmails, extractEmailFields, foldEmail } from './email-fields'
 export { foldFallbackTitleKey, foldKey, foldTag } from './keys'
+export { isBlankListSkeleton } from './blank-body'
 export { gistBodyHash, gistFilename } from './gist'
 export { slugForTitle } from './slug'
 export { subjectAliases } from './subject-aliases'

@@ -44,6 +44,7 @@ import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
+import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
@@ -620,6 +621,10 @@ export function NotePaneComponent({
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
         {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
+        {/* Touch only: closing the keyboard blurs the editor, and an open
+            [[ / slash menu must not outlive it (pointer users dismiss it by
+            clicking outside). */}
+        {isTouchEditorSurface() ? <AutocompleteBlurDismiss /> : null}
       </NoteEditor>
 
       <TagActionsMenu

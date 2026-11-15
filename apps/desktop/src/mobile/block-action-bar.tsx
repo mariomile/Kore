@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import { addDays, format } from 'date-fns'
 import {
   ArrowDown,
@@ -10,11 +10,18 @@ import {
   IndentDecrease,
   IndentIncrease,
   Layers,
+  Locate,
   Replace,
   Sparkles,
   Trash,
 } from '@/components/icons'
-import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
+import {
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import type { BlockSelection } from '@/editor/block-selection-store'
 import type { FormattingBlockKind } from '@/editor/formatting-toolbar-store'
 import { cn } from '@/lib/utils'
@@ -49,6 +56,25 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
     lastCount.current = state.count
   }, [state.count])
 
+  // Stands in for the tab bar, so it publishes the same height variable:
+  // the sync pill and every scroller's bottom padding keep clearing it.
+  const barRef = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const bar = barRef.current
+    if (bar === null) return
+    const root = document.documentElement
+    const publish = (): void => {
+      root.style.setProperty('--mobile-tab-bar-height', `${bar.offsetHeight}px`)
+    }
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(bar)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--mobile-tab-bar-height')
+    }
+  }, [])
+
   const act = (run: () => void): void => {
     hapticImpactLight()
     run()
@@ -57,6 +83,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   return (
     <>
       <div
+        ref={barRef}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 animate-in duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] fade-in-0 slide-in-from-bottom-6 motion-reduce:animate-none"
         style={{
           paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
@@ -69,10 +96,10 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
             type="button"
             onClick={() => act(commands.clear)}
             aria-label="Done selecting"
-            className="mobile-nav-capsule flex h-9 items-center gap-2 pr-1.5 pl-3.5 text-[14px] font-medium tabular-nums transition-transform active:scale-95"
+            className="mobile-nav-capsule flex h-11 items-center gap-2 pr-2 pl-4 text-[15px] font-medium tabular-nums transition-transform active:scale-95"
           >
             {state.count === 1 ? '1 block' : `${state.count} blocks`}
-            <span className="flex size-6 items-center justify-center rounded-full bg-accent text-white [&>svg]:size-3.5">
+            <span className="flex size-7 items-center justify-center rounded-full bg-accent text-white [&>svg]:size-4">
               <Check aria-hidden strokeWidth={2.4} />
             </span>
           </button>
@@ -85,7 +112,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
           <BarButton
             label="Turn into"
             icon={<Replace />}
-            tint="#8b5cf6"
+            tint="#af52de"
             onPress={() => setSheet('turn')}
           />
           <BarButton
@@ -95,15 +122,15 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
             onPress={() => setSheet('date')}
           />
           <BarButton
-            label="Move to"
+            label="Move"
             icon={<FolderMove />}
-            tint="#0a84ff"
+            tint="#007aff"
             disabled={!single}
             onPress={() => act(commands.moveToNote)}
           />
           <BarButton
             label="Zoom"
-            icon={<Layers />}
+            icon={<Locate />}
             tint="#30b0c7"
             disabled={!single}
             onPress={() => act(commands.zoom)}
@@ -111,7 +138,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
           <BarButton
             label="Ask AI"
             icon={<Sparkles />}
-            tint="#ff2d92"
+            tint="#ff2d55"
             onPress={() => act(commands.askAi)}
           />
           <BarButton
@@ -126,78 +153,81 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
 
       <Drawer open={sheet === 'turn'} onOpenChange={(open) => setSheet(open ? 'turn' : null)}>
         <DrawerContent aria-label="Turn into">
-          <DrawerTitle className="sr-only">Turn into</DrawerTitle>
-          <div className="flex flex-wrap gap-2 px-4 pt-1">
-            {KINDS.map(({ kind, label }) => (
-              <button
-                key={kind}
-                type="button"
-                aria-pressed={state.kind === kind}
-                onClick={() => {
-                  act(() => commands.setKind(kind))
+          <SheetHeader
+            title="Turn into"
+            caption={state.count === 1 ? '1 block' : `${state.count} blocks`}
+          />
+          <DrawerBody className="px-4">
+            <div className="flex flex-wrap gap-2">
+              {KINDS.map(({ kind, label }) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={state.kind === kind}
+                  onClick={() => {
+                    act(() => commands.setKind(kind))
+                    setSheet(null)
+                  }}
+                  className={cn(
+                    'h-10 rounded-full px-4 text-[15px] font-medium transition-transform active:scale-95',
+                    state.kind === kind ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <SheetAction
+                label="Indent"
+                icon={<IndentIncrease />}
+                disabled={!state.canIndent}
+                onPress={() => act(commands.indent)}
+              />
+              <SheetAction
+                label="Outdent"
+                icon={<IndentDecrease />}
+                disabled={!state.canOutdent}
+                onPress={() => act(commands.outdent)}
+              />
+              <SheetAction
+                label="Duplicate"
+                icon={<Layers />}
+                onPress={() => {
+                  act(commands.duplicate)
                   setSheet(null)
                 }}
-                className={cn(
-                  'h-10 rounded-full px-4 text-[15px] font-medium transition-transform active:scale-95',
-                  state.kind === kind ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2 px-4 pt-4 pb-4">
-            <SheetAction
-              label="Indent"
-              icon={<IndentIncrease />}
-              disabled={!state.canIndent}
-              onPress={() => act(commands.indent)}
-            />
-            <SheetAction
-              label="Outdent"
-              icon={<IndentDecrease />}
-              disabled={!state.canOutdent}
-              onPress={() => act(commands.outdent)}
-            />
-            <SheetAction
-              label="Duplicate"
-              icon={<Layers />}
-              onPress={() => {
-                act(commands.duplicate)
-                setSheet(null)
-              }}
-            />
-            <SheetAction
-              label="Move up"
-              icon={<ArrowUp />}
-              disabled={!state.canMoveUp}
-              onPress={() => act(commands.moveUp)}
-            />
-            <SheetAction
-              label="Move down"
-              icon={<ArrowDown />}
-              disabled={!state.canMoveDown}
-              onPress={() => act(commands.moveDown)}
-            />
-            <SheetAction
-              label="Copy"
-              icon={<Copy />}
-              onPress={() => {
-                hapticImpactLight()
-                void commands.copy()
-                setSheet(null)
-              }}
-            />
-          </div>
+              />
+              <SheetAction
+                label="Move up"
+                icon={<ArrowUp />}
+                disabled={!state.canMoveUp}
+                onPress={() => act(commands.moveUp)}
+              />
+              <SheetAction
+                label="Move down"
+                icon={<ArrowDown />}
+                disabled={!state.canMoveDown}
+                onPress={() => act(commands.moveDown)}
+              />
+              <SheetAction
+                label="Copy"
+                icon={<Copy />}
+                onPress={() => {
+                  hapticImpactLight()
+                  void commands.copy()
+                  setSheet(null)
+                }}
+              />
+            </div>
+          </DrawerBody>
         </DrawerContent>
       </Drawer>
 
       <Drawer open={sheet === 'date'} onOpenChange={(open) => setSheet(open ? 'date' : null)}>
         <DrawerContent aria-label="Date">
-          <DrawerTitle className="px-4 pt-1 text-[13px] font-medium text-text-muted">
-            Becomes a to-do with this date, listed in Tasks
-          </DrawerTitle>
-          <div className="flex flex-col gap-1 px-2 pt-2 pb-4">
+          <SheetHeader title="Date" caption="Becomes a to-do with this date, listed in Tasks" />
+          <DrawerBody className="gap-1 px-2">
             {(
               [
                 ['today', 'Today', 0],
@@ -223,9 +253,19 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 </span>
               </button>
             ))}
-          </div>
+          </DrawerBody>
         </DrawerContent>
       </Drawer>
+    </>
+  )
+}
+
+/** Same header every Kore sheet uses: the drawer title, with a one-line caption under it. */
+function SheetHeader({ title, caption }: { title: string; caption: string }): ReactElement {
+  return (
+    <>
+      <DrawerTitle>{title}</DrawerTitle>
+      <DrawerDescription className="mt-1.5 px-8">{caption}</DrawerDescription>
     </>
   )
 }

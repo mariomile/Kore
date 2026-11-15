@@ -1801,19 +1801,18 @@ html[data-sidebar-resizing] aside {
 /* Whole-block selection on touch (swipe a block right): the block reads as
    one tinted card, the way Craft lifts it, and the caret stays hidden. */
 .kore-block-selected {
+  /* Opaque tint plus a same-color spread: adjacent selected blocks overlap
+     into one continuous card instead of stacking outlines. */
+  --block-selected-fill: color-mix(in oklab, var(--accent) 12%, var(--surface-app));
   border-radius: 0.875rem;
-  background: color-mix(in oklab, var(--accent) 11%, transparent);
-  box-shadow:
-    0 0 0 5px color-mix(in oklab, var(--accent) 11%, transparent),
-    0 0 0 6px color-mix(in oklab, var(--accent) 22%, transparent);
+  background: var(--block-selected-fill);
+  box-shadow: 0 0 0 6px var(--block-selected-fill);
   animation: kore-block-lift 240ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
 }
 @keyframes kore-block-lift {
   from {
     background: transparent;
-    box-shadow:
-      0 0 0 0 transparent,
-      0 0 0 0 transparent;
+    box-shadow: 0 0 0 0 transparent;
     transform: scale(0.985);
   }
 }

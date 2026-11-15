@@ -204,7 +204,7 @@ interface MobileStackProps {
  * editor at gesture start and remount it on a canceled swipe.
  */
 export function MobileStack(props: MobileStackProps): ReactElement {
-  const { route, entryId, backRoute, canBack, back, navigate } = useRouter()
+  const { route, entryId, backRoute, canBack, viewBack, back, navigate } = useRouter()
   const reducedMotion = usePrefersReducedMotion()
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -231,7 +231,9 @@ export function MobileStack(props: MobileStackProps): ReactElement {
   }
 
   const swipe = useBackSwipe({
-    enabled: isStacked(route) && transition.kind === 'none',
+    // A zoomed block steps out with the header arrow or its breadcrumb; the
+    // swipe would slide the whole screen away only to zoom out.
+    enabled: isStacked(route) && !viewBack && transition.kind === 'none',
     reducedMotion,
     containerRef,
     onPop: () => {

@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Settings: one Agent access section, Chat tools, and a simpler GitHub token
+  step (#465).
+- Agents stay connected when the vault moves: `kore mcp` serves the vault Kore
+  opened last (#463).
 - The iPhone Chat tab is redesigned in Craft style, with a floating pill
   header and a composer card (#459).
 - Wikilinks with an alias (`[[Folder/Note|Name]]`) show the alias (#457).

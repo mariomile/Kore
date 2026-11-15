@@ -1,5 +1,17 @@
 # Kore working state
 
+## Agent access settings, agents follow the vault, 2026-11-15
+
+- [x] Settings → Agents becomes Agent access, with agents grouped by where
+  they run; AI → MCP servers becomes Chat tools; the GitHub token step has
+  three steps with a prefilled link (1-year expiry) and 'Use a different
+  token'; a vault already linked to a repo shows 'Resume sync…' (#465).
+- [x] Agents stay connected when the vault moves: `kore mcp` without `--graph`
+  serves the vault Kore opened last; Settings → Agents copies a path-free
+  config and flags older pinned ones; moving a vault into iCloud warns about
+  agents still tied to the old folder (#463).
+- Not verified on a real Mac.
+
 ## Craft-style Chat on iPhone, 2026-11-15
 
 - [x] iPhone Chat tab redesigned: floating pill header, plain Suggestions and

@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian conversion can continue the vault's Git history, and no longer
+  fails on read-only files (#453).
+- The Obsidian conversion keeps file dates, repoints `.base` views and keeps
+  excluded notes hidden (#449).
+- Mermaid diagrams and charts render with Pele, loaded only when they scroll
+  into view (#450).
+- Text selection hugs the text on Mac and iPhone (#452).
 - iPhone: tap a bullet to zoom into that block (#446).
 - iPhone audio memos transcribe on the device without an API key, in the
   language picked in Settings > Audio memos (#440, #443).

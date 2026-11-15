@@ -1,5 +1,26 @@
 # Kore working state
 
+## Obsidian conversion keeps Git history, Mermaid with Pele, 2026-11-15
+
+- [x] Converting an Obsidian vault can continue its Git history: the copy
+  keeps the repository and the conversion lands as one commit, so backup goes
+  on in the same GitHub repo. It also fixes the conversion failing with
+  Permission denied on read-only files, a 0.107.0 regression (#453).
+- [x] The Obsidian conversion keeps each file's modification date, repoints
+  `.base` views that filter on the moved daily, attachment and template
+  folders, and keeps notes Obsidian excluded from the attachment folder hidden
+  (#449, shipped in 0.107.0).
+- [x] Mermaid fences render with Pele (MIT, from Obsidian) through a Kore
+  `renderCodeBlock` plugin: every Mermaid 12 diagram type including charts
+  (pie, xychart, gantt, sankey), lazy-loaded per type only when a diagram
+  nears the viewport, themed with Kore tokens; vault-compat now flags only
+  ZenUML and plugins (#450).
+- [x] A text selection highlights only the text, with no full-width slabs or
+  filled checkbox column on Mac and iPhone: a Kore plugin marks selected
+  textblocks so WebKit skips its selection-gap fill, and the tint is the
+  accent at 26% (#452).
+- Not verified on a real Mac or iPhone.
+
 ## Block zoom on iPhone, 2026-11-15
 
 - [x] iPhone: tap a bullet to zoom into that block; the header back arrow or

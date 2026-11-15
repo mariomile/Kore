@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
+import { foldTag } from '@kore/core'
 import { BaseScreen } from '@/components/bases/base-screen'
 import { CanvasScreen } from '@/components/canvas/canvas-screen'
 import { useToday } from '@/lib/use-today'
+import { MobileTypePage } from '@/mobile/collection/mobile-type-page'
 import { MobileAllNotes } from '@/mobile/screens/all-notes'
 import { MobileChat } from '@/mobile/screens/chat'
 import { MobileDaily } from '@/mobile/screens/daily'
@@ -73,11 +75,14 @@ export function MobileScreen({
     case 'canvas':
       return <CanvasScreen key={route.path ?? 'canvases'} path={route.path} />
     case 'allNotes':
-      return (
+      // A tag's route is its type page (the collection); every other
+      // filter is the Notes tab.
+      return route.filter.kind === 'tag' ? (
+        <MobileTypePage key={foldTag(route.filter.tag)} tag={route.filter.tag} />
+      ) : (
         <MobileAllNotes
           query={allQuery}
           onQueryChange={onAllQueryChange}
-          tag={route.filter.kind === 'tag' ? route.filter.tag : null}
           filters={allFilters}
           onFiltersChange={onAllFiltersChange}
         />
@@ -90,7 +95,6 @@ export function MobileScreen({
         <MobileAllNotes
           query={allQuery}
           onQueryChange={onAllQueryChange}
-          tag={null}
           filters={allFilters}
           onFiltersChange={onAllFiltersChange}
         />

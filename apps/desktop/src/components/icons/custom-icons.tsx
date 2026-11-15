@@ -159,3 +159,28 @@ export const WikiLink: Icon = createIcon(
     d="M6 4.5H3V19.5H6M10.5 4.5H7.5V19.5H10.5M13.5 4.5H16.5V19.5H13.5M18 4.5H21V19.5H18"
   />,
 )
+
+/**
+ * A database table: a header band over a frozen title column. Solar's grid
+ * and widget glyphs read as cards, so the table view needs its own.
+ */
+export const TableView: Icon = createIcon(
+  'TableView',
+  <>
+    <rect x="2.75" y="4" width="18.5" height="16" rx="3.5" />
+    <path strokeLinecap="round" d="M2.75 9.5H21.25M9 9.5V20" />
+  </>,
+)
+
+/**
+ * A kanban board: three lanes of different depth. Solar's widget-5 is a
+ * card mosaic that reads as the gallery at phone size.
+ */
+export const BoardView: Icon = createIcon(
+  'BoardView',
+  <>
+    <rect x="2.75" y="3.75" width="5" height="16.5" rx="2" />
+    <rect x="9.5" y="3.75" width="5" height="10.5" rx="2" />
+    <rect x="16.25" y="3.75" width="5" height="13.5" rx="2" />
+  </>,
+)

@@ -1,6 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { docToMarkdown, type EditorExtension } from '@meowdown/core'
-import { createNoteWithTitle, errorMessage, planSubPage, subPagePreview } from '@kore/core'
+import {
+  createNoteWithTitle,
+  errorMessage,
+  planSubPage,
+  resolveExistingWikiTarget,
+  subPagePreview,
+} from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { startOperation } from '@/lib/operations'
 import { deliverPagePreview } from './page-card-plugin'
@@ -255,7 +261,19 @@ export function BlockSwipeGestures({
             return
           }
           view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
-          void createNoteWithTitle(plan.title, current, plan.body === '' ? undefined : plan.body)
+          // `[[Title]]` must name the new page alone: a title another note
+          // already answers to would make the link (and the card) ambiguous.
+          void resolveExistingWikiTarget(plan.title, current)
+            .then((existing) => {
+              if (existing.kind !== 'missing') {
+                throw new Error(`A note called ${plan.title} already exists.`)
+              }
+              return createNoteWithTitle(
+                plan.title,
+                current,
+                plan.body === '' ? undefined : plan.body,
+              )
+            })
             .then(() => {
               const now = view.state.doc.nodeAt(block.from)
               const done = startOperation(

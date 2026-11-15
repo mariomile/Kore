@@ -381,12 +381,25 @@ html:root {
      the wash carries the state, the faint ring only sharpens its edge. */
   --meowdown-node-outline: color-mix(in srgb, var(--accent) 45%, transparent);
   --meowdown-node-selection: var(--accent-soft, rgb(99 102 241 / 12%));
-  --meowdown-selection: var(--accent-soft, rgb(99 102 241 / 12%));
+  /* Text selection hugs the text (see .kore-selection-block below), so it
+     needs a touch more presence than the old full-width wash: the accent at
+     a fixed strength reads the same on every theme and accent. */
+  --meowdown-selection: color-mix(in srgb, var(--accent) 26%, transparent);
   /* Floating menus (top layer): background is Reflect's surface; the highlighted
      row uses accent-soft, matching the ⌘K palette's selected item. */
   --meowdown-popover-bg: var(--surface);
   --meowdown-popover-hover-bg: var(--accent-soft);
   --meowdown-danger: var(--destructive);
+}
+
+/* A selected range hugs the text. WebKit (the Mac and iPhone webview) fills
+   selection gaps out to the editor's edges, painting full-width slabs over
+   multi-line selections and the checkbox/bullet column; it skips that fill
+   inside a transformed block. `editor/selection-shape.ts` puts this class on
+   just the textblocks a range touches, only while one is selected, so no
+   block carries the extra layer otherwise. */
+.ProseMirror .kore-selection-block {
+  translate: 0 0;
 }
 
 /* Notion-style `/` menu. meowdown owns a flat listbox in the top layer
@@ -985,7 +998,11 @@ html:root {
   }
 }
 .kore-editor.kore-editor-has-properties > h1:first-child {
-  margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
+  margin-bottom: calc(0.4em + var(--kore-note-properties-space, 0px));
+}
+/* A typed note with no title line shows its fields above the body. */
+.kore-editor.kore-editor-properties-top {
+  padding-top: var(--kore-note-properties-space, 0px);
 }
 
 /* Membership `#tag` lines sit in Type above the body. Leading or trailing
@@ -1264,6 +1281,16 @@ html:root {
 .kore-editor .md-image-view-preview img {
   cursor: zoom-in;
 }
+/* A picture written on the same line as text (`- caption ![](a.png)`, the
+   shape the iPhone's paste leaves) would sit inline on the text's baseline: a
+   screenshot-tall line with the bullet stranded at its top and the words at its
+   bottom. Pictures take their own line under the text instead, like a block. */
+.kore-editor .md-image-view-preview {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-block: 0.25em;
+}
 
 /* Editor image lightbox: zoom the clicked image into the full-window preview
    and back via the View Transition API (an instant swap where unsupported).
@@ -1351,9 +1378,12 @@ html[data-sidebar-resizing] aside {
       `.95rem` checkbox flush-left lands its right edge ~where a centered bullet
       dot's sits, so the checkbox<->label gap matches a bullet's. The breathing
       room comes from the marker, not from indenting the text.
-   3. The input itself is raised slightly to optically center both square
-      checklist boxes (`- [ ]`) and round task boxes (`+ [ ]`) against the text
-      baseline.
+   3. The input is lowered a hair below the line box's center. A box centered
+      on the line box lands on the cap-height middle, which reads high next to
+      lowercase text (the eye centers on the x-height). Sitting between the
+      cap-height and x-height middles optically centers both square checklist
+      boxes (`- [ ]`) and round task boxes (`+ [ ]`) on their label. It used to
+      be raised by .06em, which put the box visibly above the text on the Mac.
 
    meowdown does not fold this gap into its default yet, so it stays a Reflect
    override; meowdown is layered, so the unlayered `.kore-editor` rules win. */
@@ -1364,7 +1394,7 @@ html[data-sidebar-resizing] aside {
   justify-content: start;
 }
 .kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
-  transform: translateY(-0.06em);
+  transform: translateY(0.02em);
 }
 
 /* ---- ⌘K palette (Plan 08) ---------------------------------------------- */
@@ -1465,6 +1495,19 @@ html[data-sidebar-resizing] aside {
   inset: -1rem 0 0;
   z-index: -1;
   background: linear-gradient(to bottom, transparent, var(--surface-app));
+}
+
+/* A floating pill header (the Chat tab): no bar and no rule, just capsules
+   over the content. The content scrolling up under them fades into the app
+   background instead, the top-edge mirror of `mobile-nav-bar` above. No
+   backdrop-filter on the strip itself: the capsules blur, the fade is free. */
+.mobile-pill-header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -1rem;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to top, transparent, var(--surface-app));
 }
 
 .mobile-nav-capsule {
@@ -1627,9 +1670,49 @@ html[data-sidebar-resizing] aside {
 }
 
 /* A rendered collection fence never shows its source: the widget is the
-   whole block, and the caret is kept out of it by CollectionFenceGuard. */
-.kore-editor div:has(> [data-meowdown-code-block-custom]) > pre {
+   whole block, and the caret is kept out of it by CollectionFenceGuard.
+   A diagram fence keeps its source, which Meowdown shows while the caret is
+   inside it. */
+.kore-editor
+  div:has(> [data-meowdown-code-block-custom]):not(
+    :has(> [data-meowdown-code-block-custom] > [data-kore-diagram])
+  )
+  > pre {
   display: none;
+}
+
+/* Mermaid fences drawn by Pele (mermaid-diagram.tsx). Colors follow the
+   theme tokens, so switching light/dark recolors without redrawing; series
+   colors keep Pele's palette, which reads on both. */
+.kore-diagram {
+  --pele-bg: var(--surface);
+  --pele-fg: var(--text);
+  --pele-fg-on-light: #1f1f1f;
+  --pele-fg-on-dark: #ffffff;
+  --pele-muted: var(--text-muted);
+  --pele-line: var(--text-secondary);
+  --pele-surface: var(--surface-sunken);
+  --pele-surface-alt: var(--surface-hover);
+  --pele-border: var(--border-strong);
+  --pele-accent: var(--accent);
+  --pele-critical: var(--danger);
+  --pele-error: var(--danger);
+  --pele-radius: var(--radius-sm);
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  cursor: text;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kore-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.kore-diagram [data-empty] {
+  color: var(--text-muted);
+  font-size: var(--text-sm, 0.875rem);
 }
 
 /* Embedded views use application typography, not Markdown heading styles. */
@@ -1664,4 +1747,66 @@ html[data-sidebar-resizing] aside {
   display: inline-block;
   min-width: 2.5rem;
   min-height: 2.5rem;
+}
+
+/* iPhone design pass (2026-11): read at the iOS body size.
+   Apple's reading default is 17pt (Bear, Craft and Notes sit there), so the
+   default step (small) lands on it and the larger steps grow from it. */
+:root[data-mobile-platform='ios'],
+:root[data-mobile-platform='ios'][data-editor-text-size='small'] {
+  --editor-font-size: 17px;
+}
+:root[data-mobile-platform='ios'][data-editor-text-size='medium'] {
+  --editor-font-size: 18px;
+}
+:root[data-mobile-platform='ios'][data-editor-text-size='large'] {
+  --editor-font-size: 20px;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface {
+  line-height: 1.5;
+}
+/* "Add a type" stays off the page while reading on a phone and appears once
+   the note is being edited, so a plain note opens as just a title and text. */
+@media (hover: none) {
+  :root[data-mobile-platform='ios'] .kore-note-add-type {
+    opacity: 0;
+    pointer-events: none;
+  }
+  :root[data-mobile-platform='ios']
+    .kore-note-properties-host:has(.ProseMirror-focused)
+    .kore-note-add-type {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* iPhone design pass (2026-11): Dataview queries, which Kore doesn't run,
+   read as a quiet chip instead of raw query text. The Markdown is untouched;
+   the Mac still shows and edits them. */
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview'] {
+  position: relative;
+  max-height: 2.75rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview'] > code {
+  opacity: 0;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview']::before {
+  content: '⌗  Dataview query · shown on the Mac';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.875rem;
+  font: 500 14px/1 var(--font-sans);
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  pointer-events: none;
+}
+:root[data-mobile-platform='ios']
+  .kore-note-surface
+  div:has(> pre[data-language^='dataview'])
+  > :not(pre) {
+  display: none;
 }

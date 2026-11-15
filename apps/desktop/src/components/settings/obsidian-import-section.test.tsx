@@ -24,9 +24,12 @@ const dryRun = vi.hoisted((): { state: State | null } => ({ state: null }))
 
 const openRecent = vi.hoisted(() => vi.fn(async () => true))
 const convert = vi.hoisted(() => vi.fn())
-const conversion = vi.hoisted((): { result: ObsidianConversionState['result'] } => ({
-  result: null,
-}))
+const conversion = vi.hoisted(
+  (): { result: ObsidianConversionState['result']; hasHistory: boolean } => ({
+    result: null,
+    hasHistory: false,
+  }),
+)
 
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null, openRecent }) }))
 vi.mock('@/lib/platform', () => ({ isNativeShell: () => true }))
@@ -38,6 +41,7 @@ vi.mock('@/hooks/use-obsidian-conversion', () => ({
     result: conversion.result,
     error: null,
   }),
+  useVaultHasGitHistory: () => conversion.hasHistory,
 }))
 vi.mock('@/hooks/use-obsidian-import-dry-run', () => ({
   useObsidianImportDryRun: () => ({ ...(dryRun.state ?? EMPTY), run, setMapping }),
@@ -58,6 +62,7 @@ const SOURCE: ObsidianImportSource = {
   config: { dailyNotes: null, app: null, templates: null },
   notes: [],
   attachments: [],
+  bases: [],
   folders: ['Journal', 'Journal/Daily', 'Resources', 'Resources/_attachments'],
   skipped: 0,
 }
@@ -91,6 +96,7 @@ const READ: State = {
 afterEach(() => {
   dryRun.state = null
   conversion.result = null
+  conversion.hasHistory = false
   vi.clearAllMocks()
 })
 
@@ -160,7 +166,20 @@ describe('ObsidianImportSection', () => {
     await render(<ObsidianImportSection />)
 
     await page.getByRole('button', { name: 'Convert to a copy…' }).click()
-    expect(convert).toHaveBeenCalledWith(MAPPING)
+    expect(convert).toHaveBeenCalledWith(MAPPING, false)
+    await expect
+      .element(page.getByRole('checkbox', { name: 'Continue the vault’s Git history' }))
+      .not.toBeInTheDocument()
+  })
+
+  it('continues the vault’s Git history when asked', async () => {
+    dryRun.state = READ
+    conversion.hasHistory = true
+    await render(<ObsidianImportSection />)
+
+    await page.getByRole('checkbox', { name: 'Continue the vault’s Git history' }).click()
+    await page.getByRole('button', { name: 'Convert to a copy…' }).click()
+    expect(convert).toHaveBeenLastCalledWith(MAPPING, true)
   })
 
   it('reports the copy and opens it as a graph', async () => {
@@ -171,6 +190,7 @@ describe('ObsidianImportSection', () => {
       bytes: 1,
       symlinks: 0,
       written: 2990,
+      commit: null,
     }
     await render(<ObsidianImportSection />)
 

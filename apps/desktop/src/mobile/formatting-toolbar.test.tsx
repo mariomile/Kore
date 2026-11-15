@@ -13,6 +13,8 @@ import { act } from '@/test-utils/act'
 
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 vi.mock('@/lib/pick-files', () => ({ pickFiles: vi.fn(async () => []) }))
+const memo = vi.hoisted(() => ({ available: true, toggle: vi.fn() }))
+vi.mock('@/mobile/audio-memo-provider', () => ({ useMobileAudioMemo: () => memo }))
 
 function makeToolbar(
   capabilities: Partial<FormattingToolbar['capabilities']> = {},
@@ -24,6 +26,8 @@ function makeToolbar(
       canMoveUp: true,
       canMoveDown: true,
       canAttachFiles: true,
+      blockKind: 'text',
+      canUndo: true,
       ...capabilities,
     },
     commands: {
@@ -34,6 +38,8 @@ function makeToolbar(
       moveUp: vi.fn(),
       moveDown: vi.fn(),
       insertTrigger: vi.fn(),
+      setBlockKind: vi.fn(),
+      undo: vi.fn(),
       dismissKeyboard: vi.fn(),
       attachFiles: vi.fn(),
       scrollCaretIntoView: vi.fn(),
@@ -55,39 +61,57 @@ describe('MobileFormattingToolbar', () => {
     expect(view.container.firstChild).toBeNull()
   })
 
-  it('renders V1 item order plus the dismiss button, with canExec-driven enablement', async () => {
-    const toolbar = makeToolbar({ canDedent: false, canMoveUp: false })
+  it('renders the block pills over the capsule, with canExec-driven enablement', async () => {
+    const toolbar = makeToolbar({ blockKind: 'bullet', canDedent: false, canUndo: false })
     await render(<MobileFormattingToolbar />)
     await act(() => publishFormattingToolbar(owner, toolbar))
 
     const buttons = page.getByRole('button').elements()
-    expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'Slash command',
-      'Cycle list style',
-      'Cycle checklist and task',
+    expect(
+      buttons.map((button) => button.getAttribute('aria-label') ?? button.textContent),
+    ).toEqual([
+      'Text',
+      'Heading',
+      '• List',
+      '☐ To-do',
+      '❝ Quote',
       'Link note',
       'Add type',
       'Outdent',
       'Indent',
-      'Move up',
-      'Move down',
-      'Insert image',
+      'Dictate',
+      'Undo',
+      // No image button on a list line: the capsule would overflow and
+      // push Undo out of sight.
       'Hide keyboard',
     ])
+    await expect
+      .element(page.getByRole('button', { name: '• List' }))
+      .toHaveAttribute('aria-pressed', 'true')
     await expect.element(page.getByRole('button', { name: 'Outdent' })).toBeDisabled()
-    await expect.element(page.getByRole('button', { name: 'Move up' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Undo' })).toBeDisabled()
     await expect.element(page.getByRole('button', { name: 'Indent' })).toBeEnabled()
+  })
+
+  it('offers the image button and no indent controls on a text line', async () => {
+    await render(<MobileFormattingToolbar />)
+    await act(() => publishFormattingToolbar(owner, makeToolbar({ blockKind: 'text' })))
+
+    await expect.element(page.getByRole('button', { name: 'Insert image' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'Indent' }).query()).toBeNull()
   })
 
   it('never lets a tap move focus out of the editor', async () => {
     await render(<MobileFormattingToolbar />)
     await act(() => publishFormattingToolbar(owner, makeToolbar()))
 
-    const bullet = page.getByRole('button', { name: 'Cycle list style' })
     // fireEvent returns false when a handler called preventDefault — the
     // contract that keeps the editor focused (and the keyboard up) mid-tap.
-    expect(fireEvent.pointerDown(bullet)).toBe(false)
-    expect(fireEvent.mouseDown(bullet)).toBe(false)
+    for (const name of ['Link note', 'Heading']) {
+      const button = page.getByRole('button', { name, exact: true })
+      expect(fireEvent.pointerDown(button)).toBe(false)
+      expect(fireEvent.mouseDown(button)).toBe(false)
+    }
   })
 
   it('routes taps to the published commands', async () => {
@@ -95,11 +119,11 @@ describe('MobileFormattingToolbar', () => {
     await render(<MobileFormattingToolbar />)
     await act(() => publishFormattingToolbar(owner, toolbar))
 
-    fireEvent.click(page.getByRole('button', { name: 'Cycle list style' }))
-    expect(toolbar.commands.cycleBulletOrderedList).toHaveBeenCalledOnce()
+    fireEvent.click(page.getByRole('button', { name: '☐ To-do' }))
+    expect(toolbar.commands.setBlockKind).toHaveBeenCalledWith('task')
 
-    fireEvent.click(page.getByRole('button', { name: 'Cycle checklist and task' }))
-    expect(toolbar.commands.cycleCheckableList).toHaveBeenCalledOnce()
+    fireEvent.click(page.getByRole('button', { name: 'Heading' }))
+    expect(toolbar.commands.setBlockKind).toHaveBeenCalledWith('heading')
 
     fireEvent.click(page.getByRole('button', { name: 'Link note' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('[[')
@@ -107,8 +131,11 @@ describe('MobileFormattingToolbar', () => {
     fireEvent.click(page.getByRole('button', { name: 'Add type' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('#')
 
-    fireEvent.click(page.getByRole('button', { name: 'Slash command' }))
-    expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('/')
+    fireEvent.click(page.getByRole('button', { name: 'Undo' }))
+    expect(toolbar.commands.undo).toHaveBeenCalledOnce()
+
+    fireEvent.click(page.getByRole('button', { name: 'Dictate' }))
+    expect(memo.toggle).toHaveBeenCalledOnce()
 
     fireEvent.click(page.getByRole('button', { name: 'Hide keyboard' }))
     expect(toolbar.commands.dismissKeyboard).toHaveBeenCalledOnce()

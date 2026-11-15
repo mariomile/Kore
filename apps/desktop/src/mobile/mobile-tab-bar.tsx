@@ -3,6 +3,7 @@ import { Chat, CheckCircle, NoteEdit, Notes, Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
+import { useTabBarScrolledAway } from '@/mobile/chrome-visibility'
 import type { Route } from '@/routing/route'
 
 export type MobileTab = 'daily' | 'all' | 'tasks' | 'chat'
@@ -44,6 +45,8 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
   const navRef = useRef<HTMLElement | null>(null)
   const indicatorRef = useRef<HTMLSpanElement | null>(null)
 
+  const scrolledAway = useTabBarScrolledAway()
+
   useSlidingIndicator(navRef, indicatorRef, tab)
 
   useLayoutEffect(() => {
@@ -69,7 +72,11 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
     <nav
       ref={navRef}
       aria-label="Sections"
-      className="mobile-nav-bar pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center pt-3"
+      data-scrolled-away={scrolledAway ? '' : undefined}
+      className={cn(
+        'mobile-nav-bar pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center pt-3 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+        scrolledAway && 'translate-y-[calc(100%+0.5rem)]',
+      )}
       style={{
         paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
         paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
@@ -121,7 +128,7 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
               hapticImpactLight()
               onCapture()
             }}
-            className="relative z-20 flex size-12 items-center justify-center rounded-full"
+            className="relative z-20 flex size-12 items-center justify-center rounded-full transition-transform duration-150 active:scale-90 motion-reduce:transition-none"
           >
             <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
               <Plus aria-hidden className="size-6" />
@@ -159,10 +166,14 @@ function TabButton({
         onClick()
       }}
       className={cn(
-        'relative z-20 flex h-12 min-w-12 flex-1 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none',
-        active ? 'text-foreground' : 'text-foreground/70 active:bg-foreground/5',
+        'relative z-20 flex h-12 min-w-12 flex-1 items-center justify-center rounded-full transition-[color,transform] duration-150 active:scale-90 motion-reduce:transition-none',
+        active
+          ? 'text-foreground [&_svg]:[stroke-width:2.1]'
+          : 'text-foreground/55 active:bg-foreground/5 [&_svg]:[stroke-width:1.5]',
       )}
     >
+      {/* The active tab draws its glyph a weight heavier, the way iOS fills
+          the selected tab's symbol (Solar has no matching filled hand). */}
       {icon}
     </button>
   )

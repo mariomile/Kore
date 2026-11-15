@@ -9,6 +9,7 @@ import {
   writeDefaultVaultObjects,
   writeNote,
 } from '@kore/core'
+import { isMobileSurface } from '@/lib/platform-surface'
 
 /**
  * The first-run seeds (Plan 15 step 1 + TDR 0005's default objects): a
@@ -60,6 +61,39 @@ Notes marked \`private: true\` are blocked from AI and content-processing servic
 This note is pinned to the sidebar — unpin it (⌘O) when you're done.
 `
 
+/**
+ * The same note for a vault born on the phone: no keyboard shortcuts or
+ * sidebar, and only what the iPhone app offers (API-key chat, GitHub sync,
+ * the New sheet). A vault created on the Mac keeps the desktop text.
+ */
+const MOBILE_WELCOME_BODY = `# ${WELCOME_TITLE}
+
+Kore keeps your notes in Markdown and lets your own AI work with them.
+Start with today's note in the Daily tab. Everything else is optional.
+
+## Try one useful loop
+
+1. **Capture.** Write a decision in today's note. Type \`[[\` and a title to connect it to a project or person.
+2. **Ask.** In Settings → AI, add a provider API key. Open the Chat tab and ask about that decision.
+3. **Verify.** Expand **Context used** under the reply to see the notes included with your question. Tap a source to check the answer.
+
+## When you want more
+
+- **Find notes:** the Notes tab lists every note. Search from its bar, or tap Types to see one kind of note.
+- **Collections:** a type's page shows its notes. Configure properties to organize projects, people, companies or meetings.
+- **Capture fast:** the + button adds to today's note, starts a new note or task, or records a voice memo.
+- **Protect your work:** a vault in iCloud Drive syncs with your other devices. Settings → Sync connects a GitHub repository instead.
+
+Notes marked \`private: true\` are blocked from AI and content-processing services. They are still included in any file sync you enable. Provider keys stay in the device keychain and are not synced.
+
+This note is pinned to the top of the Notes tab. Swipe it left and tap Unpin when you're done.
+`
+
+/** The welcome text for the surface creating the vault. */
+export function welcomeNoteBody(mobile: boolean = isMobileSurface()): string {
+  return mobile ? MOBILE_WELCOME_BODY : WELCOME_BODY
+}
+
 export interface EnsureWelcomeNoteOptions {
   /** File-write generation (`graph.generation`) — pins the listing and write. */
   fileGeneration: number
@@ -98,7 +132,7 @@ export async function ensureFirstRunSeeds(options: EnsureWelcomeNoteOptions): Pr
   const brandNew = welcomeMarked === null && empty
   if (welcomeMarked === null) {
     if (empty) {
-      const source = upsertFrontmatter(WELCOME_BODY, { id: newNoteId(), pinned: true })
+      const source = upsertFrontmatter(welcomeNoteBody(), { id: newNoteId(), pinned: true })
       await writeNote(WELCOME_NOTE_PATH, source, options.fileGeneration)
     }
     await setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', options.indexGeneration)

@@ -8,9 +8,11 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { errorMessage, type GraphInfo } from '@kore/core'
+import { createNativeOnDeviceTranscriber, errorMessage, type GraphInfo } from '@kore/core'
 import { useAudioMemoPipeline, type PendingAudioCapture } from '@/hooks/use-audio-memo-pipeline'
 import { isNativeShell } from '@/lib/platform'
+import { useRouter } from '@/routing/router'
+import { useSettings } from '@/providers/settings-provider'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'
 import { hapticImpactLight } from '@/mobile/haptics'
 import {
@@ -111,9 +113,19 @@ export function MobileAudioMemoProvider({
     setDrawerOpenState(open)
   }, [])
 
+  const { settings } = useSettings()
+  const transcriptionLanguage = settings.transcriptionLanguage
+  // The iPhone transcribes on the device when no cloud key is set, so
+  // recording never needs one there.
+  const onDeviceTranscriber = useMemo(
+    () => (isNativeShell() ? createNativeOnDeviceTranscriber(transcriptionLanguage) : undefined),
+    [transcriptionLanguage],
+  )
+
   const pipeline = useAudioMemoPipeline({
     graph,
     isErrorSurfaceVisible: () => drawerOpenRef.current,
+    onDeviceTranscriber,
   })
   const enqueuePipeline = pipeline.enqueue
 
@@ -172,8 +184,9 @@ export function MobileAudioMemoProvider({
       return
     }
     setDrawerOpen(true)
-    // Recording never starts without a transcription key: the drawer opens on
-    // its key-setup guidance instead. OS entry points (Siri, the widget, the
+    // Recording never starts without a transcription engine (on the iPhone
+    // there always is one: the device's own): the drawer opens on its
+    // key-setup guidance instead. OS entry points (Siri, the widget, the
     // quick action) funnel through here too, so they surface the same guidance.
     if (!pipeline.hasTranscriptionConfig) {
       return
@@ -258,7 +271,9 @@ export function MobileAudioMemoProvider({
     [recorder.status, stopAndSave, cancelRecorder, setDrawerOpen],
   )
 
-  useNativeRecordAction({ start, enqueueStaged })
+  const { navigate } = useRouter()
+  const openDaily = useCallback((): void => navigate({ kind: 'today' }), [navigate])
+  useNativeRecordAction({ start, enqueueStaged, openDaily })
   useStagedRecordingIngest(enqueueStaged)
 
   // A live capture owns the surface — a background save's failure parks and

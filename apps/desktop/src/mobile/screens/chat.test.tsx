@@ -4,6 +4,7 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement, ReactNode } from 'react'
 import type {
+  AiPrompt,
   AiProviderConfig,
   ChatModelSelection,
   ChatStreamEvent,
@@ -39,12 +40,14 @@ vi.mock('@kore/core', async (importOriginal) => ({
 const settingsState = vi.hoisted(() => ({
   models: [] as AiProviderConfig[],
   defaultId: null as string | null,
+  prompts: [] as AiPrompt[],
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
     settings: {
       aiProviders: settingsState.models,
       defaultAiProviderId: settingsState.defaultId,
+      aiPrompts: settingsState.prompts,
       chatModelSelection: null as ChatModelSelection | null,
       chatSystemPrompt: '',
     },
@@ -64,6 +67,7 @@ vi.mock('@/editor/markdown-preview', () => ({
   ),
 }))
 vi.mock('@/lib/provider-fetch', () => ({ providerFetch: vi.fn() }))
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 
 // Keep sheet content inline so this suite isolates the chat flow. Honoring
 // `open` matters: the composer floats over the screen, and a closed sheet's
@@ -87,6 +91,7 @@ const MODEL: AiProviderConfig = { id: 'm1', provider: 'openai', model: 'gpt-5.1'
 beforeEach(() => {
   settingsState.models = []
   settingsState.defaultId = null
+  settingsState.prompts = []
   streamChat.mockReset()
   aiApiKeyForConfig.mockReset().mockResolvedValue('sk-test')
   loadChatGraphContext.mockReset().mockResolvedValue(null)
@@ -165,9 +170,53 @@ describe('MobileChat', () => {
     await page.getByRole('button', { name: 'Send' }).click()
 
     await expect.element(page.getByText('Grounded answer.')).toBeVisible()
-    await expect.element(page.getByText('what did I write?')).toBeVisible()
+    // The question lands in the transcript and names the conversation in
+    // the header's title pill (which reads "New chat" before it).
+    await expect.element(page.getByText('what did I write?', { exact: true }).nth(1)).toBeVisible()
+    await expect
+      .element(page.getByRole('heading', { level: 1, name: 'what did I write?' }))
+      .toBeVisible()
     // A send that goes through clears the provider-held draft.
     await expect.element(composer).toHaveValue('')
+  })
+
+  it('an empty conversation offers starter questions that send as written', async () => {
+    configureModel()
+    scriptTurn([
+      { type: 'text-delta', text: 'Your week, summarized.' },
+      { type: 'complete', messages: [{ role: 'assistant', content: 'Your week, summarized.' }] },
+    ])
+    await render(<Harness showScreen />)
+
+    await page.getByRole('button', { name: 'Summarize my week' }).click()
+
+    await expect.element(page.getByText('Your week, summarized.')).toBeVisible()
+    await expect.element(page.getByRole('region', { name: 'Suggestions' })).not.toBeInTheDocument()
+  })
+
+  it('lists standalone saved prompts that fill and focus the composer, folding past three', async () => {
+    configureModel()
+    settingsState.prompts = [
+      { id: 'p1', label: 'Overview', body: 'Give me an overview of', mode: 'append' },
+      { id: 'p2', label: 'Fix', body: 'Fix: {{selectedText}}', mode: 'replace' },
+      { id: 'p3', label: 'Gaps', body: 'What is missing?', mode: 'append' },
+      { id: 'p4', label: 'Risks', body: 'What are the risks?', mode: 'append' },
+      { id: 'p5', label: 'Owners', body: 'Who owns what?', mode: 'append' },
+    ]
+    await render(<Harness showScreen />)
+
+    const prompts = page.getByRole('region', { name: 'Your prompts' })
+    // The selection transformation stays in the editor's AI menu.
+    await expect.element(prompts.getByRole('button', { name: 'Fix' })).not.toBeInTheDocument()
+    await expect.element(prompts.getByRole('button', { name: 'Owners' })).not.toBeInTheDocument()
+    await prompts.getByRole('button', { name: 'Show 1 more' }).click()
+    await expect.element(prompts.getByRole('button', { name: 'Owners' })).toBeVisible()
+
+    await prompts.getByRole('button', { name: 'Overview' }).click()
+    const input = page.getByLabelText('Chat message')
+    await expect.element(input).toHaveValue('Give me an overview of')
+    await expect.element(input).toHaveFocus()
+    expect(streamChat).not.toHaveBeenCalled()
   })
 
   it('keeps the draft and the conversation across a screen unmount (tab switch)', async () => {
@@ -193,7 +242,7 @@ describe('MobileChat', () => {
     await rerender(<Harness showScreen />)
 
     await expect.element(page.getByLabelText('Chat message')).toHaveValue('half-typed follow-up')
-    await expect.element(page.getByText('sent question')).toBeVisible()
+    await expect.element(page.getByText('sent question', { exact: true }).nth(1)).toBeVisible()
   })
 
   it('focuses the composer when a chat tab capture arrival requests it', async () => {

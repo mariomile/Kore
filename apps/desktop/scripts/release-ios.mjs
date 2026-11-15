@@ -46,6 +46,12 @@ const iosAppIconDir = join(
   'Assets.xcassets',
   'AppIcon.appiconset',
 )
+// App extensions embedded in the app. Tauri stamps the app's own Info.plist
+// with the version from tauri.conf.json but leaves these alone, and App Store
+// Connect warns (ITMS-90473) when their version differs from the app's.
+const iosExtensionInfoPlists = ['ShareExtension', 'RecordingWidget'].map((name) =>
+  join(appDir, 'src-tauri', 'gen', 'apple', name, 'Info.plist'),
+)
 const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Kore.app', 'Kore')
 const iosDsymBinary = join(
   iosArchive,
@@ -513,6 +519,7 @@ function ensureReleaseTools() {
 
 function runTauriIosBuild({ apiKeyCredentials, buildNumber, exportMethod, verbose }) {
   ensureReleaseTools()
+  syncExtensionVersions()
   const args = createTauriIosBuildArgs({
     buildNumber,
     exportMethod,
@@ -656,6 +663,40 @@ export function pngHasAlpha(buffer) {
     offset += 12 + length
   }
   return false
+}
+
+/**
+ * The CFBundleShortVersionString Tauri gives the app: the package version
+ * without its prerelease or build suffix, since Apple requires three
+ * dot-separated integers.
+ */
+export function iosShortVersion(packageVersion) {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(packageVersion)
+  if (!match) throw new Error(`unsupported app version "${packageVersion}"`)
+  return `${match[1]}.${match[2]}.${match[3]}`
+}
+
+/** Return `plist` with its CFBundleShortVersionString set to `version`. */
+export function withShortVersion(plist, version) {
+  const pattern = /(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]*(<\/string>)/
+  if (!pattern.test(plist)) throw new Error('Info.plist has no CFBundleShortVersionString')
+  return plist.replace(pattern, `$1${version}$2`)
+}
+
+/**
+ * Give every app extension the app's version before the build. The build
+ * number already matches: the archive step runs `agvtool new-version -all`,
+ * which sets CFBundleVersion in every target.
+ */
+function syncExtensionVersions() {
+  const { version } = JSON.parse(readFileSync(join(appDir, 'package.json'), 'utf8'))
+  const shortVersion = iosShortVersion(version)
+  for (const path of iosExtensionInfoPlists) {
+    const plist = readFileSync(path, 'utf8')
+    const updated = withShortVersion(plist, shortVersion)
+    if (updated !== plist) writeFileSync(path, updated)
+  }
+  log(`app extensions set to version ${shortVersion}`)
 }
 
 /** Fail before the build when any iOS app icon could be transparent. */

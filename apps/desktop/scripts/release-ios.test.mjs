@@ -16,7 +16,9 @@ import {
   isFalsePlistValue,
   normalizeApiKeyContent,
   parseDwarfdumpUuids,
+  iosShortVersion,
   pngHasAlpha,
+  withShortVersion,
   resolveBuildNumber,
 } from './release-ios.mjs'
 
@@ -292,4 +294,33 @@ test('the committed iOS app icons have no alpha channel', () => {
     .filter((name) => name.endsWith('.png'))
     .filter((name) => pngHasAlpha(readFileSync(join(dir, name))))
   expect(transparent).toEqual([])
+})
+
+test('iosShortVersion strips prerelease and build suffixes', () => {
+  expect(iosShortVersion('0.103.1')).toBe('0.103.1')
+  expect(iosShortVersion('1.2.3-beta.4')).toBe('1.2.3')
+  expect(iosShortVersion('1.2.3+5')).toBe('1.2.3')
+  expect(() => iosShortVersion('1.2')).toThrow()
+})
+
+test('withShortVersion replaces only CFBundleShortVersionString', () => {
+  const plist = [
+    '<dict>',
+    '\t<key>CFBundleShortVersionString</key>',
+    '\t<string>0.6.0</string>',
+    '\t<key>CFBundleVersion</key>',
+    '\t<string>0.6.0.8</string>',
+    '</dict>',
+  ].join('\n')
+  const updated = withShortVersion(plist, '0.103.1')
+  expect(updated).toContain('<string>0.103.1</string>')
+  expect(updated).toContain('<string>0.6.0.8</string>')
+  expect(() => withShortVersion('<dict></dict>', '1.0.0')).toThrow()
+})
+
+test('every app extension Info.plist has a version to sync', () => {
+  for (const name of ['ShareExtension', 'RecordingWidget']) {
+    const path = join(import.meta.dirname, '..', 'src-tauri', 'gen', 'apple', name, 'Info.plist')
+    expect(() => withShortVersion(readFileSync(path, 'utf8'), '1.0.0')).not.toThrow()
+  }
 })

@@ -6,6 +6,9 @@ import WebKit
 #if canImport(ActivityKit)
   import ActivityKit
 #endif
+#if canImport(WidgetKit)
+  import WidgetKit
+#endif
 
 /// The payload of the plugin's ~10 Hz `recordingLevel` event.
 struct RecordingLevel: Encodable {
@@ -42,7 +45,7 @@ struct RecordingStatus: Encodable {
 /// home-screen quick action, the lock-screen widget's `kore://` URL)
 /// asked for something only the webview can present.
 struct NativeAction: Encodable {
-  /// Currently only `recordAudio`.
+  /// `recordAudio` or `openDaily`.
   let action: String
 }
 
@@ -83,6 +86,27 @@ struct StartArgs: Decodable {
 
 struct StagedPathArgs: Decodable {
   let path: String
+}
+
+struct UpdateDailyWidgetArgs: Decodable {
+  /// A `DailyWidgetSnapshot`, serialized by the app.
+  let json: String
+}
+
+struct TranscribeArgs: Decodable {
+  /// One recording segment's bytes, base64-encoded.
+  let base64: String
+  let mimeType: String
+  /// Spoken language (BCP-47); empty = the phone's preferred languages.
+  let language: String?
+}
+
+/// `transcribeOnDevice`'s response (mirrors `TranscribeResponse` in
+/// `src/models.rs`): `status` is `ok` or `unavailable`.
+struct TranscribeResponse: Encodable {
+  let status: String
+  let text: String
+  let reason: String
 }
 
 /// Kore's native audio-memo recorder (the mobile leg of the raw-first
@@ -350,6 +374,75 @@ class RecordingPlugin: Plugin {
       } catch {
         invoke.reject("deleting staged recording failed: \(error.localizedDescription)")
       }
+    }
+  }
+
+  /// Transcribe one recording segment on the device (`OnDeviceTranscriber`).
+  /// The bytes come from the graph, so they are written to a temp file the
+  /// speech engine can open, and removed once it is done.
+  @objc public func transcribeOnDevice(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(TranscribeArgs.self)
+    guard let data = Data(base64Encoded: args.base64) else {
+      invoke.reject("transcription input is not valid base64")
+      return
+    }
+    guard let fileExtension = Self.speechFileExtension(for: args.mimeType) else {
+      invoke.resolve(
+        TranscribeResponse(
+          status: "unavailable", text: "",
+          reason: "On-device transcription can't read \(args.mimeType) recordings."))
+      return
+    }
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent("kore-transcribe-\(UUID().uuidString).\(fileExtension)")
+    do {
+      try data.write(to: url, options: .atomic)
+    } catch {
+      invoke.reject("staging audio for transcription failed: \(error.localizedDescription)")
+      return
+    }
+    OnDeviceTranscriber.transcribe(fileURL: url, language: args.language ?? "") { result in
+      try? FileManager.default.removeItem(at: url)
+      switch result {
+      case .success(.text(let text)):
+        invoke.resolve(TranscribeResponse(status: "ok", text: text, reason: ""))
+      case .success(.unavailable(let reason)):
+        invoke.resolve(TranscribeResponse(status: "unavailable", text: "", reason: reason))
+      case .failure(let error):
+        invoke.reject("on-device transcription failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Store the daily-note widget's snapshot (`DailyWidgetStore`) and ask
+  /// WidgetKit to redraw that widget. The app only calls this when the
+  /// digest changed, which keeps it inside WidgetKit's reload budget.
+  @objc public func updateDailyWidget(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(UpdateDailyWidgetArgs.self)
+    do {
+      try DailyWidgetStore.write(json: args.json)
+    } catch {
+      invoke.reject("updating the daily widget failed: \(error.localizedDescription)")
+      return
+    }
+    #if canImport(WidgetKit)
+      if #available(iOS 14.0, *) {
+        WidgetCenter.shared.reloadTimelines(ofKind: DailyWidgetStore.widgetKind)
+      }
+    #endif
+    invoke.resolve()
+  }
+
+  /// The extension AVFoundation needs to pick a container parser; `nil` for
+  /// formats it can't open (webm/ogg from a desktop recording).
+  private static func speechFileExtension(for mimeType: String) -> String? {
+    let base = mimeType.split(separator: ";").first.map(String.init) ?? mimeType
+    switch base.trimmingCharacters(in: .whitespaces).lowercased() {
+    case "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac": return "m4a"
+    case "audio/wav", "audio/x-wav", "audio/wave": return "wav"
+    case "audio/mpeg", "audio/mp3": return "mp3"
+    case "audio/aiff", "audio/x-aiff": return "aiff"
+    default: return nil
     }
   }
 

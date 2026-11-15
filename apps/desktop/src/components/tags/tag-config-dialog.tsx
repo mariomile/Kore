@@ -1,13 +1,6 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import {
-  foldTag,
-  isPropertyKey,
-  listTagParentCandidates,
-  listTemplates,
-  type TemplateEntry,
-} from '@kore/core'
-import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
+import type { ReactElement } from 'react'
+import { foldTag } from '@kore/core'
+import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,36 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { toast } from '@/components/ui/toast'
-import { TAG_SCHEMA_PRESETS, type TagSchemaPreset } from '@/lib/tags/schema-presets'
-import {
-  migratePropertyRenames,
-  planPropertyRenames,
-  type PendingRename,
-} from '@/lib/tags/schema-renames'
-import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
-import { tagTypeQueryKey } from '@/hooks/use-tag-type'
-import { useGraph } from '@/providers/graph-provider'
-import {
-  FIELD_LABEL_CLASS,
-  draftsForNewSchema,
-  draftsFromSchema,
-  schemaFromDrafts,
-  type PropertyDraft,
-} from './tag-config-drafts'
+import { isMobileSurface } from '@/lib/platform-surface'
+import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
+import { FIELD_LABEL_CLASS } from './tag-config-drafts'
+import { TagConfigSheet } from './tag-config-sheet'
+import { TagPresetIcon } from './tag-preset-icon'
 import { TagParentsField } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertyRow } from './tag-property-row'
 import { TagViewsStrip } from './tag-views-strip'
-
-/** The presets' row glyphs (kept here so the preset data stays plain). */
-const PRESET_ICONS = {
-  project: Folder,
-  person: User,
-  company: Chart,
-  meeting: Calendar,
-  reading: Book,
-} as const
+import { useTagConfigDraft } from './use-tag-config-draft'
 
 interface TagConfigDialogProps {
   /** The tag being configured (display casing). */
@@ -66,180 +39,44 @@ interface TagConfigDialogProps {
  * save; an existing unmarked note at that path is only written after the
  * explicit conversion notice below. A broken-YAML definition refuses the
  * write (`upsertFrontmatter`) and surfaces as a toast — never destroys.
+ *
+ * On the phone every entry point opens the same configuration as a bottom
+ * sheet ({@link TagConfigSheet}) instead: a centered dialog this dense does
+ * not fit a 390pt screen.
  */
-export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactElement {
-  const { graph } = useGraph()
-  const queryClient = useQueryClient()
-  const [loading, setLoading] = useState(true)
-  const [needsConversion, setNeedsConversion] = useState(false)
-  const [drafts, setDrafts] = useState<PropertyDraft[]>([])
-  const [nextRowId, setNextRowId] = useState(0)
-  // The row whose name input takes focus — the one "Add property" just made.
-  const [focusRowId, setFocusRowId] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
-  const [template, setTemplate] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<TemplateEntry[]>([])
-  const [icon, setIcon] = useState<string | null>(null)
-  // The tags this one builds on (Plan 33 B2) and the ones it may pick.
-  const [parents, setParents] = useState<string[]>([])
-  const [parentCandidates, setParentCandidates] = useState<string[]>([])
+export function TagConfigDialog(props: TagConfigDialogProps): ReactElement {
+  return isMobileSurface() ? <TagConfigSheet {...props} /> : <TagConfigDesktopDialog {...props} />
+}
 
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      const definition = await readTagDefinition(tag)
-      let available: TemplateEntry[] = []
-      try {
-        available = await listTemplates()
-      } catch {
-        available = []
-      }
-      let candidates: string[] = []
-      try {
-        candidates = await listTagParentCandidates(tag)
-      } catch {
-        candidates = []
-      }
-      if (!active) {
-        return
-      }
-      setNeedsConversion(definition.needsConversion)
-      const rows = draftsFromSchema(definition.properties)
-      setDrafts(rows)
-      setNextRowId(rows.length)
-      setTemplate(definition.template)
-      setTemplates(available)
-      setIcon(definition.icon)
-      setParents(definition.parents)
-      setParentCandidates(candidates)
-      setLoading(false)
-    })()
-    return () => {
-      active = false
-    }
-  }, [tag])
-
-  // Name and key problems are tracked apart: a missing name only marks its
-  // input, while a bad or duplicate key must pop the (normally folded) key
-  // editor open on its row.
-  const { invalidNameRowIds, invalidKeyRowIds } = useMemo(() => {
-    const names = new Set<number>()
-    const keys = new Set<number>()
-    const seenKeys = new Set<string>()
-    for (const draft of drafts) {
-      if (draft.name.trim() === '') {
-        names.add(draft.rowId)
-      }
-      if (!isPropertyKey(draft.key) || seenKeys.has(draft.key)) {
-        keys.add(draft.rowId)
-      }
-      seenKeys.add(draft.key)
-    }
-    return { invalidNameRowIds: names, invalidKeyRowIds: keys }
-  }, [drafts])
-  const hasInvalidRows = invalidNameRowIds.size > 0 || invalidKeyRowIds.size > 0
-  // What the drafts unlock, live — the views strip re-renders per keystroke.
-  const liveSchema = useMemo(() => schemaFromDrafts(drafts), [drafts])
-
-  const updateDraft = (rowId: number, patch: Partial<PropertyDraft>): void => {
-    setDrafts((current) =>
-      current.map((draft) => (draft.rowId === rowId ? { ...draft, ...patch } : draft)),
-    )
-  }
-
-  const moveDraft = (rowId: number, delta: -1 | 1): void => {
-    setDrafts((current) => {
-      const index = current.findIndex((draft) => draft.rowId === rowId)
-      const target = index + delta
-      if (index < 0 || target < 0 || target >= current.length) {
-        return current
-      }
-      const next = [...current]
-      const [moved] = next.splice(index, 1)
-      next.splice(target, 0, moved!)
-      return next
-    })
-  }
-
-  const addDraft = (): void => {
-    setDrafts((current) => [
-      ...current,
-      {
-        rowId: nextRowId,
-        name: '',
-        key: '',
-        originalKey: null,
-        type: 'text',
-        options: '',
-        target: '',
-        rollupRelation: '',
-        rollupProperty: '',
-        rollupAggregation: 'count',
-        reverseTag: '',
-        reverseProperty: '',
-        formulaExpression: '',
-        startingKind: 'none',
-        startingFixed: '',
-      },
-    ])
-    setFocusRowId(nextRowId)
-    setNextRowId((current) => current + 1)
-  }
-
-  // One click seeds an empty schema with editable rows — nothing is saved
-  // yet, and the views strip lights up to show what the preset unlocked.
-  const seedPreset = (preset: TagSchemaPreset): void => {
-    const rows = draftsForNewSchema(preset.properties)
-    setDrafts(rows)
-    setNextRowId(rows.length)
-    setFocusRowId(null)
-  }
-
-  const performSave = async (renames: PendingRename[], migrate: boolean): Promise<void> => {
-    if (graph === null) {
-      return
-    }
-    setSaving(true)
-    try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, {
-        template,
-        icon,
-        parents,
-      })
-      if (migrate) {
-        await migratePropertyRenames(renames, graph.generation)
-      }
-      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
-      onClose()
-    } catch (error) {
-      toast.add({
-        type: 'error',
-        title: `Couldn't save the #${tag} type`,
-        description: error instanceof Error ? error.message : String(error),
-      })
-      setSaving(false)
-    }
-  }
-
-  const save = async (): Promise<void> => {
-    if (graph === null || saving || hasInvalidRows) {
-      return
-    }
-    // A changed key on a loaded row is a rename; when notes still carry the
-    // old key, saving must not silently orphan their values — surface the
-    // blast radius and let the user migrate (or explicitly not).
-    const affecting = await planPropertyRenames(
-      drafts
-        .filter((draft) => draft.originalKey !== null && draft.originalKey !== draft.key)
-        .map((draft) => ({ from: draft.originalKey!, to: draft.key })),
-    )
-    if (affecting.length > 0) {
-      setPendingRenames(affecting)
-      return
-    }
-    await performSave([], false)
-  }
+function TagConfigDesktopDialog({ tag, onClose }: TagConfigDialogProps): ReactElement {
+  const config = useTagConfigDraft(tag, onClose)
+  const {
+    loading,
+    needsConversion,
+    drafts,
+    liveSchema,
+    invalidNameRowIds,
+    invalidKeyRowIds,
+    hasInvalidRows,
+    focusRowId,
+    icon,
+    setIcon,
+    template,
+    setTemplate,
+    templates,
+    parents,
+    setParents,
+    parentCandidates,
+    updateDraft,
+    moveDraft,
+    addDraft,
+    removeDraft,
+    seedPreset,
+    saving,
+    pendingRenames,
+    save,
+    performSave,
+  } = config
 
   return (
     <Dialog
@@ -282,7 +119,6 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
                 Start from a ready-made schema — every property stays editable:
               </p>
               {TAG_SCHEMA_PRESETS.map((preset) => {
-                const Glyph = PRESET_ICONS[preset.id as keyof typeof PRESET_ICONS] ?? Plus
                 return (
                   <button
                     key={preset.id}
@@ -290,7 +126,10 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
                     onClick={() => seedPreset(preset)}
                     className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-active"
                   >
-                    <Glyph aria-hidden className="size-4 shrink-0 text-text-muted" />
+                    <TagPresetIcon
+                      presetId={preset.id}
+                      className="size-4 shrink-0 text-text-muted"
+                    />
                     <span className="flex min-w-0 flex-col">
                       <span className="text-sm font-medium text-text">{preset.name}</span>
                       <span className="truncate text-xs text-text-muted">{preset.summary}</span>
@@ -309,16 +148,16 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
               autoFocus={draft.rowId === focusRowId}
               updateDraft={updateDraft}
               moveDraft={moveDraft}
-              onRemove={() =>
-                setDrafts((current) => current.filter((row) => row.rowId !== draft.rowId))
-              }
+              onRemove={() => removeDraft(draft.rowId)}
             />
           ))}
           <Button
             type="button"
             variant="ghost"
             className="justify-start"
-            onClick={addDraft}
+            onClick={() => {
+              addDraft()
+            }}
             disabled={loading}
           >
             <Plus className="size-4" /> Add property
@@ -362,7 +201,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
               {' — '}migrate the stored values to the new key, or keep them under the old one?
             </p>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setPendingRenames(null)}>
+              <Button type="button" variant="ghost" onClick={config.cancelPendingRenames}>
                 Back
               </Button>
               <Button

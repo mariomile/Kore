@@ -1,5 +1,118 @@
 # Kore working state
 
+## Craft-style Chat on iPhone, 2026-11-15
+
+- [x] iPhone Chat tab redesigned: floating pill header, plain Suggestions and
+  Your prompts lists, and a composer card with an All notes context chip
+  (#459).
+- Not verified on a real iPhone.
+
+## iPhone design pass and wikilink aliases, 2026-11-15
+
+- [x] iPhone design pass: the note page is 17pt with folded properties, the
+  title moves into the bar and the tab bar hides on scroll; the keyboard
+  toolbar has block pills, dictation and undo; the daily reads as Today (one-
+  line date and a due-today card); quick capture from the +; Dataview blocks
+  show as a chip. No performance regression at 4x CPU (#451).
+- [x] Wikilinks written as `[[Folder/Note|Name]]` show Name, as in Obsidian
+  (#457).
+- Not verified on a real iPhone.
+
+## Obsidian conversion keeps Git history, Mermaid with Pele, 2026-11-15
+
+- [x] Converting an Obsidian vault can continue its Git history: the copy
+  keeps the repository and the conversion lands as one commit, so backup goes
+  on in the same GitHub repo. It also fixes the conversion failing with
+  Permission denied on read-only files, a 0.107.0 regression (#453).
+- [x] The Obsidian conversion keeps each file's modification date, repoints
+  `.base` views that filter on the moved daily, attachment and template
+  folders, and keeps notes Obsidian excluded from the attachment folder hidden
+  (#449, shipped in 0.107.0).
+- [x] Mermaid fences render with Pele (MIT, from Obsidian) through a Kore
+  `renderCodeBlock` plugin: every Mermaid 12 diagram type including charts
+  (pie, xychart, gantt, sankey), lazy-loaded per type only when a diagram
+  nears the viewport, themed with Kore tokens; vault-compat now flags only
+  ZenUML and plugins (#450).
+- [x] A text selection highlights only the text, with no full-width slabs or
+  filled checkbox column on Mac and iPhone: a Kore plugin marks selected
+  textblocks so WebKit skips its selection-gap fill, and the tint is the
+  accent at 26% (#452).
+- Not verified on a real Mac or iPhone.
+
+## Block zoom on iPhone, 2026-11-15
+
+- [x] iPhone: tap a bullet to zoom into that block; the header back arrow or
+  breadcrumb steps out, the edge back-swipe is off while zoomed, and task
+  checkboxes still toggle (#446).
+- Not verified on a real iPhone.
+
+## On-device memo transcription, type board and daily widget on iPhone, 2026-11-15
+
+- [x] iPhone: audio memos transcribe with Apple's on-device speech recognizer
+  when no OpenAI or Gemini key is set, so the audio never leaves the phone; a
+  configured cloud key still wins (#440). The spoken language is chosen in
+  Settings > Audio memos (#443).
+- [x] iPhone: a typed tag's page offers a board next to the list and cards
+  views when the type has a property to group by, one lane at a time; cards
+  show the type's fields (#444).
+- [x] iPhone: a daily note widget for the home screen (small, medium, large)
+  shows today's preview and open tasks; a tap opens the daily and the mic
+  button starts a voice memo (#441).
+- [x] Mobile polish: compact note rows without a preview, Templater template
+  folders hidden from lists, empty states and an iPhone welcome note; the
+  vault reindexes once (#438).
+- Not verified on a real iPhone or Mac.
+
+## Tagged checkboxes are rows, collections filter by this note, 2026-11-13
+
+- [x] Organization point 4: a checkbox line carrying a `#tag` is an object of
+  that tag. `- [ ] Send the deck #task` in a project note shows on the `#task`
+  page as an open task linked to its note, toggles in place and shows its due
+  date; done tasks sit behind a toggle. Plain bullets stay text, Markdown on
+  disk is unchanged, and the vault reindexes once (#423).
+- [x] Organization point 5: a collection fence can point at the note it sits
+  in (`filter: project = this`), so a type's template gives every note its own
+  table of the rows that link to it; new rows from that table carry the link
+  (#439).
+- [x] Kore no longer saves over a note another device changed in the meantime:
+  the change becomes a conflict to resolve (Keep mine / Load theirs) (#437).
+- [x] Mobile: the [[ and slash menus close when the keyboard closes (#434).
+  Task checkboxes sit centered on their label text (#432).
+- [x] Local iOS simulator builds work again on Xcode 27 (`pnpm
+  tauri:ios:dev:sim`) (#435).
+- Not verified on a real Mac.
+
+## Embeds play in the note, type views in the type file, 2026-11-13
+
+- [x] Rows created from a collection view (table + New, board lane, calendar
+  day), CSV import and bulk Add type write the type to the frontmatter Type
+  field (`tags:`) through the new core `addFrontmatterTag`, never a hidden
+  #tag line in the body. + New is one atomic create with type and starting
+  values; a note that only mentions the tag in prose now gets typed too.
+  Existing notes are untouched (#419).
+- [x] Organization point 3: a type keeps its saved database views in its own
+  file (`tags/<type>.md`, `views:`), so they follow the vault to every device
+  and to agents; views saved locally move there on first open. 'Convert to
+  type views' turns single-tag `.base` files into tabs and fields of that
+  type; formulas and folder-scoped bases are reported and left as bases, and
+  `.base` files are never changed (#415).
+- [x] Embed cards play Spotify, Apple Music, Apple Podcasts, Figma, Loom and
+  CodePen inline behind a click; the Vimeo player is fixed (#430).
+- [x] Daily notes: touching the empty bullet of a future day no longer creates
+  an empty or nested-bullet file, and an image pasted on the same line as text
+  renders below it (#429).
+- [x] Mobile: note grid cards show the note's first photo (#425), and a note
+  can remove a collection inserted into it (#427).
+- [x] iOS: the share extension and widget carry the app's version, so App
+  Store Connect stops warning about the mismatch (#428).
+- [x] iPhone: types open in a native sheet (add and reorder fields, presets
+  for empty types) from the type chip, the Types gear or the tag list gear;
+  fields are no longer hidden when a note has a blank line before the title,
+  on the Mac too (#431).
+- [x] 0.103.1 confirmed the #417 size drop: DMG 45.6 MB to 32.8 MB, updater
+  archive 46.3 MB to 33.6 MB.
+- Not verified on a real Mac.
+
 ## Relation-created notes keep their type, smaller app, launch timings, 2026-11-12
 
 - [x] A note created from a relation field's Create entry (Person > Company >

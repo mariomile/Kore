@@ -74,6 +74,7 @@ export async function createTitledCollectionNote(
   title: string,
   type: TagType | null | undefined,
   values: TemplatePlaceholderValues,
+  properties: Record<string, unknown> = {},
 ): Promise<string> {
   // `createNoteWithTitle` writes the H1 and mints the `id:` itself, so the
   // template (or untitled seed) contributes only its body under the title.
@@ -81,7 +82,7 @@ export async function createTitledCollectionNote(
   // The untitled seed's placeholder H1 is a bare `#` (no trailing space, by
   // the serializer's round-trip form), which the heading stripper ignores.
   const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
-  const stamps = await startingValuesFor(tag, type)
+  const stamps = { ...(await startingValuesFor(tag, type)), ...properties }
   return await createTypedNoteWithTitle(title, tag, stamps, generation, body)
 }
 

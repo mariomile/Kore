@@ -38,6 +38,7 @@ import {
 } from '@meowdown/react'
 import { EditorInputTraits } from '@/editor/editor-input-traits'
 import { FocusedEditorTracker } from './focused-editor'
+import { SelectionShape } from './selection-shape'
 import { BlockActionToolbar } from '@/editor/block-action-toolbar'
 import { FormattingToolbarBridge } from '@/editor/formatting-toolbar-bridge'
 import {
@@ -646,6 +647,7 @@ export function NoteEditor({
         >
           <EditorInputTraits />
           <FocusedEditorTracker />
+          <SelectionShape />
           {/* Only a pane that persists files gets the toolbar's attach button;
             `handleFilePaste` is the same handler meowdown pastes through. */}
           <FormattingToolbarBridge

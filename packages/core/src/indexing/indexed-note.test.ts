@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(32)
+    expect(PROJECTION_VERSION).toBe(33)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {

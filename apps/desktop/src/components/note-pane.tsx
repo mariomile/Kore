@@ -17,7 +17,9 @@ import {
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   wikiLinkTargetForTitle,
+  type EmbedHostNote,
 } from '@kore/core'
+import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
@@ -37,6 +39,7 @@ import {
   unregisterNoteEditorHandle,
 } from '@/editor/editor-handle-registry'
 import { markModeFromSyntax } from '@/editor/mark-mode'
+import { MermaidDiagram } from '@/editor/mermaid-diagram'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { useResourceCollection } from '@/editor/use-resource-collection'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -44,6 +47,7 @@ import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
+import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
@@ -69,6 +73,7 @@ import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { CollectionFenceRemoval } from '@/editor/collection-fence-removal'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
@@ -381,23 +386,43 @@ export function NotePaneComponent({
     }
   }, [dailyDate, onExitBoundary])
 
-  const renderCodeBlock = useCallback<CodeBlockRenderer>(({ language, code, updateCode }) => {
-    if (language !== 'collection') {
-      return null
-    }
-    const embed = parseCollectionEmbedBody(code)
-    if (embed === null) {
-      return null
-    }
-    return (
-      <Suspense fallback={null}>
-        <EmbeddedCollection
-          embed={embed}
-          onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
-        />
-      </Suspense>
-    )
-  }, [])
+  // The note a collection fence sits in, for its `key = this` filters.
+  const embedHost = useMemo<EmbedHostNote>(
+    () => ({ path, linkTarget: noteLinkTarget }),
+    [path, noteLinkTarget],
+  )
+  const renderCodeBlock = useCallback<CodeBlockRenderer>(
+    ({ language, code, updateCode }) => {
+      if (language === 'mermaid') {
+        return <MermaidDiagram code={code} />
+      }
+      if (language !== 'collection') {
+        return null
+      }
+      const embed = parseCollectionEmbedBody(code)
+      if (embed === null) {
+        return null
+      }
+      return (
+        <EmbedHostContext value={embedHost}>
+          <CollectionFenceRemoval>
+            {(remove) => (
+              <Suspense fallback={null}>
+                <EmbeddedCollection
+                  embed={embed}
+                  onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+                  // Touch has no block grip to delete the fence with; desktop
+                  // keeps its grip menu and Backspace on the selected block.
+                  onRemove={isTouchEditorSurface() ? remove : undefined}
+                />
+              </Suspense>
+            )}
+          </CollectionFenceRemoval>
+        </EmbedHostContext>
+      )
+    },
+    [embedHost],
+  )
 
   if (document.status === 'loading') {
     // Keep fast local reads invisible; a genuinely slow read gets a layout
@@ -612,6 +637,10 @@ export function NotePaneComponent({
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
         {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
+        {/* Touch only: closing the keyboard blurs the editor, and an open
+            [[ / slash menu must not outlive it (pointer users dismiss it by
+            clicking outside). */}
+        {isTouchEditorSurface() ? <AutocompleteBlurDismiss /> : null}
       </NoteEditor>
 
       <TagActionsMenu

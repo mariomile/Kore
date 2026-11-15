@@ -140,8 +140,11 @@ import {
  * 32 - `tags.member` (migration 0026) tells membership from mentions: only
  * frontmatter `tags:` and a tag-only first or last paragraph make a note a
  * member. Existing rows default to members until the rebuild sorts them.
+ * 33 - `tasks.tags` (migration 0027): the tags on a task's own line, which
+ * make the line a row of that tag's database. Existing rows hold `[]` until
+ * the rebuild fills them.
  */
-export const PROJECTION_VERSION = 32
+export const PROJECTION_VERSION = 33
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -260,6 +263,8 @@ export const indexedTaskSchema = z.object({
   dueTime: z.string().nullable(),
   /** The nearest top-level heading above the task (level 2+), or null. */
   section: z.string().nullable(),
+  /** Folded tags on the task's own marker line: the tag databases it is a row of. */
+  tags: z.array(z.string()),
 })
 export type IndexedTask = z.infer<typeof indexedTaskSchema>
 
@@ -524,6 +529,7 @@ export function buildIndexedNote(
       dueDate: task.dueDate,
       dueTime: task.dueTime,
       section: task.section,
+      tags: [...task.tags],
     })),
     properties,
     // FTS5's tokenizer splits on the punctuation ([["quotes"]], commas), so

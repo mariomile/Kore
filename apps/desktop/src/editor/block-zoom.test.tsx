@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '@/test-utils/locator'
+import { setPlatformSurface } from '@/lib/platform-surface'
 import { hover, unhover } from '@/test-utils/mouse'
 import { BlockZoom } from './block-zoom'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
@@ -219,6 +220,23 @@ describe('BlockZoom', () => {
     await expect.element(pmRoot.getByText('Buildrs')).not.toBeVisible()
     await expect.element(pmRoot.getByText('call with')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  it('zooms with a plain tap on a bullet on the phone, while a checkbox still toggles', async () => {
+    setPlatformSurface({ touchEditor: true })
+    try {
+      const handle = await renderNote()
+      handle.setMarkdown(`${NOTE}- [ ] Call back\n`)
+      await page.locate('.prosemirror-flat-list[data-list-kind="task"] > .list-marker').click()
+      await expect.poll(() => handle.getMarkdown()).toContain('- [x] Call back')
+      await expect.element(pmRoot.getByText('Buildrs')).toBeVisible()
+
+      await page.locate('.prosemirror-flat-list > .list-marker').first().click()
+      await expect.element(pmRoot.getByText('Buildrs')).not.toBeVisible()
+      await expect.element(pmRoot.getByText('call with')).toBeVisible()
+    } finally {
+      setPlatformSurface({ touchEditor: false })
+    }
   })
 
   it('finds the Meowdown list DOM the zoom styles and clicks rely on', async () => {

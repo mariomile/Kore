@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { echoLocalWrite } from '../indexing/local-write-echo'
 import { call } from '../ipc/invoke'
+import { commitOutcomeSchema, type CommitOutcome } from '../sync/commands'
 import {
   fileMetaSchema,
   graphInfoSchema,
@@ -145,6 +146,17 @@ export async function vaultCopyWrite(
   files: readonly { readonly path: string; readonly contents: string }[],
 ): Promise<void> {
   await call('vault_copy_write', { destination, files }, voidSchema)
+}
+
+/**
+ * Commit everything in a copy made by {@link vaultCopyTree} that carried the
+ * source's Git repository: the conversion lands as one commit on its history.
+ */
+export async function vaultCopyCommit(
+  destination: string,
+  message: string,
+): Promise<CommitOutcome> {
+  return await call('vault_copy_commit', { destination, message }, commitOutcomeSchema)
 }
 
 const localNoteReadSchema = z.discriminatedUnion('kind', [
@@ -334,9 +346,11 @@ const obsidianConfigSchema = z.object({
   dailyNotes: z.string().nullable(),
   app: z.string().nullable(),
   templates: z.string().nullable(),
+  /** Templater's `plugins/templater-obsidian/data.json`; optional for hosts that predate it. */
+  templater: z.string().nullable().default(null),
 })
 
-/** The raw `.obsidian/daily-notes.json`, `app.json` and `templates.json` of a vault (`null` when absent). */
+/** The raw `.obsidian/daily-notes.json`, `app.json`, `templates.json` and Templater settings of a vault (`null` when absent). */
 export type ObsidianConfig = z.infer<typeof obsidianConfigSchema>
 
 /** Read the open graph's Obsidian settings files, unparsed. */

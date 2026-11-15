@@ -20,6 +20,11 @@ const NOTE = [
   '',
   '```mermaid',
   '%% roadmap',
+  'zenuml',
+  '  title Plan',
+  '```',
+  '',
+  '```mermaid',
   'gantt',
   '  title Plan',
   '```',
@@ -38,7 +43,7 @@ describe('detectCompatFindings', () => {
       { kind: 'templater', detail: null },
       { kind: 'dataview', detail: null },
       { kind: 'admonition', detail: null },
-      { kind: 'mermaid', detail: 'gantt' },
+      { kind: 'mermaid', detail: 'zenuml' },
       { kind: 'excalidraw', detail: null },
     ])
   })

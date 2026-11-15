@@ -17,7 +17,13 @@ export interface FormattingToolbarCapabilities {
    * button over an editor without one is a button that does nothing.
    */
   canAttachFiles: boolean
+  /** The caret's block kind, highlighted in the block-type pills. */
+  blockKind: FormattingBlockKind
+  canUndo: boolean
 }
+
+/** Block kinds the iPhone toolbar's pills switch between (iPhone design pass, 2026-11). */
+export type FormattingBlockKind = 'text' | 'heading' | 'bullet' | 'task' | 'quote'
 
 /** Autocomplete-trigger characters the toolbar can type into the editor. */
 export type FormattingTriggerText = '/' | '[[' | '#'
@@ -38,6 +44,9 @@ export interface FormattingToolbarCommands {
   moveDown: () => void
   /** Type an autocomplete trigger at the caret, opening its menu. */
   insertTrigger: (text: FormattingTriggerText) => void
+  /** Turn the caret's block into `kind` (the pill row). */
+  setBlockKind: (kind: FormattingBlockKind) => void
+  undo: () => void
   /** Blur the editor, dropping the software keyboard (and this toolbar). */
   dismissKeyboard: () => void
   /**
@@ -87,7 +96,9 @@ function capabilitiesEqual(
     left.canDedent === right.canDedent &&
     left.canMoveUp === right.canMoveUp &&
     left.canMoveDown === right.canMoveDown &&
-    left.canAttachFiles === right.canAttachFiles
+    left.canAttachFiles === right.canAttachFiles &&
+    left.blockKind === right.blockKind &&
+    left.canUndo === right.canUndo
   )
 }
 

@@ -846,6 +846,19 @@ describe('MobileTasks', () => {
     await view.unmount()
   })
 
+  it('says an empty Today is clear and offers to add a task there', async () => {
+    getOpenTasks.mockResolvedValue([task({ text: 'someday', markerOffset: 0 })])
+    const user = userEvent
+    const view = await renderScreen()
+
+    await user.click(await view.findByRole('tab', { name: /Today/ }))
+    await view.findByText('Nothing due today.')
+    await user.click(view.getByRole('button', { name: 'Add a task', exact: true }))
+
+    await waitFor(() => expect(insertTask).toHaveBeenCalledWith('daily/2026-06-14.md', 1))
+    await view.unmount()
+  })
+
   it('surfaces a failed open-tasks read', async () => {
     getOpenTasks.mockRejectedValue(new Error('no index'))
     const view = await renderScreen()

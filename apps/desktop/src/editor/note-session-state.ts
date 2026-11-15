@@ -1,4 +1,10 @@
-import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@kore/core'
+import {
+  detectConflictMarkers,
+  errorMessage,
+  isAppError,
+  isBlankListSkeleton,
+  upsertFrontmatter,
+} from '@kore/core'
 import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
@@ -114,6 +120,24 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
         if (discarded || !dirty || isProtected || conflict !== null) {
           return
         }
+        // Compare before write: an external change the watcher hasn't
+        // reported yet (iCloud replacing the file during the debounce, or
+        // before the watcher started at launch) must not be overwritten by
+        // this buffer, which was edited against an older version. Handle it
+        // exactly like a reported change landing on unsaved edits: park it
+        // and pause saves until the user chooses.
+        const unseen = await readUnseenExternalChange()
+        if (unseen !== null) {
+          if (!discarded && conflict === null) {
+            cancelScheduledSave()
+            conflict = unseen
+            emit()
+          }
+          return
+        }
+        if (discarded || !dirty || isProtected || conflict !== null) {
+          return
+        }
         const content = header + buffer
         inFlightWrite = content
         try {
@@ -133,6 +157,24 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
         error = errorMessage(cause)
         emit()
       })
+  }
+
+  /**
+   * The file's current bytes when they differ from the version this buffer
+   * derives from (`disk`), else `null`. A missing or unreadable file is never
+   * an external change here: the write creates or repairs it.
+   */
+  async function readUnseenExternalChange(): Promise<string | null> {
+    let current: string
+    try {
+      current = await io.read(path)
+    } catch {
+      return null
+    }
+    if (missing && current === '') {
+      return null
+    }
+    return current === disk ? null : current
   }
 
   function scheduleSave(): void {
@@ -167,31 +209,30 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * would be dropped. Save them beside the note as a conflict copy instead
    * and leave the note itself on the version from disk. Never blocks.
    */
-  function preserveParkedConflict(): void {
+  function preserveParkedConflict(): Promise<void> | undefined {
     const writeCopy = io.writeConflictCopy
     if (discarded || !writeCopy || !dirty || isProtected || conflict === null) {
-      return
+      return undefined
     }
     const content = header + buffer
     if (content === conflict || content === copiedContent) {
-      return
+      return undefined
     }
     copiedContent = content
-    const at = path
-    saveChain = saveChain
-      .then(() => writeCopy(at, content))
-      .catch((cause) => {
-        console.error('failed to save conflict copy:', cause)
-        copiedContent = null
-        error = errorMessage(cause)
-        emit()
-      })
+    return writeCopy(path, content).catch((cause: unknown) => {
+      console.error('failed to save conflict copy:', cause)
+      copiedContent = null
+      error = errorMessage(cause)
+      emit()
+    })
   }
 
   function flushOnClose(): Promise<void> {
     void flush()
-    preserveParkedConflict()
-    // Both steps extend the chain synchronously: its tail is this close's work.
+    // After the final save step, not beside it: that step can itself park a
+    // conflict (an external change it found on disk before writing), and the
+    // buffer must then still reach a conflict copy.
+    saveChain = saveChain.then(() => preserveParkedConflict())
     return saveChain
   }
 
@@ -210,11 +251,13 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     const previous = buffer
     buffer = markdown
     dirty = header + markdown !== disk
-    if (missing && markdown.trim() === '') {
+    if (missing && isBlankListSkeleton(markdown)) {
       // A still-unwritten note cleared back to nothing (e.g. the seeded
       // empty-title template deleted wholesale) stays unwritten: creating an
-      // empty file would break the lazy no-litter contract. Dirtiness — and
-      // the file's birth — resume with the next real content.
+      // empty file would break the lazy no-litter contract. That includes a
+      // touched seed bullet, which serializes to `-` (or `- -` once
+      // Tab-indented) rather than to nothing. Dirtiness — and the file's
+      // birth — resume with the next real content.
       dirty = false
     }
     emit()
@@ -383,6 +426,11 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function keepMine(): void {
+    // "Mine" now supersedes the parked version: it is the base this buffer
+    // overwrites, so the compare-before-write check must not re-park it.
+    if (conflict !== null) {
+      disk = conflict
+    }
     conflict = null
     dirty = true // force the rewrite even if content drifted equal
     emit()

@@ -80,6 +80,7 @@ export {
   countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
+  getTasksForTag,
   getProjectNotePaths,
   getTaskProjectLinks,
   getCompletedTasks,
@@ -320,6 +321,7 @@ export {
   type FilteredSearchOptions,
   type SearchHit,
 } from './filtered-search'
+export { firstImageAssets } from './asset-refs'
 export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,

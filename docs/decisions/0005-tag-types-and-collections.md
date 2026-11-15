@@ -362,6 +362,27 @@ values the notes hold. Formulas, folder rules and `file.*` expressions are
 reported, not translated; a base that narrows a tag to a folder is left as a
 base. The `.base` file is never written.
 
+## Amendment G (2026-11-12) — A tag on a checkbox line makes the line a row
+
+A `#tag` written on a checkbox's own line (`- [ ] call Andrea #lead`) makes
+that line a row of the tag's database, wherever the note is: the index stores
+the line's tags on its `tasks` row (`tasks.tags`, migration 0027), and the
+tag page lists those rows above its notes, open first, each tickable and
+naming the note it lives in. For the note the tag stays a mention (Amendment
+E). A line's project still comes from the project it links (#365). Typed
+fields on a line are a later step.
+
+## Amendment H (2026-11-13) — A fence can point at the note it sits in
+
+A collection fence's filter value `this` means the note the fence is in:
+`filter: project = this` on a relation field keeps the rows that link to that
+note, by title, path or file name. The fence reads the same in every note, so
+it can live in a type's template and every new project is born with its own
+"tasks of this project" table. A row added from such a view is born linked to
+the note. The view also lists the checkbox rows of its tag (Amendment G) that
+sit in the note or link to it. Outside a note (a base, a preview) `this`
+matches nothing.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

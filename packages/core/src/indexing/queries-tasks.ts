@@ -1,5 +1,5 @@
 import { sql, type SqlBool } from 'kysely'
-import type { TaskMarker } from '../markdown'
+import { foldTag, type TaskMarker } from '../markdown'
 import { db } from './db'
 import { decodeTaskBreadcrumbs } from './indexed-note'
 import { isFolderNotePath, type TaskLineLink } from './task-views'
@@ -320,4 +320,24 @@ export async function countOpenTasksForNotes(
     }
   }
   return counts
+}
+
+/**
+ * The checkbox lines that carry `#tag` on their own line (organization
+ * point 4): a tagged task is a row of that tag's database, wherever it was
+ * written. Open rows first, in document order per note (most recently
+ * edited note first); done rows after. Templates are left out like every
+ * task read. The JSON column is matched by its exact quoted key, so a
+ * `#lead` line never answers `#leader`.
+ */
+export async function getTasksForTag(tag: string): Promise<OpenTask[]> {
+  const key = JSON.stringify(foldTag(tag))
+  const rows = await taskRowsQuery()
+    .where(sql<SqlBool>`instr(${sql.ref('tasks.tags')}, ${key}) > 0`)
+    .orderBy('tasks.checked')
+    .orderBy('notes.updatedAt', 'desc')
+    .orderBy('tasks.notePath')
+    .orderBy('tasks.markerOffset')
+    .execute()
+  return rows.map(toTaskRow)
 }

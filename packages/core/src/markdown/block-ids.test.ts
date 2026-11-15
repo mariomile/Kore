@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   blockIdsIn,
   blockLinkLabel,
+  wikilinkLabel,
   extractBlockSection,
   isBlockId,
   hiddenBlockIdTail,
@@ -155,6 +156,19 @@ describe('blockLinkLabel', () => {
     expect(blockLinkLabel('#^q')).toBe('Link to line')
     expect(blockLinkLabel('Prezzi#Plans')).toBeNull()
     expect(blockLinkLabel('Prezzi')).toBeNull()
+  })
+})
+
+describe('wikilinkLabel', () => {
+  it('shows the alias of any link, the block label of block links, else the source', () => {
+    expect(wikilinkLabel('Input/Granola/Sprint Review, 2026-11-13|Sprint Review')).toBe(
+      'Sprint Review',
+    )
+    expect(wikilinkLabel(String.raw`Notes/Luca\|Luca`)).toBe('Luca')
+    expect(wikilinkLabel('Prezzi#^p1')).toBe('Prezzi')
+    expect(wikilinkLabel('Prezzi#Plans|plans')).toBe('plans')
+    expect(wikilinkLabel('Prezzi|')).toBeNull()
+    expect(wikilinkLabel('CRM/People/Luca')).toBeNull()
   })
 })
 

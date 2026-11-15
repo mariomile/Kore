@@ -204,6 +204,7 @@ function readTask(
   cuts: Span[],
   literalRanges: Span[],
   wikiLinks: WikiLink[],
+  tagExcluded: Span[],
 ): Omit<ParsedTask, 'section'> | null {
   const { from, to } = taskNode
   if (taskListBullet(body, taskNode) === null) {
@@ -215,7 +216,18 @@ function readTask(
   }
   const lineEnd = lineEndAfter(body, from)
   const markerOffset = from + bodyOffset
+  const tags: string[] = []
+  for (const match of body.slice(from, lineEnd).matchAll(TAG_RE)) {
+    if (inAnyRange(from + (match.index ?? 0) + match[1]!.length, tagExcluded)) {
+      continue
+    }
+    const key = foldTag(match[2]!)
+    if (!tags.includes(key)) {
+      tags.push(key)
+    }
+  }
   return {
+    tags,
     text: plainTextOfRange(body, from, lineEnd, cuts, literalRanges),
     breadcrumbs: taskBreadcrumbs(body, taskNode, cuts, literalRanges),
     raw: body.slice(from, lineEnd),
@@ -528,7 +540,15 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const tasks: ParsedTask[] = []
   const sections = headings.filter((heading) => heading.topLevel)
   for (const taskNode of taskNodes) {
-    const task = readTask(body, taskNode, bodyOffset, cuts, literalPlainText, wikiLinks)
+    const task = readTask(
+      body,
+      taskNode,
+      bodyOffset,
+      cuts,
+      literalPlainText,
+      wikiLinks,
+      tagExcluded,
+    )
     if (task) {
       tasks.push({ ...task, section: taskSection(sections, task.markerOffset) })
     }

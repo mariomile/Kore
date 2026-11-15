@@ -19,6 +19,8 @@
 		74275EAEFEA922B7D8A2C78F /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5249E1475DBD7CCB817F7D1B /* CoreGraphics.framework */; };
 		775E33492750BC96D2399943 /* StopRecordingLiveActivityIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */; };
 		85FC869F776C24A9ED0A1779 /* RecordingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */; };
+		169786C71C03518553671315 /* DailyNoteWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */; };
+		B5B843DAF2FE8A112571657A /* DailyWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */; };
 		93F2A1181D6BC7832338EE9C /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93EF89A222208D739ABC00B8 /* ShareView.swift */; };
 		9611839F9E9EC688FCDFCC91 /* RecordingWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */; };
 		961AA49623F0DDC7AB09B777 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39269153EFAD0C2FEFBE6696 /* UIKit.framework */; };
@@ -151,6 +153,8 @@
 		BC3901740F3A40252C3750C7 /* kore-open_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "kore-open_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE29DCB2F9FA318E5936F05C /* routine_script.rs */ = {isa = PBXFileReference; path = routine_script.rs; sourceTree = "<group>"; };
 		C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingActivityAttributes.swift; sourceTree = "<group>"; };
+		E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyNoteWidget.swift; sourceTree = "<group>"; };
+		545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWidgetSnapshot.swift; sourceTree = "<group>"; };
 		C38A6847351881E6D17A1DC2 /* migrations.rs */ = {isa = PBXFileReference; path = migrations.rs; sourceTree = "<group>"; };
 		C7BE8291B337F95D913C6AE9 /* commit_message.rs */ = {isa = PBXFileReference; path = commit_message.rs; sourceTree = "<group>"; };
 		C94374B175075AF3AA7DE586 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
@@ -281,6 +285,7 @@
 		503727866B7D08BD30A503FF /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */,
 				C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */,
 			);
 			name = Sources;
@@ -361,6 +366,7 @@
 		90B73AA2E17A6707CD2373F8 /* RecordingWidget */ = {
 			isa = PBXGroup;
 			children = (
+				E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */,
 				D7AC6BF821D47F74D41DFAFE /* RecordAudioWidget.swift */,
 				1A3930E6E7AB28929B07A6D0 /* RecordingActivityWidget.swift */,
 				A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */,
@@ -666,6 +672,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				169786C71C03518553671315 /* DailyNoteWidget.swift in Sources */,
+				B5B843DAF2FE8A112571657A /* DailyWidgetSnapshot.swift in Sources */,
 				E7D75AA83CFA468E0EFBAB21 /* RecordAudioWidget.swift in Sources */,
 				85FC869F776C24A9ED0A1779 /* RecordingActivityAttributes.swift in Sources */,
 				D37EE1ED817FDDC16C5643BB /* RecordingActivityWidget.swift in Sources */,

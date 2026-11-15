@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   EMPTY_TAG_TYPE,
   foldTag,
+  hasThisNoteFilter,
+  hostStartingValues,
+  textLinksToHostNote,
   type CollectionEmbed,
   type CollectionEmbedView,
   type CollectionEntry,
@@ -18,6 +21,7 @@ import {
   LayoutTemplate,
   Settings,
   Sliders,
+  Trash,
 } from '@/components/icons'
 import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
 import {
@@ -50,6 +54,8 @@ import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { CollectionDefinitionDialog } from '@/components/notes/collection-definition-dialog'
 import { ReusableCollectionActions } from '@/components/notes/reusable-collection-actions'
+import { useEmbedHost } from '@/components/notes/embed-host-context'
+import { TagTasksSection } from '@/components/all-notes/tag-tasks-section'
 import { useCollection } from '@/hooks/use-collection'
 import { useReusableCollection } from '@/hooks/use-reusable-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -74,6 +80,8 @@ export interface EmbeddedCollectionProps {
   embed: CollectionEmbed
   /** Persist arrangement changes back into this fence's source. */
   onChange?: ((embed: CollectionEmbed) => void) | undefined
+  /** Delete this fence from the note; shows a Remove button when set. */
+  onRemove?: (() => void) | undefined
 }
 
 const VIEW_LABEL: Record<CollectionEmbedView, string> = {
@@ -104,11 +112,34 @@ function gridNotes(entries: readonly CollectionEntry[] | undefined): NoteListEnt
  * underneath the editor. Falls back to the table when the requested view
  * needs a property the tag does not declare.
  */
-export function EmbeddedCollection({ embed, onChange }: EmbeddedCollectionProps): ReactElement {
+export function EmbeddedCollection({
+  embed,
+  onChange,
+  onRemove,
+}: EmbeddedCollectionProps): ReactElement {
   return embed.selection.kind === 'tag' ? (
-    <EmbeddedTagCollection embed={embed} tag={embed.selection.tag} onChange={onChange} />
+    <EmbeddedTagCollection
+      embed={embed}
+      tag={embed.selection.tag}
+      onChange={onChange}
+      onRemove={onRemove}
+    />
   ) : (
-    <EmbeddedReusableCollection embed={embed} onChange={onChange} />
+    <EmbeddedReusableCollection embed={embed} onChange={onChange} onRemove={onRemove} />
+  )
+}
+
+/** The header's "remove this collection from the note" button. */
+function RemoveCollectionButton({ onRemove }: { onRemove: () => void }): ReactElement {
+  return (
+    <button
+      type="button"
+      aria-label="Remove collection from note"
+      className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+      onClick={onRemove}
+    >
+      <Trash aria-hidden className="size-3.5" />
+    </button>
   )
 }
 
@@ -116,7 +147,12 @@ interface EmbeddedTagCollectionProps extends EmbeddedCollectionProps {
   tag: string
 }
 
-function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionProps): ReactElement {
+function EmbeddedTagCollection({
+  embed,
+  tag,
+  onChange,
+  onRemove,
+}: EmbeddedTagCollectionProps): ReactElement {
   // Every tag is a collection: a tag without a definition note embeds as
   // the zero-property table, and its "+" writes the schema in place.
   const loadedTagType = useTagType(tag)
@@ -134,15 +170,16 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
     () => queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, tag) }),
     [queryClient, graph?.root, tag],
   )
+  const host = useEmbedHost()
   const unfiltered = useCollection(tagType === undefined ? null : tag, embed.sorts)
   const entries = useMemo(() => {
     if (unfiltered === undefined || tagType === undefined) {
       return unfiltered
     }
     // The fence's filter lines share the filter menu's vocabulary, so the
-    // one applier serves both surfaces.
-    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match)
-  }, [unfiltered, tagType, embed.filters, embed.match])
+    // one applier serves both surfaces. `key = this` reads the host note.
+    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match, host)
+  }, [unfiltered, tagType, embed.filters, embed.match, host])
   // `group:` renders the fence's table with shelf rows (Plan 29 V1b) — only
   // a key the schema declares as single-valued groupable; anything else
   // stays flat, never a broken widget.
@@ -216,6 +253,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>
+        {onRemove ? <RemoveCollectionButton onRemove={onRemove} /> : null}
       </header>
       {tagType !== undefined && onChange ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-3 pb-2">
@@ -256,6 +294,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
             onChange={(filters) => onChange({ ...embed, filters })}
             match={embed.match}
             onMatchChange={(match) => onChange({ ...embed, match })}
+            host={host}
           />
           {(view === 'table' || view === 'board') && groupProperties.length > 0 ? (
             <Select
@@ -354,12 +393,15 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
               if (graph === null) {
                 return
               }
+              // A row added under `project = this` is born linked to this
+              // note, so it stays in the view it was typed into.
               await createTitledCollectionNote(
                 tag,
                 graph.generation,
                 title,
                 tagType,
                 await resolveTemplateValues(null),
+                host === null ? {} : hostStartingValues(embed.filters, tagType.properties, host),
               )
             }}
             groups={groups}
@@ -368,12 +410,25 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
           />
         )}
       </div>
+      {host !== null && hasThisNoteFilter(embed.filters) ? (
+        // A "this note" view also lists the checkboxes tagged with its tag
+        // that live in this note or link to it (organization point 4).
+        <TagTasksSection
+          tag={tag}
+          include={(row) => row.notePath === host.path || textLinksToHostNote(row.text, host)}
+          className="border-t border-border/60 px-3 pt-2 pb-3"
+        />
+      ) : null}
       {editingSchema ? <TagConfigDialog tag={tag} onClose={() => setEditingSchema(false)} /> : null}
     </section>
   )
 }
 
-function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps): ReactElement {
+function EmbeddedReusableCollection({
+  embed,
+  onChange,
+  onRemove,
+}: EmbeddedCollectionProps): ReactElement {
   const reference = embed.selection.kind === 'definition' ? embed.selection.reference : ''
   const state = useReusableCollection(reference, embed.sorts)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
@@ -595,6 +650,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
         >
           <Settings aria-hidden className="size-3.5" />
         </button>
+        {onRemove ? <RemoveCollectionButton onRemove={onRemove} /> : null}
       </header>
       <div
         className={cn(

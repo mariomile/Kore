@@ -60,6 +60,21 @@ describe('vaultLayoutFromObsidian', () => {
     })
   })
 
+  it('takes the templates folder from Templater when the core plugin names none', () => {
+    const templater = JSON.stringify({ templates_folder: '_system/templates' })
+    expect(
+      vaultLayoutFromObsidian({ dailyNotes: null, app: null, templater }).templatesFolder,
+    ).toBe('_system/templates')
+    expect(
+      vaultLayoutFromObsidian({
+        dailyNotes: null,
+        app: null,
+        templates: '{"folder":"Templates"}',
+        templater,
+      }).templatesFolder,
+    ).toBe('Templates')
+  })
+
   it('never makes the vault root the templates folder', () => {
     expect(
       vaultLayoutFromObsidian({ dailyNotes: null, app: null, templates: '{"folder":"/"}' }),

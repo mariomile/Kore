@@ -7,6 +7,48 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The iPhone Chat tab is redesigned in Craft style, with a floating pill
+  header and a composer card (#459).
+- Wikilinks with an alias (`[[Folder/Note|Name]]`) show the alias (#457).
+- iPhone design pass: readable note page, keyboard toolbar with block pills
+  and dictation, Today daily, quick capture (#451).
+- An Obsidian conversion can continue the vault's Git history, and no longer
+  fails on read-only files (#453).
+- The Obsidian conversion keeps file dates, repoints `.base` views and keeps
+  excluded notes hidden (#449).
+- Mermaid diagrams and charts render with Pele, loaded only when they scroll
+  into view (#450).
+- Text selection hugs the text on Mac and iPhone (#452).
+- iPhone: tap a bullet to zoom into that block (#446).
+- iPhone audio memos transcribe on the device without an API key, in the
+  language picked in Settings > Audio memos (#440, #443).
+- iPhone type pages get a board view, and cards show the type's fields (#444).
+- Daily note widget on the iPhone home screen, with a voice memo button
+  (#441).
+- Mobile polish: compact note rows, Templater templates hidden, empty states,
+  iPhone welcome note (#438).
+- A checkbox tagged on its own line is a row of that tag's database, listed on
+  the tag page (#423).
+- A collection in a note can show just the rows linked to that note (`= this`
+  filter) (#439).
+- Kore never saves over a note another device changed; it becomes a conflict
+  to resolve (#437).
+- Mobile [[ and slash menus close with the keyboard; task checkboxes are
+  centered on their label (#434, #432).
+- Local iOS simulator builds work on Xcode 27 (#435).
+- iPhone types open in a native configuration sheet, and fields stay visible
+  when a note has a blank line before its title (#431).
+- Rows created from a table, board or calendar view, CSV import and bulk Add
+  type keep their type in the frontmatter Type field (#419).
+- A type keeps its saved database views in its own file, and single-tag
+  `.base` files convert into that type's views (#415).
+- Spotify, Apple Music, Apple Podcasts, Figma, Loom and CodePen embeds play
+  inside the note (#430).
+- Touching an empty bullet on a future day no longer creates a daily file; an
+  image on a text line takes its own line (#429).
+- Mobile note grid cards show the first photo, and a note can remove an
+  inserted collection (#425, #427).
+- iOS app extensions carry the app's version on TestFlight builds (#428).
 - A note created from a relation field's Create entry keeps its type in the
   frontmatter Type field, with its starting values, instead of a hidden #tag
   line in the body (#416).

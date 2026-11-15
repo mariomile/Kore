@@ -6,6 +6,7 @@ import {
   markFirstRunSeedsConsidered,
   WELCOME_NOTE_PATH,
   WELCOME_SEEDED_META_KEY,
+  welcomeNoteBody,
 } from './welcome-note'
 
 interface WrittenNote {
@@ -138,5 +139,14 @@ describe('markFirstRunSeedsConsidered', () => {
     // A later open considers nothing: the marks stand.
     expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
     expect(graph.written).toEqual([])
+  })
+})
+
+describe('welcomeNoteBody', () => {
+  it('speaks the phone’s language on mobile: tabs, no desktop shortcuts', () => {
+    const mobile = welcomeNoteBody(true)
+    expect(mobile).toContain('Daily tab')
+    expect(mobile).not.toMatch(/⌘|sidebar/)
+    expect(welcomeNoteBody(false)).toContain('⌘D')
   })
 })

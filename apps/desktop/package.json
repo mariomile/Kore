@@ -1,6 +1,6 @@
 {
   "name": "@kore/desktop",
-  "version": "0.103.1",
+  "version": "0.110.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,7 +18,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "tauri:ios:dev": "tauri ios dev --config src-tauri/tauri.ios.dev.conf.json",
-    "tauri:ios:dev:sim": "tauri ios dev --config src-tauri/tauri.ios.dev.conf.json \"iPhone 17 Pro\" --open",
+    "tauri:ios:dev:sim": "tauri ios dev --config src-tauri/tauri.ios.dev.conf.json \"iPhone 17 Pro\"",
     "tauri:build:dev": "tauri build --config src-tauri/tauri.dev.conf.json",
     "tauri:build:beta": "tauri build --config src-tauri/tauri.beta.conf.json"
   },
@@ -53,6 +53,7 @@
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
     "mammoth": "^1.12.1",
+    "pele": "1.13.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.81.0",
@@ -68,7 +69,7 @@
     "@rolldown/plugin-babel": "^0.2.3",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
     "@tailwindcss/vite": "^4.3.3",
-    "@tauri-apps/cli": "^2.11.4",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.5",

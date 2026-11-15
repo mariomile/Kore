@@ -19,6 +19,7 @@ import { ChatProvider } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { RouterProvider } from '@/routing/router'
+import { DailyWidgetSync } from '@/mobile/daily-widget-sync'
 
 /**
  * Mobile root component (Plan 19): the graph provider bootstraps the fixed
@@ -76,6 +77,7 @@ export function MobileApp(): ReactElement {
                   <MobileAudioMemoProvider graph={graph}>
                     <MobileShell />
                     <MobileStatusLayer />
+                    <DailyWidgetSync graph={graph} />
                     {/* Mounted beside the shell (not inside the daily screen)
                       so a live recording's sheet survives tab switches. */}
                     <RecordingDrawer />

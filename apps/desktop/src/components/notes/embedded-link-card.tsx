@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { linkKindInfo, videoPlayerUrl, type LinkKind, type UrlEmbed } from '@kore/core'
+import { embedPlayer, linkKindInfo, type LinkKind, type UrlEmbed } from '@kore/core'
 import {
   Book,
   Chat,
@@ -41,12 +41,23 @@ function readableUrl(url: string): string {
   }
 }
 
-/** A typed remote URL card that loads image or player content only on request. */
+/**
+ * Everything a player frame may do: run its own scripts in its own origin,
+ * open the provider in a new window, go fullscreen. Never navigate the app.
+ */
+const PLAYER_SANDBOX =
+  'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms'
+
+/**
+ * A typed remote URL card that loads image or player content only on request.
+ * A link with a known player (a video, a song, a Figma file, a pen) names
+ * its service and holds the player behind Play or Show.
+ */
 export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement {
   const [loaded, setLoaded] = useState(false)
   const info = linkKindInfo(block.linkKind)
   const Glyph = KIND_GLYPH[block.linkKind]
-  const player = block.linkKind === 'video' ? videoPlayerUrl(block.url) : null
+  const player = block.linkKind === 'image' ? null : embedPlayer(block.url)
 
   if (block.linkKind === 'image' && loaded) {
     return (
@@ -67,11 +78,16 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
     return (
       <div className="mt-6 overflow-hidden rounded-lg border border-border">
         <iframe
-          src={player}
-          title={readableUrl(block.url)}
-          allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
+          src={player.url}
+          title={`${player.provider}: ${readableUrl(block.url)}`}
+          allow="autoplay; accelerometer; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
-          className="aspect-video w-full"
+          // Scripts plus same-origin only unsandbox a frame of the app's own
+          // origin; a player is always a third-party https host from core.
+          // eslint-disable-next-line @eslint-react/dom-no-unsafe-iframe-sandbox
+          sandbox={PLAYER_SANDBOX}
+          className={player.height === null ? 'block aspect-video w-full' : 'block w-full'}
+          style={player.height === null ? undefined : { height: player.height }}
         />
       </div>
     )
@@ -84,14 +100,20 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-2xs font-medium tracking-wide text-text-muted uppercase">
-          {info.label}
+          {player?.provider ?? info.label}
         </span>
         <span className="block truncate text-sm text-text">{readableUrl(block.url)}</span>
       </span>
       {player !== null ? (
         <Button variant="ghost" size="sm" onClick={() => setLoaded(true)}>
-          <Play aria-hidden data-icon="inline-start" />
-          Play
+          {player.playable ? (
+            <>
+              <Play aria-hidden data-icon="inline-start" />
+              Play
+            </>
+          ) : (
+            'Show'
+          )}
         </Button>
       ) : null}
       {block.linkKind === 'image' ? (

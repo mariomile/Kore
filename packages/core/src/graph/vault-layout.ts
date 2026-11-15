@@ -190,12 +190,19 @@ const obsidianTemplatesSchema = z.object({
   timeFormat: z.string().optional(),
 })
 
+/** `.obsidian/plugins/templater-obsidian/data.json` — the Templater plugin's settings. */
+const templaterSchema = z.object({
+  templates_folder: z.string().optional(),
+})
+
 /** The raw `.obsidian` files {@link vaultLayoutFromObsidian} reads; `null` when absent. */
 export interface ObsidianConfigFiles {
   readonly dailyNotes: string | null
   readonly app: string | null
   /** Optional: a host that predates `templates.json` reading omits it. */
   readonly templates?: string | null
+  /** Templater's `data.json`. Optional: a host that predates reading it omits it. */
+  readonly templater?: string | null
 }
 
 function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
@@ -226,12 +233,19 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  *   current file" has no fixed answer, so it keeps `notes/`);
  * - `templates.json` → the templates folder (a vault-root setting keeps
  *   `templates/`: every note would become a template) and the formats
- *   `{{date}}` and `{{time}}` expand to.
+ *   `{{date}}` and `{{time}}` expand to;
+ * - Templater's `data.json` `templates_folder` → the templates folder when
+ *   `templates.json` names none, so a Templater-only vault's templates
+ *   (`<% tp.file.title %>`) stay out of the note list and search.
  */
 export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout {
   let layout: VaultLayout = {
     ...DEFAULT_VAULT_LAYOUT,
-    obsidian: files.dailyNotes !== null || files.app !== null || (files.templates ?? null) !== null,
+    obsidian:
+      files.dailyNotes !== null ||
+      files.app !== null ||
+      (files.templates ?? null) !== null ||
+      (files.templater ?? null) !== null,
   }
   const daily = parseJson(files.dailyNotes, obsidianDailyNotesSchema)
   if (daily !== null) {
@@ -261,6 +275,13 @@ export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout
     if (newFolder !== null) {
       layout = { ...layout, newNoteFolder: newFolder }
     }
+  }
+  // Templater's folder first, so the core plugin's setting wins when both
+  // name one: the core folder is the one Kore's own template insert lists.
+  const templater = parseJson(files.templater ?? null, templaterSchema)
+  const templaterFolder = normalizeFolder(templater?.templates_folder ?? '')
+  if (templaterFolder !== null && templaterFolder !== '') {
+    layout = { ...layout, templatesFolder: templaterFolder }
   }
   const templates = parseJson(files.templates ?? null, obsidianTemplatesSchema)
   if (templates !== null) {

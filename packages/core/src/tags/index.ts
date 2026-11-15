@@ -98,6 +98,16 @@ export {
   type CollectionEmbedView,
 } from './collection-embed'
 export {
+  THIS_NOTE_FILTER_TEXT,
+  acceptsThisNoteFilter,
+  hostStartingValues,
+  isThisNoteFilterText,
+  linksToHostNote,
+  hasThisNoteFilter,
+  textLinksToHostNote,
+  type EmbedHostNote,
+} from './embed-host'
+export {
   COLLECTION_DEFINITION_MARKER_KEY,
   KORE_CONFIG_KEY,
   collectionDefinitionConfigSchema,

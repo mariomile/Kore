@@ -38,6 +38,7 @@ mod link_preview;
 #[cfg(desktop)]
 mod liquid_glass;
 mod logs;
+mod mcp_clients;
 mod menu;
 mod process_memory;
 mod process_tree;
@@ -403,6 +404,7 @@ pub fn run() {
             skill::skill_status,
             skill::skill_install,
             skill::skill_uninstall,
+            mcp_clients::mcp_client_servers,
             remote_mcp::remote_mcp_start,
             remote_mcp::remote_mcp_stop,
             remote_mcp::remote_mcp_status,

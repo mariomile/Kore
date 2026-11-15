@@ -2,7 +2,10 @@
 //! from the current directory to the nearest ancestor containing `.kore/`
 //! (or the pre-rename `.reflect/`, which is moved to `.kore/` on resolve).
 //! Deliberately no desktop recents-config fallback (Plan 14) — the CLI must be
-//! deterministic for scripts and agents.
+//! deterministic for scripts and agents. The one exception is `kore mcp`
+//! ([`resolve_for_mcp`]): an MCP client's config is pasted once and outlives
+//! any one folder, so a server started without a path serves the vault the
+//! app opened last, and moving or renaming the vault does not break it.
 
 use std::path::{Path, PathBuf};
 
@@ -87,22 +90,76 @@ pub fn resolve_for_index(flag: Option<&Path>) -> Result<Graph, CliError> {
     canonical_graph(&path)
 }
 
+/// The nearest ancestor of `start` (itself included) that is a graph.
+fn walk_up(start: &Path) -> Option<&Path> {
+    start.ancestors().find(|dir| is_graph(dir))
+}
+
 /// Resolve the active graph. First hit wins: flag, env, then the walk-up.
 pub fn resolve(flag: Option<&Path>) -> Result<Graph, CliError> {
     if let Some((path, source)) = explicit_source(flag) {
         return explicit_graph(&path, source);
     }
     let cwd = std::env::current_dir()?;
-    let mut current = cwd.as_path();
-    loop {
-        if is_graph(current) {
-            return canonical_graph(current);
-        }
-        match current.parent() {
-            Some(parent) => current = parent,
-            None => return Err(CliError::runtime(NO_GRAPH_HELP)),
-        }
+    match walk_up(&cwd) {
+        Some(root) => canonical_graph(root),
+        None => Err(CliError::runtime(NO_GRAPH_HELP)),
     }
+}
+
+/// Resolve the graph `kore mcp` serves: flag, env and the walk-up as
+/// [`resolve`], then the vault the Kore app opened last. A pasted config
+/// without `--graph` therefore follows the vault when it moves: the app
+/// records the new location the first time it opens it there.
+pub fn resolve_for_mcp(flag: Option<&Path>) -> Result<Graph, CliError> {
+    if let Some((path, source)) = explicit_source(flag) {
+        return explicit_graph(&path, source);
+    }
+    let cwd = std::env::current_dir()?;
+    if let Some(root) = walk_up(&cwd) {
+        return canonical_graph(root);
+    }
+    let last = recents_file().and_then(|file| last_opened_in(&file));
+    match last {
+        Some(root) if is_graph(&root) => canonical_graph(&root),
+        // Never fall back to an older entry: that would hand the agent a
+        // different vault without a word. Reopening the vault in Kore
+        // records where it is now.
+        Some(root) => Err(CliError::Runtime(format!(
+            "the vault Kore opened last is no longer at {} — open it in Kore once \
+             from its new place, or pass --graph <path>",
+            root.display()
+        ))),
+        None => Err(CliError::runtime(
+            "no vault found — open a vault in the Kore app, or pass --graph <path>",
+        )),
+    }
+}
+
+/// The app's recent-vaults list: `recent-graphs.json` in `<config dir>/kore`,
+/// the same OS config directory the app resolves (`dirs::config_dir`).
+fn recents_file() -> Option<PathBuf> {
+    let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
+    let base = if cfg!(target_os = "macos") {
+        PathBuf::from(var("HOME")?).join("Library/Application Support")
+    } else if cfg!(windows) {
+        PathBuf::from(var("APPDATA")?)
+    } else {
+        var("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| var("HOME").map(|home| PathBuf::from(home).join(".config")))?
+    };
+    Some(base.join("kore").join("recent-graphs.json"))
+}
+
+/// The root of the newest entry of a recents list (stored newest first). A
+/// missing, unreadable or empty list is no answer, never an error: the
+/// caller reports that no vault was found.
+fn last_opened_in(file: &Path) -> Option<PathBuf> {
+    let raw = std::fs::read_to_string(file).ok()?;
+    let entries: Vec<serde_json::Value> = serde_json::from_str(&raw).ok()?;
+    let root = entries.first()?.get("root")?.as_str()?;
+    Some(PathBuf::from(root))
 }
 
 #[cfg(test)]
@@ -124,6 +181,22 @@ mod tests {
         std::fs::create_dir(dir.path().join(KORE_DIR)).unwrap();
         let graph = explicit_graph(dir.path(), "--graph").unwrap();
         assert!(graph.root.join(KORE_DIR).is_dir());
+    }
+
+    #[test]
+    fn last_opened_is_the_newest_entry_only() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("recent-graphs.json");
+        let entries = serde_json::json!([
+            { "root": "/Vaults/Kore Brain", "name": "Kore Brain", "openedMs": 2 },
+            { "root": "/Vaults/Test", "name": "Test", "openedMs": 1 },
+        ]);
+        std::fs::write(&file, entries.to_string()).unwrap();
+        assert_eq!(
+            last_opened_in(&file),
+            Some(PathBuf::from("/Vaults/Kore Brain"))
+        );
+        assert_eq!(last_opened_in(&dir.path().join("missing.json")), None);
     }
 
     #[test]

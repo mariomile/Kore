@@ -26,6 +26,7 @@ import { adoptGraphToIcloud } from '@/lib/icloud-adopt'
 import { isICloudRoot } from '@/lib/icloud-controller'
 import { isMacosDesktop } from '@/lib/platform'
 import { ICLOUD_STATUS_QUERY_KEY, INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { PinnedAgentsNotice } from '@/components/settings/pinned-agents-notice'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync } from '@/providers/sync-provider'
 
@@ -195,6 +196,9 @@ export function IcloudSettingsField(): ReactElement | null {
                       : ''}
                   </DialogDescription>
                 </DialogHeader>
+                {graph !== null ? (
+                  <PinnedAgentsNotice root={graph.root} enabled={confirmOpen} />
+                ) : null}
                 <DialogFooter>
                   <DialogClose
                     render={

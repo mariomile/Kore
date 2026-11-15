@@ -186,9 +186,9 @@ export function convertBaseFile(
   // Double and single quotes in separate passes: a YAML string in single
   // quotes often holds an expression with double-quoted folders inside.
   return content
-    .replace(/"([^"\n\\]+)"/g, quoted('"'))
-    .replace(/'([^'\n\\]+)'/g, quoted("'"))
-    .replace(
+    .replaceAll(/"([^"\n\\]+)"/g, quoted('"'))
+    .replaceAll(/'([^'\n\\]+)'/g, quoted("'"))
+    .replaceAll(
       /^(\s*-\s+)([^\s"'#[{|>&*!%@`][^#\n]*?)(\s*)$/gm,
       (whole, lead: string, value: string, tail: string) => {
         const next = repoint(value)

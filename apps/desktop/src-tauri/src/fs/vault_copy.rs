@@ -306,11 +306,10 @@ fn write_files(graph: Option<&Path>, destination: &str, files: &[VaultCopyFile])
     Ok(())
 }
 
+/// Set a file's modification time. Opened read-only: setting times needs
+/// ownership, not write access, and Git's object files are read-only.
 fn keep_modified(path: &Path, modified: std::time::SystemTime) -> std::io::Result<()> {
-    fs::OpenOptions::new()
-        .write(true)
-        .open(path)?
-        .set_modified(modified)
+    fs::File::open(path)?.set_modified(modified)
 }
 
 #[cfg(test)]

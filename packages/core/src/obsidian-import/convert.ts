@@ -1,4 +1,9 @@
-import { vaultCopyTree, vaultCopyWrite, type VaultCopyStats } from '../graph/commands'
+import {
+  vaultCopyCommit,
+  vaultCopyTree,
+  vaultCopyWrite,
+  type VaultCopyStats,
+} from '../graph/commands'
 import { ASSETS_DIR, DAILY_DIR, TEMPLATES_DIR } from '../graph/paths'
 import type { ObsidianConfigFiles } from '../graph/vault-layout'
 import { splitFrontmatter } from '../markdown/frontmatter'
@@ -35,14 +40,26 @@ export interface ObsidianConversion {
   readonly canonical: number
   /** Notes copied without canonicalizing because Kore can't save them losslessly. */
   readonly lossy: number
+  /**
+   * The copy carries the source's `.git` and the conversion is committed on
+   * top of its history, so a vault already backed up to a remote keeps
+   * syncing to it: one commit of renames instead of a second, unrelated
+   * history that would merge into duplicates.
+   */
+  readonly keepHistory: boolean
 }
 
 /**
- * Left out of every copy. `.git` is the source's history, which the copy
- * doesn't share; `.kore` is Kore's index of the source, rebuilt on open
- * (`.reflect` is its pre-rename name, in a source Kore hasn't reopened since).
+ * Left out of every copy: `.kore` is Kore's index of the source, rebuilt on
+ * open (`.reflect` is its pre-rename name, in a source Kore hasn't reopened
+ * since). `.git`, the source's history, is left out too unless the copy
+ * continues it.
  */
-const ALWAYS_SKIPPED = ['.git', '.kore', '.reflect']
+const ALWAYS_SKIPPED = ['.kore', '.reflect']
+const GIT_DIR = '.git'
+
+/** Subject of the commit a history-keeping conversion adds, when Kore's own summary of the change doesn't fit. */
+export const CONVERSION_COMMIT_MESSAGE = 'Convert to Kore layout'
 
 const OBSIDIAN_FILES = {
   dailyNotes: '.obsidian/daily-notes.json',
@@ -209,6 +226,8 @@ export function buildObsidianConversion(input: {
   readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'config'> &
     Partial<Pick<ObsidianImportSource, 'bases'>>
   readonly convert: ImportCanonicalizer
+  /** Carry `.git` into the copy and commit the conversion on its history. */
+  readonly keepHistory?: boolean
 }): ObsidianConversion {
   const { mapping, source } = input
   const plan = planImportMoves(mapping, [
@@ -251,16 +270,17 @@ export function buildObsidianConversion(input: {
   writes.push(...convertObsidianSettings(source.config, mapping))
   return {
     renames: plan.moves,
-    skip: [...ALWAYS_SKIPPED, ...mapping.exclude],
+    skip: [...(input.keepHistory === true ? [] : [GIT_DIR]), ...ALWAYS_SKIPPED, ...mapping.exclude],
     writes,
     canonical,
     lossy,
+    keepHistory: input.keepHistory === true,
   }
 }
 
 /** How far a conversion has got: files written out of `total`. */
 export interface ConversionProgress {
-  readonly phase: 'copying' | 'writing'
+  readonly phase: 'copying' | 'writing' | 'committing'
   readonly done: number
   readonly total: number
 }
@@ -269,6 +289,8 @@ export interface ConversionResult extends VaultCopyStats {
   readonly destination: string
   /** Files the conversion rewrote after copying. */
   readonly written: number
+  /** The conversion's commit on the carried history, or `null` when history wasn't kept. */
+  readonly commit: string | null
 }
 
 /** Rewrites go to Rust in batches, so a large vault never sends one huge IPC message. */
@@ -317,5 +339,10 @@ export async function convertObsidianVault(input: {
     }
   }
   await flush()
-  return { ...stats, destination, written: done }
+  let commit: string | null = null
+  if (conversion.keepHistory) {
+    input.onProgress?.({ phase: 'committing', done, total })
+    commit = (await vaultCopyCommit(destination, CONVERSION_COMMIT_MESSAGE)).sha
+  }
+  return { ...stats, destination, written: done, commit }
 }

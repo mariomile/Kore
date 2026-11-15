@@ -375,6 +375,7 @@ pub fn run() {
             fs::export_write,
             fs::vault_copy::vault_copy_tree,
             fs::vault_copy::vault_copy_write,
+            fs::vault_copy::vault_copy_commit,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,

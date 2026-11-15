@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Wikilinks with an alias (`[[Folder/Note|Name]]`) show the alias (#457).
+- iPhone design pass: readable note page, keyboard toolbar with block pills
+  and dictation, Today daily, quick capture (#451).
 - An Obsidian conversion can continue the vault's Git history, and no longer
   fails on read-only files (#453).
 - The Obsidian conversion keeps file dates, repoints `.base` views and keeps

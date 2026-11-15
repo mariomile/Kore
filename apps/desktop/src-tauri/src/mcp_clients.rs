@@ -1,7 +1,9 @@
 //! The MCP servers other apps on this Mac are configured to launch (Claude
 //! Desktop, Claude Code, Cursor, Windsurf), read from each client's own config
-//! file. One read-only capability: which servers are configured, as written.
-//! Whether one of them is Kore's, and which vault it is tied to, is
+//! file. One read-only capability: which servers launch the `kore` CLI, as
+//! written. Other servers never leave this module, and of an entry's `env`
+//! only `KORE_GRAPH` does: client configs hold other tools' tokens, and the
+//! webview has no business seeing them. Which vault an entry is tied to is
 //! `@kore/core` policy (`app/agent-skill.ts`).
 
 use std::collections::BTreeMap;
@@ -22,7 +24,7 @@ pub struct McpClientServer {
     pub name: String,
     pub command: String,
     pub args: Vec<String>,
-    /// The entry's `env`, string values only.
+    /// The entry's `env`, reduced to `KORE_GRAPH` when set.
     pub env: BTreeMap<String, String>,
 }
 
@@ -72,8 +74,18 @@ fn collect(client: &str, value: &Value, out: &mut Vec<McpClientServer>) {
     }
 }
 
+/// Whether `command` runs the `kore` CLI (by file name, any install path).
+fn is_kore_cli(command: &str) -> bool {
+    Path::new(command)
+        .file_stem()
+        .is_some_and(|stem| stem == "kore")
+}
+
 fn entry(client: &str, name: &str, server: &Value) -> Option<McpClientServer> {
     let command = server.get("command")?.as_str()?.to_string();
+    if !is_kore_cli(&command) {
+        return None;
+    }
     let strings = |value: Option<&Value>| -> Vec<String> {
         value
             .and_then(Value::as_array)
@@ -90,6 +102,7 @@ fn entry(client: &str, name: &str, server: &Value) -> Option<McpClientServer> {
         .and_then(Value::as_object)
         .map(|env| {
             env.iter()
+                .filter(|(key, _)| key.as_str() == "KORE_GRAPH")
                 .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_string())))
                 .collect()
         })
@@ -116,7 +129,7 @@ fn servers_in(client: &str, path: &Path) -> Vec<McpClientServer> {
     out
 }
 
-/// Command: every MCP server the known clients on this machine launch.
+/// Command: every `kore` MCP server the known clients on this machine launch.
 #[tauri::command]
 pub async fn mcp_client_servers() -> AppResult<Vec<McpClientServer>> {
     crate::blocking::run_blocking(|| {
@@ -134,7 +147,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn reads_global_and_per_project_servers() {
+    fn reads_kore_servers_only_and_drops_other_env() {
         let dir = tempdir().unwrap();
         let path = dir.path().join(".claude.json");
         let config = serde_json::json!({
@@ -142,16 +155,19 @@ mod tests {
                 "command": "/Applications/Kore.app/Contents/MacOS/kore",
                 "args": ["--graph", "/Vaults/Brain", "mcp"],
             } },
-            "projects": { "/code/app": { "mcpServers": { "other": {
-                "type": "stdio", "command": "npx", "args": ["server"],
-                "env": { "KORE_GRAPH": "/Vaults/Brain", "PORT": 1 },
-            } } } },
+            "projects": { "/code/app": { "mcpServers": {
+                "brain": {
+                    "type": "stdio", "command": "kore", "args": ["mcp"],
+                    "env": { "KORE_GRAPH": "/Vaults/Brain", "API_TOKEN": "secret", "PORT": 1 },
+                },
+                "other": { "command": "npx", "args": ["--token", "secret"] },
+            } } },
         });
         std::fs::write(&path, config.to_string()).unwrap();
         let servers = servers_in("Claude Code", &path);
-        assert_eq!(servers.len(), 2);
+        assert_eq!(servers.len(), 2, "other tools' servers never leave Rust");
         assert_eq!(servers[0].args, ["--graph", "/Vaults/Brain", "mcp"]);
-        assert_eq!(servers[1].name, "other");
+        assert_eq!(servers[1].name, "brain");
         assert_eq!(
             servers[1].env,
             BTreeMap::from([("KORE_GRAPH".to_string(), "/Vaults/Brain".to_string())])

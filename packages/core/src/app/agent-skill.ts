@@ -99,13 +99,14 @@ const mcpClientServerSchema = z.object({
   name: z.string(),
   command: z.string(),
   args: z.array(z.string()),
+  /** Only `KORE_GRAPH`, when set: other variables never leave Rust. */
   env: z.record(z.string(), z.string()),
 })
 
-/** One MCP server another app on this machine is configured to launch. */
+/** One `kore` MCP server another app on this machine is configured to launch. */
 export type McpClientServer = z.infer<typeof mcpClientServerSchema>
 
-/** The MCP servers configured in the known clients' own config files. Read-only. */
+/** The `kore` MCP servers configured in the known clients' own config files. Read-only. */
 export async function mcpClientServers(): Promise<McpClientServer[]> {
   return await call('mcp_client_servers', {}, z.array(mcpClientServerSchema))
 }

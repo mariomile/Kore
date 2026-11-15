@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
+import { PinnedAgentsNotice } from '@/components/settings/pinned-agents-notice'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { suggestRepoName } from '@/lib/github-repos'
 import { adoptGraphToIcloud } from '@/lib/icloud-adopt'
@@ -170,6 +171,7 @@ export function EnableLocalSyncDialog(): ReactElement | null {
               <p className="text-xs leading-5 text-text-muted">
                 Copies these notes into iCloud Drive. This folder stays on disk as a recovery copy.
               </p>
+              {graph !== null ? <PinnedAgentsNotice root={graph.root} enabled /> : null}
             </div>
           ) : null}
 

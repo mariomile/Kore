@@ -139,7 +139,7 @@ export function AgentsSection(): ReactElement | null {
         ) : null}
       </SettingsField>
       {status !== undefined ? (
-        <AgentsMcpField cliPath={status.cliPath} graphRoot={graph.root} graphName={graph.name} />
+        <AgentsMcpField cliPath={status.cliPath} graphName={graph.name} />
       ) : null}
       <AgentsMemoryKitField graphRoot={graph.root} generation={graph.generation} />
       <AgentAccessGroup

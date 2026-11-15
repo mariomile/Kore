@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: tap a bullet to zoom into that block (#446).
 - iPhone audio memos transcribe on the device without an API key, in the
   language picked in Settings > Audio memos (#440, #443).
 - iPhone type pages get a board view, and cards show the type's fields (#444).

@@ -4,6 +4,11 @@ import { Button } from '@/components/ui/button'
 
 interface MobileScreenHeaderProps {
   title: string
+  /**
+   * Screen-reader name while {@link title} is empty (a note keeps its bar
+   * blank until its own title scrolls away).
+   */
+  accessibleTitle?: string
   /** Pop the screen (the router's back, with a today fallback on cold entry). */
   onBack: () => void
   /** Optional trailing control (an add button, …). */
@@ -22,6 +27,7 @@ interface MobileScreenHeaderProps {
  */
 export function MobileScreenHeader({
   title,
+  accessibleTitle,
   onBack,
   trailing,
   ref,
@@ -42,7 +48,13 @@ export function MobileScreenHeader({
         >
           <ChevronLeft />
         </Button>
-        <h1 className="min-w-0 truncate text-center text-base font-semibold">{title}</h1>
+        <h1 className="min-w-0 truncate text-center text-base font-semibold">
+          {title === '' && accessibleTitle !== undefined ? (
+            <span className="sr-only">{accessibleTitle}</span>
+          ) : (
+            title
+          )}
+        </h1>
         <div className="flex size-11 items-center justify-center justify-self-center">
           {trailing}
         </div>

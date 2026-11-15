@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { isUntitledNotePath } from '@kore/core'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
@@ -8,6 +8,7 @@ import { MobileScreenHeader } from '@/mobile/screen-header'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { NoteActionsMenu } from '@/mobile/note-actions-menu'
 import { cn } from '@/lib/utils'
+import { setTabBarScrolledAway } from '@/mobile/chrome-visibility'
 import { useRouter } from '@/routing/router'
 
 /**
@@ -25,12 +26,53 @@ export function MobileNote({ path }: { path: string }): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const untitled = isUntitledNotePath(path)
+  const mainRef = useRef<HTMLElement>(null)
+  const [titleInBar, setTitleInBar] = useState(false)
+  const [barTitle, setBarTitle] = useState('')
+
+  // iPhone design pass (2026-11): the note's own title is the
+  // page heading, so the bar stays empty until it scrolls away and then shows
+  // it small (the iOS large-title pattern); scrolling down hides the tab bar,
+  // scrolling up brings it back. One passive listener, coalesced per frame.
+  useEffect(() => {
+    const main = mainRef.current
+    if (main === null) return
+    let lastTop = main.scrollTop
+    let frame = 0
+    const onScroll = (): void => {
+      if (frame !== 0) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const top = main.scrollTop
+        const showTitle = top > 56
+        if (showTitle) {
+          // The note's own H1 (what the page shows), else the file name.
+          const heading = main.querySelector('.ProseMirror h1')?.textContent?.trim()
+          setBarTitle(
+            untitled ? '' : heading || (path.split('/').pop() ?? '').replace(/\.md$/i, ''),
+          )
+        }
+        setTitleInBar(showTitle)
+        if (top < 24) setTabBarScrolledAway(false)
+        else if (top - lastTop > 6) setTabBarScrolledAway(true)
+        else if (lastTop - top > 6) setTabBarScrolledAway(false)
+        lastTop = top
+      })
+    }
+    main.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      main.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+      setTabBarScrolledAway(false)
+    }
+  }, [path, untitled])
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
         ref={barRef}
-        title={untitled ? 'New note' : 'Edit note'}
+        title={titleInBar ? barTitle : ''}
+        accessibleTitle={untitled ? 'New note' : 'Edit note'}
         onBack={() => (canBack ? back() : navigate({ kind: 'today' }))}
         trailing={
           <NoteActionsMenu
@@ -40,6 +82,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         }
       />
       <main
+        ref={mainRef}
         className="min-h-0 flex-1 overflow-y-auto"
         // The chrome floats: the scroller runs the full screen and pads past
         // the glass header and tab bar, so content scrolls under both.

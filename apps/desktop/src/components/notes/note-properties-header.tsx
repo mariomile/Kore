@@ -5,6 +5,7 @@ import { Plus } from '@/components/icons'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { NoteFieldList } from './note-field-list'
+import { NoteFieldSummary } from './note-field-summary'
 import { NoteTypePicker } from './note-type-picker'
 
 interface NotePropertiesHeaderProps {
@@ -55,6 +56,14 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
           <span>Add a type</span>
         </NoteTypePicker>
       </section>
+    )
+  }
+
+  if (isMobileSurface()) {
+    return (
+      <NoteFieldSummary fields={fields}>
+        <NoteFieldList path={path} fields={fields} labelClassName="w-24" />
+      </NoteFieldSummary>
     )
   }
 

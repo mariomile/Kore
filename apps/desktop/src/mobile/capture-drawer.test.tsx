@@ -22,8 +22,22 @@ vi.mock('@/components/ui/drawer', () => ({
 }))
 // Sending taps a haptic; the test browser has no haptics plugin.
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/providers/graph-provider', () => ({
+  useGraph: () => ({ graph: { root: '/vault', generation: 7 } }),
+}))
+const drain = vi.hoisted(() => vi.fn())
+vi.mock('@/providers/capture-provider', () => ({ requestCaptureDrain: drain }))
+const spool = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
+  captureInboxSpool: spool,
+}))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  spool.mockClear()
+  drain.mockClear()
+})
 
 async function mount() {
   const handlers = {
@@ -38,7 +52,7 @@ async function mount() {
 }
 
 describe('MobileCaptureDrawer', () => {
-  it('sends a capture to the daily note and closes the hub', async () => {
+  it('opens the daily from an empty field and closes the hub', async () => {
     const { onDaily, onNote, onOpenChange } = await mount()
 
     await userEvent.click(page.getByRole('button', { name: 'Daily' }))
@@ -53,5 +67,35 @@ describe('MobileCaptureDrawer', () => {
     await userEvent.click(page.getByRole('button', { name: 'Note' }))
     expect(onNote).toHaveBeenCalledOnce()
     expect(onDaily).not.toHaveBeenCalled()
+  })
+
+  it('sends a typed line to today’s daily through the capture inbox and drains it', async () => {
+    const { onDaily, onOpenChange } = await mount()
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Capture' }), 'Idea widget')
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
+
+    expect(spool).toHaveBeenCalledOnce()
+    const [name, json, generation] = spool.mock.calls[0] as unknown as [string, string, number]
+    expect(name).toMatch(/\.json$/)
+    expect(JSON.parse(json)).toMatchObject({ kind: 'append', text: 'Idea widget' })
+    expect(generation).toBe(7)
+    expect(drain).toHaveBeenCalledOnce()
+    expect(onDaily).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('files a typed line as a task once Task is picked', async () => {
+    const { onTask } = await mount()
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Capture' }), 'Call Anna')
+    await userEvent.click(page.getByRole('button', { name: 'Task' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
+
+    expect(onTask).not.toHaveBeenCalled()
+    expect(JSON.parse((spool.mock.calls[0] as unknown as [string, string])[1])).toMatchObject({
+      kind: 'task',
+      text: 'Call Anna',
+    })
   })
 })

@@ -140,9 +140,22 @@ export function BackupSettingsField(): ReactElement {
 
           {backup.phase === 'disconnected' ? (
             <>
+              {backup.linkedRepo !== undefined ? (
+                <div>
+                  <p className="text-sm text-text">
+                    This vault is linked to{' '}
+                    <span className="font-medium">
+                      {backup.linkedRepo.owner}/{backup.linkedRepo.name}
+                    </span>
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    Sync is paused until GitHub is connected on this Mac.
+                  </p>
+                </div>
+              ) : null}
               <div>
                 <Button size="sm" onClick={() => setConnectOpen(true)}>
-                  Connect GitHub…
+                  {backup.linkedRepo !== undefined ? 'Resume sync…' : 'Connect GitHub…'}
                 </Button>
               </div>
               {githubConnected ? (
@@ -217,6 +230,7 @@ export function BackupSettingsField(): ReactElement {
       {connectOpen ? (
         <ConnectGithubDialog
           suggestedRepoName={suggestRepoName(graph?.name)}
+          initialRepo={backup.phase === 'disconnected' ? backup.linkedRepo : null}
           onClose={() => setConnectOpen(false)}
         />
       ) : null}

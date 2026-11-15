@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { GithubRepoRef } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { ConnectGithubFinishStep } from '@/components/settings/connect-github-finish-step'
 import { GithubAuthStep } from '@/components/settings/github-auth-step'
@@ -17,6 +18,8 @@ import { useRestoreFocus } from '@/hooks/use-restore-focus'
 interface ConnectGithubDialogProps {
   /** A suggested name for a newly created backup repo (from the graph name). */
   suggestedRepoName: string
+  /** The repo this vault already points at, preselected (see the wizard's `initialRepo`). */
+  initialRepo?: GithubRepoRef | null | undefined
   onClose: () => void
   /** Delay between repo-existence polls on the create handoff (test hook). */
   pollIntervalMs?: number
@@ -37,10 +40,16 @@ const STEP_DESCRIPTIONS: Record<ConnectWizardStep, string> = {
  */
 export function ConnectGithubDialog({
   suggestedRepoName,
+  initialRepo = null,
   onClose,
   pollIntervalMs = 3000,
 }: ConnectGithubDialogProps): ReactElement {
-  const wizard = useConnectGithubWizard({ suggestedRepoName, onClose, pollIntervalMs })
+  const wizard = useConnectGithubWizard({
+    suggestedRepoName,
+    initialRepo,
+    onClose,
+    pollIntervalMs,
+  })
 
   useRestoreFocus()
 
@@ -109,7 +118,9 @@ export function ConnectGithubDialog({
         {wizard.step === 'auth' ? (
           <GithubAuthStep
             onAuthed={wizard.onAuthed}
-            repoName={wizard.mode === 'create' ? wizard.repoName.trim() : undefined}
+            repoName={wizard.tokenTarget.name}
+            repoOwner={wizard.tokenTarget.owner}
+            createRepoFirst={wizard.tokenTarget.createFirst}
           />
         ) : null}
 

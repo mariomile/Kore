@@ -152,7 +152,9 @@ function ConnectWizardSheet({
         {wizard.step === 'auth' ? (
           <GithubAuthStep
             onAuthed={wizard.onAuthed}
-            repoName={wizard.mode === 'create' ? wizard.repoName.trim() : undefined}
+            repoName={wizard.tokenTarget.name}
+            repoOwner={wizard.tokenTarget.owner}
+            createRepoFirst={wizard.tokenTarget.createFirst}
           />
         ) : null}
 

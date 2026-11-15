@@ -59,8 +59,8 @@ export function McpSection(): ReactElement {
   return (
     <SettingsSection id="mcp">
       <SettingsField
-        legend="Servers"
-        description="External tools for your agents (Model Context Protocol). Configuration lives here; tokens go straight to the OS keychain. Agents get these tools only in edit mode."
+        legend="MCP servers"
+        description="Tools Kore’s chat and automations can use, from MCP servers you add. Tokens go to the OS keychain. To let other agents use this vault, see Agents → Agent access."
       >
         <ul className="mt-3 space-y-2">
           {servers.map((server) => (

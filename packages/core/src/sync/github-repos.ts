@@ -24,6 +24,38 @@ export function newRepoUrl(name: string): string {
   return `https://github.com/new?${params.toString()}`
 }
 
+/** Days a sync token prefilled by {@link newSyncTokenUrl} stays valid (GitHub's maximum). */
+export const SYNC_TOKEN_EXPIRY_DAYS = 366
+
+/**
+ * The prefilled "new fine-grained token" page for syncing one repository:
+ * name, description, owner, a year's expiry (GitHub's default is 30 days,
+ * after which sync silently stops), and Contents read/write (Metadata read
+ * comes with it). GitHub can't prefill *which* repositories the token
+ * reaches — the user still picks "Only select repositories" → this one, so
+ * the repository must already exist.
+ */
+export function newSyncTokenUrl(repo: {
+  owner?: string | undefined
+  name?: string | undefined
+}): string {
+  const name = repo.name?.trim() ?? ''
+  const params = new URLSearchParams({
+    name: (name.length > 0 ? `Kore sync ${name}` : 'Kore sync').slice(0, 40),
+    description: name.length > 0 ? `Kore syncs this vault with ${name}.` : 'Kore vault sync.',
+    expires_in: String(SYNC_TOKEN_EXPIRY_DAYS),
+    contents: 'write',
+  })
+  const owner = repo.owner?.trim() ?? ''
+  if (owner.length > 0) {
+    params.set('target_name', owner)
+  }
+  return `https://github.com/settings/personal-access-tokens/new?${params.toString()}`
+}
+
+/** The user's fine-grained tokens list — where an existing token's repository access is edited. */
+export const FINE_GRAINED_TOKENS_URL = 'https://github.com/settings/personal-access-tokens'
+
 /** Parse `https://github.com/owner/repo(.git)` → ref, or `null` for any other remote. */
 export function parseGithubRemote(url: string): GithubRepoRef | null {
   const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/.exec(url)

@@ -179,6 +179,36 @@ describe('GithubAuthStep', () => {
     await expect.element(page.getByText('my-notes-backup')).toBeVisible()
   })
 
+  it('has a new repository created before the token, with a prefilled token link', async () => {
+    fakeKeychain()
+    await render(<GithubAuthStep onAuthed={vi.fn()} repoName="notes" createRepoFirst />)
+    await switchToPat()
+
+    await expect.element(page.getByText('Create notes on GitHub')).toBeVisible()
+    await page.getByRole('button', { name: 'Create repository' }).click()
+    expect(openedUrls).toHaveBeenLastCalledWith(
+      expect.stringContaining('https://github.com/new?name=notes'),
+    )
+
+    await page.getByRole('button', { name: 'Create token' }).click()
+    const tokenUrl = new URL(String(openedUrls.mock.lastCall?.[0]))
+    expect(tokenUrl.pathname).toBe('/settings/personal-access-tokens/new')
+    expect(tokenUrl.searchParams.get('contents')).toBe('write')
+    expect(tokenUrl.searchParams.get('expires_in')).toBe('366')
+  })
+
+  it('skips the create step for an existing repository and targets its owner', async () => {
+    fakeKeychain()
+    await render(<GithubAuthStep onAuthed={vi.fn()} repoName="notes" repoOwner="acme" />)
+    await switchToPat()
+
+    await expect.element(page.getByRole('button', { name: 'Create token' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'Create repository' }).query()).toBeNull()
+    await page.getByRole('button', { name: 'Create token' }).click()
+    const tokenUrl = new URL(String(openedUrls.mock.lastCall?.[0]))
+    expect(tokenUrl.searchParams.get('target_name')).toBe('acme')
+  })
+
   it('reports auth exactly once when the mount probe races a fresh sign-in', async () => {
     // A stored credential's mount-time probe is slow; the user saves a new
     // PAT meanwhile. Both paths complete — but the parent connects on every

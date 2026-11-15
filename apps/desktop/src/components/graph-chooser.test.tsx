@@ -10,6 +10,11 @@ import '@/test-utils/locator'
 import { GraphChooser } from './graph-chooser'
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
+vi.mock('@tauri-apps/api/path', () => ({
+  homeDir: async () => '/Users/alex',
+  documentDir: async () => '/Users/alex/Documents',
+  join: async (...parts: string[]) => parts.join('/'),
+}))
 
 let invokeLog: Array<[string, Record<string, unknown>]>
 let recents: Array<{ root: string; name: string; openedMs: number }>
@@ -101,7 +106,7 @@ describe('GraphChooser', () => {
 
     await expect.element(page.getByRole('heading', { name: 'iCloud' })).toBeVisible()
     await expect.element(page.getByText('Recommended')).toBeVisible()
-    await expect.element(page.getByText(/Open an existing folder/)).toBeVisible()
+    await expect.element(page.getByText(/open a vault you already have/)).toBeVisible()
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Choose a folder/ })).toBeVisible()
     await expect
@@ -238,5 +243,61 @@ describe('GraphChooser', () => {
       .getByRole('button', { name: 'work /graphs/work', exact: true })
       .locate('svg')
     await expect.element(workIcon).toHaveClass('text-text-muted')
+  })
+
+  it('opens a vault from GitHub: checks the token, clones into Documents, never seeds it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith('/user')
+          ? Response.json({ login: 'alex' })
+          : Response.json({
+              full_name: 'alex/brain',
+              private: true,
+              default_branch: 'main',
+              html_url: 'https://github.com/alex/brain',
+            }),
+      ),
+    )
+    recents = [] // a fresh Mac: nothing reopens (and seeds) before the clone
+    try {
+      await render(<GraphChooser />, { wrapper })
+
+      await page.getByLabelText('Repository').fill('alex/brain')
+      await page.getByLabelText('Token').fill('github_pat_abc')
+      await expect.element(page.getByText('Saved to ~/Documents/brain')).toBeVisible()
+      await page.getByRole('button', { name: 'Open', exact: true }).click()
+
+      await vi.waitFor(() =>
+        expect(invokeLog).toContainEqual([
+          'graph_open',
+          expect.objectContaining({ path: '/Users/alex/Documents/brain' }),
+        ]),
+      )
+      expect(invokeLog).toContainEqual([
+        'git_clone',
+        {
+          url: 'https://github.com/alex/brain.git',
+          path: '/Users/alex/Documents/brain',
+          token: 'github_pat_abc',
+        },
+      ])
+      expect(invokeLog).toContainEqual([
+        'secret_set',
+        { name: 'github-auth', value: JSON.stringify({ kind: 'pat', token: 'github_pat_abc' }) },
+      ])
+      // The repository's content is the vault: the empty-vault stats would
+      // seed a local vault, but a clone only gets its markers.
+      await vi.waitFor(() =>
+        expect(invokeLog).toContainEqual([
+          'index_meta_set',
+          expect.objectContaining({ key: 'defaultObjectsSeeded' }),
+        ]),
+      )
+      expect(invokeLog.some(([command]) => command === 'note_create')).toBe(false)
+      expect(invokeLog.some(([command]) => command === 'note_write')).toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

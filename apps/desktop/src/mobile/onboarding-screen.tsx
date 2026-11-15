@@ -1,11 +1,12 @@
 import { useState, type ReactElement } from 'react'
-import { Cloud, HardDrive } from '@/components/icons'
+import { Cloud, GithubMark, HardDrive } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useAsyncAction } from '@/hooks/use-async-action'
 import { OnboardingIcloudHeader } from '@/mobile/onboarding-icloud-header'
 import { OnboardingIcloudSection } from '@/mobile/onboarding-icloud-section'
+import { OpenFromGithubDrawer } from '@/mobile/open-from-github-drawer'
 import { useGraph } from '@/providers/graph-provider'
 
 /** Which control kicked off the in-flight choice, so only that one shows the
@@ -22,7 +23,9 @@ type PendingChoice = string | null
  * iPhone and Mac, so the hero block ({@link OnboardingIcloudSection}) either
  * continues with iCloud or lists existing note sets in the app's iCloud
  * container. **Keep notes on this device** opens the app-sandbox root instead.
- * Every path ends in `completeOnboarding(kind, root)`, which opens the chosen
+ * **Open a vault from GitHub** clones an existing vault repository onto the
+ * device ({@link OpenFromGithubDrawer}). Every other path ends in
+ * `completeOnboarding(kind, root)`, which opens the chosen
  * root and records the flag + storage kind + graph name.
  *
  * The screen renders before the iCloud container has resolved (the boot no
@@ -35,6 +38,7 @@ export function MobileOnboardingScreen(): ReactElement {
   const { mobileStorageInfo, mobileStorageResolving, completeOnboarding } = useGraph()
   const action = useAsyncAction()
   const [pendingChoice, setPendingChoice] = useState<PendingChoice>(null)
+  const [githubOpen, setGithubOpen] = useState(false)
 
   const icloudDocumentsRoot = mobileStorageInfo?.icloudDocumentsRoot ?? null
   const icloudReady = icloudDocumentsRoot !== null
@@ -99,11 +103,23 @@ export function MobileOnboardingScreen(): ReactElement {
               {pendingChoice === 'local' ? <Spinner /> : <HardDrive aria-hidden />}
               {pendingChoice === 'local' ? 'Setting up…' : 'Or, use this device only'}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-text-secondary"
+              onClick={() => setGithubOpen(true)}
+              disabled={action.pending || mobileStorageInfo === null}
+            >
+              <GithubMark aria-hidden />
+              Open a vault from GitHub
+            </Button>
           </div>
         </div>
 
         {action.error !== null ? <InlineAlert tone="error">{action.error}</InlineAlert> : null}
       </div>
+
+      <OpenFromGithubDrawer open={githubOpen} onOpenChange={setGithubOpen} />
     </div>
   )
 }

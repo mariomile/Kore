@@ -98,7 +98,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   // one instead of asking the user to add it.
   const demoProvider = { id: 'dev-demo', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'demo' }
   let settingsDocument: Record<string, unknown> = {
-    mobileOnboarded: true,
+    // `?onboarding` shows the mobile first-run screen instead of skipping it.
+    mobileOnboarded:
+      typeof window === 'undefined' ||
+      !new URLSearchParams(window.location.search).has('onboarding'),
     aiProviders: [demoProvider],
     defaultAiProviderId: demoProvider.id,
   }
@@ -414,6 +417,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           return []
         }
         throw new KoreError('notFound', 'dev bridge: no proposals')
+
+      // "Open from GitHub" in the browser harness: nothing is downloaded —
+      // the chooser then opens the demo vault like any other open.
+      case 'git_clone':
+        return null
 
       case 'git_status':
         return {

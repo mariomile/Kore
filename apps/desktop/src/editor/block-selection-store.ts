@@ -15,6 +15,10 @@ export interface BlockSelectionState {
   canMoveDown: boolean
   /** The due date every selected block shares (`YYYY-MM-DD`), else null. */
   date: string | null
+  /** The one selected block is a sub page. */
+  isPage: boolean
+  /** Some selected block is a sub page. */
+  hasPage: boolean
 }
 
 /** The action bar's verbs, each closing over the editor that owns the selection. */
@@ -32,7 +36,7 @@ export interface BlockSelectionCommands {
   /** Zoom into the first selected block. */
   zoom: () => void
   /** Move the first selected block (with its children) to another note. */
-  /** Lift the one selected block into a note of its own, leaving a page card. */
+  /** Make the one selected block a sub page: it stays here, drawn as a card that zooms in. */
   makePage: () => void
   moveToNote: () => void
   /** Select the blocks' text and open the AI menu on it. */

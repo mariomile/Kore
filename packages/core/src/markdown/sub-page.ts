@@ -1,84 +1,70 @@
-import { splitFrontmatter } from './frontmatter'
+import { hiddenBlockIdTail, lineBlockId, newBlockId, withoutBlockIds } from './block-ids'
 
 /**
- * Sub pages (Craft's "Turn into Page"): a block becomes a note of its own and
- * the line it leaves behind is a bare `[[Title]]`, which the editor draws as
- * a page card. The Markdown stays plain: the card is only a way of drawing a
- * paragraph that holds nothing but one wiki link.
+ * Sub pages (Craft's page blocks, Mario 2026-11-15): a page is a list item
+ * that stays in its note, children and all, and is drawn as a card; opening
+ * it is the block zoom. What makes an item a page is the hidden block id at
+ * the end of its first line, `^page-xxxxxx`: Obsidian reads a plain bullet
+ * (and `[[Note#^page-xxxxxx]]` links to it), Kore hides the marker like any
+ * block id. Links to other notes stay links.
  */
 
-const BARE_WIKI_LINK = /^\[\[([^[\]#|]+)(?:\|[^[\]]*)?\]\]$/
-const DUE_DATE = /\s*\[\[\d{4}-\d{2}-\d{2}\]\]\s*/g
-const TITLE_MAX = 120
+export const PAGE_ID_PREFIX = 'page-'
 const PREVIEW_MAX = 140
 
-/** The note a line draws as a page card, or null when the line is anything else. */
-export function pageCardTarget(text: string): string | null {
-  const match = BARE_WIKI_LINK.exec(text.trim())
-  const target = match?.[1]?.trim() ?? ''
-  if (target === '' || /^\d{4}-\d{2}-\d{2}$/.test(target)) return null
-  return target
+/** True for a block id that marks a page. */
+export function isPageBlockId(id: string): boolean {
+  return id.startsWith(PAGE_ID_PREFIX) && id.length > PAGE_ID_PREFIX.length
 }
 
-export interface SubPagePlan {
-  /** The new note's title, and the text of the link left behind. */
-  readonly title: string
-  /** The block's children, as the new note's body (may be empty). */
-  readonly body: string
-  /** The line that replaces the block. */
-  readonly link: string
+/** The page id a line ends with, or null when the line is not a page's. */
+export function linePageId(line: string): string | null {
+  const id = lineBlockId(line)
+  return id !== null && isPageBlockId(id) ? id : null
+}
+
+/** A fresh page id (`page-` and six letters or digits). */
+export function newPageBlockId(random: () => number = Math.random): string {
+  return `${PAGE_ID_PREFIX}${newBlockId(random)}`
 }
 
 /**
- * Plan turning a block into a page: its first line is the title (a task's
- * due date and any surrounding brackets dropped), its children the body.
- * Null when the line has no words to name a note with.
+ * Inline Markdown as a reader sees it: a wiki link or a link reads as its
+ * label, an image as its alt text, emphasis and code marks go.
  */
-export function planSubPage(firstLine: string, childrenMarkdown: string): SubPagePlan | null {
-  const title = firstLine
-    .replaceAll(DUE_DATE, ' ')
+function plainInline(text: string): string {
+  return text
     .replaceAll(/\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g, (_, target: string, label?: string) =>
       (label ?? target).trim(),
     )
-    .replaceAll(/[[\]#|^]/g, '')
-    .replaceAll(/\s+/g, ' ')
+    .replaceAll(/!?\[([^\]]*)\]\([^)\s]*(?:\s+"[^"]*")?\)/g, '$1')
+    .replaceAll(/\*\*|__|~~|[*`]/g, '')
+    .replaceAll(/\(\s*\)/g, '')
+    .replaceAll(/\s{2,}/g, ' ')
     .trim()
-    .slice(0, TITLE_MAX)
-    .trim()
-  if (title === '') return null
-  return { title, body: dedent(childrenMarkdown).trim(), link: `[[${title}]]` }
 }
 
-/** Strip the indent the children carried under their parent. */
-function dedent(markdown: string): string {
-  const lines = markdown.split('\n')
-  const indents = lines
-    .filter((line) => line.trim() !== '')
-    .map((line) => /^[ \t]*/.exec(line)?.[0].length ?? 0)
-  const common = indents.length === 0 ? 0 : Math.min(...indents)
-  return lines.map((line) => line.slice(common)).join('\n')
+/** The page's title as the card shows it: its first line, plain, without the marker. */
+export function pageTitle(line: string): string {
+  const tail = hiddenBlockIdTail(line)
+  return plainInline(tail === null ? line : line.slice(0, tail.start))
 }
 
 /**
- * The card's two-line preview of a page: its text without frontmatter, the
- * H1 that repeats the title, list and heading markup, or link brackets.
+ * The card's two-line preview of a page from its children's Markdown: text
+ * only, without list, heading or quote markup, block ids or link brackets,
+ * lines joined by a middle dot.
  */
-export function subPagePreview(source: string): string {
-  const { body } = splitFrontmatter(source)
-  const text = body
+export function pagePreview(markdown: string): string {
+  const text = withoutBlockIds(markdown)
     .split('\n')
-    .filter((line) => !/^#\s/.test(line))
     .map((line) =>
       line
         .replace(/^\s*(?:[-+*]|\d+[.)])\s+(?:\[[ x]\]\s+)?/i, '')
         .replace(/^\s*#{1,6}\s+/, '')
-        .replace(/^\s*>\s?/, '')
-        .replaceAll(/\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g, (_, target: string, label?: string) =>
-          (label ?? target).trim(),
-        )
-        .replaceAll(/[*_`~]/g, '')
-        .trim(),
+        .replace(/^\s*>\s?/, ''),
     )
+    .map(plainInline)
     .filter((line) => line !== '')
     .join(' · ')
   return text.length <= PREVIEW_MAX ? text : `${text.slice(0, PREVIEW_MAX).trimEnd()}…`

@@ -1,15 +1,14 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { docToMarkdown, type EditorExtension } from '@meowdown/core'
-import {
-  createNoteWithTitle,
-  errorMessage,
-  planSubPage,
-  resolveExistingWikiTarget,
-  subPagePreview,
-} from '@kore/core'
-import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { startOperation } from '@/lib/operations'
-import { deliverPagePreview } from './page-card-plugin'
+import { allowCaretInPage, pageBlockOf } from './page-block-plugin'
+import {
+  copyWithoutLineIds,
+  freshPageId,
+  lineIdTail,
+  turnIntoPage,
+  unmarkPage,
+} from './page-block-commands'
 import { useEditor, useExtension } from '@meowdown/react'
 import { definePlugin } from '@prosekit/core'
 import { TextSelection, type EditorState } from '@prosekit/pm/state'
@@ -59,6 +58,11 @@ function kindOf(range: BlockRange): FormattingBlockKind {
   return 'text'
 }
 
+/** The page a selected block is (a list item marked `^page-…`), or null. */
+function pageOf(range: BlockRange): ReturnType<typeof pageBlockOf> {
+  return pageBlockOf(range.node, range.from)
+}
+
 function readSelectionState(state: EditorState): BlockSelectionState {
   const blocks = selectedBlocks(state)
   const kinds = new Set(blocks.map(kindOf))
@@ -92,6 +96,8 @@ function readSelectionState(state: EditorState): BlockSelectionState {
     canMoveUp: single !== undefined && single.node.type.name === 'list' && siblings(single).before,
     canMoveDown: single !== undefined && single.node.type.name === 'list' && siblings(single).after,
     date: dates.size === 1 ? ([...dates][0] ?? null) : null,
+    isPage: single !== undefined && pageOf(single) !== null,
+    hasPage: blocks.some((block) => pageOf(block) !== null),
   }
 }
 
@@ -125,21 +131,13 @@ function reminderDate(when: BlockReminder | Date): string {
  */
 export function BlockSwipeGestures({
   onAskAi,
-  generation = null,
-  openPage,
 }: {
   /** Opens the AI menu over the editor's text selection; false when it can't. */
   onAskAi?: () => boolean
-  /** The vault generation new sub pages are written under; null leaves Page off. */
-  generation?: number | null
-  /** Opens a page by its link target (the confirmation's "Open"). */
-  openPage?: (target: string) => void
 } = {}): ReactElement | null {
   const editor = useEditor<EditorExtension>()
   const askAiRef = useRef(onAskAi)
   askAiRef.current = onAskAi
-  const pageRef = useRef({ generation, openPage })
-  pageRef.current = { generation, openPage }
   const [owner] = useState(() => Symbol('block-selection'))
   const commandsRef = useRef<BlockSelectionCommands | null>(null)
 
@@ -173,15 +171,27 @@ export function BlockSwipeGestures({
         const blocks = selectedBlocks(view.state).reverse()
         for (const block of blocks) {
           const near = TextSelection.near(view.state.doc.resolve(block.from + 1), 1)
-          view.dispatch(view.state.tr.setSelection(near))
+          view.dispatch(allowCaretInPage(view.state.tr.setSelection(near)))
           step()
         }
         // The caret moved for the commands' sake; the keyboard stays down.
         if (view.hasFocus()) editor.blur()
       }
 
+      /** Drop the page marker from every selected page (one undoable step). */
+      const unmarkPages = (): void => {
+        let tr = view.state.tr
+        for (const block of selectedBlocks(view.state).reverse()) tr = unmarkPage(tr, block.from)
+        if (tr.docChanged) view.dispatch(tr)
+      }
+
       const commands: BlockSelectionCommands = {
-        setKind: (kind) => eachBlock(() => setBlockKind(editor, kind)),
+        setKind: (kind) => {
+          // Any kind takes a page back to an ordinary block: the marker goes,
+          // the children stay where they are.
+          unmarkPages()
+          eachBlock(() => setBlockKind(editor, kind))
+        },
         remind: (when) => {
           const date = reminderDate(when)
           eachBlock(() => {
@@ -198,8 +208,12 @@ export function BlockSwipeGestures({
               )
               return
             }
-            const lead = text.length > 0 && !text.endsWith(' ') ? ' ' : ''
-            view.dispatch(view.state.tr.insertText(`${lead}[[${date}]]`, end))
+            // Before a hidden `^id`, which must stay last on the line.
+            const tail = lineIdTail($from.parent, $from.before())
+            const at = tail === null ? end : tail.from
+            const before = view.state.doc.textBetween($from.start(), at)
+            const lead = before.length > 0 && !before.endsWith(' ') ? ' ' : ''
+            view.dispatch(view.state.tr.insertText(`${lead}[[${date}]]`, at))
           })
         },
         indent: () => eachBlock(() => editor.commands.indentList()),
@@ -209,7 +223,11 @@ export function BlockSwipeGestures({
         duplicate: () => {
           const blocks = selectedBlocks(view.state).reverse()
           let tr = view.state.tr
-          for (const block of blocks) tr = tr.insert(block.to, block.node.copy(block.node.content))
+          const { schema } = view.state
+          for (const block of blocks) {
+            const fresh = (): string => freshPageId(tr.doc)
+            tr = tr.insert(block.to, copyWithoutLineIds(block.node, schema, fresh))
+          }
           view.dispatch(tr)
         },
         copy: async () => {
@@ -234,79 +252,11 @@ export function BlockSwipeGestures({
         },
         makePage: () => {
           const blocks = selectedBlocks(view.state)
-          const block = blocks[0]
-          const { generation: current, openPage: open } = pageRef.current
-          if (block === undefined || blocks.length !== 1) return
-          const fail = (why: string): void => {
-            startOperation('Turning into a page').fail(why)
-          }
-          if (current === null) {
-            fail('This note is not in a vault yet.')
-            return
-          }
-          const { node } = block
-          const isList = node.type.name === 'list'
-          const head = isList ? node.firstChild : node
-          const rest: ProseMirrorNode[] = []
-          if (isList) {
-            node.forEach((child, _offset, index) => {
-              if (index > 0) rest.push(child)
-            })
-          }
-          const childrenMarkdown =
-            rest.length === 0 ? '' : docToMarkdown(view.state.schema.topNodeType.create(null, rest))
-          const plan = planSubPage(head?.textContent ?? '', childrenMarkdown)
-          if (plan === null) {
-            fail('Write a line for the page title first.')
-            return
-          }
+          const picked = blocks[0]
+          if (picked === undefined || blocks.length !== 1 || pageOf(picked) !== null) return
           view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
-          // `[[Title]]` must name the new page alone: a title another note
-          // already answers to would make the link (and the card) ambiguous.
-          void resolveExistingWikiTarget(plan.title, current)
-            .then((existing) => {
-              if (existing.kind !== 'missing') {
-                throw new Error(`A note called ${plan.title} already exists.`)
-              }
-              return createNoteWithTitle(
-                plan.title,
-                current,
-                plan.body === '' ? undefined : plan.body,
-              )
-            })
-            .then(() => {
-              const now = view.state.doc.nodeAt(block.from)
-              const done = startOperation(
-                `Made page ${plan.title}`,
-                open === undefined
-                  ? {}
-                  : { action: { label: 'Open', run: () => open(plan.title) } },
-              )
-              if (view.isDestroyed || now === null || !now.eq(node)) {
-                done.warn('The note changed meanwhile, so the block stayed where it was.')
-                return
-              }
-              deliverPagePreview(view, plan.title, {
-                title: plan.title,
-                excerpt: subPagePreview(plan.body),
-                missing: false,
-              })
-              const { schema } = view.state
-              const paragraph = schema.nodes.paragraph
-              if (paragraph === undefined) {
-                done.fail('This editor has no paragraphs.')
-                return
-              }
-              view.dispatch(
-                view.state.tr.replaceWith(
-                  block.from,
-                  block.to,
-                  paragraph.create(null, schema.text(plan.link)),
-                ),
-              )
-              done.done()
-            })
-            .catch((cause: unknown) => fail(errorMessage(cause)))
+          const why = turnIntoPage(editor, picked.from)
+          if (why !== null) startOperation('Turning into a page').fail(why)
         },
         moveToNote: () => {
           const first = selectedBlocks(view.state)[0]

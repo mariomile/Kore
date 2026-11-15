@@ -32,7 +32,7 @@ import type { FormattingBlockKind } from '@/editor/formatting-toolbar-store'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 
-/** The top row: what the block reads as. Page lifts it into a note of its own. */
+/** The top row: what the block reads as. Page folds it, with its children, into a card. */
 const STYLES: ReadonlyArray<{ kind: FormattingBlockKind; label: string; className: string }> = [
   { kind: 'heading', label: 'Heading', className: 'font-bold' },
   { kind: 'text', label: 'Text', className: '' },
@@ -117,7 +117,13 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
           className="mobile-nav-capsule flex w-full max-w-md items-stretch justify-between px-1 py-1"
         >
           <BarButton label="Turn into" icon={<Replace />} onPress={() => setSheet('turn')} />
-          <BarButton label="Date" icon={<CalendarClock />} onPress={() => setSheet('date')} />
+          <BarButton
+            label="Date"
+            icon={<CalendarClock />}
+            // A dated block is a to-do; a page stays a page.
+            disabled={state.hasPage}
+            onPress={() => setSheet('date')}
+          />
           <BarButton
             label="Move"
             icon={<FolderMove />}
@@ -157,7 +163,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                   key={kind}
                   label={label}
                   className={className}
-                  pressed={state.kind === kind}
+                  pressed={!state.isPage && state.kind === kind}
                   onPress={() => {
                     act(() => commands.setKind(kind))
                     setSheet(null)
@@ -167,6 +173,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
               <Segment
                 label="Page"
                 icon={<Note />}
+                pressed={state.isPage}
                 disabled={!single}
                 onPress={() => {
                   act(commands.makePage)
@@ -178,7 +185,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
               <IconTile
                 label="To-do"
                 icon={<Circle />}
-                pressed={state.kind === 'task'}
+                pressed={!state.isPage && state.kind === 'task'}
                 onPress={() => {
                   act(() => commands.setKind('task'))
                   setSheet(null)
@@ -187,7 +194,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
               <IconTile
                 label="Bulleted list"
                 icon={<List />}
-                pressed={state.kind === 'bullet'}
+                pressed={!state.isPage && state.kind === 'bullet'}
                 onPress={() => {
                   act(() => commands.setKind('bullet'))
                   setSheet(null)

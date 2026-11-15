@@ -1,40 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { pageCardTarget, planSubPage, subPagePreview } from './sub-page'
+import { isPageBlockId, linePageId, newPageBlockId, pagePreview, pageTitle } from './sub-page'
 
-describe('pageCardTarget', () => {
-  it('reads a line that is one wiki link', () => {
-    expect(pageCardTarget('[[Trip to Lisbon]]')).toBe('Trip to Lisbon')
-    expect(pageCardTarget(' [[Trip|the trip]] ')).toBe('Trip')
+describe('page ids', () => {
+  it('reads the page marker at the end of a line, and only that kind of id', () => {
+    expect(linePageId('Trip to Lisbon ^page-k3x9ab')).toBe('page-k3x9ab')
+    expect(linePageId('Trip to Lisbon ^k3x9ab')).toBeNull()
+    expect(linePageId('Trip to Lisbon')).toBeNull()
+    expect(isPageBlockId('page-')).toBe(false)
   })
-  it('ignores prose, headings links, block links and dates', () => {
-    expect(pageCardTarget('see [[Trip]]')).toBeNull()
-    expect(pageCardTarget('[[Trip#Day 1]]')).toBeNull()
-    expect(pageCardTarget('[[2026-11-16]]')).toBeNull()
-    expect(pageCardTarget('[[A]] [[B]]')).toBeNull()
+  it('mints ids that read back as page ids', () => {
+    expect(linePageId(`x ^${newPageBlockId(() => 0.5)}`)).toBe('page-ssssss')
   })
 })
 
-describe('planSubPage', () => {
-  it('names the page from the first line and keeps the children as its body', () => {
+describe('pageTitle', () => {
+  it('drops the hidden marker', () => {
+    expect(pageTitle('Trip to Lisbon ^page-k3x9ab')).toBe('Trip to Lisbon')
+  })
+})
+
+describe('pageTitle as a reader sees it', () => {
+  it('reads links as their labels and drops emphasis', () => {
     expect(
-      planSubPage('Trip to Lisbon [[2026-11-16]]', '  - Flights\n    - TAP\n  - Hotel'),
-    ).toEqual({
-      title: 'Trip to Lisbon',
-      body: '- Flights\n  - TAP\n- Hotel',
-      link: '[[Trip to Lisbon]]',
-    })
-  })
-  it('unwraps links and drops characters a link cannot hold', () => {
-    expect(planSubPage('Call [[Ada Lovelace|Ada]] #urgent', '')?.title).toBe('Call Ada urgent')
-  })
-  it('refuses a line with nothing to name', () => {
-    expect(planSubPage('  [[2026-11-16]] ', '')).toBeNull()
+      pageTitle(
+        '**Trip** to [[Lisbon|LX]] ([Location 6899](https://readwise.io/a?b=c)) ^page-a1b2c3',
+      ),
+    ).toBe('Trip to LX (Location 6899)')
+    expect(pageTitle('See ![map](img.png) and `code`')).toBe('See map and code')
   })
 })
 
-describe('subPagePreview', () => {
-  it('drops frontmatter, the title H1 and markup', () => {
-    const source = '---\nid: x\n---\n# Trip\n\n- [ ] Book **flights**\n- See [[Belém|Belem]]\n'
-    expect(subPagePreview(source)).toBe('Book flights · See Belem')
+describe('pagePreview', () => {
+  it('flattens the children to text', () => {
+    expect(pagePreview('- [ ] Book **flights** ^abcd12\n  - See [[Belém|Belem]]\n- Hotel\n')).toBe(
+      'Book flights · See Belem · Hotel',
+    )
   })
 })

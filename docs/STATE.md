@@ -1,5 +1,16 @@
 # Kore working state
 
+## iPhone design pass and wikilink aliases, 2026-11-15
+
+- [x] iPhone design pass: the note page is 17pt with folded properties, the
+  title moves into the bar and the tab bar hides on scroll; the keyboard
+  toolbar has block pills, dictation and undo; the daily reads as Today (one-
+  line date and a due-today card); quick capture from the +; Dataview blocks
+  show as a chip. No performance regression at 4x CPU (#451).
+- [x] Wikilinks written as `[[Folder/Note|Name]]` show Name, as in Obsidian
+  (#457).
+- Not verified on a real iPhone.
+
 ## Obsidian conversion keeps Git history, Mermaid with Pele, 2026-11-15
 
 - [x] Converting an Obsidian vault can continue its Git history: the copy

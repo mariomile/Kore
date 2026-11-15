@@ -8,10 +8,11 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { errorMessage, nativeOnDeviceTranscriber, type GraphInfo } from '@kore/core'
+import { createNativeOnDeviceTranscriber, errorMessage, type GraphInfo } from '@kore/core'
 import { useAudioMemoPipeline, type PendingAudioCapture } from '@/hooks/use-audio-memo-pipeline'
 import { isNativeShell } from '@/lib/platform'
 import { useRouter } from '@/routing/router'
+import { useSettings } from '@/providers/settings-provider'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'
 import { hapticImpactLight } from '@/mobile/haptics'
 import {
@@ -112,12 +113,19 @@ export function MobileAudioMemoProvider({
     setDrawerOpenState(open)
   }, [])
 
+  const { settings } = useSettings()
+  const transcriptionLanguage = settings.transcriptionLanguage
+  // The iPhone transcribes on the device when no cloud key is set, so
+  // recording never needs one there.
+  const onDeviceTranscriber = useMemo(
+    () => (isNativeShell() ? createNativeOnDeviceTranscriber(transcriptionLanguage) : undefined),
+    [transcriptionLanguage],
+  )
+
   const pipeline = useAudioMemoPipeline({
     graph,
     isErrorSurfaceVisible: () => drawerOpenRef.current,
-    // The iPhone transcribes on the device when no cloud key is set, so
-    // recording never needs one there.
-    onDeviceTranscriber: isNativeShell() ? nativeOnDeviceTranscriber : undefined,
+    onDeviceTranscriber,
   })
   const enqueuePipeline = pipeline.enqueue
 

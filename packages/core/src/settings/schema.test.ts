@@ -49,6 +49,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       transcriptionModels: { openai: '', google: '' },
+      transcriptionLanguage: '',
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',
@@ -282,6 +283,10 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ describeAssets: false }).describeAssets).toBe(false)
     expect(settingsSchema.parse({ transcriptionFormat: true }).transcriptionFormat).toBe(true)
     expect(settingsSchema.parse({ transcriptionFormat: false }).transcriptionFormat).toBe(false)
+    expect(settingsSchema.parse({ transcriptionLanguage: ' it-IT ' }).transcriptionLanguage).toBe(
+      'it-IT',
+    )
+    expect(settingsSchema.parse({ transcriptionLanguage: 42 }).transcriptionLanguage).toBe('')
     expect(settingsSchema.parse({ contactsEnabled: true }).contactsEnabled).toBe(true)
     expect(settingsSchema.parse({ contactsEnabled: false }).contactsEnabled).toBe(false)
     expect(settingsSchema.parse({ allNotesFilterTags: ['meeting'] }).allNotesFilterTags).toEqual([
@@ -460,6 +465,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       transcriptionModels: { openai: '', google: '' },
+      transcriptionLanguage: '',
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',

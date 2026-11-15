@@ -97,6 +97,8 @@ struct TranscribeArgs: Decodable {
   /// One recording segment's bytes, base64-encoded.
   let base64: String
   let mimeType: String
+  /// Spoken language (BCP-47); empty = the phone's preferred languages.
+  let language: String?
 }
 
 /// `transcribeOnDevice`'s response (mirrors `TranscribeResponse` in
@@ -399,7 +401,7 @@ class RecordingPlugin: Plugin {
       invoke.reject("staging audio for transcription failed: \(error.localizedDescription)")
       return
     }
-    OnDeviceTranscriber.transcribe(fileURL: url) { result in
+    OnDeviceTranscriber.transcribe(fileURL: url, language: args.language ?? "") { result in
       try? FileManager.default.removeItem(at: url)
       switch result {
       case .success(.text(let text)):

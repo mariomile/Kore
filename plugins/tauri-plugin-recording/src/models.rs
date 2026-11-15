@@ -88,6 +88,10 @@ pub struct TranscribeRequest {
     /// The recording's MIME type (picks the temp file's extension, which
     /// AVFoundation uses to choose the container parser).
     pub mime_type: String,
+    /// Spoken language as a BCP-47 tag (`it-IT`). Empty lets the device pick
+    /// from its preferred languages.
+    #[serde(default)]
+    pub language: String,
 }
 
 /// `transcribe_on_device`'s response. `unavailable` is an expected outcome

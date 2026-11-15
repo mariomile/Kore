@@ -30,11 +30,16 @@ export function isOnDeviceTranscriptionUnavailable(
   return value instanceof OnDeviceTranscriptionUnavailableError
 }
 
-/** The iOS engine: the recording plugin's `transcribe_on_device` command. */
-export const nativeOnDeviceTranscriber: SegmentTranscriber = async (audio, mimeType) => {
-  const response = await transcribeOnDevice(bytesToBase64(audio), mimeType)
-  if (response.status === 'unavailable') {
-    throw new OnDeviceTranscriptionUnavailableError(response.reason)
+/**
+ * The iOS engine: the recording plugin's `transcribe_on_device` command, in
+ * the spoken `language` (BCP-47; empty = the phone's preferred languages).
+ */
+export function createNativeOnDeviceTranscriber(language: string): SegmentTranscriber {
+  return async (audio, mimeType) => {
+    const response = await transcribeOnDevice(bytesToBase64(audio), mimeType, language)
+    if (response.status === 'unavailable') {
+      throw new OnDeviceTranscriptionUnavailableError(response.reason)
+    }
+    return response.text.trim()
   }
-  return response.text.trim()
 }

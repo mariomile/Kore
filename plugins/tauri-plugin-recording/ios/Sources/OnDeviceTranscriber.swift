@@ -14,8 +14,9 @@ enum OnDeviceTranscription {
 /// no API key is involved. Free of any Tauri dependency so it stays a plain
 /// Foundation/Speech unit.
 ///
-/// The recognizer follows the device language (`SFSpeechRecognizer()`), the
-/// same language the system keyboard dictates in.
+/// The recognizer hears one language per request. The app passes the user's
+/// chosen language; when none is set, the first of the phone's preferred
+/// languages with an on-device model wins, then the system default.
 enum OnDeviceTranscriber {
   /// In-flight recognitions, retained until their callback fires: a
   /// recognizer or task released mid-run cancels the recognition.
@@ -25,6 +26,7 @@ enum OnDeviceTranscriber {
   /// queue.
   static func transcribe(
     fileURL: URL,
+    language: String,
     completion: @escaping (Result<OnDeviceTranscription, Error>) -> Void
   ) {
     SFSpeechRecognizer.requestAuthorization { status in
@@ -33,17 +35,18 @@ enum OnDeviceTranscriber {
           completion(.success(.unavailable(deniedReason(status))))
           return
         }
-        start(fileURL: fileURL, completion: completion)
+        start(fileURL: fileURL, language: language, completion: completion)
       }
     }
   }
 
   private static func start(
     fileURL: URL,
+    language: String,
     completion: @escaping (Result<OnDeviceTranscription, Error>) -> Void
   ) {
-    guard let recognizer = SFSpeechRecognizer() else {
-      completion(.success(.unavailable("Speech recognition does not support this device's language.")))
+    guard let recognizer = recognizer(for: language) else {
+      completion(.success(.unavailable("Speech recognition does not support \(language.isEmpty ? "this device's language" : language).")))
       return
     }
     guard recognizer.supportsOnDeviceRecognition else {
@@ -82,6 +85,23 @@ enum OnDeviceTranscriber {
     if !finished {
       inFlight[id] = (recognizer, task)
     }
+  }
+
+  /// The recognizer for an explicit language, or, when `language` is empty,
+  /// the first preferred language with an on-device model (falling back to
+  /// the system default, whose availability `start` then reports).
+  private static func recognizer(for language: String) -> SFSpeechRecognizer? {
+    if !language.isEmpty {
+      return SFSpeechRecognizer(locale: Locale(identifier: language))
+    }
+    for identifier in Locale.preferredLanguages {
+      if let candidate = SFSpeechRecognizer(locale: Locale(identifier: identifier)),
+        candidate.supportsOnDeviceRecognition
+      {
+        return candidate
+      }
+    }
+    return SFSpeechRecognizer()
   }
 
   private static func deniedReason(_ status: SFSpeechRecognizerAuthorizationStatus) -> String {

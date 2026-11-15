@@ -284,3 +284,27 @@ export const transcriptionModelsSchema = z
   .catch({ openai: '', google: '' })
 
 export type TranscriptionModels = z.infer<typeof transcriptionModelsSchema>
+
+/**
+ * Spoken language for on-device audio-memo transcription, as a BCP-47 tag
+ * (`it-IT`). Empty means automatic: the phone's preferred languages, in
+ * order. Apple's on-device recognizer hears one language per request, so a
+ * phone whose interface is English writes Italian speech as English words
+ * unless this names Italian.
+ */
+export const transcriptionLanguageSchema = z
+  .string()
+  .catch('')
+  .transform((language) => language.trim())
+
+/** Curated choices for {@link transcriptionLanguageSchema}; `''` = automatic. */
+export const TRANSCRIPTION_LANGUAGE_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Automatic' },
+  { value: 'it-IT', label: 'Italiano' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'es-ES', label: 'Español' },
+  { value: 'fr-FR', label: 'Français' },
+  { value: 'de-DE', label: 'Deutsch' },
+  { value: 'pt-BR', label: 'Português' },
+]

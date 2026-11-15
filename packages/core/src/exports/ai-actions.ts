@@ -382,7 +382,7 @@ export {
 } from '../actions/daily-widget'
 export {
   isOnDeviceTranscriptionUnavailable,
-  nativeOnDeviceTranscriber,
+  createNativeOnDeviceTranscriber,
   OnDeviceTranscriptionUnavailableError,
 } from '../ai/transcribe-on-device'
 export {

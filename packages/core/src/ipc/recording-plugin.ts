@@ -85,7 +85,7 @@ const deleteStagedCommand = definePluginCommand<{ request: { path: string } }, u
 )
 
 const transcribeOnDeviceCommand = definePluginCommand<
-  { request: { base64: string; mimeType: string } },
+  { request: { base64: string; mimeType: string; language: string } },
   OnDeviceTranscribeResponse
 >('recording', 'transcribe_on_device', transcribeResponseSchema)
 
@@ -151,12 +151,15 @@ export async function deleteStaged(path: string): Promise<void> {
  * Transcribe one recording with the OS speech engine on the device (iOS):
  * no audio leaves the phone, no API key. Rejects only on an engine failure;
  * a denied permission or missing language model resolves `unavailable`.
+ * `language` is a BCP-47 tag; empty lets the device pick from its preferred
+ * languages.
  */
 export async function transcribeOnDevice(
   base64: string,
   mimeType: string,
+  language = '',
 ): Promise<OnDeviceTranscribeResponse> {
-  return await transcribeOnDeviceCommand({ request: { base64, mimeType } })
+  return await transcribeOnDeviceCommand({ request: { base64, mimeType, language } })
 }
 
 /**

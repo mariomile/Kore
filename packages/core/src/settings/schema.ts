@@ -13,6 +13,7 @@ import {
   memoryWriteApprovalSchema,
   transcriptionFormatSchema,
   transcriptionModelsSchema,
+  transcriptionLanguageSchema,
 } from './schema-ai'
 import { browserSearchEngineSchema, browserOpenLinksInAppSchema } from './schema-browser'
 import { connectorsSchema } from './schema-connectors'
@@ -652,6 +653,7 @@ const settingsDocumentSchema = z.looseObject({
   describeAssets: describeAssetsSchema,
   transcriptionFormat: transcriptionFormatSchema,
   transcriptionModels: transcriptionModelsSchema,
+  transcriptionLanguage: transcriptionLanguageSchema,
   contactsEnabled: contactsEnabledSchema,
   mobileOnboarded: mobileOnboardedSchema,
   mobileStorage: mobileStorageKindSchema,

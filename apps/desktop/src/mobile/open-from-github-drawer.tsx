@@ -3,6 +3,7 @@ import { OPEN_FROM_GITHUB_TOKEN_URL } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { GithubMark } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
+import { PublicRepoNotice } from '@/components/public-repo-notice'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
@@ -124,6 +125,7 @@ function OpenFromGithubSheet(): ReactElement {
           {form.pending ? 'Downloading your vault…' : 'Open'}
         </Button>
 
+        <PublicRepoNotice form={form} />
         {form.error !== null ? <InlineAlert tone="error">{form.error}</InlineAlert> : null}
       </DrawerBody>
     </>

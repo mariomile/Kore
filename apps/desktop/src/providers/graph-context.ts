@@ -69,12 +69,13 @@ export interface GraphContextValue extends MobileGraphBoot {
    * "Open from GitHub": clone `ref` into the absolute `destination`, then
    * open it without first-run seeds. Throws (for the form to show) when the
    * token, the repository or the destination is wrong; resolves true only on
-   * a confirmed open.
+   * a confirmed open. A public repository is refused unless `allowPublic`.
    */
   openFromGithub: (
     ref: GithubRepoRef,
     token: string | null,
     destination: string,
+    options?: { allowPublic?: boolean },
   ) => Promise<boolean>
   /** Drop a graph from the recents list. */
   forget: (root: string) => Promise<void>

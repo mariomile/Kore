@@ -367,11 +367,21 @@ export function GraphProvider({
   )
 
   const openFromGithub = useCallback(
-    async (ref: GithubRepoRef, token: string | null, destination: string): Promise<boolean> => {
+    async (
+      ref: GithubRepoRef,
+      token: string | null,
+      destination: string,
+      options?: { allowPublic?: boolean },
+    ): Promise<boolean> => {
       if (!requireMainWindow('opening a vault')) {
         return false
       }
-      await cloneGithubVault({ ref, token, destination })
+      await cloneGithubVault({
+        ref,
+        token,
+        destination,
+        allowPublic: options?.allowPublic === true,
+      })
       invalidateGithubAuth()
       return await openRecent(destination, { seedFirstRun: false })
     },

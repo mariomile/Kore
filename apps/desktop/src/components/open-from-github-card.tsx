@@ -12,6 +12,7 @@ import { OPEN_FROM_GITHUB_TOKEN_URL } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { GithubMark } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
+import { PublicRepoNotice } from '@/components/public-repo-notice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -66,11 +67,11 @@ export function OpenFromGithubCard({
   const repoId = useId()
   const tokenId = useId()
 
-  const form = useOpenFromGithubForm(async (ref, token) => {
+  const form = useOpenFromGithubForm(async (ref, token, options) => {
     if (parent === null) {
       throw new Error('Choose where to save the vault first.')
     }
-    await openFromGithub(ref, token, await join(parent, ref.name))
+    await openFromGithub(ref, token, await join(parent, ref.name), options)
   })
 
   async function chooseParent(): Promise<void> {
@@ -195,6 +196,7 @@ export function OpenFromGithubCard({
           </p>
         ) : null}
 
+        <PublicRepoNotice form={form} />
         {form.error !== null ? <InlineAlert tone="error">{form.error}</InlineAlert> : null}
       </div>
     </section>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { GithubRepoRef } from '@kore/core'
+import { PublicRepoRefusedError, type GithubRepoRef } from '@kore/core'
 import { useAsyncAction } from '@/hooks/use-async-action'
 import { useGithubConnected } from '@/hooks/use-github-connected'
 import { parseRepoInput } from '@/lib/github-repos'
@@ -22,6 +22,13 @@ export interface OpenFromGithubForm {
   submit: () => void
   pending: boolean
   error: string | null
+  /**
+   * The repository turned out public: its full name, while the form waits
+   * for the user to confirm (or change the repository).
+   */
+  publicRepo: string | null
+  /** Confirm the public repository and open it anyway. */
+  openPublicAnyway: () => void
 }
 
 /**
@@ -31,11 +38,16 @@ export interface OpenFromGithubForm {
  * and throws for the form to show.
  */
 export function useOpenFromGithubForm(
-  open: (ref: GithubRepoRef, token: string | null) => Promise<unknown>,
+  open: (
+    ref: GithubRepoRef,
+    token: string | null,
+    options: { allowPublic: boolean },
+  ) => Promise<unknown>,
 ): OpenFromGithubForm {
   const [repo, setRepo] = useState('')
   const [token, setToken] = useState('')
   const [anotherToken, setAnotherToken] = useState(false)
+  const [publicRepo, setPublicRepo] = useState<string | null>(null)
   const hasSavedToken = useGithubConnected()
   const action = useAsyncAction()
 
@@ -43,7 +55,7 @@ export function useOpenFromGithubForm(
   const usingSavedToken = hasSavedToken && !anotherToken
   const canSubmit = ref !== null && (usingSavedToken || token.trim().length > 0) && !action.pending
 
-  function submit(): void {
+  function submit(allowPublic = false): void {
     if (action.pending) {
       return
     }
@@ -55,8 +67,17 @@ export function useOpenFromGithubForm(
       action.setError('Paste a GitHub token first.')
       return
     }
+    setPublicRepo(null)
     void action.run(async () => {
-      await open(ref, usingSavedToken ? null : token.trim())
+      try {
+        await open(ref, usingSavedToken ? null : token.trim(), { allowPublic })
+      } catch (err) {
+        if (err instanceof PublicRepoRefusedError) {
+          setPublicRepo(err.fullName) // a question, not an error
+          return
+        }
+        throw err
+      }
     })
   }
 
@@ -64,6 +85,7 @@ export function useOpenFromGithubForm(
     repo,
     setRepo: (value) => {
       setRepo(value)
+      setPublicRepo(null)
       action.setError(null)
     },
     ref,
@@ -75,8 +97,10 @@ export function useOpenFromGithubForm(
     usingSavedToken,
     pasteAnotherToken: () => setAnotherToken(true),
     canSubmit,
-    submit,
+    submit: () => submit(),
     pending: action.pending,
     error: action.error,
+    publicRepo,
+    openPublicAnyway: () => submit(true),
   }
 }

@@ -9,7 +9,13 @@ import { MobileApp } from './mobile-app'
 
 const completeOnboarding = vi.hoisted(() => vi.fn(async (_kind: string, _root?: string) => {}))
 const completeOnboardingFromGithub = vi.hoisted(() =>
-  vi.fn(async (_ref: { owner: string; name: string }, _token: string | null) => {}),
+  vi.fn(
+    async (
+      _ref: { owner: string; name: string },
+      _token: string | null,
+      _options?: { allowPublic?: boolean },
+    ) => {},
+  ),
 )
 const storageInfo = vi.hoisted<{ current: unknown }>(() => ({ current: null }))
 const storageResolving = vi.hoisted<{ current: boolean }>(() => ({ current: false }))
@@ -184,6 +190,7 @@ describe('MobileOnboardingScreen', () => {
       expect(completeOnboardingFromGithub).toHaveBeenCalledWith(
         { owner: 'alex', name: 'brain' },
         'github_pat_abc',
+        { allowPublic: false },
       ),
     )
     expect(completeOnboarding).not.toHaveBeenCalled()

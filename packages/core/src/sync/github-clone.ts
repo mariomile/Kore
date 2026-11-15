@@ -11,6 +11,22 @@ import { getGithubRepo, githubRemoteUrl, type GithubRepo, type GithubRepoRef } f
  */
 export const OPEN_FROM_GITHUB_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new'
 
+/**
+ * Thrown when the repository is public and the caller hasn't confirmed it:
+ * everything Kore syncs there (`private: true` notes included — git sync
+ * doesn't filter them) becomes readable by anyone. Same consent gate as the
+ * connect wizard's existing-repo path.
+ */
+export class PublicRepoRefusedError extends KoreError {
+  readonly fullName: string
+
+  constructor(fullName: string) {
+    super('auth', `${fullName} is public: anyone can read the notes Kore syncs there.`)
+    this.name = 'PublicRepoRefusedError'
+    this.fullName = fullName
+  }
+}
+
 export interface CloneGithubVaultOptions {
   /** The repository that holds the vault. */
   readonly ref: GithubRepoRef
@@ -22,6 +38,8 @@ export interface CloneGithubVaultOptions {
   readonly token: string | null
   /** Absolute path the vault is cloned into; must not exist or be empty. */
   readonly destination: string
+  /** The user confirmed syncing with a public repository. */
+  readonly allowPublic?: boolean
   readonly fetchFn?: FetchFn
 }
 
@@ -61,6 +79,9 @@ export async function cloneGithubVault(options: CloneGithubVaultOptions): Promis
       'notFound',
       `Couldn’t find ${fullName}. Check the name, and that the token can access it.`,
     )
+  }
+  if (!repo.isPrivate && options.allowPublic !== true) {
+    throw new PublicRepoRefusedError(repo.fullName)
   }
   try {
     await gitClone(githubRemoteUrl(options.ref), options.destination, token)

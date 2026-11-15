@@ -122,7 +122,11 @@ export interface MobileGraphBoot {
    * the local choice. `token` null uses the one already stored. Throws for
    * the sheet to show; a failed clone leaves onboarding up for a retry.
    */
-  completeOnboardingFromGithub: (ref: GithubRepoRef, token: string | null) => Promise<void>
+  completeOnboardingFromGithub: (
+    ref: GithubRepoRef,
+    token: string | null,
+    options?: { allowPublic?: boolean },
+  ) => Promise<void>
 }
 
 /**
@@ -356,9 +360,18 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
   )
 
   const completeOnboardingFromGithub = useCallback(
-    async (ref: GithubRepoRef, token: string | null): Promise<void> => {
+    async (
+      ref: GithubRepoRef,
+      token: string | null,
+      options?: { allowPublic?: boolean },
+    ): Promise<void> => {
       const root = mobileStorageInfo?.localRoot ?? (await mobileStorageLocal())
-      await cloneGithubVault({ ref, token, destination: root })
+      await cloneGithubVault({
+        ref,
+        token,
+        destination: root,
+        allowPublic: options?.allowPublic === true,
+      })
       invalidateGithubAuth()
       await finishOnboarding('local', root, await openRecent(root, { seedFirstRun: false }))
     },

@@ -73,6 +73,7 @@ export {
 } from './github'
 export {
   cloneGithubVault,
+  PublicRepoRefusedError,
   OPEN_FROM_GITHUB_TOKEN_URL,
   type CloneGithubVaultOptions,
 } from './github-clone'

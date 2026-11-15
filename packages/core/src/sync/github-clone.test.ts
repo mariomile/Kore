@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { cloneGithubVault } from './github-clone'
+import { PublicRepoRefusedError, cloneGithubVault } from './github-clone'
 
 afterEach(() => {
   setBridge(null)
@@ -56,13 +56,15 @@ const REPO = {
 }
 
 /** GitHub stand-in: `/user` answers per `user`, the repo lookup per `repo`. */
-function github(user: number, repo: number): typeof fetch {
+function github(user: number, repo: number, isPrivate = true): typeof fetch {
   return (async (input: RequestInfo | URL) => {
     const url = String(input)
     if (url.endsWith('/user')) {
       return user === 200 ? json({ login: 'alex' }) : json({ message: 'Bad credentials' }, user)
     }
-    return repo === 200 ? json(REPO) : json({ message: 'Not Found' }, repo)
+    return repo === 200
+      ? json({ ...REPO, private: isPrivate })
+      : json({ message: 'Not Found' }, repo)
   }) as typeof fetch
 }
 
@@ -138,5 +140,28 @@ describe('cloneGithubVault', () => {
       cloneGithubVault({ ref: REF, token: 't', destination: '/d', fetchFn: github(200, 200) }),
     ).rejects.toThrow('A folder named “brain” already exists there')
     expect(host.secrets.size).toBe(0)
+  })
+
+  it('refuses a public repository until the user confirms it', async () => {
+    const host = fakeHost()
+    const refused = cloneGithubVault({
+      ref: REF,
+      token: 't',
+      destination: '/d',
+      fetchFn: github(200, 200, false),
+    })
+    await expect(refused).rejects.toBeInstanceOf(PublicRepoRefusedError)
+    await expect(refused).rejects.toMatchObject({ fullName: 'alex/brain' })
+    expect(host.clones).toEqual([])
+    expect(host.secrets.size).toBe(0)
+
+    await cloneGithubVault({
+      ref: REF,
+      token: 't',
+      destination: '/d',
+      allowPublic: true,
+      fetchFn: github(200, 200, false),
+    })
+    expect(host.clones).toHaveLength(1)
   })
 })

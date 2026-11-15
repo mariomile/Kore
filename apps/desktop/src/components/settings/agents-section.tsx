@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check } from '@/components/icons'
 import {
@@ -11,6 +12,7 @@ import {
 import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
 import { AgentsMemoryKitField } from '@/components/settings/agents-memory-kit-field'
 import { AgentsRemoteAccessField } from '@/components/settings/agents-remote-access-field'
+import { AgentsRepoAccessField } from '@/components/settings/agents-repo-access-field'
 import { SettingsField } from '@/components/settings/field'
 import { SettingsSection } from '@/components/settings/section'
 import { Button } from '@/components/ui/button'
@@ -19,14 +21,17 @@ import { isMacosDesktop } from '@/lib/platform'
 import { useGraph } from '@/providers/graph-provider'
 
 /**
- * Settings → Agents: one-click install of the bundled agent skills under
- * `~/.agents/skills/` — the graph's own skill (named after it; teaches
- * coding agents to read this graph through the bundled `kore` CLI) plus
- * the shared format skills (markdown, collections, agent memory), then the
- * copyable `kore mcp` setup for MCP clients ({@link AgentsMcpField}), and the
- * remote-access switch for cloud agents ({@link AgentsRemoteAccessField}). macOS
- * desktop only, like the iCloud section — the navigator hides the entry
- * through the same gate (see use-visible-settings-sections).
+ * Settings → Agents → Agent access: every way another agent reaches this
+ * vault, grouped by where the agent runs — the one question a user can
+ * answer without knowing what MCP is. On this Mac: the bundled skills
+ * (`~/.agents/skills/`, teaching coding agents the `kore` CLI and Kore's
+ * formats), the copyable `kore mcp` setup ({@link AgentsMcpField}) and the
+ * memory kit. In the cloud: remote access ({@link AgentsRemoteAccessField}).
+ * With their own computer: the GitHub repository they clone
+ * ({@link AgentsRepoAccessField}). Each group states when it works, so the
+ * Mac-must-be-awake limits are visible up front. macOS desktop only, like the
+ * iCloud section — the navigator hides the entry through the same gate (see
+ * use-visible-settings-sections).
  */
 export function AgentsSection(): ReactElement | null {
   const { graph } = useGraph()
@@ -72,6 +77,11 @@ export function AgentsSection(): ReactElement | null {
   const anyStale = skills.some((skill) => skill.installState === 'stale')
   return (
     <SettingsSection id="agents">
+      <AgentAccessGroup
+        title="On this Mac"
+        agents="Claude Code, Codex, Cursor, Claude Desktop"
+        availability="While this Mac is on"
+      />
       <SettingsField
         legend="Agent skills"
         description={`Teach Claude Code and other agents to read and write “${graph.name}” with the kore CLI, and the formats Kore uses: markdown, collections, agent memory.`}
@@ -132,7 +142,44 @@ export function AgentsSection(): ReactElement | null {
         <AgentsMcpField cliPath={status.cliPath} graphName={graph.name} />
       ) : null}
       <AgentsMemoryKitField graphRoot={graph.root} generation={graph.generation} />
+      <AgentAccessGroup
+        title="In the cloud"
+        agents="Claude on the web and iPhone, ChatGPT, Grok"
+        availability="While Kore is open"
+      />
       <AgentsRemoteAccessField graphName={graph.name} />
+      <AgentAccessGroup
+        title="With their own computer"
+        agents="Claude Code on the web, Codex cloud"
+        availability="Always"
+      />
+      <AgentsRepoAccessField />
     </SettingsSection>
+  )
+}
+
+/**
+ * A group heading row inside the Agent access card: where the agents run,
+ * which agents those are, and when that path works.
+ */
+function AgentAccessGroup({
+  title,
+  agents,
+  availability,
+}: {
+  title: string
+  agents: string
+  availability: string
+}): ReactElement {
+  return (
+    <div className="flex items-start justify-between gap-3 bg-surface-sunken px-4 py-2.5 first:rounded-t-lg">
+      <div className="min-w-0">
+        <h3 className="text-xs font-semibold text-text">{title}</h3>
+        <p className="mt-0.5 text-xs text-text-muted">{agents}</p>
+      </div>
+      <Badge variant="secondary" className="mt-0.5">
+        {availability}
+      </Badge>
+    </div>
   )
 }

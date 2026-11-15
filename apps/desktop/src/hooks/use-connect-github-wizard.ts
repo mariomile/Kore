@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import {
+  clearGithubAuth,
+  FINE_GRAINED_TOKENS_URL,
   githubAppInstallUrl,
   loadGithubAuth,
   newRepoUrl,
@@ -9,6 +11,7 @@ import {
 } from '@kore/core'
 import { useAsyncAction } from '@/hooks/use-async-action'
 import { usePoll } from '@/hooks/use-poll'
+import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { parseRepoInput } from '@/lib/github-repos'
 import { useSync } from '@/providers/sync-provider'
 
@@ -40,6 +43,12 @@ export interface ConnectGithubWizardOptions {
   onClose: () => void
   /** Delay between repo-existence polls on the create/grant handoffs (test hook). */
   pollIntervalMs?: number
+  /**
+   * The repository this vault already points at (an `origin` remote with no
+   * sign-in yet): the wizard opens on "Use an existing repository" with it
+   * filled in, so resuming never re-points the vault at a new repo.
+   */
+  initialRepo?: GithubRepoRef | null | undefined
 }
 
 export interface ConnectGithubWizard {
@@ -69,6 +78,19 @@ export interface ConnectGithubWizard {
   openCreatePage: () => void
   /** Open the GitHub App installation page (grant repository access). */
   openInstallPage: () => void
+  /**
+   * The repository the sign-in step's token instructions name: owner when
+   * known (an existing `owner/name`), and whether it still has to be created
+   * first (a fine-grained token can only include existing repositories).
+   */
+  tokenTarget: { owner: string | undefined; name: string | undefined; createFirst: boolean }
+  /** Open the user's fine-grained tokens, where the saved token's repositories are edited. */
+  openTokensPage: () => void
+  /**
+   * Forget the saved token and return to the sign-in step to paste another.
+   * The credential is machine-wide, so this replaces it for every vault.
+   */
+  switchToken: () => void
 }
 
 /**
@@ -92,20 +114,26 @@ export interface ConnectGithubWizard {
  * that can't yet see the repo lands on a plain "grant access" step that polls
  * and connects the moment access is granted (no retry button to press). The
  * step is skipped whenever the repo is already visible, so a graph whose repo
- * the install already covers connects with no detour. PAT users reach repos
- * by token scope, not an installation, so they get token-scope guidance.
+ * the install already covers connects with no detour. A personal token
+ * reaches repos by its own repository list instead, so the same step tells
+ * the user to add the repo to that token (or paste a different one).
  */
 export function useConnectGithubWizard({
   suggestedRepoName,
   onClose,
   pollIntervalMs = 3000,
+  initialRepo = null,
 }: ConnectGithubWizardOptions): ConnectGithubWizard {
   const { connectNewRepo, connectExistingRepo } = useSync()
   const action = useAsyncAction()
   const [step, setStep] = useState<ConnectWizardStep>('repo')
-  const [mode, setMode] = useState<'create' | 'existing'>('create')
+  const [mode, setMode] = useState<'create' | 'existing'>(
+    initialRepo !== null ? 'existing' : 'create',
+  )
   const [repoName, setRepoName] = useState(suggestedRepoName)
-  const [existingRepo, setExistingRepo] = useState('')
+  const [existingRepo, setExistingRepo] = useState(
+    initialRepo !== null ? `${initialRepo.owner}/${initialRepo.name}` : '',
+  )
   const [user, setUser] = useState<GithubUser | null>(null)
   const [authKind, setAuthKind] = useState<ConnectAuthKind>(null)
   const [publicConfirm, setPublicConfirm] = useState<GithubRepoRef | null>(null)
@@ -148,11 +176,8 @@ export function useConnectGithubWizard({
 
   async function finish(
     forUser: GithubUser,
-    options: { allowPublic?: boolean; kind?: ConnectAuthKind } = {},
+    options: { allowPublic?: boolean } = {},
   ): Promise<void> {
-    // The credential kind is passed in on the first run — its setter fires
-    // in the same tick as the call, before the state commits.
-    const kind = options.kind ?? authKind
     await action.run(async () => {
       // Each attempt re-derives the guidance from its own outcome — a stale
       // create guide or grant-access step from an earlier path must not outlive
@@ -183,15 +208,10 @@ export function useConnectGithubWizard({
         // sign-ins almost always mean the latter — the app isn't installed on
         // the repo yet — so granting access is the expected next step, not an
         // error: show it plainly and let the poll connect the moment access
-        // lands. PAT users reach repos by token scope, not an installation, so
-        // they get token-scope guidance instead.
-        if (kind === 'app') {
-          setShowGrantAccess(true)
-        } else {
-          action.setError(
-            'Repository not found. Check the name and your token’s repository access.',
-          )
-        }
+        // lands. A token likewise reaches repositories by its own repository list, which the
+        // user edits on GitHub — the same wait-and-poll step, with token copy
+        // (the finish step words it by `authKind`) and a way to swap tokens.
+        setShowGrantAccess(true)
         return
       }
       // A new repo that doesn't exist yet: create it — by API when the token
@@ -224,7 +244,7 @@ export function useConnectGithubWizard({
     void loadGithubAuth().then((auth) => {
       const kind = auth?.kind ?? null
       setAuthKind(kind)
-      return finish(authedUser, { kind })
+      return finish(authedUser)
     })
   }
 
@@ -247,6 +267,15 @@ export function useConnectGithubWizard({
     void openUrl(url).catch(() => {
       action.setError(`Couldn’t open the browser — visit ${url} yourself.`)
     })
+  }
+
+  function tokenTarget(): ConnectGithubWizard['tokenTarget'] {
+    if (mode === 'existing') {
+      const ref = parseRepoInput(existingRepo)
+      return { owner: ref?.owner, name: ref?.name, createFirst: false }
+    }
+    const name = repoName.trim()
+    return { owner: undefined, name: name.length > 0 ? name : undefined, createFirst: true }
   }
 
   // The parked handoffs outrank the transient states: a consent question or
@@ -281,5 +310,19 @@ export function useConnectGithubWizard({
     backToRepo,
     openCreatePage: () => openExternal(newRepoUrl(repoName.trim())),
     openInstallPage: () => openExternal(githubAppInstallUrl()),
+    tokenTarget: tokenTarget(),
+    openTokensPage: () => openExternal(FINE_GRAINED_TOKENS_URL),
+    switchToken: () => {
+      void action.run(async () => {
+        await clearGithubAuth()
+        invalidateGithubAuth()
+        setPublicConfirm(null)
+        setShowCreateGuide(false)
+        setShowGrantAccess(false)
+        setUser(null)
+        setAuthKind(null)
+        setStep('auth')
+      })
+    },
   }
 }

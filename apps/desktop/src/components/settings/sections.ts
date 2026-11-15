@@ -37,7 +37,8 @@ export const SETTINGS_GROUPS = [
       { id: 'ai-chat', title: 'AI chat' },
       { id: 'ai-prompts', title: 'AI prompts' },
       { id: 'audio-memos', title: 'Audio memos' },
-      { id: 'mcp', title: 'MCP servers' },
+      // Tools Kore's own chat can call — not how other agents reach the vault.
+      { id: 'mcp', title: 'Chat tools' },
     ],
   },
   {
@@ -46,8 +47,8 @@ export const SETTINGS_GROUPS = [
     sections: [
       // Profiles, memory, and automations — the former workspace Agents screen.
       { id: 'agent-workspace', title: 'Profiles' },
-      // macOS only — installs files under ~/.agents for terminal coding agents.
-      { id: 'agents', title: 'Agent skill' },
+      // macOS only — every way another agent reaches this vault.
+      { id: 'agents', title: 'Agent access' },
     ],
   },
   {

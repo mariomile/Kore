@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone audio memos transcribe on the device without an API key, in the
+  language picked in Settings > Audio memos (#440, #443).
+- iPhone type pages get a board view, and cards show the type's fields (#444).
+- Daily note widget on the iPhone home screen, with a voice memo button
+  (#441).
+- Mobile polish: compact note rows, Templater templates hidden, empty states,
+  iPhone welcome note (#438).
 - A checkbox tagged on its own line is a row of that tag's database, listed on
   the tag page (#423).
 - A collection in a note can show just the rows linked to that note (`= this`

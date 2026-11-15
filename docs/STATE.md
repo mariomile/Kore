@@ -1,5 +1,22 @@
 # Kore working state
 
+## On-device memo transcription, type board and daily widget on iPhone, 2026-11-15
+
+- [x] iPhone: audio memos transcribe with Apple's on-device speech recognizer
+  when no OpenAI or Gemini key is set, so the audio never leaves the phone; a
+  configured cloud key still wins (#440). The spoken language is chosen in
+  Settings > Audio memos (#443).
+- [x] iPhone: a typed tag's page offers a board next to the list and cards
+  views when the type has a property to group by, one lane at a time; cards
+  show the type's fields (#444).
+- [x] iPhone: a daily note widget for the home screen (small, medium, large)
+  shows today's preview and open tasks; a tap opens the daily and the mic
+  button starts a voice memo (#441).
+- [x] Mobile polish: compact note rows without a preview, Templater template
+  folders hidden from lists, empty states and an iPhone welcome note; the
+  vault reindexes once (#438).
+- Not verified on a real iPhone or Mac.
+
 ## Tagged checkboxes are rows, collections filter by this note, 2026-11-13
 
 - [x] Organization point 4: a checkbox line carrying a `#tag` is an object of

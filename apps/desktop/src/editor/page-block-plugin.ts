@@ -10,6 +10,8 @@ import {
 } from '@prosekit/pm/state'
 import { Decoration, DecorationSet } from '@prosekit/pm/view'
 import { linePageId, pagePreview, pageTitle } from '@kore/core'
+import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { blockSelectionKey, withBlockSelection } from './block-selection-plugin'
 import { zoomIntoBlockAt } from './block-zoom-plugin'
 import { zoomTarget } from './block-zoom-state'
 import { targetSpan, type ZoomTarget } from './block-zoom-target'
@@ -172,7 +174,11 @@ function build(state: EditorState): DecorationSet {
         (view, getPos) =>
           cardElement(title, preview, () => {
             const at = getPos()
-            if (at !== undefined) zoomIntoBlockAt(view, at - 1)
+            if (at === undefined) return
+            zoomIntoBlockAt(view, at - 1)
+            // Opening a page is reading (Craft): on a touch screen the
+            // keyboard stays down until a tap on the text.
+            if (isTouchEditorSurface() && view.dom instanceof HTMLElement) view.dom.blur()
           }),
         {
           side: -1,
@@ -290,6 +296,15 @@ export function createPageKeyPlugin(): Plugin {
           })
           .sort((a, b) => (back ? b.to - a.to : a.from - b.from))[0]
         if (card === undefined) return false
+        // On the phone the card joins the block selection (the grey card and
+        // its action bar, as after a swipe); iOS would draw its own blue
+        // handles around a node selection.
+        if (blockSelectionKey.getState(view.state) !== undefined) {
+          view.dispatch(
+            withBlockSelection(view.state.tr, { type: 'set', anchors: [card.from + 2] }),
+          )
+          return true
+        }
         view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, card.from)))
         return true
       },

@@ -5,7 +5,6 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { useTaskActions } from '@/lib/tasks/use-task-actions'
-import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
@@ -62,14 +61,8 @@ export function TodayCard({ day }: { day: string }): ReactElement | null {
       aria-label="Due today"
       className="mx-4 mt-3 mb-1 rounded-2xl bg-background px-3.5 shadow-[0_0_0_0.5px_rgb(0_0_0/0.06)]"
     >
-      {due.map((task: OpenTask, index) => (
-        <div
-          key={taskKey(task)}
-          className={cn(
-            'flex min-h-11 items-center gap-3 text-[16px]',
-            index > 0 && 'border-t border-border/70',
-          )}
-        >
+      {due.map((task: OpenTask) => (
+        <div key={taskKey(task)} className="flex min-h-11 items-center gap-3 text-[16px]">
           <button
             type="button"
             aria-label={`Complete ${task.text}`}

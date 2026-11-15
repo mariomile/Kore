@@ -70,7 +70,7 @@ export function subPagePreview(source: string): string {
     .filter((line) => !/^#\s/.test(line))
     .map((line) =>
       line
-        .replace(/^\s*(?:[-+*]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, '')
+        .replace(/^\s*(?:[-+*]|\d+[.)])\s+(?:\[[ x]\]\s+)?/i, '')
         .replace(/^\s*#{1,6}\s+/, '')
         .replace(/^\s*>\s?/, '')
         .replaceAll(/\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g, (_, target: string, label?: string) =>

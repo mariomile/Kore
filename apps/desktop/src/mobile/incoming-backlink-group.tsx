@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 interface IncomingBacklinkGroupProps {
   source: BacklinkSource
-  /** The first group renders without the leading hairline divider. */
+  /** The first group renders without the space that separates groups (no hairline: space alone groups them). */
   first: boolean
   /**
    * Section-level toggle. Each change resets the group's own state, which the
@@ -55,7 +55,7 @@ export function IncomingBacklinkGroup({
 
   return (
     <div>
-      {first ? null : <div className="border-t border-border" />}
+      {first ? null : <div aria-hidden className="h-3" />}
 
       <div className="flex items-center">
         <button

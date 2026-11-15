@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, type ReactElement } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { docToMarkdown, type EditorExtension } from '@meowdown/core'
 import { createNoteWithTitle, errorMessage, planSubPage, subPagePreview } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
@@ -134,7 +134,7 @@ export function BlockSwipeGestures({
   askAiRef.current = onAskAi
   const pageRef = useRef({ generation, openPage })
   pageRef.current = { generation, openPage }
-  const owner = useMemo(() => Symbol('block-selection'), [])
+  const [owner] = useState(() => Symbol('block-selection'))
   const commandsRef = useRef<BlockSelectionCommands | null>(null)
 
   useExtension(
@@ -242,7 +242,11 @@ export function BlockSwipeGestures({
           const isList = node.type.name === 'list'
           const head = isList ? node.firstChild : node
           const rest: ProseMirrorNode[] = []
-          if (isList) node.forEach((child, _offset, index) => index > 0 && rest.push(child))
+          if (isList) {
+            node.forEach((child, _offset, index) => {
+              if (index > 0) rest.push(child)
+            })
+          }
           const childrenMarkdown =
             rest.length === 0 ? '' : docToMarkdown(view.state.schema.topNodeType.create(null, rest))
           const plan = planSubPage(head?.textContent ?? '', childrenMarkdown)
@@ -343,7 +347,12 @@ export function BlockSwipeGestures({
         if (guardTimer !== null) clearTimeout(guardTimer)
         guardTimer = null
         if (delay === 0) setGuard(false)
-        else setTimeout(() => setGuard(false), delay)
+        else {
+          guardTimer = setTimeout(() => {
+            guardTimer = null
+            setGuard(false)
+          }, delay)
+        }
       }
 
       const releaseDrag = (): void => {

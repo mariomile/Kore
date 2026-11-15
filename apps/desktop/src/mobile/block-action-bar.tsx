@@ -51,7 +51,9 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   const { state, commands } = selection
   const [sheet, setSheet] = useState<Sheet>(null)
   const single = state.count === 1
-  const pickerStart = state.date ?? format(new Date(), 'yyyy-MM-dd')
+  // The day the sheets count from, fixed when the bar appears.
+  const [today] = useState(() => new Date())
+  const pickerStart = state.date ?? format(today, 'yyyy-MM-dd')
 
   // A tick each time a block joins the selection, the way a list picks up
   // a row in iOS edit mode.
@@ -260,11 +262,11 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 className="flex h-13 items-center gap-3 rounded-xl px-3 text-left active:bg-surface-hover"
               >
                 <span className="flex size-8 items-center justify-center rounded-lg bg-surface-hover text-[13px] font-semibold tabular-nums">
-                  {format(addDays(new Date(), days), 'd')}
+                  {format(addDays(today, days), 'd')}
                 </span>
                 <span className="flex-1 text-[17px]">{label}</span>
                 <span className="text-[15px] text-text-muted">
-                  {format(addDays(new Date(), days), 'EEE d MMM')}
+                  {format(addDays(today, days), 'EEE d MMM')}
                 </span>
               </button>
             ))}

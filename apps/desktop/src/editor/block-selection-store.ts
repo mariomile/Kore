@@ -75,6 +75,11 @@ export function clearBlockSelection(owner: symbol): void {
 }
 
 /** The owner currently publishing, so another editor can drop its selection. */
+/** The live selection outside React (tests, non-component callers). */
+export function currentBlockSelection(): BlockSelection | null {
+  return active
+}
+
 export function blockSelectionOwner(): symbol | null {
   return activeOwner
 }

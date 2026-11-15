@@ -5,10 +5,12 @@ import { setPlatformSurface } from '@/lib/platform-surface'
 import { NoteEditor } from './note-editor'
 import { BlockSwipeGestures } from './block-swipe'
 import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
+import { currentBlockSelection } from './block-selection-store'
 
 /**
- * The swipe wired to the live editor: it must move a list item, and it must
- * not take a gesture that was a scroll.
+ * The swipe wired to the live editor: right selects a block (Craft), left
+ * completes a task or lifts a nested item, a hold selects too, and a scroll
+ * is never taken.
  *
  * Synthesizing the gesture needs the `Touch`/`TouchEvent` constructors, so
  * this file's suite runs on the Chromium leg and skips on the WebKit one.
@@ -31,6 +33,8 @@ const CAN_SYNTHESIZE_TOUCH = ((): boolean => {
 })()
 
 const BASE_LIST = '- first\n- second\n'
+const NESTED_LIST = '- first\n  - second\n'
+const TASK_LIST = '- [ ] first\n- second\n'
 
 function touchEventOn(
   target: Element,
@@ -62,9 +66,9 @@ function swipe(
   target.dispatchEvent(touchEventOn(target, 'touchend', startX + deltaX, startY + deltaY))
 }
 
-async function renderList(onChange: (markdown: string) => void) {
+async function renderList(onChange: (markdown: string) => void, content = BASE_LIST) {
   const view = await render(
-    <NoteEditor initialContent={BASE_LIST} onChange={onChange}>
+    <NoteEditor initialContent={content} onChange={onChange}>
       <BlockSwipeGestures />
     </NoteEditor>,
   )
@@ -84,21 +88,71 @@ afterEach(() => {
 })
 
 describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
-  it('nests the touched list item even when the caret is elsewhere, then lifts it back', async () => {
+  it('selects the swiped block without editing, and a tap adds the next one', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange)
+    onChange.mockClear()
 
+    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('first').element())
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(1)
+    })
+    expect(document.querySelectorAll('.kore-block-selected')).toHaveLength(1)
+    // Selecting is view state: the note does not change, and nothing can type.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(editable.getAttribute('contenteditable')).toBe('false')
+
+    swipe(editable, 0, 0, view.getByText('second').element())
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(2)
+    })
+
+    currentBlockSelection()?.commands.setKind('task')
+    await vi.waitFor(() => {
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe('- [ ] first\n- [ ] second\n')
+    })
+
+    currentBlockSelection()?.commands.clear()
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()).toBeNull()
+    })
+    expect(editable.getAttribute('contenteditable')).toBe('true')
+  })
+
+  it('selects a block held still, with the editor read-only during the hold', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    const target = view.getByText('second').element()
+    const bounds = target.getBoundingClientRect()
+    const x = bounds.left + bounds.width / 2
+    const y = bounds.top + bounds.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(editable.getAttribute('contenteditable')).toBe('false')
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x, y))
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(1)
+    })
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('completes a task swiped left', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange, TASK_LIST)
+    onChange.mockClear()
+
+    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('first').element())
+    await vi.waitFor(() => {
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe('- [x] first\n- second\n')
+    })
+  })
+
+  it('lifts a nested item swiped left, even with the caret elsewhere', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange, NESTED_LIST)
     await userEvent.click(view.getByText('first'))
     onChange.mockClear()
 
-    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('second').element())
-    await vi.waitFor(() => {
-      expect(onChange).toHaveBeenCalled()
-    })
-    const indented = onChange.mock.calls.at(-1)?.[0] ?? ''
-    expect(indented).toBe('- first\n  - second\n')
-
-    onChange.mockClear()
     swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('second').element())
     await vi.waitFor(() => {
       expect(onChange.mock.calls.at(-1)?.[0]).toBe(BASE_LIST)

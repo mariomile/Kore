@@ -204,3 +204,14 @@ describe('EnableLocalSyncDialog', () => {
       .not.toBeInTheDocument()
   })
 })
+
+it('offers to resume the repository a picked folder already syncs with, not iCloud', async () => {
+  sync.setBackup({ phase: 'disconnected', linkedRepo: { owner: 'alex', name: 'notes' } })
+  await renderDialog()
+
+  await expect.element(page.getByText('Resume GitHub sync?')).toBeVisible()
+  await expect.element(page.getByText('alex/notes')).toBeVisible()
+  expect(page.getByRole('button', { name: 'Enable iCloud sync' }).query()).toBeNull()
+  await page.getByRole('button', { name: 'Not now' }).click()
+  expect(graph.dismissLocalSyncOffer).toHaveBeenCalled()
+})

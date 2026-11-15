@@ -50,6 +50,14 @@ const AUTH_ERROR = {
 } as const
 
 describe('BackupSettingsField', () => {
+  it('names the repository a vault already points at and offers to resume it', async () => {
+    await renderSection({ phase: 'disconnected', linkedRepo: { owner: 'alex', name: 'notes' } })
+
+    await expect.element(page.getByText('alex/notes')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Resume sync…' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'Connect GitHub…' }).query()).toBeNull()
+  })
+
   it('renders a generic remote host-neutrally with the engine’s own auth message', async () => {
     await renderSection({
       phase: 'connected',

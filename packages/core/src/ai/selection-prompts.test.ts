@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { AiPrompt } from '../settings/schema'
-import { BUILT_IN_AI_PROMPTS, filterAiPrompts, renderSelectionPrompt } from './selection-prompts'
+import {
+  BUILT_IN_AI_PROMPTS,
+  chatStarterPrompts,
+  filterAiPrompts,
+  renderSelectionPrompt,
+} from './selection-prompts'
 
 describe('renderSelectionPrompt', () => {
   it('substitutes the {{selectedText}} placeholder', () => {
@@ -55,5 +60,18 @@ describe('filterAiPrompts', () => {
     for (const prompt of BUILT_IN_AI_PROMPTS) {
       expect(prompt.body).toContain('{{selectedText}}')
     }
+  })
+})
+
+describe('chatStarterPrompts', () => {
+  it('keeps the saved prompts that stand on their own, in order', () => {
+    const saved: AiPrompt[] = [
+      { id: 'a', label: 'Overview', body: 'Give me an overview of my week', mode: 'append' },
+      { id: 'b', label: 'Fix', body: 'Fix: {{ selectedText }}', mode: 'replace' },
+      { id: 'c', label: 'Gaps', body: 'What is missing from my plans?', mode: 'append' },
+    ]
+    expect(chatStarterPrompts(saved).map((prompt) => prompt.id)).toEqual(['a', 'c'])
+    // Twice in a row: the global placeholder regex must not carry state.
+    expect(chatStarterPrompts(saved).map((prompt) => prompt.id)).toEqual(['a', 'c'])
   })
 })

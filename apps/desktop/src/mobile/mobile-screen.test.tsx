@@ -811,8 +811,6 @@ describe('MobileShell', () => {
           canMoveUp: true,
           canMoveDown: true,
           canAttachFiles: false,
-          blockKind: 'text',
-          canUndo: false,
         },
         commands: {
           cycleBulletOrderedList: vi.fn(),
@@ -822,8 +820,6 @@ describe('MobileShell', () => {
           moveUp: vi.fn(),
           moveDown: vi.fn(),
           insertTrigger: vi.fn(),
-          setBlockKind: vi.fn(),
-          undo: vi.fn(),
           dismissKeyboard: vi.fn(),
           attachFiles: vi.fn(),
           scrollCaretIntoView: vi.fn(),

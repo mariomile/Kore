@@ -3,12 +3,10 @@ import { useEditor } from '@meowdown/react'
 import { buildFileMarkdown, type EditorExtension } from '@meowdown/core'
 import { toPortableImageFile } from '@/lib/image-file'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
-import { readBlockKind, setBlockKind } from './block-kind'
 import { whenEditorMounted } from './when-editor-mounted'
 import {
   clearFormattingToolbar,
   publishFormattingToolbar,
-  type FormattingBlockKind,
   type FormattingToolbarCapabilities,
   type FormattingToolbarCommands,
   type FormattingTriggerText,
@@ -67,8 +65,6 @@ export function FormattingToolbarBridge({
 
       function readCapabilities(): FormattingToolbarCapabilities {
         return {
-          blockKind: readBlockKind(editor),
-          canUndo: editor.commands.undo.canExec(),
           canIndent: editor.commands.indentList.canExec(),
           canDedent: editor.commands.dedentList.canExec(),
           canMoveUp: editor.commands.moveList.canExec('up'),
@@ -95,8 +91,6 @@ export function FormattingToolbarBridge({
         moveDown: () => run(() => editor.commands.moveList('down')),
         insertTrigger: (text: FormattingTriggerText) =>
           run(() => editor.commands.insertTrigger(text)),
-        setBlockKind: (kind: FormattingBlockKind) => run(() => setBlockKind(editor, kind)),
-        undo: () => run(() => editor.commands.undo()),
         dismissKeyboard: () => editor.blur(),
         attachFiles: async (files: File[]) => {
           const save = saveFileRef.current

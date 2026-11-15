@@ -1,15 +1,23 @@
 import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, LayoutGrid, List, Note, SearchOff, Settings } from '@/components/icons'
+import {
+  ChevronLeft,
+  LayoutGrid,
+  LayoutTemplate,
+  List,
+  Note,
+  SearchOff,
+  Settings,
+} from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
   parseHighlights,
   searchWithFilters,
-  type AllNotesView,
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
+import { groupableProperties } from '@/components/all-notes/collection-board'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -17,6 +25,8 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
 import { useTagType } from '@/hooks/use-tag-type'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { MobileBoard } from '@/mobile/collection/mobile-board'
+import { mobileNotesView, type MobileNotesView } from '@/mobile/collection/mobile-tag-view'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
@@ -95,8 +105,7 @@ export function MobileAllNotes({
 }: MobileAllNotesProps): ReactElement {
   const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
-  const { settings, updateSettings } = useSettings()
-  const view = settings.allNotesView
+  const { settings, updateSettings, updateSettingsWith } = useSettings()
   const { navigate, back, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const queryClient = useQueryClient()
@@ -166,6 +175,52 @@ export function MobileAllNotes({
   )
   const pristine = parsed.text === '' && !parsed.filtered
 
+  // A typed tag's page is its database: list, cards, or (when the schema has
+  // a property to group by) the board, chosen per tag like on the desktop.
+  const tagKey = tag === null ? null : foldTag(tag)
+  const groupProperties = useMemo(
+    () => (tagType == null ? [] : groupableProperties(tagType)),
+    [tagType],
+  )
+  const savedGroupKey = tagKey === null ? undefined : settings.collectionGroups[tagKey]
+  const boardGroup =
+    groupProperties.find((property) => property.key === savedGroupKey) ?? groupProperties[0] ?? null
+  const typed = tagType != null
+  const view = mobileNotesView({
+    tagKey,
+    typed,
+    boardAvailable: boardGroup !== null,
+    globalView: settings.allNotesView,
+    modes: settings.collectionViewModes,
+  })
+  const setView = (next: MobileNotesView): void => {
+    hapticImpactLight()
+    if (tagKey !== null && typed) {
+      updateSettingsWith((current) => ({
+        collectionViewModes: { ...current.collectionViewModes, [tagKey]: next },
+      }))
+    } else {
+      updateSettings({ allNotesView: next === 'grid' ? 'grid' : 'list' })
+    }
+  }
+  // The board shows the whole collection; typed text or badges narrow it to
+  // the cards the search found.
+  const narrowed =
+    deferredQuery.trim() !== '' ||
+    filters.pinned ||
+    filters.daily ||
+    filters.tags.length > 0 ||
+    filters.linkedTo !== null ||
+    filters.linkedBy !== null ||
+    filters.updated !== null
+  const boardEntries = useMemo(() => {
+    if (collection === undefined || !narrowed || hits === undefined) {
+      return collection
+    }
+    const found = new Set(hits.map((hit) => hit.path))
+    return collection.filter((entry) => found.has(entry.path))
+  }, [collection, narrowed, hits])
+
   const removeDeletedRow = (path: string): void => {
     queryClient.setQueriesData<FilteredSearchHit[]>(
       { queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes'] },
@@ -213,7 +268,7 @@ export function MobileAllNotes({
           )}
           <SearchInput
             ref={searchInputRef}
-            placeholder="Search anything…"
+            placeholder={tag === null ? 'Search anything…' : 'Search…'}
             aria-label="Search notes"
             value={query}
             onValueChange={onQueryChange}
@@ -233,10 +288,8 @@ export function MobileAllNotes({
           )}
           <AllNotesLayoutToggle
             view={view}
-            onChange={(next) => {
-              hapticImpactLight()
-              updateSettings({ allNotesView: next })
-            }}
+            boardAvailable={view === 'board' || (typed && boardGroup !== null)}
+            onChange={setView}
           />
         </div>
         {pending !== null ? (
@@ -256,7 +309,21 @@ export function MobileAllNotes({
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
-      {isError ? (
+      {view === 'board' && tagType != null && boardGroup !== null && tag !== null ? (
+        <MobileBoard
+          entries={boardEntries}
+          tag={tag}
+          type={tagType}
+          property={boardGroup}
+          groupProperties={groupProperties}
+          onGroupChange={(key) =>
+            updateSettingsWith((current) => ({
+              collectionGroups: { ...current.collectionGroups, [foldTag(tag)]: key },
+            }))
+          }
+          onOpen={(path) => navigate(routeForPath(path))}
+        />
+      ) : isError ? (
         <div
           role="alert"
           className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
@@ -341,12 +408,18 @@ function Empty({ icon, message }: { icon: ReactElement; message: string }): Reac
 }
 
 interface AllNotesLayoutToggleProps {
-  view: AllNotesView
-  onChange: (view: AllNotesView) => void
+  view: MobileNotesView
+  /** Offer the board: a typed tag whose schema has a property to group by. */
+  boardAvailable: boolean
+  onChange: (view: MobileNotesView) => void
 }
 
 /** Compact list/grid switch — the same labels as desktop so the setting is one. */
-function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
+function AllNotesLayoutToggle({
+  view,
+  boardAvailable,
+  onChange,
+}: AllNotesLayoutToggleProps): ReactElement {
   const controlRef = useRef<HTMLDivElement | null>(null)
   const indicatorRef = useRef<HTMLSpanElement | null>(null)
 
@@ -389,6 +462,20 @@ function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): Re
       >
         <LayoutGrid aria-hidden className="size-4" />
       </button>
+      {boardAvailable ? (
+        <button
+          type="button"
+          data-sliding-value="board"
+          aria-label="Board view"
+          aria-pressed={view === 'board'}
+          onClick={() => onChange('board')}
+          className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
+            view === 'board' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          <LayoutTemplate aria-hidden className="size-4" />
+        </button>
+      ) : null}
     </div>
   )
 }

@@ -116,6 +116,11 @@ const NoteCard = memo(function NoteCard({
             <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
           ) : null}
         </div>
+        {row.propertyLine !== undefined ? (
+          <p className="mt-1.5 line-clamp-2 text-xs font-medium text-text-secondary">
+            {row.propertyLine}
+          </p>
+        ) : null}
         {imageUrl !== undefined ? (
           <img
             src={imageUrl}

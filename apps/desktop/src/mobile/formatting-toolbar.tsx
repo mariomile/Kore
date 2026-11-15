@@ -42,11 +42,7 @@ export function MobileFormattingToolbar(): ReactElement | null {
   }
   const { capabilities, commands } = toolbar
   return (
-    <div
-      role="toolbar"
-      aria-label="Formatting"
-      className="flex shrink-0 items-center"
-    >
+    <div role="toolbar" aria-label="Formatting" className="flex shrink-0 items-center">
       <div className="flex min-w-0 flex-1 items-center overflow-x-auto px-1">
         <ToolbarButton
           label="Slash command"

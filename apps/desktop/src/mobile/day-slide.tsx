@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { dailyPath } from '@kore/core'
 import { NotePane } from '@/components/note-pane'
-import { formatDayLabel } from '@/lib/dates'
+import { formatMobileDayTitle } from '@/lib/dates'
+import { TodayCard } from '@/mobile/today-card'
 import { cn } from '@/lib/utils'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
@@ -114,15 +115,19 @@ export function DaySlide({
         {/* The date is the daily note's subject (V1 / desktop parity) —
             chrome above the editor, formatted per the user's setting,
             tinted on today. Shares the note body's gutter. */}
+        {/* The date is the daily note's subject (V1 / desktop parity):
+            chrome above the editor, on one line (weekday and date, no
+            year), tinted on today. Shares the note body's gutter. */}
         <h2
           className={cn(
-            'kore-daily-subject pt-4 pb-1',
+            'kore-daily-subject pt-4 pb-1 text-[26px] leading-tight',
             MOBILE_CONTENT_GUTTER,
             day === today && 'text-accent',
           )}
         >
-          {formatDayLabel(day, settings.dateFormat)}
+          {formatMobileDayTitle(day, settings.dateFormat)}
         </h2>
+        {day === today ? <TodayCard day={day} /> : null}
         <NotePane
           path={dailyPath(day)}
           lazy

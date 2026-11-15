@@ -18,6 +18,8 @@ function makeToolbar(
       canMoveUp: false,
       canMoveDown: false,
       canAttachFiles: false,
+      blockKind: 'text',
+      canUndo: false,
       ...overrides,
     },
     commands: {
@@ -28,6 +30,8 @@ function makeToolbar(
       moveUp: vi.fn(),
       moveDown: vi.fn(),
       insertTrigger: vi.fn(),
+      setBlockKind: vi.fn(),
+      undo: vi.fn(),
       dismissKeyboard: vi.fn(),
       attachFiles: vi.fn(),
       scrollCaretIntoView: vi.fn(),

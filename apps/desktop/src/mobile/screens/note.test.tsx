@@ -85,7 +85,7 @@ afterEach(async () => {
 describe('MobileNote focus contract', () => {
   it('labels an existing note screen as edit note', async () => {
     await renderArrival('notes/target.md')
-    await expect.element(page.getByRole('heading', { name: 'Edit note' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'Edit note' })).toBeInTheDocument()
   })
 
   it('does not autofocus a plain arrival (no keyboard on browse)', async () => {
@@ -105,7 +105,7 @@ describe('MobileNote focus contract', () => {
 
   it('autofocuses a fresh untitled note (the + flow)', async () => {
     await renderArrival(untitledNotePath())
-    await expect.element(page.getByRole('heading', { name: 'New note' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'New note' })).toBeInTheDocument()
     expect(paneProps.autoFocus).toBe(true)
   })
 

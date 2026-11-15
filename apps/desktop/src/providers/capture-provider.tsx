@@ -24,6 +24,16 @@ import { useSettings } from '@/providers/settings-provider'
  * extension spools into, and the controller re-runs on app resume.
  */
 
+// The open graph's drain trigger, so an in-app producer (the iPhone quick
+// capture sheet) can drain its own envelope at once: the mobile shell has no
+// file watcher, so without this a spooled line waits for the next resume.
+let scheduleDrain: (() => void) | null = null
+
+/** Ask the capture drain for a pass now; a no-op before a graph opens. */
+export function requestCaptureDrain(): void {
+  scheduleDrain?.()
+}
+
 interface CaptureProviderProps {
   graph: GraphInfo
   children: ReactNode
@@ -74,7 +84,9 @@ export function CaptureProvider({ graph, children }: CaptureProviderProps): Reac
     void registered.then(() => {
       controller.start() // a no-op if the effect tore down while registering
     })
+    scheduleDrain = controller.schedule
     return () => {
+      if (scheduleDrain === controller.schedule) scheduleDrain = null
       controller.dispose()
     }
   }, [bridgeReady, graph.generation])

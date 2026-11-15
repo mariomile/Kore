@@ -1735,3 +1735,81 @@ html[data-sidebar-resizing] aside {
   min-width: 2.5rem;
   min-height: 2.5rem;
 }
+
+/* iPhone design pass (2026-11): read at the iOS body size.
+   Apple's reading default is 17pt (Bear, Craft and Notes sit there), so the
+   default step (small) lands on it and the larger steps grow from it. */
+:root[data-mobile-platform='ios'],
+:root[data-mobile-platform='ios'][data-editor-text-size='small'] {
+  --editor-font-size: 17px;
+}
+:root[data-mobile-platform='ios'][data-editor-text-size='medium'] {
+  --editor-font-size: 18px;
+}
+:root[data-mobile-platform='ios'][data-editor-text-size='large'] {
+  --editor-font-size: 20px;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface {
+  line-height: 1.5;
+}
+/* "Add a type" stays off the page while reading on a phone and appears once
+   the note is being edited, so a plain note opens as just a title and text. */
+@media (hover: none) {
+  :root[data-mobile-platform='ios'] .kore-note-add-type {
+    opacity: 0;
+    pointer-events: none;
+  }
+  :root[data-mobile-platform='ios']
+    .kore-note-properties-host:has(.ProseMirror-focused)
+    .kore-note-add-type {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* iPhone design pass (2026-11): blocks a phone can't draw
+   read as a quiet chip instead of raw query text or a red parse error. The
+   Markdown is untouched; the Mac still renders and edits them. */
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview'] {
+  position: relative;
+  max-height: 2.75rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview'] > code {
+  opacity: 0;
+}
+:root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview']::before {
+  content: '⌗  Dataview query · shown on the Mac';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.875rem;
+  font: 500 14px/1 var(--font-sans);
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  pointer-events: none;
+}
+:root[data-mobile-platform='ios'] [data-testid='code-block-mermaid-preview'][data-error='true'] {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--surface-hover);
+  font-size: 0;
+  color: transparent;
+}
+:root[data-mobile-platform='ios']
+  [data-testid='code-block-mermaid-preview'][data-error='true']::before {
+  content: '◇  Diagram · this kind is shown on the Mac';
+  font: 500 14px/1 var(--font-sans);
+  color: var(--text-muted);
+}
+:root[data-mobile-platform='ios']
+  .kore-note-surface
+  div:has(> pre[data-language^='dataview'])
+  > :not(pre) {
+  display: none;
+}

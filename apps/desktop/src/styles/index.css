@@ -381,12 +381,25 @@ html:root {
      the wash carries the state, the faint ring only sharpens its edge. */
   --meowdown-node-outline: color-mix(in srgb, var(--accent) 45%, transparent);
   --meowdown-node-selection: var(--accent-soft, rgb(99 102 241 / 12%));
-  --meowdown-selection: var(--accent-soft, rgb(99 102 241 / 12%));
+  /* Text selection hugs the text (see .kore-selection-block below), so it
+     needs a touch more presence than the old full-width wash: the accent at
+     a fixed strength reads the same on every theme and accent. */
+  --meowdown-selection: color-mix(in srgb, var(--accent) 26%, transparent);
   /* Floating menus (top layer): background is Reflect's surface; the highlighted
      row uses accent-soft, matching the ⌘K palette's selected item. */
   --meowdown-popover-bg: var(--surface);
   --meowdown-popover-hover-bg: var(--accent-soft);
   --meowdown-danger: var(--destructive);
+}
+
+/* A selected range hugs the text. WebKit (the Mac and iPhone webview) fills
+   selection gaps out to the editor's edges, painting full-width slabs over
+   multi-line selections and the checkbox/bullet column; it skips that fill
+   inside a transformed block. `editor/selection-shape.ts` puts this class on
+   just the textblocks a range touches, only while one is selected, so no
+   block carries the extra layer otherwise. */
+.ProseMirror .kore-selection-block {
+  translate: 0 0;
 }
 
 /* Notion-style `/` menu. meowdown owns a flat listbox in the top layer

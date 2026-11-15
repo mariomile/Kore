@@ -1644,9 +1644,49 @@ html[data-sidebar-resizing] aside {
 }
 
 /* A rendered collection fence never shows its source: the widget is the
-   whole block, and the caret is kept out of it by CollectionFenceGuard. */
-.kore-editor div:has(> [data-meowdown-code-block-custom]) > pre {
+   whole block, and the caret is kept out of it by CollectionFenceGuard.
+   A diagram fence keeps its source, which Meowdown shows while the caret is
+   inside it. */
+.kore-editor
+  div:has(> [data-meowdown-code-block-custom]):not(
+    :has(> [data-meowdown-code-block-custom] > [data-kore-diagram])
+  )
+  > pre {
   display: none;
+}
+
+/* Mermaid fences drawn by Pele (mermaid-diagram.tsx). Colors follow the
+   theme tokens, so switching light/dark recolors without redrawing; series
+   colors keep Pele's palette, which reads on both. */
+.kore-diagram {
+  --pele-bg: var(--surface);
+  --pele-fg: var(--text);
+  --pele-fg-on-light: #1f1f1f;
+  --pele-fg-on-dark: #ffffff;
+  --pele-muted: var(--text-muted);
+  --pele-line: var(--text-secondary);
+  --pele-surface: var(--surface-sunken);
+  --pele-surface-alt: var(--surface-hover);
+  --pele-border: var(--border-strong);
+  --pele-accent: var(--accent);
+  --pele-critical: var(--danger);
+  --pele-error: var(--danger);
+  --pele-radius: var(--radius-sm);
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  cursor: text;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kore-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.kore-diagram [data-empty] {
+  color: var(--text-muted);
+  font-size: var(--text-sm, 0.875rem);
 }
 
 /* Embedded views use application typography, not Markdown heading styles. */

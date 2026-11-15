@@ -39,6 +39,7 @@ import {
   unregisterNoteEditorHandle,
 } from '@/editor/editor-handle-registry'
 import { markModeFromSyntax } from '@/editor/mark-mode'
+import { MermaidDiagram } from '@/editor/mermaid-diagram'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { useResourceCollection } from '@/editor/use-resource-collection'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -392,6 +393,9 @@ export function NotePaneComponent({
   )
   const renderCodeBlock = useCallback<CodeBlockRenderer>(
     ({ language, code, updateCode }) => {
+      if (language === 'mermaid') {
+        return <MermaidDiagram code={code} />
+      }
       if (language !== 'collection') {
         return null
       }

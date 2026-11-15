@@ -3,26 +3,18 @@ import { isCompatKind, type CompatKindId } from './kinds'
 /** One thing in a note Kore can't render, with what makes it specific. */
 export interface CompatFinding {
   readonly kind: CompatKindId
-  /** The diagram type for Mermaid (`gantt`, `pie`…); null for every other kind. */
+  /** The diagram type for Mermaid (`zenuml`…); null for every other kind. */
   readonly detail: string | null
 }
 
 /**
- * Mermaid diagram headers the editor's renderer (beautiful-mermaid, through
- * Meowdown) draws. Anything else in a ```mermaid fence shows an error.
- * Lowercased, first word of the header line.
+ * Mermaid diagram headers the editor's renderer (Pele, mermaid-diagram.tsx in
+ * the desktop app) draws: every type built into Mermaid 12. ZenUML and other
+ * external Mermaid plugins show an error. Matched against the lowercased first
+ * word of the header line, `-beta`/`-v2` suffixes included.
  */
-const RENDERED_MERMAID_TYPES = new Set([
-  'graph',
-  'flowchart',
-  'sequencediagram',
-  'classdiagram',
-  'statediagram',
-  'statediagram-v2',
-  'erdiagram',
-  'xychart',
-  'xychart-beta',
-])
+const RENDERED_MERMAID_HEADER =
+  /^(?:graph|flowchart|sequencediagram|classdiagram|statediagram|erdiagram|journey|gantt|pie|quadrantchart|requirement(?:diagram)?|gitgraph|c4(?:context|container|component|dynamic|deployment)|mindmap|timeline|sankey|xychart|block|packet|kanban|architecture|radar|treemap|info|agentflow|swimlane|eventmodeling|treeview|ishikawa|railroad|venn|wardley|cynefin|usecase)(?:-|$)/
 
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})\s*([^\s`]*)/
 const FENCE_CLOSE = /^ {0,3}(`{3,}|~{3,})\s*$/
@@ -83,7 +75,7 @@ function fenceKind(fence: OpenFence): { kind: string; detail: string | null } | 
   }
   if (language === 'mermaid') {
     const type = mermaidDiagramType(fence.body)
-    if (type !== null && !RENDERED_MERMAID_TYPES.has(type)) {
+    if (type !== null && !RENDERED_MERMAID_HEADER.test(type)) {
       return { kind: 'mermaid', detail: type }
     }
   }

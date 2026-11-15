@@ -26,7 +26,7 @@ export const COMPAT_KINDS = [
   {
     id: 'mermaid',
     label: 'Unsupported Mermaid diagrams',
-    hint: 'Flowcharts, sequence, class, state, ER and XY charts draw; other diagram types show an error.',
+    hint: 'Every diagram type built into Mermaid draws, charts included; ZenUML and other Mermaid plugins show an error.',
   },
   {
     id: 'excalidraw',

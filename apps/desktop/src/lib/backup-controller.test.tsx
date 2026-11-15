@@ -184,7 +184,10 @@ describe('createBackupController', () => {
     const controller = createBackupController({ graph: GRAPH, indexGeneration: 1 })
     await controller.start()
 
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     await vi.waitFor(() => {
       expect(calls).toContain('git_commit_all')
     })
@@ -315,7 +318,10 @@ describe('createBackupController', () => {
     const controller = createBackupController({ graph: GRAPH, indexGeneration: 1 })
     await controller.start()
 
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     await vi.waitFor(() => {
       expect(calls).toContain('git_commit_all')
     })
@@ -513,7 +519,10 @@ describe('createBackupController', () => {
     await controller.signOut()
 
     expect(calls).toContain('secret_delete')
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     controller.dispose()
   })
 

@@ -32,16 +32,17 @@ vi.mock('@/providers/graph-provider', () => ({
     deleteGraph: graph.deleteGraph,
   }),
 }))
-vi.mock('@/providers/sync-provider', () => ({
-  useSync: () => ({
+vi.mock('@/providers/sync-provider', () => {
+  const sync = {
     backup: { phase: 'disconnected' },
     connectNewRepo: async () => {},
     connectExistingRepo: async () => 'connected',
     disconnectGraph: async () => {},
     signOut: async () => {},
     backUpNow: async () => {},
-  }),
-}))
+  }
+  return { useSync: () => sync, useSyncContext: () => sync }
+})
 // The update field gates on the native shell, which the test browser is not.
 vi.mock('@/lib/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/platform')>()),

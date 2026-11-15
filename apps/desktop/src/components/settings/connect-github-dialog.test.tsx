@@ -208,34 +208,76 @@ describe('ConnectGithubDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('surfaces a missing existing repo as an inline error, not a create guide', async () => {
-    sync.connectExistingRepo.mockResolvedValueOnce('notFound')
+  it('tells a token user the saved token cannot see the repo, then connects once it can', async () => {
+    sync.connectExistingRepo.mockResolvedValue('notFound')
     const onClose = await renderWizard()
 
     await page.getByRole('radio', { name: /use an existing repository/i }).click()
     await page.getByLabelText('Existing repository', { exact: true }).fill('alex/gone')
     await page.getByRole('button', { name: 'Continue' }).click()
 
-    await expect.element(page.getByText(/not found/i)).toBeInTheDocument()
+    await expect.element(page.getByText(/saved token can’t see/i)).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Edit token on GitHub…' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Use a different token' })).toBeVisible()
     expect(sync.connectNewRepo).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
-    // PAT remedy is token scope — the app-install flow is someone else's fix.
+    // A token's remedy is its repository list — the app-install flow is someone else's fix.
     expect(page.getByRole('button', { name: /grant access/i }).query()).toBeNull()
+
+    await page.getByRole('button', { name: 'Edit token on GitHub…' }).click()
+    expect(openedUrls).toHaveBeenCalledWith('https://github.com/settings/personal-access-tokens')
+
+    // The user adds the repo to the token on GitHub: the poll connects by itself.
+    sync.connectExistingRepo.mockResolvedValue('connected')
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('swaps the saved token for a new one from the finish step', async () => {
+    sync.connectExistingRepo.mockResolvedValue('notFound')
+    const commands: string[] = []
+    let stored: string | null = JSON.stringify({ kind: 'pat', token: 'ghp_abc' })
+    setBridge({
+      invoke: async (command, args) => {
+        commands.push(command)
+        if (command === 'secret_get') {
+          return stored
+        }
+        if (command === 'secret_delete') {
+          stored = null
+        }
+        if (command === 'secret_set') {
+          stored = String((args as Record<string, unknown> | undefined)?.value ?? null)
+        }
+        return null
+      },
+      listen: async () => () => {},
+    })
+    await renderWizard()
+
+    await page.getByRole('radio', { name: /use an existing repository/i }).click()
+    await page.getByLabelText('Existing repository', { exact: true }).fill('alex/gone')
+    await page.getByRole('button', { name: 'Continue' }).click()
+    await page.getByRole('button', { name: 'Use a different token' }).click()
+
+    // Back on the sign-in step, with the token instructions for this repo.
+    await expect.element(page.getByPlaceholder('github_pat_…')).toBeVisible()
+    await expect.element(page.getByText('Create a token')).toBeVisible()
+    expect(commands).toContain('secret_delete')
   })
 
   it('offers a way back to change the repository after a failed connect', async () => {
-    // A finish-step failure must never trap the user: the only alternative
+    // A finish-step dead end must never trap the user: the only alternative
     // would be closing the whole dialog and starting over.
-    sync.connectExistingRepo.mockResolvedValueOnce('notFound')
+    sync.connectExistingRepo.mockResolvedValue('notFound')
     const onClose = await renderWizard()
 
     await page.getByRole('radio', { name: /use an existing repository/i }).click()
     await page.getByLabelText('Existing repository', { exact: true }).fill('alex/gone')
     await page.getByRole('button', { name: 'Continue' }).click()
-    await expect.element(page.getByText(/not found/i)).toBeInTheDocument()
+    await expect.element(page.getByText(/saved token can’t see/i)).toBeInTheDocument()
 
     // Back, fix the name — the stored sign-in carries the retry through.
     await page.getByRole('button', { name: 'Change repository' }).click()
+    sync.connectExistingRepo.mockResolvedValue('connected')
     await page.getByLabelText('Existing repository', { exact: true }).fill('alex/notes')
     await page.getByRole('button', { name: 'Continue' }).click()
 
@@ -246,6 +288,33 @@ describe('ConnectGithubDialog', () => {
       ),
     )
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('opens on the repository the vault already points at', async () => {
+    sync.connectExistingRepo.mockResolvedValue('connected')
+    const onClose = vi.fn()
+    await render(
+      <ConnectGithubDialog
+        suggestedRepoName="g-backup"
+        initialRepo={{ owner: 'alex', name: 'notes' }}
+        onClose={onClose}
+        pollIntervalMs={15}
+      />,
+    )
+
+    await expect
+      .element(page.getByRole('radio', { name: /use an existing repository/i }))
+      .toBeChecked()
+    await expect
+      .element(page.getByLabelText('Existing repository', { exact: true }))
+      .toHaveValue('alex/notes')
+    await page.getByRole('button', { name: 'Continue' }).click()
+    await vi.waitFor(() =>
+      expect(sync.connectExistingRepo).toHaveBeenCalledWith(
+        { owner: 'alex', name: 'notes' },
+        { allowPublic: false },
+      ),
+    )
   })
 
   it('surfaces the create URL when the browser cannot be opened', async () => {

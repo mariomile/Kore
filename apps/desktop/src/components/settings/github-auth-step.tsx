@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { isDeviceFlowConfigured, saveGithubAuth, type GithubUser } from '@kore/core'
+import {
+  isDeviceFlowConfigured,
+  newRepoUrl,
+  newSyncTokenUrl,
+  saveGithubAuth,
+  type GithubUser,
+} from '@kore/core'
+import { ExternalLink } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,9 +29,16 @@ interface GithubAuthStepProps {
    * abstractly about "your backup repository".
    */
   repoName?: string | undefined
+  /** The repository's owner when known (an existing `owner/name`) — the token's target. */
+  repoOwner?: string | undefined
+  /**
+   * The wizard is creating a new repository. A fine-grained token can only
+   * be scoped to repositories that already exist, so the token instructions
+   * start with "create the repository" — in that order or the token can
+   * never reach it.
+   */
+  createRepoFirst?: boolean | undefined
 }
-
-const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 
 /**
  * The shared "sign in to GitHub" step (desktop's connect dialog and the
@@ -34,7 +48,12 @@ const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
  * GitHub actually accepts — and the caller learns *who* signed in, which the
  * wizard uses to connect `owner/name` without ever asking for the owner.
  */
-export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): ReactElement {
+export function GithubAuthStep({
+  onAuthed,
+  repoName,
+  repoOwner,
+  createRepoFirst = false,
+}: GithubAuthStepProps): ReactElement {
   const deviceFlow = useDeviceFlowAuth()
   const pat = useAsyncAction()
   const [patValue, setPatValue] = useState('')
@@ -44,6 +63,8 @@ export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): Rea
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   /** Opening the browser failed — show the URL, the only way left to get there. */
   const [openFailed, setOpenFailed] = useState(false)
+  /** A token-step link the browser couldn't open — shown so the user can visit it by hand. */
+  const [linkFailed, setLinkFailed] = useState<string | null>(null)
   const authedRef = useRef(false)
 
   // Auth can complete twice — the mount-time probe of a stored credential
@@ -137,7 +158,16 @@ export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): Rea
     })
   }
 
+  function openLink(url: string): void {
+    setLinkFailed(null)
+    void openUrl(url).catch(() => {
+      setLinkFailed(url)
+    })
+  }
+
   const error = deviceFlow.error ?? pat.error
+  const repoLabel = repoName !== undefined && repoName.length > 0 ? repoName : null
+  const showCreateRepo = createRepoFirst && repoLabel !== null
   const flowView = deviceFlow.view
 
   return (
@@ -162,32 +192,79 @@ export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): Rea
           </>
         ) : (
           <>
-            <p className="text-xs text-text-muted">
-              Paste a fine-grained personal access token with <strong>Contents</strong> read/write
-              access to{' '}
-              {repoName !== undefined ? (
-                <>
-                  the <strong>{repoName}</strong> repository
-                </>
-              ) : (
-                'your sync repository'
-              )}{' '}
-              (GitHub → Settings → Developer settings → Fine-grained tokens). It is stored in your
-              OS keychain, never in your vault.
-            </p>
-            <label className="flex flex-col gap-1">
-              <span className={FIELD_LABEL_CLASS}>Personal access token</span>
-              <Input
-                autoFocus
-                type="password"
-                value={patValue}
-                onChange={(event) => setPatValue(event.target.value)}
-                placeholder="github_pat_…"
-              />
-            </label>
-            <Button onClick={() => void savePat()} disabled={pat.pending} size="sm">
-              {pat.pending ? 'Checking…' : 'Save token'}
-            </Button>
+            <ol className="flex flex-col gap-3">
+              {showCreateRepo ? (
+                <TokenStep
+                  n={1}
+                  title={`Create ${repoLabel} on GitHub`}
+                  hint="Do this first: a token can only include repositories that already exist."
+                >
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={() => openLink(newRepoUrl(repoLabel))}
+                  >
+                    <ExternalLink aria-hidden />
+                    Create repository
+                  </Button>
+                </TokenStep>
+              ) : null}
+              <TokenStep
+                n={showCreateRepo ? 2 : 1}
+                title="Create a token"
+                hint={
+                  <>
+                    On GitHub, under Repository access, choose{' '}
+                    <strong>Only select repositories</strong> →{' '}
+                    {repoLabel !== null ? <strong>{repoLabel}</strong> : 'your sync repository'}.
+                    Everything else is already filled in. It lasts a year.
+                  </>
+                }
+              >
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => openLink(newSyncTokenUrl({ owner: repoOwner, name: repoName }))}
+                >
+                  <ExternalLink aria-hidden />
+                  Create token
+                </Button>
+              </TokenStep>
+              <TokenStep
+                n={showCreateRepo ? 3 : 2}
+                title="Paste it here"
+                hint="It stays in this Mac’s keychain, never in your vault."
+              >
+                <div className="flex w-full gap-2">
+                  <Input
+                    autoFocus
+                    type="password"
+                    aria-label="Personal access token"
+                    value={patValue}
+                    onChange={(event) => setPatValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                        void savePat()
+                      }
+                    }}
+                    placeholder="github_pat_…"
+                  />
+                  <Button
+                    onClick={() => void savePat()}
+                    disabled={pat.pending}
+                    size="sm"
+                    className="shrink-0"
+                  >
+                    {pat.pending ? 'Checking…' : 'Save token'}
+                  </Button>
+                </div>
+              </TokenStep>
+            </ol>
+            {linkFailed !== null ? (
+              <p className="select-text text-xs text-text-muted">
+                Couldn’t open the browser. Visit {linkFailed} yourself.
+              </p>
+            ) : null}
             {isDeviceFlowConfigured() ? (
               <button
                 type="button"
@@ -226,5 +303,34 @@ export function GithubAuthStep({ onAuthed, repoName }: GithubAuthStepProps): Rea
       )}
       {error !== null ? <InlineAlert tone="error">{error}</InlineAlert> : null}
     </div>
+  )
+}
+
+/** One numbered instruction of the token path, with its optional action. */
+function TokenStep({
+  n,
+  title,
+  hint,
+  children,
+}: {
+  n: number
+  title: string
+  hint: ReactNode
+  children?: ReactNode
+}): ReactElement {
+  return (
+    <li className="flex gap-2.5">
+      <span
+        aria-hidden
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-2xs font-semibold text-text-secondary tabular-nums"
+      >
+        {n}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+        <p className="text-sm font-medium text-text">{title}</p>
+        <p className="text-xs text-text-muted">{hint}</p>
+        {children}
+      </div>
+    </li>
   )
 }

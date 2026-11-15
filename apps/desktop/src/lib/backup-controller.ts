@@ -46,7 +46,12 @@ import { throttledInvalidateIndexQueries } from '@/lib/query-client'
  */
 export type BackupState =
   | { phase: 'loading' }
-  | { phase: 'disconnected' }
+  /**
+   * `linkedRepo`: the vault already has a GitHub `origin` but this machine
+   * has no sign-in yet — the UI offers to resume that repo rather than
+   * connect a new one.
+   */
+  | { phase: 'disconnected'; linkedRepo?: GithubRepoRef }
   | { phase: 'connected'; remoteUrl: string; repo: GithubRepoRef | null; status: SyncStatus }
 
 /** Outcome of connecting to an existing repo (the public case needs consent). */
@@ -325,7 +330,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
         // A GitHub remote needs the managed sign-in; the wizard is the fix.
         // Generic remotes adopt without it — their credentials live with the
         // user's own git tooling (ssh agent), not in our keychain.
-        setState({ phase: 'disconnected' })
+        setState({ phase: 'disconnected', linkedRepo: repo })
         await startLocalHistory(status.initialized)
         return
       }

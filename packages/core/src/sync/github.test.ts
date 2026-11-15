@@ -10,6 +10,7 @@ import {
   githubRemoteUrl,
   loadGithubAuth,
   newRepoUrl,
+  newSyncTokenUrl,
   parseGithubRemote,
   runDeviceFlow,
 } from './github'
@@ -368,6 +369,23 @@ describe('newRepoUrl', () => {
     expect(url.searchParams.get('name')).toBe('my notes-backup')
     expect(url.searchParams.get('visibility')).toBe('private')
     expect(url.searchParams.get('description')).toBe('Kore notes backup')
+  })
+})
+
+describe('newSyncTokenUrl', () => {
+  it('prefills a year-long Contents read/write token for the repository', () => {
+    const url = new URL(newSyncTokenUrl({ owner: 'acme', name: 'notes' }))
+    expect(url.origin + url.pathname).toBe('https://github.com/settings/personal-access-tokens/new')
+    expect(url.searchParams.get('name')).toBe('Kore sync notes')
+    expect(url.searchParams.get('target_name')).toBe('acme')
+    expect(url.searchParams.get('expires_in')).toBe('366')
+    expect(url.searchParams.get('contents')).toBe('write')
+  })
+
+  it("keeps the name within GitHub's 40 characters and omits an unknown owner", () => {
+    const url = new URL(newSyncTokenUrl({ name: 'a'.repeat(60) }))
+    expect(url.searchParams.get('name')).toHaveLength(40)
+    expect(url.searchParams.has('target_name')).toBe(false)
   })
 })
 

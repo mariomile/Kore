@@ -74,7 +74,7 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
   return (
     <SettingsField
       legend="Remote access"
-      description={`Let Claude on the web and iPhone, ChatGPT, Grok and other cloud agents use “${graphName}” over the internet through Tailscale Funnel, behind a token. Works while Kore is open and this Mac is awake. Private notes stay hidden.`}
+      description={`Let Claude on the web and iPhone, ChatGPT, Grok and other cloud agents use “${graphName}” over the internet through Tailscale Funnel, behind a token. Needs this Mac awake. Private notes stay hidden.`}
     >
       <div className="mt-3 flex flex-col gap-2">
         <div className="flex items-center gap-3">

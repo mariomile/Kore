@@ -139,7 +139,7 @@ export function DaySlide({
           onAutoFocused={handleAutoFocused}
           showBacklinks={false}
           gutterClassName={MOBILE_CONTENT_GUTTER}
-          editorClassName="min-h-[60dvh]"
+          editorClassName="min-h-[30dvh]"
         />
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink swipes the carousel to that

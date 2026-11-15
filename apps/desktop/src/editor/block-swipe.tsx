@@ -16,6 +16,7 @@ import {
   createBlockSelectionPlugin,
   hasBlockSelection,
   selectedBlocks,
+  setBlockPressGuard,
   withBlockSelection,
   type BlockRange,
 } from './block-selection-plugin'
@@ -36,7 +37,7 @@ const DRAG_FOLLOW_MAX_PX = 56
 /** Hold time that turns a still touch into a block selection (before iOS's own text loupe). */
 const LONG_PRESS_MS = 380
 /** Past a tap's length: from here a held finger is heading for a long-press. */
-const PRESS_GUARD_MS = 180
+const PRESS_GUARD_MS = 240
 const PRESS_GUARD_RELEASE_MS = 400
 
 /** Finger travel under which a touch on a selecting editor counts as a tap. */
@@ -315,12 +316,17 @@ export function BlockSwipeGestures({
       let pressed = false
       // iOS runs its own hold gesture on editable text (~500 ms: caret,
       // loupe, word selection, keyboard). A finger still down after a tap's
-      // length turns text selection off on the editor's wrapper (a node
-      // ProseMirror does not own), so that gesture finds nothing to select
-      // and our long-press wins. A quick tap never sees it.
+      // length makes the editor read-only for the moment (the selection
+      // plugin's guard) and turns off text selection on its wrapper, so that
+      // gesture finds nothing to act on and our long-press wins. A quick tap
+      // never sees it.
       const guardHost = dom.parentElement
+      let guarded = false
       const setGuard = (on: boolean): void => {
+        if (guarded === on || view.isDestroyed) return
+        guarded = on
         guardHost?.classList.toggle('kore-block-press-guard', on)
+        view.dispatch(setBlockPressGuard(view.state.tr, on))
       }
       const clearGuard = (delay = 0): void => {
         if (guardTimer !== null) clearTimeout(guardTimer)

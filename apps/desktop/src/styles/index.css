@@ -1937,3 +1937,16 @@ html[data-sidebar-resizing] aside {
 .kore-editor .kore-page-card[data-missing] .kore-page-card-excerpt {
   font-style: italic;
 }
+
+/* iPhone: a task's round box sits on the same vertical axis as a bullet's
+   dot, so a list mixing both reads as one column (Craft's alignment). */
+.kore-mobile-content-gutter
+  .kore-editor
+  .prosemirror-flat-list[data-list-kind='task']
+  > .list-marker {
+  justify-content: center;
+}
+/* A link (a task's date most of all) never breaks across lines. */
+.kore-editor .md-wikilink-view {
+  white-space: nowrap;
+}

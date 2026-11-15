@@ -268,7 +268,9 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
               </button>
             ))}
             {/* The system calendar: an invisible date input over the row, so a
-                tap opens iOS's own picker and the pick lands on change. */}
+                tap opens iOS's own picker. iOS fills in today (and fires
+                change) the moment the picker opens, so a change only records
+                the day; the pick lands when the picker closes (blur). */}
             <label className="relative flex h-13 items-center gap-3 rounded-xl px-3 active:bg-surface-hover">
               <span className="flex size-8 items-center justify-center rounded-lg bg-surface-hover [&>svg]:size-[18px]">
                 <Calendar aria-hidden />
@@ -279,15 +281,11 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 type="date"
                 aria-label="Pick a date"
                 className="absolute inset-0 opacity-0"
-                onChange={(event) => {
-                  const picked = event.currentTarget.valueAsDate
-                  if (picked === null) return
-                  // valueAsDate is UTC midnight; keep the calendar day picked.
-                  const day = new Date(
-                    picked.getUTCFullYear(),
-                    picked.getUTCMonth(),
-                    picked.getUTCDate(),
-                  )
+                onBlur={(event) => {
+                  const value = event.currentTarget.value
+                  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+                  if (match === null) return
+                  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
                   act(() => commands.remind(day))
                   setSheet(null)
                 }}

@@ -23,6 +23,12 @@ export interface BlockRange {
 
 interface BlockSelectionPluginState {
   anchors: readonly number[]
+  /**
+   * A finger is held on a block, heading for a long-press. The editor is
+   * read-only for that moment, so iOS's own hold gesture (caret, word
+   * selection, keyboard) has no editable text to act on.
+   */
+  guard: boolean
 }
 
 type BlockSelectionMeta =
@@ -30,10 +36,11 @@ type BlockSelectionMeta =
   | { type: 'add'; anchor: number }
   | { type: 'set'; anchors: readonly number[] }
   | { type: 'clear' }
+  | { type: 'guard'; on: boolean }
 
 export const blockSelectionKey = new PluginKey<BlockSelectionPluginState>('kore-block-selection')
 
-const EMPTY: BlockSelectionPluginState = { anchors: [] }
+const EMPTY: BlockSelectionPluginState = { anchors: [], guard: false }
 
 /**
  * The block a position belongs to: the innermost list item around it (a
@@ -90,6 +97,10 @@ export function selectedBlocks(state: EditorState): BlockRange[] {
   return outer
 }
 
+export function setBlockPressGuard(tr: Transaction, on: boolean): Transaction {
+  return tr.setMeta(blockSelectionKey, { type: 'guard', on } satisfies BlockSelectionMeta)
+}
+
 export function hasBlockSelection(state: EditorState): boolean {
   return (blockSelectionKey.getState(state)?.anchors.length ?? 0) > 0
 }
@@ -108,6 +119,7 @@ export function createBlockSelectionPlugin(options: {
       apply(tr, value, _old, next) {
         const meta = tr.getMeta(blockSelectionKey) as BlockSelectionMeta | undefined
         let anchors = value.anchors
+        let guard = value.guard
         if (tr.docChanged && anchors.length > 0) {
           anchors = anchors.map((anchor) => tr.mapping.map(anchor))
         }
@@ -115,6 +127,9 @@ export function createBlockSelectionPlugin(options: {
           switch (meta.type) {
             case 'clear':
               anchors = []
+              break
+            case 'guard':
+              guard = meta.on
               break
             case 'set':
               anchors = meta.anchors
@@ -132,9 +147,12 @@ export function createBlockSelectionPlugin(options: {
             }
           }
         }
-        if (anchors === value.anchors) return value
-        if (anchors.length === 0) return EMPTY
-        return { anchors: normalize(next.doc, anchors) }
+        if (anchors === value.anchors && guard === value.guard) return value
+        if (anchors.length === 0) return guard ? { anchors: [], guard } : EMPTY
+        return {
+          anchors: anchors === value.anchors ? anchors : normalize(next.doc, anchors),
+          guard,
+        }
       },
     },
     props: {
@@ -145,6 +163,13 @@ export function createBlockSelectionPlugin(options: {
           Decoration.node(block.from, block.to, { class: 'kore-block-selected' }),
         )
         return DecorationSet.create(state.doc, decorations)
+      },
+      // While blocks are selected (and while a long-press is pending) the
+      // text is not editable: a tap toggles blocks, and nothing can raise
+      // the keyboard or start a native text selection under the finger.
+      editable(state) {
+        const value = blockSelectionKey.getState(state)
+        return value === undefined || (value.anchors.length === 0 && !value.guard)
       },
       attributes(state): Record<string, string> {
         return hasBlockSelection(state) ? { 'data-block-selecting': '' } : {}

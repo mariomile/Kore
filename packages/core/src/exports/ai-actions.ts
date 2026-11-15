@@ -286,6 +286,7 @@ export {
 export { chatToMarkdown } from '../ai/chat/export'
 export {
   BUILT_IN_AI_PROMPTS,
+  chatStarterPrompts,
   filterAiPrompts,
   renderSelectionPrompt,
 } from '../ai/selection-prompts'

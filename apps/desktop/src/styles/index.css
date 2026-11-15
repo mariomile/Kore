@@ -1767,9 +1767,9 @@ html[data-sidebar-resizing] aside {
   }
 }
 
-/* iPhone design pass (2026-11): blocks a phone can't draw
-   read as a quiet chip instead of raw query text or a red parse error. The
-   Markdown is untouched; the Mac still renders and edits them. */
+/* iPhone design pass (2026-11): Dataview queries, which Kore doesn't run,
+   read as a quiet chip instead of raw query text. The Markdown is untouched;
+   the Mac still shows and edits them. */
 :root[data-mobile-platform='ios'] .kore-note-surface pre[data-language^='dataview'] {
   position: relative;
   max-height: 2.75rem;
@@ -1790,22 +1790,6 @@ html[data-sidebar-resizing] aside {
   color: var(--text-muted);
   background: var(--surface-hover);
   pointer-events: none;
-}
-:root[data-mobile-platform='ios'] [data-testid='code-block-mermaid-preview'][data-error='true'] {
-  display: flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding-inline: 0.875rem;
-  border-radius: 0.75rem;
-  background: var(--surface-hover);
-  font-size: 0;
-  color: transparent;
-}
-:root[data-mobile-platform='ios']
-  [data-testid='code-block-mermaid-preview'][data-error='true']::before {
-  content: '◇  Diagram · this kind is shown on the Mac';
-  font: 500 14px/1 var(--font-sans);
-  color: var(--text-muted);
 }
 :root[data-mobile-platform='ios']
   .kore-note-surface

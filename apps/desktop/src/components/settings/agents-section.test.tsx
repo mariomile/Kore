@@ -141,6 +141,20 @@ describe('AgentsSection', () => {
     expect(page.getByRole('button', { name: 'Install skills' }).query()).toBeNull()
   })
 
+  it('groups the ways in by where the agent runs, each saying when it works', async () => {
+    await renderSection()
+    for (const [title, when] of [
+      ['On this Mac', 'While this Mac is on'],
+      ['In the cloud', 'While Kore is open'],
+      ['With their own computer', 'Always'],
+    ] as const) {
+      await expect.element(page.getByRole('heading', { name: title })).toBeVisible()
+      await expect.element(page.getByText(when, { exact: true })).toBeVisible()
+    }
+    // No sync provider here: the repo path explains what it needs first.
+    await expect.element(page.getByText(/Turn on GitHub sync first/)).toBeVisible()
+  })
+
   it('shows the MCP client config for this graph, read-only on request', async () => {
     await renderSection()
     const config = page.getByText(/"mcpServers"/)

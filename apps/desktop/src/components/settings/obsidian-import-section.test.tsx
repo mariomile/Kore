@@ -58,6 +58,7 @@ const SOURCE: ObsidianImportSource = {
   config: { dailyNotes: null, app: null, templates: null },
   notes: [],
   attachments: [],
+  bases: [],
   folders: ['Journal', 'Journal/Daily', 'Resources', 'Resources/_attachments'],
   skipped: 0,
 }

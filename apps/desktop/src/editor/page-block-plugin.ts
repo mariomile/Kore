@@ -126,15 +126,18 @@ function childrenMarkdown(state: EditorState, node: ProseMirrorNode): string {
   return rest.length === 0 ? '' : docToMarkdown(state.schema.topNodeType.create(null, rest))
 }
 
-function cardElement(title: string, preview: string, open: () => void): HTMLElement {
+function cardElement(
+  title: string,
+  preview: string,
+  rows: readonly SkeletonRow[],
+  open: () => void,
+): HTMLElement {
   const card = document.createElement('div')
   card.className = 'kore-page-card'
   card.contentEditable = 'false'
   card.setAttribute('role', 'link')
   card.setAttribute('aria-label', `Open ${title}`)
-  const glyph = document.createElement('span')
-  glyph.className = 'kore-page-card-glyph'
-  glyph.setAttribute('aria-hidden', 'true')
+  const glyph = skeletonElement(rows)
   const body = document.createElement('span')
   body.className = 'kore-page-card-body'
   const heading = document.createElement('span')
@@ -142,7 +145,26 @@ function cardElement(title: string, preview: string, open: () => void): HTMLElem
   heading.textContent = title === '' ? 'Untitled page' : title
   const excerpt = document.createElement('span')
   excerpt.className = 'kore-page-card-excerpt'
-  excerpt.textContent = preview === '' ? 'Empty page' : preview
+  if (rows.length === 0) {
+    excerpt.textContent = 'Empty page'
+    excerpt.dataset['empty'] = ''
+  } else {
+    // The page's first blocks as they read inside it: one line each, with
+    // its dot, number or box, indented when nested, headings bold.
+    let number = 0
+    for (const row of rows.slice(0, PREVIEW_LINES)) {
+      number = row.kind === 'ordered' ? number + 1 : 0
+      const line = document.createElement('span')
+      line.className = 'kore-page-card-line'
+      line.dataset['kind'] = row.kind
+      line.style.setProperty('--depth', String(Math.min(row.depth, 3)))
+      if (row.kind === 'ordered') line.dataset['number'] = `${number}.`
+      line.textContent = row.text === '' ? ' ' : row.text
+      excerpt.append(line)
+    }
+    if (rows.length > PREVIEW_LINES) excerpt.dataset['more'] = ''
+  }
+  excerpt.setAttribute('aria-label', preview)
   body.append(heading, excerpt)
   card.append(glyph, body)
   card.addEventListener('click', (event) => {
@@ -150,6 +172,98 @@ function cardElement(title: string, preview: string, open: () => void): HTMLElem
     open()
   })
   return card
+}
+
+/** One line of a page's thumbnail: what kind of block, how deep, how long. */
+export interface SkeletonRow {
+  readonly kind: 'heading' | 'text' | 'bullet' | 'ordered' | 'task' | 'done' | 'quote' | 'page'
+  readonly depth: number
+  /** Share of the line the text fills, 0.3 to 1. */
+  readonly width: number
+  /** The block's text as a reader sees it. */
+  readonly text: string
+}
+
+/** How many lines the thumbnail draws: what fits on the glyph. */
+const SKELETON_ROWS = 6
+/** How many of those the card's preview spells out. */
+const PREVIEW_LINES = 3
+
+/**
+ * The thumbnail of a page (Craft's page icon is the page in miniature): its
+ * first blocks as rows, headings bold, list items with their dot, number or
+ * box, nested items indented, a nested page as a small sheet.
+ */
+export function pageSkeleton(node: ProseMirrorNode): SkeletonRow[] {
+  const rows: SkeletonRow[] = []
+  const visit = (parent: ProseMirrorNode, depth: number, inQuote: boolean): void => {
+    parent.forEach((child, _offset, index) => {
+      if (rows.length >= SKELETON_ROWS) return
+      if (parent === node && index === 0) return
+      if (child.type.name === 'list') {
+        const kind =
+          pageBlockOf(child, 0) !== null
+            ? 'page'
+            : child.attrs['kind'] === 'task'
+              ? child.attrs['checked'] === true
+                ? 'done'
+                : 'task'
+              : child.attrs['kind'] === 'ordered'
+                ? 'ordered'
+                : 'bullet'
+        const head = child.firstChild
+        const text = pageTitle(head?.textContent ?? '')
+        rows.push({ kind, depth, width: widthOf(text), text })
+        if (kind !== 'page') {
+          child.forEach((grand, _o, at) => {
+            if (at > 0 && rows.length < SKELETON_ROWS) {
+              visit(child.type.schema.topNodeType.create(null, [grand]), depth + 1, inQuote)
+            }
+          })
+        }
+        return
+      }
+      if (child.isTextblock) {
+        if (child.textContent.trim() === '') return
+        const kind = child.type.name === 'heading' ? 'heading' : inQuote ? 'quote' : 'text'
+        const text = pageTitle(child.textContent)
+        rows.push({ kind, depth, width: widthOf(text), text })
+        return
+      }
+      visit(child, depth, inQuote || child.type.name === 'blockquote')
+    })
+  }
+  visit(node, 0, false)
+  return rows
+}
+
+function widthOf(text: string): number {
+  return Math.round(Math.min(1, Math.max(0.3, text.trim().length / 36)) * 100) / 100
+}
+
+const skeletons = new WeakMap<ProseMirrorNode, SkeletonRow[]>()
+
+function skeletonOf(node: ProseMirrorNode): SkeletonRow[] {
+  const cached = skeletons.get(node)
+  if (cached !== undefined) return cached
+  const rows = pageSkeleton(node)
+  skeletons.set(node, rows)
+  return rows
+}
+
+function skeletonElement(rows: readonly SkeletonRow[]): HTMLElement {
+  const sheet = document.createElement('span')
+  sheet.className = 'kore-page-card-glyph'
+  sheet.setAttribute('aria-hidden', 'true')
+  for (const row of rows) {
+    const line = document.createElement('span')
+    line.className = 'kore-page-skel'
+    line.dataset['kind'] = row.kind
+    line.style.setProperty('--depth', String(Math.min(row.depth, 2)))
+    line.style.setProperty('--width', String(row.width))
+    sheet.append(line)
+  }
+  return sheet
 }
 
 function build(state: EditorState): DecorationSet {
@@ -160,6 +274,8 @@ function build(state: EditorState): DecorationSet {
   for (const page of collapsedPages(state.doc, zoom, pages)) {
     const title = pageTitle(page.node.firstChild?.textContent ?? '')
     const preview = previewOf(state, page.node)
+    const rows = skeletonOf(page.node)
+    const shape = rows.map((row) => `${row.kind}${row.depth}${row.width}`).join(',')
     decorations.push(
       Decoration.node(
         page.pos,
@@ -172,7 +288,7 @@ function build(state: EditorState): DecorationSet {
         // The position is read at tap time: a reused card (same key) may sit
         // elsewhere by then, and two pasted copies can share an id.
         (view, getPos) =>
-          cardElement(title, preview, () => {
+          cardElement(title, preview, rows, () => {
             const at = getPos()
             if (at === undefined) return
             zoomIntoBlockAt(view, at - 1)
@@ -184,7 +300,7 @@ function build(state: EditorState): DecorationSet {
           side: -1,
           ignoreSelection: true,
           stopEvent: (event) => event.type === 'click' || event.type === 'mousedown',
-          key: `page-card:${page.id}:${title}:${preview}`,
+          key: `page-card:${page.id}:${title}:${preview}:${shape}`,
         },
       ),
     )

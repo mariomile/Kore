@@ -60,14 +60,29 @@ describe('PageBlocks', () => {
     await expect.poll(() => cards.elements().length).toBe(2)
     const trip = cards.elements()[0]!
     expect(trip.querySelector('.kore-page-card-title')?.textContent).toBe('Trip to Lisbon')
-    expect(trip.querySelector('.kore-page-card-excerpt')?.textContent).toBe(
-      'Book the flight · Hotel near Alfama · Packing · Passport',
+    // The preview is the page's skeleton: one line per block with its kind
+    // and depth (a nested page shows as one line; its children stay inside).
+    const lines = [...trip.querySelectorAll<HTMLElement>('.kore-page-card-line')].map(
+      (line) =>
+        `${line.dataset['kind']}:${line.style.getPropertyValue('--depth')}:${line.textContent}`,
     )
+    expect(lines).toEqual([
+      'bullet:0:Book the flight',
+      'bullet:0:Hotel near Alfama',
+      'page:0:Packing',
+    ])
+    // The thumbnail draws the same rows in miniature.
+    expect(
+      [...trip.querySelectorAll<HTMLElement>('.kore-page-skel')].map((row) => row.dataset['kind']),
+    ).toEqual(['bullet', 'bullet', 'page'])
     const empty = cards.elements()[1]!
     expect(empty.querySelector('.kore-page-card-title')?.textContent).toBe('Empty one')
     expect(empty.querySelector('.kore-page-card-excerpt')?.textContent).toBe('Empty page')
     // The item's own text sits behind the card.
-    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).not.toBeVisible()
+    const hidden = [...pmRoot.element().querySelectorAll('p')].find(
+      (line) => line.textContent === 'Book the flight',
+    )
+    expect(hidden?.offsetParent).toBeNull()
     await expect.element(pmRoot.getByText('After')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
   })

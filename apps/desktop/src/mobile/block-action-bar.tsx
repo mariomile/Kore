@@ -131,7 +131,8 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
             onPress={() => act(commands.moveToNote)}
           />
           <BarButton
-            label="Zoom"
+            // A page opens; any other block zooms (the Mac menu says the same).
+            label={state.isPage ? 'Open' : 'Zoom'}
             icon={<Locate />}
             disabled={!single}
             onPress={() => act(commands.zoom)}

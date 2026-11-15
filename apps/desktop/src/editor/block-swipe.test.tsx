@@ -239,8 +239,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view } = await renderList(onChange, PAGE)
       await userEvent.click(view.getByText('after'))
-      const text = view.getByText('after').element().firstChild
-      document.getSelection()?.collapse(text, 0)
+      await userEvent.keyboard('{Home}')
       await new Promise((resolve) => setTimeout(resolve, 50))
       onChange.mockClear()
       await userEvent.keyboard('{Backspace}')

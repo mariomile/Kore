@@ -1,9 +1,18 @@
 import { createContext, use } from 'react'
-import type { AppPlatform, GraphInfo, RecentGraph } from '@kore/core'
+import type { AppPlatform, GithubRepoRef, GraphInfo, RecentGraph } from '@kore/core'
 import type { MobileGraphBoot } from './use-mobile-graph-boot'
 
 /** Lifecycle of the active graph (Plan 02 loading gate). */
 export type GraphStatus = 'loading' | 'choosing' | 'opening' | 'ready'
+
+export interface OpenGraphOptions {
+  /**
+   * Consider the first-run seeds ("How to use Kore", default objects) for an
+   * empty vault. Default true; a vault opened from GitHub passes false so its
+   * repository never receives them.
+   */
+  seedFirstRun?: boolean
+}
 
 /**
  * The graph context surface. The mobile-only slice (`needsOnboarding`,
@@ -55,7 +64,18 @@ export interface GraphContextValue extends MobileGraphBoot {
    */
   createAt: (root: string) => Promise<boolean>
   /** Open a graph by its root path. Resolves true only when it reached 'ready'. */
-  openRecent: (root: string) => Promise<boolean>
+  openRecent: (root: string, options?: OpenGraphOptions) => Promise<boolean>
+  /**
+   * "Open from GitHub": clone `ref` into the absolute `destination`, then
+   * open it without first-run seeds. Throws (for the form to show) when the
+   * token, the repository or the destination is wrong; resolves true only on
+   * a confirmed open.
+   */
+  openFromGithub: (
+    ref: GithubRepoRef,
+    token: string | null,
+    destination: string,
+  ) => Promise<boolean>
   /** Drop a graph from the recents list. */
   forget: (root: string) => Promise<void>
   /**

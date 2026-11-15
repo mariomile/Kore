@@ -111,3 +111,16 @@ export async function ensureFirstRunSeeds(options: EnsureWelcomeNoteOptions): Pr
   }
   return brandNew
 }
+
+/**
+ * Record every first-run seed as considered without writing anything — for a
+ * vault opened from GitHub. Its files belong to the repository: even an empty
+ * repo must not get the welcome note or the default objects, which the next
+ * sync would push into it.
+ */
+export async function markFirstRunSeedsConsidered(indexGeneration: number): Promise<void> {
+  await Promise.all([
+    setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', indexGeneration),
+    setIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY, 'true', indexGeneration),
+  ])
+}

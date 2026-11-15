@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +8,9 @@ import { MobileOnboardingScreen } from './onboarding-screen'
 import { MobileApp } from './mobile-app'
 
 const completeOnboarding = vi.hoisted(() => vi.fn(async (_kind: string, _root?: string) => {}))
+const completeOnboardingFromGithub = vi.hoisted(() =>
+  vi.fn(async (_ref: { owner: string; name: string }, _token: string | null) => {}),
+)
 const storageInfo = vi.hoisted<{ current: unknown }>(() => ({ current: null }))
 const storageResolving = vi.hoisted<{ current: boolean }>(() => ({ current: false }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -19,6 +23,7 @@ vi.mock('@/providers/graph-provider', () => ({
     mobileStorageInfo: storageInfo.current,
     mobileStorageResolving: storageResolving.current,
     completeOnboarding,
+    completeOnboardingFromGithub,
   }),
 }))
 
@@ -162,12 +167,26 @@ describe('MobileOnboardingScreen', () => {
       .toBeVisible()
   })
 
-  it('does not offer repository setup from the first-run picker', async () => {
-    await render(<MobileOnboardingScreen />)
+  it('opens a vault from GitHub through its own sheet', async () => {
+    const queryClient = new QueryClient()
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <MobileOnboardingScreen />
+      </QueryClientProvider>,
+    )
 
-    expect(page.getByRole('button', { name: /github/i }).query()).toBeNull()
-    expect(page.getByText(/backup repository/i).query()).toBeNull()
-    expect(page.getByRole('button', { name: 'Download & open' }).query()).toBeNull()
+    await page.getByRole('button', { name: 'Open a vault from GitHub' }).click()
+    await page.getByLabelText('Repository').fill('https://github.com/alex/brain')
+    await page.getByLabelText('Token').fill('github_pat_abc')
+    await page.getByRole('button', { name: 'Open', exact: true }).click()
+
+    await vi.waitFor(() =>
+      expect(completeOnboardingFromGithub).toHaveBeenCalledWith(
+        { owner: 'alex', name: 'brain' },
+        'github_pat_abc',
+      ),
+    )
+    expect(completeOnboarding).not.toHaveBeenCalled()
   })
 
   it('does not expose folder language in the primary first-run path', async () => {

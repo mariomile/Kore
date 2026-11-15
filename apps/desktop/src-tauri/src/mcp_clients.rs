@@ -5,6 +5,12 @@
 //! only `KORE_GRAPH` does: client configs hold other tools' tokens, and the
 //! webview has no business seeing them. Which vault an entry is tied to is
 //! `@kore/core` policy (`app/agent-skill.ts`).
+//!
+//! The second capability is the one-click connect: add a server entry to a
+//! client's config (Claude Desktop, Cursor: their JSON file, after a backup
+//! beside it; Claude Code: its own `claude mcp add --scope user`), removing
+//! the entries the caller names. What entry to add and which old ones to
+//! replace is core's decision.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -12,7 +18,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 
 /// One configured server entry.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -26,6 +32,34 @@ pub struct McpClientServer {
     pub args: Vec<String>,
     /// The entry's `env`, reduced to `KORE_GRAPH` when set.
     pub env: BTreeMap<String, String>,
+}
+
+/// A client the app can connect with one click.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum McpClient {
+    ClaudeDesktop,
+    ClaudeCode,
+    Cursor,
+}
+
+impl McpClient {
+    fn label(self) -> &'static str {
+        match self {
+            Self::ClaudeDesktop => "Claude Desktop",
+            Self::ClaudeCode => "Claude Code",
+            Self::Cursor => "Cursor",
+        }
+    }
+
+    /// The JSON config for clients connected by editing a file.
+    fn config_file(self) -> Option<PathBuf> {
+        client_configs()
+            .into_iter()
+            .find(|(label, _)| *label == self.label())
+            .map(|(_, path)| path)
+            .filter(|_| self != Self::ClaudeCode)
+    }
 }
 
 /// Where each client keeps its JSON config. Missing files are skipped.
@@ -141,6 +175,135 @@ pub async fn mcp_client_servers() -> AppResult<Vec<McpClientServer>> {
     .await
 }
 
+/// Add `name` → `{command, args}` to the top-level `mcpServers` of a client's
+/// config text, removing `replace` first. A malformed file is an error, never
+/// overwritten. Pure (unit-tested).
+fn with_server(
+    raw: Option<&str>,
+    name: &str,
+    command: &str,
+    args: &[String],
+    replace: &[String],
+) -> AppResult<String> {
+    let mut config: Value = match raw {
+        Some(raw) if !raw.trim().is_empty() => serde_json::from_str(raw).map_err(|err| {
+            AppError::io(format!(
+                "the config file isn't valid JSON, so Kore left it alone: {err}"
+            ))
+        })?,
+        _ => Value::Object(serde_json::Map::new()),
+    };
+    let root = config.as_object_mut().ok_or_else(|| {
+        AppError::io("the config file isn't a JSON object, so Kore left it alone")
+    })?;
+    let servers = root
+        .entry("mcpServers")
+        .or_insert_with(|| Value::Object(serde_json::Map::new()))
+        .as_object_mut()
+        .ok_or_else(|| AppError::io("mcpServers in the config file isn't an object"))?;
+    for old in replace {
+        servers.remove(old);
+    }
+    servers.insert(
+        name.to_string(),
+        serde_json::json!({ "command": command, "args": args }),
+    );
+    let mut text =
+        serde_json::to_string_pretty(&config).map_err(|err| AppError::io(err.to_string()))?;
+    text.push('\n');
+    Ok(text)
+}
+
+fn connect_file(
+    path: &Path,
+    name: &str,
+    command: &str,
+    args: &[String],
+    replace: &[String],
+) -> AppResult<()> {
+    let dir = path
+        .parent()
+        .ok_or_else(|| AppError::io("the config file has no folder"))?;
+    let raw = match std::fs::read_to_string(path) {
+        Ok(raw) => Some(raw),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+        Err(err) => return Err(err.into()),
+    };
+    let next = with_server(raw.as_deref(), name, command, args, replace)?;
+    if let Some(raw) = &raw {
+        let mut backup = path.as_os_str().to_owned();
+        backup.push(".kore-backup");
+        std::fs::write(PathBuf::from(backup), raw)?;
+    }
+    std::fs::create_dir_all(dir)?;
+    crate::capture::atomic_write_to(path, &next)
+}
+
+fn connect_claude_code(
+    name: &str,
+    command: &str,
+    args: &[String],
+    replace: &[String],
+) -> AppResult<()> {
+    let binary = crate::agent_cli::resolve_binary(crate::agent_cli::AgentCliBinary::Claude)
+        .ok_or_else(|| {
+            AppError::io("Claude Code isn't installed on this Mac (no `claude` command)")
+        })?;
+    let run = |argv: &[&str]| -> AppResult<std::process::Output> {
+        let mut command = std::process::Command::new(&binary);
+        crate::agent_cli::apply_gui_path(&mut command, &binary);
+        Ok(command
+            .args(argv)
+            .stdin(std::process::Stdio::null())
+            .output()?)
+    };
+    let mut removals: Vec<&str> = replace.iter().map(String::as_str).collect();
+    if !removals.contains(&name) {
+        removals.push(name);
+    }
+    for old in removals {
+        // Absent entries fail here; that is the point of removing first.
+        let _ = run(&["mcp", "remove", "--scope", "user", old])?;
+    }
+    let mut argv = vec!["mcp", "add", "--scope", "user", name, "--", command];
+    argv.extend(args.iter().map(String::as_str));
+    let output = run(&argv)?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Err(AppError::io(format!(
+        "claude mcp add failed: {}",
+        stderr.trim()
+    )))
+}
+
+/// Command: add a server entry to one client's config, removing `replace`
+/// (entry names) first. Claude Desktop and Cursor must already be installed:
+/// a missing app folder is an error, not a new folder.
+#[tauri::command]
+pub async fn mcp_client_connect(
+    client: McpClient,
+    name: String,
+    command: String,
+    args: Vec<String>,
+    replace: Vec<String>,
+) -> AppResult<()> {
+    crate::blocking::run_blocking(move || match client.config_file() {
+        None => connect_claude_code(&name, &command, &args, &replace),
+        Some(path) => {
+            if !path.parent().is_some_and(Path::is_dir) {
+                return Err(AppError::io(format!(
+                    "{} isn't installed on this Mac",
+                    client.label()
+                )));
+            }
+            connect_file(&path, &name, &command, &args, &replace)
+        }
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,5 +336,28 @@ mod tests {
             BTreeMap::from([("KORE_GRAPH".to_string(), "/Vaults/Brain".to_string())])
         );
         assert!(servers_in("Cursor", &dir.path().join("missing.json")).is_empty());
+    }
+
+    #[test]
+    fn connect_adds_the_entry_keeps_the_rest_and_replaces_old_ones() {
+        let raw = r#"{"globalShortcut":"Cmd+K","mcpServers":{"files":{"command":"npx"},"kore-brain":{"command":"kore","args":["--graph","/v","mcp"]}}}"#;
+        let next = with_server(
+            Some(raw),
+            "kore",
+            "/k/kore",
+            &["mcp".to_string()],
+            &["kore-brain".to_string()],
+        )
+        .unwrap();
+        let value: Value = serde_json::from_str(&next).unwrap();
+        assert_eq!(value["globalShortcut"], "Cmd+K");
+        assert_eq!(value["mcpServers"]["files"]["command"], "npx");
+        assert!(value["mcpServers"].get("kore-brain").is_none());
+        assert_eq!(
+            value["mcpServers"]["kore"],
+            serde_json::json!({ "command": "/k/kore", "args": ["mcp"] })
+        );
+        assert!(with_server(Some("{ not json"), "kore", "/k/kore", &[], &[]).is_err());
+        assert!(with_server(None, "kore", "/k/kore", &[], &[]).is_ok());
     }
 }

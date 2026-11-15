@@ -156,3 +156,60 @@ export function clientsWithPinnedVault(
     .map((server) => server.client)
   return [...new Set(clients)]
 }
+
+/** The apps on this Mac Kore can connect with one click. */
+export const MCP_CLIENTS = [
+  { id: 'claude-desktop', label: 'Claude Desktop' },
+  { id: 'claude-code', label: 'Claude Code' },
+  { id: 'cursor', label: 'Cursor' },
+] as const
+
+/** One of {@link MCP_CLIENTS}. */
+export type McpClientId = (typeof MCP_CLIENTS)[number]['id']
+
+/**
+ * Where an app stands: `connected` (a Kore server that follows the vault),
+ * `pinned` (only older configs tied to one folder) or `none`.
+ */
+export type McpClientConnection = 'connected' | 'pinned' | 'none'
+
+/** How the app labelled `label` is connected, from {@link mcpClientServers}. */
+export function mcpClientConnection(
+  servers: readonly McpClientServer[],
+  label: string,
+): McpClientConnection {
+  const own = servers.filter((server) => server.client === label && isKoreCli(server.command))
+  if (own.some((server) => server.args.includes('mcp') && pinnedVaultOf(server) === null)) {
+    return 'connected'
+  }
+  return own.length > 0 ? 'pinned' : 'none'
+}
+
+/**
+ * Connect one app: add the `kore mcp` entry that follows the vault
+ * ({@link mcpClientSetup}) to its config, replacing that app's older Kore
+ * entries so it ends with exactly one. Claude Desktop and Cursor get their
+ * config file edited (a backup is kept beside it); Claude Code is asked
+ * through `claude mcp add --scope user`.
+ */
+export async function connectMcpClient(options: {
+  readonly client: McpClientId
+  readonly cliPath: string
+  readonly servers: readonly McpClientServer[]
+}): Promise<void> {
+  const label = MCP_CLIENTS.find((client) => client.id === options.client)?.label
+  const replace = options.servers
+    .filter((server) => server.client === label && isKoreCli(server.command))
+    .map((server) => server.name)
+  await call(
+    'mcp_client_connect',
+    {
+      client: options.client,
+      name: 'kore',
+      command: options.cliPath,
+      args: ['mcp'],
+      replace: [...new Set(replace)],
+    },
+    z.null(),
+  )
+}

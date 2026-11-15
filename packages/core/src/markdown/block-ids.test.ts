@@ -164,7 +164,7 @@ describe('wikilinkLabel', () => {
     expect(wikilinkLabel('Input/Granola/Sprint Review, 2026-11-13|Sprint Review')).toBe(
       'Sprint Review',
     )
-    expect(wikilinkLabel('Notes/Luca\\|Luca')).toBe('Luca')
+    expect(wikilinkLabel(String.raw`Notes/Luca\|Luca`)).toBe('Luca')
     expect(wikilinkLabel('Prezzi#^p1')).toBe('Prezzi')
     expect(wikilinkLabel('Prezzi#Plans|plans')).toBe('plans')
     expect(wikilinkLabel('Prezzi|')).toBeNull()

@@ -1869,8 +1869,7 @@ html[data-sidebar-resizing] aside {
 /* A finger held on a block is heading for Kore's long-press: no iOS text
    selection, loupe or callout underneath it (see block-swipe.tsx). */
 .kore-block-press-guard,
-.kore-block-press-guard .ProseMirror,
-.kore-block-press-guard .ProseMirror * {
+.kore-block-press-guard * {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -1945,6 +1944,30 @@ html[data-sidebar-resizing] aside {
   .prosemirror-flat-list[data-list-kind='task']
   > .list-marker {
   justify-content: center;
+}
+/* Measured on the simulator: centring alone leaves the box 4px left of the
+   bullet dots' axis. */
+.kore-mobile-content-gutter
+  .kore-editor
+  .prosemirror-flat-list[data-list-kind='task']
+  > .list-marker
+  input[type='checkbox'] {
+  transform: translate(4px, 0.02em);
+}
+/* Backlink snippets are compact rows: their box keeps the start alignment
+   and its gap to the text. */
+.kore-mobile-content-gutter
+  .kore-backlink-snippet
+  .prosemirror-flat-list[data-list-kind='task']
+  > .list-marker {
+  justify-content: start;
+}
+.kore-mobile-content-gutter
+  .kore-backlink-snippet
+  .prosemirror-flat-list[data-list-kind='task']
+  > .list-marker
+  input[type='checkbox'] {
+  transform: translateY(0.02em);
 }
 /* A link (a task's date most of all) never breaks across lines. */
 .kore-editor .md-wikilink-view {

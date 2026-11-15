@@ -70,6 +70,14 @@ function readSelectionState(state: EditorState): BlockSelectionState {
     }
   }
   const lists = blocks.filter((block) => block.node.type.name === 'list')
+  const dates = new Set(
+    blocks.map(
+      (block) =>
+        /\[\[(\d{4}-\d{2}-\d{2})\]\]/.exec(
+          block.node.firstChild?.textContent ?? block.node.textContent,
+        )?.[1] ?? null,
+    ),
+  )
   return {
     count: blocks.length,
     kind: kinds.size === 1 ? ([...kinds][0] ?? null) : null,
@@ -77,6 +85,7 @@ function readSelectionState(state: EditorState): BlockSelectionState {
     canOutdent: blocks.some((block) => siblings(block).nested),
     canMoveUp: single !== undefined && single.node.type.name === 'list' && siblings(single).before,
     canMoveDown: single !== undefined && single.node.type.name === 'list' && siblings(single).after,
+    date: dates.size === 1 ? ([...dates][0] ?? null) : null,
   }
 }
 
@@ -320,7 +329,9 @@ export function BlockSwipeGestures({
       // plugin's guard) and turns off text selection on its wrapper, so that
       // gesture finds nothing to act on and our long-press wins. A quick tap
       // never sees it.
-      const guardHost = dom.parentElement
+      // The whole document, not just this editor: on the daily the hold can
+      // land a native selection in the backlinks panel under the editor.
+      const guardHost = document.documentElement
       let guarded = false
       const setGuard = (on: boolean): void => {
         if (guarded === on || view.isDestroyed) return

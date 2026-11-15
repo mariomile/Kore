@@ -13,6 +13,8 @@ export interface BlockSelectionState {
   canOutdent: boolean
   canMoveUp: boolean
   canMoveDown: boolean
+  /** The due date every selected block shares (`YYYY-MM-DD`), else null. */
+  date: string | null
 }
 
 /** The action bar's verbs, each closing over the editor that owns the selection. */

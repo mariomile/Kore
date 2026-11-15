@@ -51,6 +51,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   const { state, commands } = selection
   const [sheet, setSheet] = useState<Sheet>(null)
   const single = state.count === 1
+  const pickerStart = state.date ?? format(new Date(), 'yyyy-MM-dd')
 
   // A tick each time a block joins the selection, the way a list picks up
   // a row in iOS edit mode.
@@ -281,8 +282,13 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 type="date"
                 aria-label="Pick a date"
                 className="absolute inset-0 opacity-0"
+                // Opens on the block's date, else today, which is also what
+                // iOS fills in: closing without a pick changes nothing.
+                key={pickerStart}
+                defaultValue={pickerStart}
                 onBlur={(event) => {
                   const value = event.currentTarget.value
+                  if (value === pickerStart) return
                   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
                   if (match === null) return
                   const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))

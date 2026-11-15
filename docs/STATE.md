@@ -1,5 +1,12 @@
 # Kore working state
 
+## Block zoom on iPhone, 2026-11-15
+
+- [x] iPhone: tap a bullet to zoom into that block; the header back arrow or
+  breadcrumb steps out, the edge back-swipe is off while zoomed, and task
+  checkboxes still toggle (#446).
+- Not verified on a real iPhone.
+
 ## On-device memo transcription, type board and daily widget on iPhone, 2026-11-15
 
 - [x] iPhone: audio memos transcribe with Apple's on-device speech recognizer

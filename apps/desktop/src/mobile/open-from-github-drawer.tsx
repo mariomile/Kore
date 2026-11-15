@@ -1,5 +1,5 @@
 import { useId, type KeyboardEvent, type ReactElement } from 'react'
-import { OPEN_FROM_GITHUB_TOKEN_URL } from '@kore/core'
+import { newSyncTokenUrl } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { GithubMark } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
@@ -97,7 +97,7 @@ function OpenFromGithubSheet(): ReactElement {
               <button
                 type="button"
                 className="-my-3 py-3 text-xs text-text-muted"
-                onClick={() => openUrlSync(OPEN_FROM_GITHUB_TOKEN_URL)}
+                onClick={() => openUrlSync(newSyncTokenUrl(form.ref ?? {}))}
               >
                 Get a token
               </button>

@@ -77,7 +77,6 @@ export {
 export {
   cloneGithubVault,
   PublicRepoRefusedError,
-  OPEN_FROM_GITHUB_TOKEN_URL,
   type CloneGithubVaultOptions,
 } from './github-clone'
 export { createGist, updateGist, deleteGist, type PublishedGist, type GistFile } from './gists'

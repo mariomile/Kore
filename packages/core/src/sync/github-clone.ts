@@ -5,13 +5,6 @@ import { getAuthenticatedUser, getGithubToken, saveGithubAuth } from './github-a
 import { getGithubRepo, githubRemoteUrl, type GithubRepo, type GithubRepoRef } from './github-repos'
 
 /**
- * Where to make a fine-grained token for opening a vault: GitHub's own form.
- * The token needs Contents read/write on the vault's repository — read to
- * clone, write so the opened vault keeps syncing back.
- */
-export const OPEN_FROM_GITHUB_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new'
-
-/**
  * Thrown when the repository is public and the caller hasn't confirmed it:
  * everything Kore syncs there (`private: true` notes included — git sync
  * doesn't filter them) becomes readable by anyone. Same consent gate as the

@@ -51,7 +51,6 @@ export {
   gitClone,
   cloneGithubVault,
   PublicRepoRefusedError,
-  OPEN_FROM_GITHUB_TOKEN_URL,
   type CloneGithubVaultOptions,
   parseGithubRemote,
   githubRemoteUrl,

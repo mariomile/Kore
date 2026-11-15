@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { documentDir, join } from '@tauri-apps/api/path'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
-import { OPEN_FROM_GITHUB_TOKEN_URL } from '@kore/core'
+import { newSyncTokenUrl } from '@kore/core'
 import { getIsComposing } from '@meowdown/core'
 import { GithubMark } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
@@ -144,7 +144,7 @@ export function OpenFromGithubCard({
               <button
                 type="button"
                 className="text-xs text-text-muted transition-colors hover:text-text-secondary"
-                onClick={() => openUrlSync(OPEN_FROM_GITHUB_TOKEN_URL)}
+                onClick={() => openUrlSync(newSyncTokenUrl(form.ref ?? {}))}
               >
                 Get a token
               </button>

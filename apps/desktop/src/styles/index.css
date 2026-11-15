@@ -1507,12 +1507,7 @@ html[data-sidebar-resizing] aside {
   inset: 0 0 -1rem;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    var(--surface-app) 0%,
-    color-mix(in srgb, var(--surface-app) 72%, transparent) 60%,
-    transparent 100%
-  );
+  background: linear-gradient(to top, transparent, var(--surface-app));
 }
 
 .mobile-nav-capsule {

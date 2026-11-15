@@ -34,8 +34,9 @@ const HIT_AREA = "relative after:absolute after:-inset-1 after:content-['']"
  * The composer is a floating translucent card over the turn list's bottom
  * edge (the `bg-popover` blur recipe), not a full-width strip: the
  * conversation scrolls under it, and the list pads past its published
- * height ({@link useComposerHeightVar}). Craft's register: a generously
- * rounded card that opens on the context chip (what a question runs over)
+ * height ({@link useComposerHeightVar}). Craft's register on the house
+ * radius ramp (the card is `rounded-2xl`, so the Appearance radius setting
+ * reaches it): a card that opens on the context chip (what a question runs over)
  * while the conversation is empty, with outlined capsules for attach and
  * model along the bottom.
  */
@@ -94,18 +95,18 @@ export function MobileChatComposer({
       className="absolute inset-x-0 z-10 px-3 pb-2"
       style={{ bottom: 'var(--mobile-tab-bar-height, 0px)' }}
     >
-      <div className="rounded-[1.625rem] border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
+      <div className="rounded-2xl border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
         {turns.length === 0 && !steering && graph !== null ? (
           // What the question runs over, before the first one is asked (once
           // a conversation runs, each reply lists its own "Context used").
           // A label, not a control: there is one scope today, the vault.
           <div className="px-2.5 pt-2.5">
             <div
-              className="inline-flex max-w-full items-center gap-2.5 rounded-2xl bg-surface-hover py-1.5 pr-3.5 pl-1.5"
+              className="inline-flex max-w-full items-center gap-2.5 rounded-xl bg-surface-hover py-1.5 pr-3.5 pl-1.5"
               aria-label={`Context: all notes in ${graph.name}`}
               role="note"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-[0.625rem] border border-border bg-surface text-text">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text">
                 <Notebook aria-hidden className="size-4" />
               </span>
               <span className="flex min-w-0 flex-col leading-tight" aria-hidden>

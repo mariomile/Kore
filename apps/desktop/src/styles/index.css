@@ -1497,6 +1497,19 @@ html[data-sidebar-resizing] aside {
   background: linear-gradient(to bottom, transparent, var(--surface-app));
 }
 
+/* A floating pill header (the Chat tab): no bar and no rule, just capsules
+   over the content. The content scrolling up under them fades into the app
+   background instead, the top-edge mirror of `mobile-nav-bar` above. No
+   backdrop-filter on the strip itself: the capsules blur, the fade is free. */
+.mobile-pill-header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -1rem;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to top, transparent, var(--surface-app));
+}
+
 .mobile-nav-capsule {
   pointer-events: auto;
   border-radius: 9999px;

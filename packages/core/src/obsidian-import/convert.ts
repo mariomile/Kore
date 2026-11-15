@@ -120,9 +120,18 @@ export function convertObsidianSettings(
     }
     const filters = next.userIgnoreFilters
     if (Array.isArray(filters)) {
-      next.userIgnoreFilters = filters.map((filter: unknown) =>
-        typeof filter === 'string' ? repoint(filter) : filter,
-      )
+      // The old entry stays beside the repointed one: notes Obsidian kept
+      // out of the attachment folder (sidecars, scratch) don't move with
+      // the attachments, so dropping it would surface them as notes.
+      next.userIgnoreFilters = [
+        ...new Set(
+          filters.flatMap((filter: unknown) =>
+            typeof filter === 'string' && repoint(filter) !== filter
+              ? [repoint(filter), filter]
+              : [filter],
+          ),
+        ),
+      ]
     }
     emit(OBSIDIAN_FILES.app, config.app, next)
   }
@@ -138,6 +147,57 @@ export function convertObsidianSettings(
 }
 
 /**
+ * A `.base` file with the folders and files the conversion moved repointed:
+ * `file.inFolder("Journal/Daily")` reads `file.inFolder("daily")`, a path
+ * listed in a view's order follows its file. Only whole quoted strings and
+ * plain YAML list items that name a moved folder, something under it, or a
+ * moved file change; everything else, formulas included, stays as written.
+ */
+export function convertBaseFile(
+  content: string,
+  mapping: ImportMapping,
+  moves: ReadonlyMap<string, string>,
+): string {
+  const daily = dailyLayoutOf(mapping) === null ? null : (mapping.daily?.folder ?? null)
+  const repoint = (value: string): string => {
+    const moved = moves.get(value)
+    if (moved !== undefined) {
+      return moved
+    }
+    if (daily !== null && daily !== '' && value === daily) {
+      return DAILY_DIR
+    }
+    for (const [from, to] of [
+      [mapping.attachments, ASSETS_DIR],
+      [mapping.templates, TEMPLATES_DIR],
+    ] as const) {
+      if (from !== null && from !== '' && (value === from || value.startsWith(`${from}/`))) {
+        return to + value.slice(from.length)
+      }
+    }
+    return value
+  }
+  const quoted =
+    (quote: string) =>
+    (whole: string, value: string): string => {
+      const next = repoint(value)
+      return next === value ? whole : `${quote}${next}${quote}`
+    }
+  // Double and single quotes in separate passes: a YAML string in single
+  // quotes often holds an expression with double-quoted folders inside.
+  return content
+    .replace(/"([^"\n\\]+)"/g, quoted('"'))
+    .replace(/'([^'\n\\]+)'/g, quoted("'"))
+    .replace(
+      /^(\s*-\s+)([^\s"'#[{|>&*!%@`][^#\n]*?)(\s*)$/gm,
+      (whole, lead: string, value: string, tail: string) => {
+        const next = repoint(value)
+        return next === value ? whole : `${lead}${next}${tail}`
+      },
+    )
+}
+
+/**
  * Decide every byte of converting a vault into a copy laid out the way
  * `mapping` says: which files move, which are left out, and the new contents
  * of each note whose links moved or that Kore would rewrite canonically.
@@ -146,7 +206,8 @@ export function convertObsidianSettings(
  */
 export function buildObsidianConversion(input: {
   readonly mapping: ImportMapping
-  readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'config'>
+  readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'config'> &
+    Partial<Pick<ObsidianImportSource, 'bases'>>
   readonly convert: ImportCanonicalizer
 }): ObsidianConversion {
   const { mapping, source } = input
@@ -176,6 +237,15 @@ export function buildObsidianConversion(input: {
     }
     if (contents !== note.content) {
       writes.push({ path: destination.get(note.path) ?? note.path, contents })
+    }
+  }
+  for (const base of source.bases ?? []) {
+    if (excluded.has(base.path)) {
+      continue
+    }
+    const contents = convertBaseFile(base.content, mapping, destination)
+    if (contents !== base.content) {
+      writes.push({ path: destination.get(base.path) ?? base.path, contents })
     }
   }
   writes.push(...convertObsidianSettings(source.config, mapping))

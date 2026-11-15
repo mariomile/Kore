@@ -242,6 +242,13 @@ fn copy_tree(
                 }
                 stats.bytes += fs::copy(entry.path(), &target)
                     .map_err(|err| AppError::io(format!("cannot copy {wire}: {err}")))?;
+                // `fs::copy` keeps the modification time on macOS but not
+                // everywhere; the copy must, or every note reads as edited
+                // today and "recent" lists and `file.mtime` views go blank.
+                if let Ok(modified) = entry.metadata().and_then(|meta| meta.modified()) {
+                    keep_modified(&target, modified)
+                        .map_err(|err| AppError::io(format!("cannot copy {wire}: {err}")))?;
+                }
                 stats.files += 1;
             }
         }
@@ -266,13 +273,56 @@ fn write_files(graph: Option<&Path>, destination: &str, files: &[VaultCopyFile])
         }
         fs::write(&target, &file.contents)
             .map_err(|err| AppError::io(format!("cannot write {}: {err}", file.path)))?;
+        // A rewrite (links repointed, Markdown made canonical) is not an
+        // edit: the file keeps the time the copy gave it, the source's.
+        if let Ok(modified) = meta.modified() {
+            keep_modified(&target, modified)
+                .map_err(|err| AppError::io(format!("cannot write {}: {err}", file.path)))?;
+        }
     }
     Ok(())
+}
+
+fn keep_modified(path: &Path, modified: std::time::SystemTime) -> std::io::Result<()> {
+    fs::OpenOptions::new()
+        .write(true)
+        .open(path)?
+        .set_modified(modified)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn copies_and_rewrites_keep_the_source_modification_time() {
+        let vault = tempfile::tempdir().expect("vault");
+        let out = tempfile::tempdir().expect("out");
+        write(vault.path(), "Notes/Old.md", "old");
+        let then =
+            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        keep_modified(&vault.path().join("Notes/Old.md"), then).expect("set mtime");
+
+        let (dest, _) = copy_tree(vault.path(), &dest_str(out.path()), &[], &[]).expect("copy");
+        let modified = |rel: &str| {
+            fs::metadata(dest.join(rel))
+                .and_then(|meta| meta.modified())
+                .expect("mtime")
+        };
+        assert_eq!(modified("Notes/Old.md"), then);
+
+        write_files(
+            None,
+            &dest_str(&dest),
+            &[VaultCopyFile {
+                path: "Notes/Old.md".to_string(),
+                contents: "canonical".to_string(),
+            }],
+        )
+        .expect("write");
+        assert_eq!(read(&dest, "Notes/Old.md"), "canonical");
+        assert_eq!(modified("Notes/Old.md"), then);
+    }
 
     fn write(root: &Path, rel: &str, contents: &str) {
         let path = root.join(rel);

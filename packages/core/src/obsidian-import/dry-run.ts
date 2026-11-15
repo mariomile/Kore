@@ -1,3 +1,5 @@
+import { isBasePath } from '../bases/embeds'
+import { readBaseFile } from '../bases/rows'
 import { errorMessage } from '../errors'
 import { listAttachments, listFiles, readNoteLocal, readObsidianConfig } from '../graph/commands'
 import {
@@ -35,6 +37,8 @@ export interface ObsidianImportSource {
   readonly config: ObsidianConfigFiles
   readonly notes: readonly ImportSourceNote[]
   readonly attachments: readonly string[]
+  /** Every `.base` file's text: the conversion repoints the folders its filters name. */
+  readonly bases: readonly ImportSourceNote[]
   /** Every folder holding a note or attachment, for picking a mapping. Sorted. */
   readonly folders: readonly string[]
   /** Notes that couldn't be read (evicted to iCloud, or failing). */
@@ -175,11 +179,20 @@ export async function readObsidianImportSource(
     Array.from({ length: Math.min(READ_CONCURRENCY, files.length) }, async () => await worker()),
   )
   const attachments = attachmentFiles.map((file) => file.path)
+  const bases: ImportSourceNote[] = []
+  for (const path of attachments.filter(isBasePath)) {
+    try {
+      bases.push({ path, content: await readBaseFile(path, generation) })
+    } catch (cause) {
+      console.warn(`obsidian import: could not read ${path}:`, errorMessage(cause))
+    }
+  }
   return {
     layout,
     config,
     notes,
     attachments,
+    bases,
     folders: importFolders([...files.map((file) => file.path), ...attachments]),
     skipped,
   }

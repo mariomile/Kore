@@ -3,6 +3,7 @@ import { useEditor } from '@meowdown/react'
 import { buildFileMarkdown, type EditorExtension } from '@meowdown/core'
 import { toPortableImageFile } from '@/lib/image-file'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { readBlockKind, setBlockKind } from './block-kind'
 import { whenEditorMounted } from './when-editor-mounted'
 import {
   clearFormattingToolbar,
@@ -64,53 +65,9 @@ export function FormattingToolbarBridge({
     const cancel = whenEditorMounted(editor, () => {
       const dom = editor.view.dom
 
-      function readBlockKind(): FormattingBlockKind {
-        const { $from } = editor.state.selection
-        if ($from.parent.type.name === 'heading') return 'heading'
-        for (let depth = $from.depth; depth > 0; depth--) {
-          const node = $from.node(depth)
-          if (node.type.name === 'list') {
-            const attrs = node.attrs as { kind?: string; checked?: boolean | null }
-            return attrs.kind === 'task' ? 'task' : 'bullet'
-          }
-          if (node.type.name === 'blockquote') return 'quote'
-        }
-        return 'text'
-      }
-
-      // Back to a plain paragraph: out of any list or quote, heading dropped.
-      function toText(): void {
-        while (editor.commands.unwrapList.canExec()) editor.commands.unwrapList()
-        if (readBlockKind() === 'quote') editor.commands.toggleBlockquote()
-        editor.commands.setParagraph()
-      }
-
-      function setBlockKind(kind: FormattingBlockKind): void {
-        const current = readBlockKind()
-        // Tapping the pill that is already lit changes nothing (Craft).
-        if (kind === current) return
-        toText()
-        switch (kind) {
-          case 'heading':
-            editor.commands.setHeading({ level: 2 })
-            break
-          case 'bullet':
-            editor.commands.wrapInList({ kind: 'bullet' })
-            break
-          case 'task':
-            editor.commands.wrapInList({ kind: 'task' })
-            break
-          case 'quote':
-            editor.commands.toggleBlockquote()
-            break
-          case 'text':
-            break
-        }
-      }
-
       function readCapabilities(): FormattingToolbarCapabilities {
         return {
-          blockKind: readBlockKind(),
+          blockKind: readBlockKind(editor),
           canUndo: editor.commands.undo.canExec(),
           canIndent: editor.commands.indentList.canExec(),
           canDedent: editor.commands.dedentList.canExec(),
@@ -138,7 +95,7 @@ export function FormattingToolbarBridge({
         moveDown: () => run(() => editor.commands.moveList('down')),
         insertTrigger: (text: FormattingTriggerText) =>
           run(() => editor.commands.insertTrigger(text)),
-        setBlockKind: (kind: FormattingBlockKind) => run(() => setBlockKind(kind)),
+        setBlockKind: (kind: FormattingBlockKind) => run(() => setBlockKind(editor, kind)),
         undo: () => run(() => editor.commands.undo()),
         dismissKeyboard: () => editor.blur(),
         attachFiles: async (files: File[]) => {

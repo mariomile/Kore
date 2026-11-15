@@ -636,7 +636,7 @@ export function NotePaneComponent({
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
-        {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
+        {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
         {/* Touch only: closing the keyboard blurs the editor, and an open
             [[ / slash menu must not outlive it (pointer users dismiss it by
             clicking outside). */}

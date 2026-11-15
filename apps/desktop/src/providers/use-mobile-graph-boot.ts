@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  cloneGithubVault,
   createGraph,
   errorMessage,
   isMobilePlatform,
@@ -8,11 +9,14 @@ import {
   mobileStorage,
   mobileStorageLocal,
   type AppPlatform,
+  type GithubRepoRef,
   type MobileStorageInfo,
   type MobileStorageKind,
 } from '@kore/core'
+import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { takeWarmMobileStorage } from '@/lib/mobile-boot-warm'
 import { SETTINGS_QUERY_KEY, useSettings } from '@/providers/settings-provider'
+import type { OpenGraphOptions } from './graph-context'
 
 /** The graph directory created in the container for a fresh start — reads as
  * `iCloud Drive → Kore → Notes` in Files/Finder. */
@@ -63,7 +67,7 @@ function storageRoot(
 export interface MobileGraphBootOptions {
   platform: AppPlatform
   /** The provider's serialized open; resolves true on a confirmed 'ready'. */
-  openRecent: (root: string) => Promise<boolean>
+  openRecent: (root: string, options?: OpenGraphOptions) => Promise<boolean>
   /**
    * Park the provider on its 'choosing' state — onboarding when
    * {@link MobileGraphBoot.needsOnboarding} is up, the open-failed screen
@@ -112,6 +116,17 @@ export interface MobileGraphBoot {
    * root opens.
    */
   completeOnboarding: (kind: MobileStorageKind, root?: string) => Promise<void>
+  /**
+   * Onboarding's "Open from GitHub": clone `ref` into the on-device root
+   * (which must still be empty), open it without first-run seeds and persist
+   * the local choice. `token` null uses the one already stored. Throws for
+   * the sheet to show; a failed clone leaves onboarding up for a retry.
+   */
+  completeOnboardingFromGithub: (
+    ref: GithubRepoRef,
+    token: string | null,
+    options?: { allowPublic?: boolean },
+  ) => Promise<void>
 }
 
 /**
@@ -287,6 +302,32 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
     }
   }, [platform, openRecent, onParked, queryClient])
 
+  /** The shared tail of every onboarding choice, once its open has run. */
+  const finishOnboarding = useCallback(
+    async (kind: MobileStorageKind, root: string, opened: boolean): Promise<void> => {
+      if (!opened) {
+        throw new Error('Couldn’t open your notes — please try again.')
+      }
+      setMobileStorageKind(kind)
+      setNeedsOnboarding(false)
+      // Persist the flags only once the graph is actually open, so a failed open
+      // never strands the user past onboarding. Write through the settings
+      // provider (not a raw save), awaiting hydration first — the provider's
+      // contract for a setting paired with a keychain secret: after a failed
+      // load it stays session-only and the next launch re-onboards, where
+      // re-choosing re-opens the existing graph (no data loss).
+      await whenSettingsLoaded()
+      updateSettings({
+        mobileOnboarded: true,
+        mobileStorage: kind,
+        // The container can hold several graphs — remember WHICH one by name
+        // (never by path; container paths change across restore/update).
+        mobileGraphName: kind === 'icloud' ? graphNameFromRoot(root) : '',
+      })
+    },
+    [updateSettings, whenSettingsLoaded],
+  )
+
   const completeOnboarding = useCallback(
     async (kind: MobileStorageKind, chosenRoot?: string): Promise<void> => {
       // An explicit root comes from the onboarding graph list or the settings
@@ -313,28 +354,28 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
       // clear the gate: the screen surfaces the error and stays on onboarding for
       // an in-app retry (re-choosing re-opens an already-populated root) instead
       // of landing on the dead-end open-failed screen.
-      const opened = await openRecent(root)
-      if (!opened) {
-        throw new Error('Couldn’t open your notes — please try again.')
-      }
-      setMobileStorageKind(kind)
-      setNeedsOnboarding(false)
-      // Persist the flags only once the graph is actually open, so a failed open
-      // never strands the user past onboarding. Write through the settings
-      // provider (not a raw save), awaiting hydration first — the provider's
-      // contract for a setting paired with a keychain secret: after a failed
-      // load it stays session-only and the next launch re-onboards, where
-      // re-choosing re-opens the existing graph (no data loss).
-      await whenSettingsLoaded()
-      updateSettings({
-        mobileOnboarded: true,
-        mobileStorage: kind,
-        // The container can hold several graphs — remember WHICH one by name
-        // (never by path; container paths change across restore/update).
-        mobileGraphName: kind === 'icloud' ? graphNameFromRoot(root) : '',
-      })
+      await finishOnboarding(kind, root, await openRecent(root))
     },
-    [mobileStorageInfo, openRecent, updateSettings, whenSettingsLoaded],
+    [mobileStorageInfo, openRecent, finishOnboarding],
+  )
+
+  const completeOnboardingFromGithub = useCallback(
+    async (
+      ref: GithubRepoRef,
+      token: string | null,
+      options?: { allowPublic?: boolean },
+    ): Promise<void> => {
+      const root = mobileStorageInfo?.localRoot ?? (await mobileStorageLocal())
+      await cloneGithubVault({
+        ref,
+        token,
+        destination: root,
+        allowPublic: options?.allowPublic === true,
+      })
+      invalidateGithubAuth()
+      await finishOnboarding('local', root, await openRecent(root, { seedFirstRun: false }))
+    },
+    [mobileStorageInfo, openRecent, finishOnboarding],
   )
 
   return {
@@ -343,5 +384,6 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
     mobileStorageResolving,
     mobileStorageKind,
     completeOnboarding,
+    completeOnboardingFromGithub,
   }
 }

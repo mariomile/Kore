@@ -187,7 +187,7 @@ export interface SkeletonRow {
 /** How many lines the thumbnail draws: what fits on the glyph. */
 const SKELETON_ROWS = 6
 /** How many of those the card's preview spells out. */
-const PREVIEW_LINES = 3
+const PREVIEW_LINES = 4
 
 /**
  * The thumbnail of a page (Craft's page icon is the page in miniature): its

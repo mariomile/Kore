@@ -66,6 +66,7 @@ export {
   lineBlockId,
   newBlockId,
   noteLinkBlockId,
+  wikilinkLabel,
   withoutBlockIds,
 } from './block-ids'
 export {

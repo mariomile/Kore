@@ -18,7 +18,8 @@ export interface BlockSelectionState {
 /** The action bar's verbs, each closing over the editor that owns the selection. */
 export interface BlockSelectionCommands {
   setKind: (kind: FormattingBlockKind) => void
-  remind: (when: BlockReminder) => void
+  /** A preset, or a day picked on the calendar. */
+  remind: (when: BlockReminder | Date) => void
   indent: () => void
   outdent: () => void
   moveUp: () => void
@@ -29,6 +30,8 @@ export interface BlockSelectionCommands {
   /** Zoom into the first selected block. */
   zoom: () => void
   /** Move the first selected block (with its children) to another note. */
+  /** Lift the one selected block into a note of its own, leaving a page card. */
+  makePage: () => void
   moveToNote: () => void
   /** Select the blocks' text and open the AI menu on it. */
   askAi: () => void

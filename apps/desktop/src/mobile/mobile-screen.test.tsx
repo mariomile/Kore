@@ -116,6 +116,7 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerContent: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerBody: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children?: import('react').ReactNode }) => <h2>{children}</h2>,
+  DrawerDescription: ({ children }: { children?: import('react').ReactNode }) => <p>{children}</p>,
   DrawerTrigger: ({ children }: { children?: import('react').ReactNode }) => <>{children}</>,
 }))
 

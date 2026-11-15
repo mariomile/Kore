@@ -1234,8 +1234,8 @@ html:root {
   letter-spacing: 0;
 }
 /* Only round `+ [ ]` Reflect tasks write back from a snippet (V1's backlink
-   checkboxes were Reflect tasks); a square GFM box is plain markdown, so its
-   checkbox stays inert — no click, no hover grow. */
+   checkboxes were Reflect tasks); a GFM `- [ ]` box is plain markdown, so its
+   checkbox stays inert — no click, no hover grow. Both draw round now. */
 .kore-backlink-snippet
   .prosemirror-flat-list[data-list-kind='task']:not([data-list-marker='+'])
   > .list-marker {
@@ -1395,6 +1395,14 @@ html[data-sidebar-resizing] aside {
 }
 .kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
   transform: translateY(0.02em);
+}
+/* One task box in Kore: the round one the Tasks view and Today card draw.
+   Markdown keeps whichever marker the file has (`- [ ]` or `+ [ ]`); only the
+   look is unified, so a GFM task no longer shows a square next to a round one. */
+.kore-editor .prosemirror-flat-list[data-list-kind='task'] > .list-marker input[type='checkbox'] {
+  border-radius: 100rem;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 /* ---- ⌘K palette (Plan 08) ---------------------------------------------- */
@@ -1800,30 +1808,132 @@ html[data-sidebar-resizing] aside {
 
 /* Whole-block selection on touch (swipe a block right): the block reads as
    one tinted card, the way Craft lifts it, and the caret stays hidden. */
+/* A selected block is one flat card, Craft's way: an opaque fill behind the
+   block (a pseudo-element, so the text never moves), no ring, no outline.
+   Neighbours bridge the gap between them and square the corners they share,
+   so a run of selected blocks reads as a single card. Opaque, so where two
+   fills overlap nothing darkens. */
 .kore-block-selected {
-  /* Opaque tint plus a same-color spread: adjacent selected blocks overlap
-     into one continuous card instead of stacking outlines. */
-  --block-selected-fill: color-mix(in oklab, var(--accent) 12%, var(--surface-app));
-  border-radius: 0.875rem;
+  --block-selected-fill: color-mix(in oklab, var(--text) 8%, var(--surface-app));
+  position: relative;
+  isolation: isolate;
+}
+.kore-block-selected::after {
+  content: '';
+  position: absolute;
+  inset: -4px -10px;
+  z-index: -1;
+  border-radius: 0.625rem;
   background: var(--block-selected-fill);
-  box-shadow: 0 0 0 6px var(--block-selected-fill);
-  animation: kore-block-lift 240ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  pointer-events: none;
+  animation: kore-block-lift 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+/* The bridge hangs off the upper block: a later sibling paints over an
+   earlier one, so reaching down slides under the next block's text, where
+   reaching up would cover the previous block's last line. */
+.kore-block-selected + .kore-block-selected::after {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.kore-block-selected:has(+ .kore-block-selected)::after {
+  bottom: -14px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 @keyframes kore-block-lift {
   from {
-    background: transparent;
-    box-shadow: 0 0 0 0 transparent;
-    transform: scale(0.985);
+    opacity: 0;
+    transform: scale(0.97);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kore-block-selected {
+  .kore-block-selected::after {
     animation: none;
   }
+}
+/* Block selection is the only selection on screen: no node outline (the
+   inner border that doubled the card), no caret, no text highlight. */
+.ProseMirror[data-block-selecting] .ProseMirror-selectednode {
+  outline: none;
+}
+.ProseMirror[data-block-selecting] li.ProseMirror-selectednode::after {
+  display: none;
 }
 .ProseMirror[data-block-selecting] {
   caret-color: transparent;
 }
 .ProseMirror[data-block-selecting] ::selection {
   background: transparent;
+}
+
+/* A finger held on a block is heading for Kore's long-press: no iOS text
+   selection, loupe or callout underneath it (see block-swipe.tsx). */
+.kore-block-press-guard,
+.kore-block-press-guard .ProseMirror,
+.kore-block-press-guard .ProseMirror * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ---- Sub pages (page-card-plugin.ts) ------------------------------------
+   A line that is only `[[Title]]` draws as Craft's page block: a small page
+   glyph, the title, two lines of what the page says. No border, no shadow:
+   it sits on the page like text, and the press state is the only fill. */
+.kore-editor .kore-page-card-source:not(.is-editing) {
+  display: none;
+}
+.kore-editor .kore-page-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0.375rem -0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms;
+}
+.kore-editor .kore-page-card:active {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+}
+.kore-editor .kore-page-card-glyph {
+  flex: none;
+  width: 1.75rem;
+  height: 2.125rem;
+  margin-top: 0.125rem;
+  border-radius: 0.3125rem;
+  background:
+    repeating-linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--text) 28%, transparent) 0 1.5px,
+        transparent 1.5px 4.5px
+      )
+      0.4375rem 0.5rem / calc(100% - 0.875rem) 1.125rem no-repeat,
+    color-mix(in oklab, var(--text) 8%, var(--surface-app));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 10%, transparent);
+}
+.kore-editor .kore-page-card-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.kore-editor .kore-page-card-title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.kore-editor .kore-page-card-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.8125em;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.kore-editor .kore-page-card[data-missing] .kore-page-card-excerpt {
+  font-style: italic;
 }

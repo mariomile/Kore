@@ -75,6 +75,7 @@ export {
   type BranchMoveInput,
   type SourceBacklink,
 } from './move-branch'
+export { pageCardTarget, planSubPage, subPagePreview, type SubPagePlan } from './sub-page'
 export {
   extractHeadingSection,
   formatNoteTransclusion,

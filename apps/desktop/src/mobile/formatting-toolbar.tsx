@@ -138,7 +138,7 @@ const BLOCK_PILLS: { kind: FormattingBlockKind; label: string }[] = [
   { kind: 'text', label: 'Text' },
   { kind: 'heading', label: 'Heading' },
   { kind: 'bullet', label: '• List' },
-  { kind: 'task', label: '☐ To-do' },
+  { kind: 'task', label: '○ To-do' },
   { kind: 'quote', label: '❝ Quote' },
 ]
 

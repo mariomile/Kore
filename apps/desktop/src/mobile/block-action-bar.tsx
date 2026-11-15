@@ -3,13 +3,18 @@ import { addDays, format } from 'date-fns'
 import {
   ArrowDown,
   ArrowUp,
+  Calendar,
   CalendarClock,
+  ChevronRight,
   Check,
+  Circle,
   Copy,
   FolderMove,
   IndentDecrease,
   IndentIncrease,
   Layers,
+  List,
+  Note,
   Locate,
   Replace,
   Sparkles,
@@ -27,12 +32,11 @@ import type { FormattingBlockKind } from '@/editor/formatting-toolbar-store'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 
-const KINDS: ReadonlyArray<{ kind: FormattingBlockKind; label: string }> = [
-  { kind: 'text', label: 'Text' },
-  { kind: 'heading', label: 'Heading' },
-  { kind: 'bullet', label: '• List' },
-  { kind: 'task', label: '☐ To-do' },
-  { kind: 'quote', label: '❝ Quote' },
+/** The top row: what the block reads as. Page lifts it into a note of its own. */
+const STYLES: ReadonlyArray<{ kind: FormattingBlockKind; label: string; className: string }> = [
+  { kind: 'heading', label: 'Heading', className: 'font-bold' },
+  { kind: 'text', label: 'Text', className: '' },
+  { kind: 'quote', label: 'Quote', className: 'font-serif italic' },
 ]
 
 type Sheet = 'turn' | 'date' | null
@@ -109,42 +113,24 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
           aria-label="Block actions"
           className="mobile-nav-capsule flex w-full max-w-md items-stretch justify-between px-1 py-1"
         >
-          <BarButton
-            label="Turn into"
-            icon={<Replace />}
-            tint="#af52de"
-            onPress={() => setSheet('turn')}
-          />
-          <BarButton
-            label="Date"
-            icon={<CalendarClock />}
-            tint="#ff9500"
-            onPress={() => setSheet('date')}
-          />
+          <BarButton label="Turn into" icon={<Replace />} onPress={() => setSheet('turn')} />
+          <BarButton label="Date" icon={<CalendarClock />} onPress={() => setSheet('date')} />
           <BarButton
             label="Move"
             icon={<FolderMove />}
-            tint="#007aff"
             disabled={!single}
             onPress={() => act(commands.moveToNote)}
           />
           <BarButton
             label="Zoom"
             icon={<Locate />}
-            tint="#30b0c7"
             disabled={!single}
             onPress={() => act(commands.zoom)}
           />
-          <BarButton
-            label="Ask AI"
-            icon={<Sparkles />}
-            tint="#ff2d55"
-            onPress={() => act(commands.askAi)}
-          />
+          <BarButton label="Ask AI" icon={<Sparkles />} onPress={() => act(commands.askAi)} />
           <BarButton
             label="Delete"
             icon={<Trash />}
-            tint="#ff3b30"
             tone="danger"
             onPress={() => act(commands.remove)}
           />
@@ -157,40 +143,80 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
             title="Turn into"
             caption={state.count === 1 ? '1 block' : `${state.count} blocks`}
           />
-          <DrawerBody className="px-4">
-            <div className="flex flex-wrap gap-2">
-              {KINDS.map(({ kind, label }) => (
-                <button
+          <DrawerBody className="gap-2 px-4">
+            <div
+              role="group"
+              aria-label="Block style"
+              className="grid grid-cols-4 gap-1 rounded-2xl bg-surface-hover p-1"
+            >
+              {STYLES.map(({ kind, label, className }) => (
+                <Segment
                   key={kind}
-                  type="button"
-                  aria-pressed={state.kind === kind}
-                  onClick={() => {
+                  label={label}
+                  className={className}
+                  pressed={state.kind === kind}
+                  onPress={() => {
                     act(() => commands.setKind(kind))
                     setSheet(null)
                   }}
-                  className={cn(
-                    'h-10 rounded-full px-4 text-[15px] font-medium transition-transform active:scale-95',
-                    state.kind === kind ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
-                  )}
-                >
-                  {label}
-                </button>
+                />
               ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <SheetAction
-                label="Indent"
-                icon={<IndentIncrease />}
-                disabled={!state.canIndent}
-                onPress={() => act(commands.indent)}
+              <Segment
+                label="Page"
+                icon={<Note />}
+                disabled={!single}
+                onPress={() => {
+                  act(commands.makePage)
+                  setSheet(null)
+                }}
               />
-              <SheetAction
+            </div>
+            <div role="group" aria-label="List and position" className="grid grid-cols-6 gap-2">
+              <IconTile
+                label="To-do"
+                icon={<Circle />}
+                pressed={state.kind === 'task'}
+                onPress={() => {
+                  act(() => commands.setKind('task'))
+                  setSheet(null)
+                }}
+              />
+              <IconTile
+                label="Bulleted list"
+                icon={<List />}
+                pressed={state.kind === 'bullet'}
+                onPress={() => {
+                  act(() => commands.setKind('bullet'))
+                  setSheet(null)
+                }}
+              />
+              <IconTile
+                label="Move up"
+                icon={<ArrowUp />}
+                disabled={!state.canMoveUp}
+                onPress={() => act(commands.moveUp)}
+              />
+              <IconTile
+                label="Move down"
+                icon={<ArrowDown />}
+                disabled={!state.canMoveDown}
+                onPress={() => act(commands.moveDown)}
+              />
+              <IconTile
                 label="Outdent"
                 icon={<IndentDecrease />}
                 disabled={!state.canOutdent}
                 onPress={() => act(commands.outdent)}
               />
-              <SheetAction
+              <IconTile
+                label="Indent"
+                icon={<IndentIncrease />}
+                disabled={!state.canIndent}
+                onPress={() => act(commands.indent)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <WideTile
                 label="Duplicate"
                 icon={<Layers />}
                 onPress={() => {
@@ -198,19 +224,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                   setSheet(null)
                 }}
               />
-              <SheetAction
-                label="Move up"
-                icon={<ArrowUp />}
-                disabled={!state.canMoveUp}
-                onPress={() => act(commands.moveUp)}
-              />
-              <SheetAction
-                label="Move down"
-                icon={<ArrowDown />}
-                disabled={!state.canMoveDown}
-                onPress={() => act(commands.moveDown)}
-              />
-              <SheetAction
+              <WideTile
                 label="Copy"
                 icon={<Copy />}
                 onPress={() => {
@@ -244,7 +258,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 }}
                 className="flex h-13 items-center gap-3 rounded-xl px-3 text-left active:bg-surface-hover"
               >
-                <span className="flex size-8 items-center justify-center rounded-lg bg-[#ff9500]/15 text-[13px] font-semibold text-[#ff9500] tabular-nums">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-surface-hover text-[13px] font-semibold tabular-nums">
                   {format(addDays(new Date(), days), 'd')}
                 </span>
                 <span className="flex-1 text-[17px]">{label}</span>
@@ -253,6 +267,32 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 </span>
               </button>
             ))}
+            {/* The system calendar: an invisible date input over the row, so a
+                tap opens iOS's own picker and the pick lands on change. */}
+            <label className="relative flex h-13 items-center gap-3 rounded-xl px-3 active:bg-surface-hover">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-surface-hover [&>svg]:size-[18px]">
+                <Calendar aria-hidden />
+              </span>
+              <span className="flex-1 text-[17px]">Pick a date</span>
+              <ChevronRight aria-hidden className="size-4 text-text-muted" />
+              <input
+                type="date"
+                aria-label="Pick a date"
+                className="absolute inset-0 opacity-0"
+                onChange={(event) => {
+                  const picked = event.currentTarget.valueAsDate
+                  if (picked === null) return
+                  // valueAsDate is UTC midnight; keep the calendar day picked.
+                  const day = new Date(
+                    picked.getUTCFullYear(),
+                    picked.getUTCMonth(),
+                    picked.getUTCDate(),
+                  )
+                  act(() => commands.remind(day))
+                  setSheet(null)
+                }}
+              />
+            </label>
           </DrawerBody>
         </DrawerContent>
       </Drawer>
@@ -276,15 +316,12 @@ function BarButton({
   onPress,
   disabled = false,
   tone,
-  tint,
 }: {
   label: string
   icon: ReactElement
   onPress: () => void
   disabled?: boolean
   tone?: 'danger'
-  /** The glyph's color: each verb keeps one, as Craft's bar does. */
-  tint: string
 }): ReactElement {
   return (
     <button
@@ -293,34 +330,94 @@ function BarButton({
       onClick={onPress}
       className={cn(
         'flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-1.5 text-[11px] font-medium transition-[transform,background-color] active:scale-90 active:bg-foreground/5 disabled:opacity-30',
-        tone === 'danger' ? 'text-[#ff3b30]' : 'text-text/80',
+        tone === 'danger' ? 'text-destructive' : 'text-text',
       )}
     >
-      <span className="flex h-6 items-center [&>svg]:size-[23px]" style={{ color: tint }}>
-        {icon}
-      </span>
+      <span className="flex h-6 items-center [&>svg]:size-[23px]">{icon}</span>
       {label}
     </button>
   )
 }
 
-function SheetAction({
+/** One segment of the style row: the lit one is raised, as iOS segmented controls are. */
+function Segment({
   label,
   icon,
-  onPress,
+  className,
+  pressed = false,
   disabled = false,
+  onPress,
 }: {
   label: string
-  icon: ReactElement
-  onPress: () => void
+  icon?: ReactElement
+  className?: string
+  pressed?: boolean
   disabled?: boolean
+  onPress: () => void
 }): ReactElement {
   return (
     <button
       type="button"
+      aria-pressed={pressed}
       disabled={disabled}
       onClick={onPress}
-      className="flex h-16 flex-col items-center justify-center gap-1 rounded-xl bg-surface-hover text-[13px] font-medium transition-transform active:scale-95 disabled:opacity-30 [&>svg]:size-5"
+      className={cn(
+        'flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl text-[15px] transition-[transform,background-color] active:scale-95 disabled:opacity-30 [&_svg]:size-[18px]',
+        pressed ? 'bg-surface-app text-text shadow-sm' : 'text-text/80',
+        className,
+      )}
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
+
+/** A square glyph tile; the label is for VoiceOver, the glyph says it. */
+function IconTile({
+  label,
+  icon,
+  pressed,
+  disabled = false,
+  onPress,
+}: {
+  label: string
+  icon: ReactElement
+  pressed?: boolean
+  disabled?: boolean
+  onPress: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onPress}
+      className={cn(
+        'flex aspect-square min-h-11 items-center justify-center rounded-xl transition-transform active:scale-95 disabled:opacity-30 [&_svg]:size-[22px]',
+        pressed === true ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
+      )}
+    >
+      {icon}
+    </button>
+  )
+}
+
+function WideTile({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string
+  icon: ReactElement
+  onPress: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      className="flex h-12 items-center justify-center gap-2 rounded-xl bg-surface-hover text-[15px] font-medium transition-transform active:scale-95 [&_svg]:size-5"
     >
       {icon}
       {label}

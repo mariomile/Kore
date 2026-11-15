@@ -73,7 +73,7 @@ describe('MobileFormattingToolbar', () => {
       'Text',
       'Heading',
       '• List',
-      '☐ To-do',
+      '○ To-do',
       '❝ Quote',
       'Link note',
       'Add type',
@@ -119,7 +119,7 @@ describe('MobileFormattingToolbar', () => {
     await render(<MobileFormattingToolbar />)
     await act(() => publishFormattingToolbar(owner, toolbar))
 
-    fireEvent.click(page.getByRole('button', { name: '☐ To-do' }))
+    fireEvent.click(page.getByRole('button', { name: '○ To-do' }))
     expect(toolbar.commands.setBlockKind).toHaveBeenCalledWith('task')
 
     fireEvent.click(page.getByRole('button', { name: 'Heading' }))

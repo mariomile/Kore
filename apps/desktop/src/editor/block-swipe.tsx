@@ -1,5 +1,9 @@
 import { useLayoutEffect, useMemo, useRef, type ReactElement } from 'react'
 import { docToMarkdown, type EditorExtension } from '@meowdown/core'
+import { createNoteWithTitle, errorMessage, planSubPage, subPagePreview } from '@kore/core'
+import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
+import { startOperation } from '@/lib/operations'
+import { deliverPagePreview } from './page-card-plugin'
 import { useEditor, useExtension } from '@meowdown/react'
 import { definePlugin } from '@prosekit/core'
 import { TextSelection, type EditorState } from '@prosekit/pm/state'
@@ -31,6 +35,9 @@ const DRAG_FOLLOW_MAX_PX = 56
 
 /** Hold time that turns a still touch into a block selection (before iOS's own text loupe). */
 const LONG_PRESS_MS = 380
+/** Past a tap's length: from here a held finger is heading for a long-press. */
+const PRESS_GUARD_MS = 180
+const PRESS_GUARD_RELEASE_MS = 400
 
 /** Finger travel under which a touch on a selecting editor counts as a tap. */
 const TAP_SLOP_PX = 10
@@ -72,7 +79,8 @@ function readSelectionState(state: EditorState): BlockSelectionState {
   }
 }
 
-function reminderDate(when: BlockReminder): string {
+function reminderDate(when: BlockReminder | Date): string {
+  if (when instanceof Date) return format(when, 'yyyy-MM-dd')
   const days = when === 'today' ? 0 : when === 'tomorrow' ? 1 : 7
   return format(addDays(new Date(), days), 'yyyy-MM-dd')
 }
@@ -101,13 +109,21 @@ function reminderDate(when: BlockReminder): string {
  */
 export function BlockSwipeGestures({
   onAskAi,
+  generation = null,
+  openPage,
 }: {
   /** Opens the AI menu over the editor's text selection; false when it can't. */
   onAskAi?: () => boolean
+  /** The vault generation new sub pages are written under; null leaves Page off. */
+  generation?: number | null
+  /** Opens a page by its link target (the confirmation's "Open"). */
+  openPage?: (target: string) => void
 } = {}): ReactElement | null {
   const editor = useEditor<EditorExtension>()
   const askAiRef = useRef(onAskAi)
   askAiRef.current = onAskAi
+  const pageRef = useRef({ generation, openPage })
+  pageRef.current = { generation, openPage }
   const owner = useMemo(() => Symbol('block-selection'), [])
   const commandsRef = useRef<BlockSelectionCommands | null>(null)
 
@@ -157,7 +173,15 @@ export function BlockSwipeGestures({
             const { $from } = view.state.selection
             const end = $from.end()
             const text = $from.parent.textContent
-            if (/\[\[\d{4}-\d{2}-\d{2}\]\]/.test(text)) return
+            // A block that already has a date gets the new one in its place.
+            const existing = /\[\[\d{4}-\d{2}-\d{2}\]\]/.exec(text)
+            if (existing !== null) {
+              const from = $from.start() + existing.index
+              view.dispatch(
+                view.state.tr.insertText(`[[${date}]]`, from, from + existing[0].length),
+              )
+              return
+            }
             const lead = text.length > 0 && !text.endsWith(' ') ? ' ' : ''
             view.dispatch(view.state.tr.insertText(`${lead}[[${date}]]`, end))
           })
@@ -191,6 +215,66 @@ export function BlockSwipeGestures({
           if (first === undefined) return
           view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
           zoomIntoBlockAt(view, first.from)
+        },
+        makePage: () => {
+          const blocks = selectedBlocks(view.state)
+          const block = blocks[0]
+          const { generation: current, openPage: open } = pageRef.current
+          if (block === undefined || blocks.length !== 1) return
+          const fail = (why: string): void => {
+            startOperation('Turning into a page').fail(why)
+          }
+          if (current === null) {
+            fail('This note is not in a vault yet.')
+            return
+          }
+          const { node } = block
+          const isList = node.type.name === 'list'
+          const head = isList ? node.firstChild : node
+          const rest: ProseMirrorNode[] = []
+          if (isList) node.forEach((child, _offset, index) => index > 0 && rest.push(child))
+          const childrenMarkdown =
+            rest.length === 0 ? '' : docToMarkdown(view.state.schema.topNodeType.create(null, rest))
+          const plan = planSubPage(head?.textContent ?? '', childrenMarkdown)
+          if (plan === null) {
+            fail('Write a line for the page title first.')
+            return
+          }
+          view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
+          void createNoteWithTitle(plan.title, current, plan.body === '' ? undefined : plan.body)
+            .then(() => {
+              const now = view.state.doc.nodeAt(block.from)
+              const done = startOperation(
+                `Made page ${plan.title}`,
+                open === undefined
+                  ? {}
+                  : { action: { label: 'Open', run: () => open(plan.title) } },
+              )
+              if (view.isDestroyed || now === null || !now.eq(node)) {
+                done.warn('The note changed meanwhile, so the block stayed where it was.')
+                return
+              }
+              deliverPagePreview(view, plan.title, {
+                title: plan.title,
+                excerpt: subPagePreview(plan.body),
+                missing: false,
+              })
+              const { schema } = view.state
+              const paragraph = schema.nodes.paragraph
+              if (paragraph === undefined) {
+                done.fail('This editor has no paragraphs.')
+                return
+              }
+              view.dispatch(
+                view.state.tr.replaceWith(
+                  block.from,
+                  block.to,
+                  paragraph.create(null, schema.text(plan.link)),
+                ),
+              )
+              done.done()
+            })
+            .catch((cause: unknown) => fail(errorMessage(cause)))
         },
         moveToNote: () => {
           const first = selectedBlocks(view.state)[0]
@@ -227,7 +311,23 @@ export function BlockSwipeGestures({
       let follow: Animation | null = null
       let swept = 0
       let pressTimer: ReturnType<typeof setTimeout> | null = null
+      let guardTimer: ReturnType<typeof setTimeout> | null = null
       let pressed = false
+      // iOS runs its own hold gesture on editable text (~500 ms: caret,
+      // loupe, word selection, keyboard). A finger still down after a tap's
+      // length turns text selection off on the editor's wrapper (a node
+      // ProseMirror does not own), so that gesture finds nothing to select
+      // and our long-press wins. A quick tap never sees it.
+      const guardHost = dom.parentElement
+      const setGuard = (on: boolean): void => {
+        guardHost?.classList.toggle('kore-block-press-guard', on)
+      }
+      const clearGuard = (delay = 0): void => {
+        if (guardTimer !== null) clearTimeout(guardTimer)
+        guardTimer = null
+        if (delay === 0) setGuard(false)
+        else setTimeout(() => setGuard(false), delay)
+      }
 
       const releaseDrag = (): void => {
         if (follow === null) return
@@ -275,6 +375,11 @@ export function BlockSwipeGestures({
         if (pressTimer !== null) clearTimeout(pressTimer)
         if (!view.hasFocus() && startPosition !== null) {
           const anchor = startPosition
+          clearGuard()
+          guardTimer = setTimeout(() => {
+            guardTimer = null
+            setGuard(true)
+          }, PRESS_GUARD_MS)
           pressTimer = setTimeout(() => {
             pressTimer = null
             pressed = true
@@ -301,6 +406,7 @@ export function BlockSwipeGestures({
         if (pressTimer !== null && Math.hypot(deltaX, touch.clientY - startY) > TAP_SLOP_PX) {
           clearTimeout(pressTimer)
           pressTimer = null
+          clearGuard()
         }
         if (pressed && event.cancelable) event.preventDefault()
         if (!claimed && swipeAllowed() && isHorizontalDrag(deltaX, touch.clientY - startY)) {
@@ -350,6 +456,13 @@ export function BlockSwipeGestures({
         }
       }
 
+      const onTouchCancel = (): void => {
+        const held = pressed
+        pressed = false
+        reset()
+        clearGuard(held ? PRESS_GUARD_RELEASE_MS : 0)
+      }
+
       const onTouchEnd = (event: TouchEvent): void => {
         const touch = event.changedTouches[0]
         if (startX === null || startY === null || touch === undefined) {
@@ -360,13 +473,17 @@ export function BlockSwipeGestures({
         const deltaY = touch.clientY - startY
         const position = startPosition
 
-        // The long-press already selected; swallow the release so no caret lands.
+        // The long-press already selected; swallow the release so no caret
+        // lands, and keep the guard a beat longer than iOS's own hold timer.
         if (pressed) {
           pressed = false
           reset()
           if (event.cancelable) event.preventDefault()
+          window.getSelection()?.removeAllRanges()
+          clearGuard(PRESS_GUARD_RELEASE_MS)
           return
         }
+        clearGuard()
 
         // A tap while selecting adds or drops the block under it, and must
         // not land a caret (which would raise the keyboard).
@@ -426,12 +543,13 @@ export function BlockSwipeGestures({
       // tint) must not strand the rest of the touch.
       window.addEventListener('touchmove', onTouchMove, { passive: false })
       window.addEventListener('touchend', onTouchEnd, { passive: false })
-      window.addEventListener('touchcancel', reset, { passive: true })
+      window.addEventListener('touchcancel', onTouchCancel, { passive: true })
       cleanup = () => {
         dom.removeEventListener('touchstart', onTouchStart)
         window.removeEventListener('touchmove', onTouchMove)
         window.removeEventListener('touchend', onTouchEnd)
-        window.removeEventListener('touchcancel', reset)
+        window.removeEventListener('touchcancel', onTouchCancel)
+        clearGuard()
       }
     })
     return () => {

@@ -2,15 +2,16 @@ import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { Priority } from '@meowdown/core'
 import { definePlugin } from '@prosekit/core'
 import { useExtension, useKeymap } from '@meowdown/react'
+import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { useOptionalRouter } from '@/routing/router'
 import { blockZoomKeymap, createBlockZoomPlugin, zoomOut } from './block-zoom-plugin'
 
 /**
- * Zoom into a block (Plan 33, C1): ⌘⇧. on any block, or ⌘-click on a bullet,
- * shows only that block (a list item with its children, a heading with its
- * section); ⌘⇧, Escape, Back (⌘[ or the toolbar arrow) or the breadcrumb go
- * back up. View state only; the note's Markdown never changes. Mounted as a
- * NoteEditor child.
+ * Zoom into a block (Plan 33, C1): ⌘⇧. on any block, ⌘-click on a bullet, or
+ * a tap on a bullet on the phone, shows only that block (a list item with its
+ * children, a heading with its section); ⌘⇧, Escape, Back (⌘[, the toolbar
+ * arrow, the phone's header arrow) or the breadcrumb go back up. View state
+ * only; the note's Markdown never changes. Mounted as a NoteEditor child.
  */
 export function BlockZoom(): ReactElement | null {
   const router = useOptionalRouter()
@@ -33,6 +34,7 @@ export function BlockZoom(): ReactElement | null {
                 target === null ? null : () => zoomOut(view.state, view.dispatch, view),
               )
             },
+            tapToZoom: isTouchEditorSurface(),
           }),
         ),
       [owner],

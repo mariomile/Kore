@@ -107,6 +107,15 @@
   background: var(--surface-hover);
   color: var(--text);
 }
+/* A fingertip needs a bigger crumb than a pointer does (the phone). */
+@media (pointer: coarse) {
+  .kore-editor .kore-zoom-breadcrumb {
+    font-size: 0.9375rem;
+  }
+  .kore-editor .kore-zoom-crumb {
+    padding: 0.5em 0.5em;
+  }
+}
 .kore-editor .kore-zoom-more {
   flex-shrink: 0;
   letter-spacing: 0.05em;

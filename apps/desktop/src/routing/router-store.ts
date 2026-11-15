@@ -30,6 +30,8 @@ export interface RouterSnapshot {
   readonly canBack: boolean
   readonly canForward: boolean
   readonly backRoute: Route | null
+  /** A view inside the current entry takes the next Back (see `setViewBack`). */
+  readonly viewBack: boolean
 }
 
 export interface RouterStore {
@@ -103,6 +105,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
       canBack: viewBacks.size > 0 || index > 0,
       canForward: index < stack.length - 1,
       backRoute: index > 0 ? stack[index - 1]!.route : null,
+      viewBack: viewBacks.size > 0,
     }
   }
 

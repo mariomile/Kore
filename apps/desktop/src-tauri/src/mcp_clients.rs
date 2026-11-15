@@ -233,7 +233,8 @@ fn connect_file(
     if let Some(raw) = &raw {
         let mut backup = path.as_os_str().to_owned();
         backup.push(".kore-backup");
-        std::fs::write(PathBuf::from(backup), raw)?;
+        // Owner-only like the rewrite below: the config holds other tools' tokens.
+        crate::capture::atomic_write_to(&PathBuf::from(backup), raw)?;
     }
     std::fs::create_dir_all(dir)?;
     crate::capture::atomic_write_to(path, &next)

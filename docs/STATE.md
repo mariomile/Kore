@@ -1,5 +1,12 @@
 # Kore working state
 
+## Craft-style Chat on iPhone, 2026-11-15
+
+- [x] iPhone Chat tab redesigned: floating pill header, plain Suggestions and
+  Your prompts lists, and a composer card with an All notes context chip
+  (#459).
+- Not verified on a real iPhone.
+
 ## iPhone design pass and wikilink aliases, 2026-11-15
 
 - [x] iPhone design pass: the note page is 17pt with folded properties, the

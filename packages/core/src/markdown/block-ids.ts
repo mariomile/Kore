@@ -270,3 +270,23 @@ export function blockLinkLabel(target: string): string | null {
   const note = link.slice(0, link.lastIndexOf('#')).trim()
   return note === '' ? 'Link to line' : note
 }
+
+/**
+ * The label any `[[...]]` shows in place of its source, or null to show the
+ * bracketed text. Block references read as {@link blockLinkLabel}; any other
+ * link with an alias (`[[Notes/Luca|Luca]]`, Obsidian's form, and `\|`
+ * inside a table) shows the alias. The target is untouched: this is display
+ * only.
+ */
+export function wikilinkLabel(target: string): string | null {
+  const block = blockLinkLabel(target)
+  if (block !== null) {
+    return block
+  }
+  const pipe = target.indexOf('|')
+  if (pipe === -1) {
+    return null
+  }
+  const alias = target.slice(pipe + 1).trim()
+  return alias === '' ? null : alias
+}

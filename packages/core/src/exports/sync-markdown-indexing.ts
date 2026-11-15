@@ -153,6 +153,7 @@ export {
   wikiEmbedKind,
   blockIdsIn,
   blockLinkLabel,
+  wikilinkLabel,
   extractBlockSection,
   isBlockId,
   hiddenBlockIdTail,

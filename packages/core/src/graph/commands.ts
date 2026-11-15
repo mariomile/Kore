@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { echoLocalWrite } from '../indexing/local-write-echo'
 import { call } from '../ipc/invoke'
+import { commitOutcomeSchema, type CommitOutcome } from '../sync/commands'
 import {
   fileMetaSchema,
   graphInfoSchema,
@@ -145,6 +146,17 @@ export async function vaultCopyWrite(
   files: readonly { readonly path: string; readonly contents: string }[],
 ): Promise<void> {
   await call('vault_copy_write', { destination, files }, voidSchema)
+}
+
+/**
+ * Commit everything in a copy made by {@link vaultCopyTree} that carried the
+ * source's Git repository: the conversion lands as one commit on its history.
+ */
+export async function vaultCopyCommit(
+  destination: string,
+  message: string,
+): Promise<CommitOutcome> {
+  return await call('vault_copy_commit', { destination, message }, commitOutcomeSchema)
 }
 
 const localNoteReadSchema = z.discriminatedUnion('kind', [

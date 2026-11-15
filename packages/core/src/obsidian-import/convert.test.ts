@@ -70,6 +70,7 @@ describe('buildObsidianConversion', () => {
       { from: 'Resources/_attachments/x.png', to: 'assets/x.png', kind: 'attachment' },
     ])
     expect(conversion.skip).toEqual(['.git', '.kore', '.reflect', 'Archive'])
+    expect(conversion.keepHistory).toBe(false)
     expect(conversion.canonical).toBe(1)
     expect(conversion.lossy).toBe(1)
     const writes = new Map(conversion.writes.map((write) => [write.path, write.contents]))
@@ -183,5 +184,19 @@ describe('convertBaseFile', () => {
     expect(conversion.writes).toEqual([
       { path: 'views/days.base', contents: 'filters:\n  - file.inFolder("daily")\n' },
     ])
+  })
+})
+
+describe('a conversion that keeps the vault’s history', () => {
+  it('carries .git into the copy and says so', () => {
+    const conversion = buildObsidianConversion({
+      mapping: MAPPING,
+      source: { config: CONFIG, notes: [], attachments: [] },
+      convert,
+      keepHistory: true,
+    })
+    expect(conversion.skip).not.toContain('.git')
+    expect(conversion.skip).toContain('.kore')
+    expect(conversion.keepHistory).toBe(true)
   })
 })

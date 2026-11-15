@@ -38,12 +38,20 @@ use crate::blocking::run_blocking;
 use crate::error::AppResult;
 use crate::fs::GraphState;
 
-use self::commit::CommitOutcome;
+pub(crate) use self::commit::CommitOutcome;
 use self::merge::MergeOutcome;
 use self::remote::{PushOutcome, RemoteDelta};
 
 /// GitHub rejects files over 100 MB, failing the whole push; stop just under.
 const MAX_FILE_BYTES: u64 = 95 * 1024 * 1024;
+
+/// Commit every change in a folder that isn't the open graph: a vault copy
+/// that carried its source's repository (Plan 31). The caller decides which
+/// folder may be committed; this only stages and commits, like
+/// [`git_commit_all`], with the same large-file guardrail.
+pub(crate) fn commit_folder(root: &Path, message: &str) -> AppResult<CommitOutcome> {
+    commit::commit_all(root, message, MAX_FILE_BYTES)
+}
 
 /// Snapshot of the graph's backup repository for the UI and the sync engine.
 /// Deliberately cheap — refs and config only, no working-tree scan.

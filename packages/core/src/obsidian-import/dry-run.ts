@@ -180,7 +180,10 @@ export async function readObsidianImportSource(
   )
   const attachments = attachmentFiles.map((file) => file.path)
   const bases: ImportSourceNote[] = []
-  for (const path of attachments.filter(isBasePath)) {
+  for (const path of attachments) {
+    if (!isBasePath(path)) {
+      continue
+    }
     try {
       bases.push({ path, content: await readBaseFile(path, generation) })
     } catch (cause) {

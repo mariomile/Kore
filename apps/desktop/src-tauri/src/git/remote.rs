@@ -170,9 +170,21 @@ fn count_commits(repo: &Repository, from: git2::Oid) -> AppResult<usize> {
 /// Clone `url` into `target` (restore on a fresh machine). git2 refuses a
 /// non-empty existing directory, which is exactly the safety we want — a
 /// restore must never write into a folder that already has content.
-pub(super) fn clone(url: &str, target: &Path, token: Option<String>) -> AppResult<()> {
+///
+/// `depth` fetches only the newest commits (a shallow clone). Fetch, merge,
+/// commit and push all keep working on the result; history walks simply stop
+/// at the oldest fetched commit. `None` clones everything.
+pub(super) fn clone(
+    url: &str,
+    target: &Path,
+    token: Option<String>,
+    depth: Option<u32>,
+) -> AppResult<()> {
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks_with_credentials(token));
+    if let Some(depth) = depth.filter(|depth| *depth > 0) {
+        fetch_options.depth(i32::try_from(depth).unwrap_or(i32::MAX));
+    }
     git2::build::RepoBuilder::new()
         .fetch_options(fetch_options)
         .clone(url, target)?;

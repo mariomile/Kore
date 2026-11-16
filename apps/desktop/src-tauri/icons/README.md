@@ -2,15 +2,26 @@
 
 Three color sets, one per build flavor. Same gradient gem artwork, different hue.
 
-| Dir           | Color        | Flavor        | productName  | modulate (B,S,H) |
-| ------------- | ------------ | ------------- | ------------ | ---------------- |
-| `icons/`      | blue/violet  | stable        | Kore         | none (as shipped) |
-| `icons-beta/` | purple/violet | beta          | Kore Beta    | `104,100,120`    |
-| `icons-dev/`  | green        | dev (local)   | Kore Dev     | `92,100,231`     |
+| Dir           | Color         | Flavor      | productName | modulate (B,S,H)  |
+| ------------- | ------------- | ----------- | ----------- | ----------------- |
+| `icons/`      | blue/violet   | stable      | Kore        | none (as shipped) |
+| `icons-beta/` | purple/violet | beta        | Kore Beta   | `104,100,120`     |
+| `icons-dev/`  | green         | dev (local) | Kore Dev    | `92,100,231`      |
 
 `icons/` is the shipped app icon and the default set Tauri uses with no `--config`;
 the base `tauri.conf.json` points its `bundle.icon` here. The `tauri.beta.conf.json`
 and `tauri.dev.conf.json` overlays repoint `bundle.icon` at the sibling dirs.
+
+## iOS icon
+
+iOS draws its own rounded mask and wants a full-bleed, opaque square: no transparent
+margin, no pre-rounded tile. The macOS master (`icon-source-1024.png`) has Apple's
+macOS padding and its own rounded tile, so it must never go into the iOS catalog as is
+(flattened, its transparent margin turned into a white frame on the home screen).
+`icon-ios-1024.png` is the iOS master: the same tile scaled to fill the square, with its
+corners filled by the tile's own vertical gradient, saved without an alpha channel.
+Every PNG in `../gen/apple/Assets.xcassets/AppIcon.appiconset/` is that master resized
+to the size `Contents.json` names (`release-ios.mjs` refuses icons with alpha).
 
 The beta/dev sets are the stable artwork run through `magick -modulate B,S,H`
 (B=lightness, S=saturation, 100=unchanged). The iOS asset catalog

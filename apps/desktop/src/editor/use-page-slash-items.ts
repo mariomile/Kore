@@ -8,7 +8,9 @@ import type { NoteEditorHandle } from './note-editor'
  * reader taps into), the same as Turn into > Page in the block menu and on
  * iPhone, and ⌥⌘P.
  */
-export function usePageSlashItems(getEditor: () => NoteEditorHandle | null): SlashMenuSearchHandler {
+export function usePageSlashItems(
+  getEditor: () => NoteEditorHandle | null,
+): SlashMenuSearchHandler {
   return useCallback(
     async (_query: string): Promise<SlashMenuItem[]> => [
       {

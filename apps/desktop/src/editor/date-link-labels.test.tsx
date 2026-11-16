@@ -4,7 +4,8 @@ import { render } from 'vitest-browser-react'
 import '@/test-utils/locator'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 
-const NOTE = '- [ ] Call Luca [[2026-11-20]]\n- See [[2025-01-03]] and [[2026-11-21|Saturday]]\n- [[Lisbon]]\n'
+const NOTE =
+  '- [ ] Call Luca [[2026-11-20]]\n- See [[2025-01-03]] and [[2026-11-21|Saturday]]\n- [[Lisbon]]\n'
 
 async function renderNote(dateFormat?: 'mdy' | 'dmy' | 'iso'): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null

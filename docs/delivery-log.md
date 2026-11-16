@@ -13,6 +13,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 - Open tabs and panel layout stored outside the settings file; tabs reset once
   after updating (#502).
 - iPhone app on the UIScene lifecycle, so Xcode 27 builds launch (#503).
+- iPhone: long wiki links wrap, no more sideways scrolling (#506).
 - Agents: `kore lint` / MCP graph_lint graph health report: broken links,
   orphans, unlinked mentions, relation problems (#495).
 - Fix: aliased path wiki links open the right note; sync no longer hangs on a

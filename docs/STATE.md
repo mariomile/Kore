@@ -15,6 +15,8 @@
 - [x] The iPhone app adopts the UIScene lifecycle, so builds made with Xcode
   27 launch; the Record audio quick action keeps working while the app is open
   (#503).
+- [x] iPhone: long wiki links now wrap instead of staying on one line, so
+  notes no longer scroll sideways (#506).
 - Not verified on a real iPhone; #503 needs a TestFlight check on iOS 26
   hardware.
 

@@ -169,7 +169,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
     setBackupFlusher(null)
   }
 
-  function onRemoteChanges(changes: ChangedFile[]): void | Promise<void> {
+  function onRemoteChanges(changes: ChangedFile[]): void {
     if (changes.length === 0) {
       return
     }
@@ -204,13 +204,17 @@ export function createBackupController(options: BackupControllerOptions): Backup
           throttledInvalidateIndexQueries()
         }
       })
-      // Direct index writes remain ordered across retry merges. Their handled
-      // promise is what the engine joins before idle; failure is logged but
-      // never prevents the already-concurrent Git push of Markdown truth.
+      // Direct index writes remain ordered across retry merges; failure is
+      // logged and never touches the Git push of Markdown truth.
       remoteIndexTail = task.catch((cause) => {
         console.error('pulled-note direct index apply failed:', cause)
       })
-      return remoteIndexTail
+      // Deliberately not returned to the engine: `Syncing` means the notes
+      // themselves are moving, and they are already on disk and committed
+      // by now. Joining the index catch-up held the pill on for minutes
+      // after a large pull (a whole-vault merge on the phone, or a pull that
+      // lands while the first index pass runs), long after Git was done.
+      // Index work has its own progress surface.
     }
   }
 

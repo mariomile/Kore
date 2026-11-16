@@ -1,5 +1,17 @@
 # Kore working state
 
+## Type pages on iPhone, one-click app connections, 2026-11-16
+
+- [x] iPhone: every type has its own page with a Craft-style Table (# and
+  Title pinned), Kanban, Grid and the saved views shared with the Mac; Types
+  opens the type page; new Table and Kanban icons on the Mac too (#469).
+- [x] Settings → Agents → 'Connect an app': Claude Desktop, Claude Code and
+  Cursor connect in one click, with Kore writing the `kore mcp` entry into
+  their config after backing it up to `<file>.kore-backup` (mode 0600); for
+  Claude web/iPhone and ChatGPT it turns on Remote access with a dedicated key
+  and shows the steps (#468).
+- Not verified on a real Mac or iPhone.
+
 ## Open a vault from GitHub, 2026-11-16
 
 - [x] Open a vault from GitHub: a GitHub card on the Mac start screen and

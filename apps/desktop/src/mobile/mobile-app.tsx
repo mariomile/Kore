@@ -20,6 +20,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { RouterProvider } from '@/routing/router'
 import { DailyWidgetSync } from '@/mobile/daily-widget-sync'
+import { AppBootScreen } from '@/components/app-boot-screen'
 
 /**
  * Mobile root component (Plan 19): the graph provider bootstraps the fixed
@@ -107,13 +108,7 @@ export function MobileApp(): ReactElement {
     )
   }
 
-  return <LoadingScreen />
-}
-
-function LoadingScreen(): ReactElement {
-  return (
-    <div className="flex h-dvh w-screen items-center justify-center text-sm text-text-muted">
-      Loading…
-    </div>
-  )
+  // 'loading' | 'opening': the same breathing mark as desktop, picking up
+  // where the native launch screen (LaunchScreen.storyboard) leaves off.
+  return <AppBootScreen />
 }

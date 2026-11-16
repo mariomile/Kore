@@ -71,6 +71,7 @@ export {
   newBlockId,
   noteLinkBlockId,
   wikilinkLabel,
+  wikilinkTarget,
   withoutBlockIds,
 } from './block-ids'
 export {

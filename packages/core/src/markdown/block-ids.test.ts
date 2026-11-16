@@ -3,6 +3,7 @@ import {
   blockIdsIn,
   blockLinkLabel,
   wikilinkLabel,
+  wikilinkTarget,
   extractBlockSection,
   isBlockId,
   hiddenBlockIdTail,
@@ -192,5 +193,21 @@ describe('extraction drops ^id markers', () => {
     expect(note.text).not.toMatch(/\^(call1|para|table)/)
     expect(note.text).toContain('x ^code')
     expect(note.previewText).not.toContain('^para')
+  })
+})
+
+describe('wikilinkTarget', () => {
+  it('drops the alias of an Obsidian path link', () => {
+    expect(wikilinkTarget('Input/Granola/2026-11/Standup SaaS, 2026-11-16|Standup SaaS')).toBe(
+      'Input/Granola/2026-11/Standup SaaS, 2026-11-16',
+    )
+  })
+  it('splits the table-escaped pipe the same way', () => {
+    expect(wikilinkTarget(String.raw`Notes/Luca\|Luca`)).toBe('Notes/Luca')
+  })
+  it('keeps headings, block refs and plain links as written', () => {
+    expect(wikilinkTarget('Plan#Next steps|next')).toBe('Plan#Next steps')
+    expect(wikilinkTarget(' Plan ')).toBe('Plan')
+    expect(wikilinkTarget('|only alias')).toBe('')
   })
 })

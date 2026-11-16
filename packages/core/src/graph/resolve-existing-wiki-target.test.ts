@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
+import { wikilinkTarget } from '../markdown/block-ids'
 import {
   resolveExistingMarkdownTarget,
   resolveExistingWikiTarget,
@@ -390,6 +391,19 @@ describe('resolveExistingWikiTarget — path and stem dimensions', () => {
       kind: 'resolved',
       path: 'Projects/Plan.md',
     })
+    expectNoWrites(invoke)
+  })
+
+  it('resolves an Obsidian meeting path with spaces and a comma once the alias is off', async () => {
+    const path = 'Input/Granola/2026-11/Standup SaaS, 2026-11-16.md'
+    const invoke = bindBridge({ files: { [path]: '# Standup SaaS' } })
+
+    await expect(
+      resolveExistingWikiTarget(
+        wikilinkTarget('Input/Granola/2026-11/Standup SaaS, 2026-11-16|Standup SaaS'),
+        7,
+      ),
+    ).resolves.toEqual({ kind: 'resolved', path })
     expectNoWrites(invoke)
   })
 

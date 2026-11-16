@@ -160,6 +160,7 @@ export {
   blockIdsIn,
   blockLinkLabel,
   wikilinkLabel,
+  wikilinkTarget,
   extractBlockSection,
   isBlockId,
   hiddenBlockIdTail,

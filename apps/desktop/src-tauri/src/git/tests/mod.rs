@@ -1051,3 +1051,46 @@ fn diverging_renames_keep_both_files_and_never_wedge() {
 }
 
 mod agents;
+
+/// A remote that accepts the connection and then never answers is what a
+/// socket killed mid-fetch looks like. Without a timeout libgit2 waits on it
+/// forever and sync shows `Syncing` for good; with one the fetch fails as a
+/// network error (`Offline`) and the next cycle retries.
+#[test]
+fn a_silent_remote_times_out_as_a_network_error() {
+    use std::net::TcpListener;
+    use std::time::{Duration, Instant};
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = std::thread::spawn(move || {
+        // Hold the accepted socket open, silently, past the client's timeout.
+        let (stream, _) = listener.accept().unwrap();
+        std::thread::sleep(Duration::from_secs(5));
+        drop(stream);
+    });
+
+    // SAFETY: the only libgit2 network use in this test binary goes over
+    // local sockets or file remotes, and a shorter timeout cannot break them.
+    unsafe { super::set_network_timeouts(2_000, 500) };
+    let target = tempdir().unwrap();
+    let started = Instant::now();
+    let result = super::remote::clone(
+        &format!("http://127.0.0.1:{port}/vault.git"),
+        &target.path().join("vault"),
+        None,
+    );
+    let elapsed = started.elapsed();
+    unsafe { super::set_network_timeouts(super::CONNECT_TIMEOUT_MS, super::IO_TIMEOUT_MS) };
+
+    let error = result.expect_err("a silent remote must not hang the clone");
+    assert!(
+        matches!(error, crate::error::AppError::Network { .. }),
+        "expected a network error, got {error:?}"
+    );
+    assert!(
+        elapsed < Duration::from_secs(4),
+        "timed out too slowly: {elapsed:?}"
+    );
+    server.join().unwrap();
+}

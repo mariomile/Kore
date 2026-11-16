@@ -1,5 +1,15 @@
 # Kore working state
 
+## Collections inside a note on iPhone, 2026-11-16
+
+- [x] iPhone: a collection inside a note becomes a Craft-style card with its
+  name and count (a tap opens the type page), the Table/Board/Calendar/Grid
+  switch and an 8-row preview with Show all; the View menu edits filter, sort,
+  group and hidden fields (hide: lines) right in the note, so the Mac shows
+  the same view; the Mac gets a new Columns menu for collections in notes
+  (#480).
+- Not verified on a real iPhone.
+
 ## View options and calendar on iPhone type pages, 2026-11-16
 
 - [x] iPhone: on a type page the View options menu filters (values in the

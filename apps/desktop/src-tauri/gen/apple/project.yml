@@ -133,6 +133,12 @@ targets:
         # multiple scenes; on iPhone the system still runs a single scene.
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
+          # The configuration tao asks for by name; without it UIKit logs
+          # "no UIScene configuration dictionary" and falls back to defaults.
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: TaoScene
+                UISceneDelegateClassName: TaoSceneDelegate
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
         UISupportedInterfaceOrientations:

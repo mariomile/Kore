@@ -14,13 +14,13 @@ import {
 } from '@kore/core'
 import { isModEvent } from '@meowdown/core'
 import {
+  BoardView,
   Calendar,
   ExternalLink,
-  Layers,
   LayoutGrid,
-  LayoutTemplate,
   Settings,
   Sliders,
+  TableView,
   Trash,
 } from '@/components/icons'
 import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
@@ -91,7 +91,7 @@ const VIEW_LABEL: Record<CollectionEmbedView, string> = {
   calendar: 'Calendar',
 }
 
-const VIEW_GLYPH = { table: Layers, grid: LayoutGrid, board: LayoutTemplate, calendar: Calendar }
+const VIEW_GLYPH = { table: TableView, grid: LayoutGrid, board: BoardView, calendar: Calendar }
 
 const VIEW_OPTIONS: readonly CollectionEmbedView[] = ['table', 'grid', 'board', 'calendar']
 

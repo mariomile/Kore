@@ -13,7 +13,7 @@ import type {
   CollectionViewMoveDirection,
   SavedCollectionView,
 } from '@kore/core'
-import { Calendar, Close, LayoutGrid, LayoutTemplate, Layers, Plus } from '@/components/icons'
+import { BoardView, Calendar, Close, LayoutGrid, Plus, TableView } from '@/components/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +25,8 @@ import { cn } from '@/lib/utils'
 import { collectionViewLabel } from './collection-view-model'
 
 const VIEW_GLYPH = {
-  table: Layers,
-  board: LayoutTemplate,
+  table: TableView,
+  board: BoardView,
   calendar: Calendar,
   grid: LayoutGrid,
 } as const

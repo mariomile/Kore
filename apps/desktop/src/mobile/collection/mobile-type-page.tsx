@@ -1,0 +1,466 @@
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react'
+import {
+  EMPTY_TAG_TYPE,
+  errorMessage,
+  foldTag,
+  tagDisplayName,
+  type CollectionEntry,
+  type SavedCollectionView,
+  type TagType,
+} from '@kore/core'
+import { applyCollectionFilters } from '@/components/all-notes/collection-filter-menu'
+import type {
+  CollectionFilter,
+  CollectionFilterMatch,
+} from '@/components/all-notes/collection-filter-menu'
+import {
+  useCollectionSavedViews,
+  useCollectionViewSettings,
+} from '@/components/all-notes/use-collection-view-settings'
+import {
+  BoardView,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  LayoutGrid,
+  Search,
+  Settings,
+  TableView,
+  type Icon,
+} from '@/components/icons'
+import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { TagIcon } from '@/components/tags/tag-icon'
+import { Button } from '@/components/ui/button'
+import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
+import { Spinner } from '@/components/ui/spinner'
+import { toast } from '@/components/ui/toast'
+import { useCollection } from '@/hooks/use-collection'
+import { useTagType } from '@/hooks/use-tag-type'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
+import { cn } from '@/lib/utils'
+import { MobileBoard } from '@/mobile/collection/mobile-board'
+import { hapticImpactLight } from '@/mobile/haptics'
+import { NoteCardGrid } from '@/mobile/note-card-grid'
+import { propertyLine } from '@/mobile/property-line'
+import { SearchInput } from '@/mobile/search-input'
+import type { NoteRowModel } from '@/mobile/swipeable-note-row'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
+import { useGraph } from '@/providers/graph-provider'
+import { routeForPath } from '@/routing/route'
+import { useRouter } from '@/routing/router'
+import { MobileCollectionTable } from './mobile-collection-table'
+import {
+  MOBILE_TYPE_VIEWS,
+  mobileTypeView,
+  rowsMatchingTitle,
+  storedTypeView,
+  type MobileTypeView,
+} from './mobile-type-view'
+
+/** Stable empty list for a type whose definition stores no views. */
+const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
+
+const VIEW_GLYPH: Record<MobileTypeView, Icon> = {
+  table: TableView,
+  board: BoardView,
+  gallery: LayoutGrid,
+}
+
+const VIEW_LABEL: Record<MobileTypeView, string> = {
+  table: 'Table',
+  board: 'Board',
+  gallery: 'Grid',
+}
+
+interface MobileTypePageProps {
+  /** The routed tag (display casing). */
+  tag: string
+}
+
+/**
+ * A type's page on the phone (TDR 0005; Craft's collection page): the type's
+ * icon and name, its saved views (the same `views:` the Mac writes into the
+ * type file, so a view made on one device opens on the other), and the
+ * collection as a table, a board, or a gallery. A saved view's sort and
+ * filters apply here as they do on the Mac, so the same view shows the same
+ * rows. The search narrows by title; the gear opens the type's fields.
+ */
+export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
+  const { graph } = useGraph()
+  const { navigate, back } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
+  const tagKey = foldTag(tag)
+  // Every tag is a collection: no definition note reads as zero fields.
+  const loadedTagType = useTagType(tag)
+  const tagType: TagType | undefined = loadedTagType === null ? EMPTY_TAG_TYPE : loadedTagType
+  const {
+    boardProperties,
+    boardGroupProperty,
+    boardAvailable,
+    calendarAvailable,
+    view: storedView,
+    setViewMode,
+    collectionSorts,
+    setCollectionSorts,
+    setCollectionGroup,
+    tableGroupProperty,
+    setTableGroup,
+    visibleTagType,
+  } = useCollectionViewSettings(tagKey, tagType ?? null)
+  const collection = useCollection(tag, collectionSorts)
+  // Filters come with a saved view (the phone has no editor for them yet):
+  // applying one shows the rows the Mac shows for it.
+  const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
+  const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
+  const { tabs, activeViewId, applySavedView, addView } = useCollectionSavedViews({
+    tagKey,
+    typeViews:
+      loadedTagType === undefined || loadedTagType === null
+        ? loadedTagType
+        : (loadedTagType.views ?? NO_TYPE_VIEWS),
+    view: storedView,
+    collectionSorts,
+    boardGroupProperty,
+    tableGroupProperty,
+    calendarAvailable,
+    collectionFilters,
+    filterMatch,
+    setViewMode,
+    setCollectionSorts,
+    setCollectionGroup,
+    setTableGroup,
+    setCollectionFilters,
+    setFilterMatch,
+  })
+  const activeTab = tabs.find((entry) => entry.id === activeViewId) ?? tabs[0]
+
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
+  const rows = useMemo(() => {
+    if (collection === undefined || tagType === undefined) {
+      return
+    }
+    return rowsMatchingTitle(
+      applyCollectionFilters(tagType, collection, collectionFilters, filterMatch),
+      deferredQuery,
+    )
+  }, [collection, tagType, collectionFilters, filterMatch, deferredQuery])
+
+  const view = mobileTypeView(storedView)
+  const setView = (next: MobileTypeView): void => {
+    hapticImpactLight()
+    setViewMode(storedTypeView(next))
+  }
+
+  const [choosingView, setChoosingView] = useState(false)
+  const [configuring, setConfiguring] = useState(false)
+  const resolveTemplateValues = useTemplateValues()
+  const createRow = useCallback(
+    async (title: string) => {
+      if (graph === null || tagType === undefined) {
+        return
+      }
+      try {
+        await createTitledCollectionNote(
+          tag,
+          graph.generation,
+          title,
+          tagType,
+          await resolveTemplateValues(null),
+        )
+      } catch (error) {
+        toast.add({
+          type: 'error',
+          title: "Couldn't create the note",
+          description: errorMessage(error),
+        })
+      }
+    },
+    [graph, tag, tagType, resolveTemplateValues],
+  )
+  const open = (path: string): void => navigate(routeForPath(path))
+
+  const galleryRows = useMemo(
+    () =>
+      view !== 'gallery' || rows === undefined || tagType === undefined
+        ? []
+        : rows.map((entry) => galleryRow(entry, tagType)),
+    [view, rows, tagType],
+  )
+
+  const name = tagDisplayName(tag)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  // The field appears because the search button was tapped: take the keyboard.
+  useEffect(() => {
+    if (searching) {
+      searchInputRef.current?.focus()
+    }
+  }, [searching])
+  const closeSearch = (): void => {
+    setSearching(false)
+    setQuery('')
+  }
+
+  return (
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      <header
+        ref={barRef}
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 px-4 pb-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
+      >
+        {searching ? (
+          <div className="flex h-11 items-center gap-2">
+            <SearchInput
+              ref={searchInputRef}
+              placeholder={`Search ${name}`}
+              aria-label={`Search ${name}`}
+              value={query}
+              onValueChange={setQuery}
+            />
+            <button
+              type="button"
+              onClick={closeSearch}
+              className="h-11 shrink-0 px-1 text-[15px] font-medium text-primary active:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex h-11 items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2 size-11 shrink-0"
+              aria-label="Back"
+              onClick={back}
+            >
+              <ChevronLeft />
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0"
+              aria-label={`Search ${name}`}
+              onClick={() => setSearching(true)}
+            >
+              <Search />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-mr-2 size-11 shrink-0"
+              aria-label={`Configure #${tagKey}`}
+              onClick={() => setConfiguring(true)}
+            >
+              <Settings />
+            </Button>
+          </div>
+        )}
+        <div className="flex min-w-0 items-center gap-2.5 pt-1">
+          <TagIcon
+            icon={loadedTagType?.icon}
+            className="size-6 text-text-muted"
+            emojiClassName="text-[24px]"
+          />
+          <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight">{name}</h1>
+          {rows !== undefined ? (
+            <span className="shrink-0 pt-1.5 text-[15px] tabular-nums text-text-muted">
+              {rows.length}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setChoosingView(true)}
+            aria-label={`View: ${activeTab?.name ?? VIEW_LABEL[view]}`}
+            aria-haspopup="dialog"
+            className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] bg-surface-hover pr-2.5 pl-3.5 text-[14px] font-medium text-text active:bg-surface-active"
+          >
+            <span className="truncate">{activeTab?.name ?? VIEW_LABEL[view]}</span>
+            <ChevronDown aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+          </button>
+          <div className="flex-1" />
+          <TypeViewToggle view={view} boardAvailable={boardAvailable} onChange={setView} />
+        </div>
+      </header>
+
+      {rows === undefined || tagType === undefined || visibleTagType === null ? (
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+          aria-label="Loading notes"
+        >
+          <Spinner className="size-5 text-text-muted" />
+        </div>
+      ) : view === 'board' && boardGroupProperty !== null ? (
+        <MobileBoard
+          entries={rows}
+          tag={tag}
+          type={tagType}
+          property={boardGroupProperty}
+          groupProperties={boardProperties}
+          onGroupChange={setCollectionGroup}
+          onOpen={open}
+        />
+      ) : view === 'gallery' ? (
+        galleryRows.length === 0 ? (
+          <EmptyRows searching={deferredQuery.trim() !== ''} name={name} />
+        ) : (
+          <NoteCardGrid rows={galleryRows} onOpen={open} />
+        )
+      ) : (
+        <MobileCollectionTable
+          entries={rows}
+          type={visibleTagType}
+          label={name}
+          onOpen={open}
+          onCreate={createRow}
+        />
+      )}
+
+      <Drawer open={choosingView} onOpenChange={setChoosingView}>
+        <DrawerContent>
+          <DrawerTitle>Views</DrawerTitle>
+          <DrawerBody className="px-4 pb-2">
+            <div role="listbox" aria-label="Saved views" className="flex flex-col">
+              {tabs.map((entry) => {
+                const Glyph = VIEW_GLYPH[mobileTypeView(entry.view)]
+                const selected = entry.id === activeTab?.id
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      hapticImpactLight()
+                      applySavedView(entry)
+                      setChoosingView(false)
+                    }}
+                    className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
+                  >
+                    <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
+                    <span className={cn('min-w-0 flex-1 truncate', selected && 'font-medium')}>
+                      {entry.name}
+                    </span>
+                    {selected ? <Check aria-hidden className="size-4 text-primary" /> : null}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="px-2 pt-4 pb-1 text-[13px] text-text-muted">New view</p>
+            <div className="flex flex-col">
+              {MOBILE_TYPE_VIEWS.filter((entry) => entry !== 'board' || boardAvailable).map(
+                (entry) => {
+                  const Glyph = VIEW_GLYPH[entry]
+                  return (
+                    <button
+                      key={entry}
+                      type="button"
+                      onClick={() => {
+                        hapticImpactLight()
+                        addView(storedTypeView(entry))
+                        setChoosingView(false)
+                      }}
+                      className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
+                    >
+                      <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
+                      <span className="min-w-0 flex-1 truncate">{VIEW_LABEL[entry]}</span>
+                    </button>
+                  )
+                },
+              )}
+            </div>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+      {configuring ? <TagConfigDialog tag={tag} onClose={() => setConfiguring(false)} /> : null}
+    </div>
+  )
+}
+
+/** A collection row as a gallery card: title, first image, property line. */
+function galleryRow(entry: CollectionEntry, type: TagType): NoteRowModel {
+  const line = propertyLine(type, entry.properties)
+  return {
+    path: entry.path,
+    titleSegments: [{ text: entry.title, highlighted: false }],
+    mtime: entry.mtime,
+    isPinned: entry.isPinned,
+    canDelete: true,
+    snippet: [],
+    ...(line === '' ? {} : { propertyLine: line }),
+  }
+}
+
+function EmptyRows({ searching, name }: { searching: boolean; name: string }): ReactElement {
+  return (
+    <div
+      className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-text-muted"
+      style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+    >
+      <p className="text-sm">{searching ? 'No matches' : `No ${name} notes yet`}</p>
+    </div>
+  )
+}
+
+interface TypeViewToggleProps {
+  view: MobileTypeView
+  /** The board needs a field to group by. */
+  boardAvailable: boolean
+  onChange: (view: MobileTypeView) => void
+}
+
+/** Table / Board / Gallery: the page's layout, one tap each. */
+function TypeViewToggle({ view, boardAvailable, onChange }: TypeViewToggleProps): ReactElement {
+  const controlRef = useRef<HTMLDivElement | null>(null)
+  const indicatorRef = useRef<HTMLSpanElement | null>(null)
+  useSlidingIndicator(controlRef, indicatorRef, view)
+  return (
+    <div
+      ref={controlRef}
+      role="group"
+      aria-label="Layout"
+      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+    >
+      <span
+        ref={indicatorRef}
+        data-sliding-indicator
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
+      />
+      {MOBILE_TYPE_VIEWS.filter((entry) => entry !== 'board' || boardAvailable).map((entry) => {
+        const Glyph = VIEW_GLYPH[entry]
+        return (
+          <button
+            key={entry}
+            type="button"
+            data-sliding-value={entry}
+            aria-label={`${VIEW_LABEL[entry]} view`}
+            aria-pressed={view === entry}
+            onClick={() => onChange(entry)}
+            className={cn(
+              "relative z-20 flex h-9 w-11 items-center before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
+              view === entry ? 'text-text' : 'text-text-muted',
+            )}
+          >
+            <Glyph aria-hidden className="size-[18px]" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}

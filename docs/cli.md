@@ -17,7 +17,7 @@ kore tags                  # every tag with its count and whether it is typed
 kore list                  # notes newest first with tags (--tag, --kind)
 kore collection <tag>      # a typed tag's rows with their property values
 kore properties <note>     # a note's frontmatter properties, typed
-kore links <note>          # the wiki links a note makes, resolved
+kore links <note>          # the wiki links a note makes, resolved, with relations
 kore explain <note>        # properties, tags, outline, links and backlinks in one call
 kore route <from> <to>     # the shortest chain of links between two notes
 kore grep <text>           # every line containing an exact text (no index needed)
@@ -30,7 +30,7 @@ kore show <note>           # print a note by date, path, id, title, or alias
 kore path <note>           # resolve a note to its absolute path
 kore open <note>           # open a note in the app (kore:// deep link)
 kore tasks                 # the graph's open tasks (--all includes done)
-kore backlinks <note>      # the notes linking to a note
+kore backlinks <note>      # the notes linking to a note, with relations and context
 kore recent                # the most recently updated notes, newest first
 kore capture <text>        # append a bullet to today's daily (--to any note, --stdin)
 kore append <note> <text>     # append a markdown block (--stdin)
@@ -275,7 +275,7 @@ the last index run never surfaces. A stale index warns on stderr and sets
 }
 ```
 
-### `kore backlinks <note> [--json]`
+### `kore backlinks <note> [--relation KEY] [--json]`
 
 Lists the notes linking *to* a note, from the index's `backlinks` view — the
 same resolution the app's Backlinks panel uses (ranked wiki-name joins with
@@ -286,14 +286,35 @@ each linking note's own frontmatter is re-checked on disk before it surfaces.
 Requires the index (exit `4` when missing); a stale index warns and sets
 `"stale": true`.
 
+Each backlink names its **relations**: the frontmatter keys it links under
+(`company: "[[Acme]]"` on a person makes that person a `company` backlink of
+Acme; a link in the body is a mention and adds none). `mentions` gives up to
+3 of its links in document order, each with the words around it read from
+the file: the frontmatter line for a relation, the list item or paragraph
+for a body link (cut to 280 characters around the link). `--relation KEY`
+keeps only the notes linking under that key, case-insensitive, and only
+those links. An index built before relations were stored (an older app)
+reads every link as a mention until the app rebuilds it.
+
 ```jsonc
-// kore backlinks "Project X" --json
+// kore backlinks "Acme" --json
 {
-  "path": "notes/project-x.md",
-  "title": "Project X",
+  "path": "notes/acme.md",
+  "title": "Acme",
   "stale": false,
   "backlinks": [
-    { "path": "notes/standup.md", "title": "Standup", "count": 2 }
+    {
+      "path": "notes/ada.md", "title": "Ada", "count": 2,
+      "relations": ["company"],
+      "mentions": [
+        { "relation": "company", "context": "company: \"[[Acme]]\"" },
+        { "context": "Ada left [[Acme]] in May." }
+      ]
+    },
+    {
+      "path": "daily/2026-11-15.md", "title": "", "count": 1,
+      "mentions": [{ "context": "- Call with [[Acme]] about pricing" }]
+    }
   ]
 }
 ```
@@ -604,12 +625,15 @@ open (empty otherwise). File-only like `show`. A private note is refused
 }
 ```
 
-### `kore links <note> [--json]`
+### `kore links <note> [--relation KEY] [--json]`
 
 The wiki links a note makes, in document order, one entry per distinct
 target, resolved through the index's link resolution to the note that
-answers to it (`path: null` when none does). A private source is refused;
-a link whose target is private is dropped. Requires the index (exit `4`).
+answers to it (`path: null` when none does). Each entry names its
+`relations`, the frontmatter keys the target is the value of (omitted for a
+link only in the body); `--relation KEY` keeps only those links. A private
+source is refused; a link whose target is private is dropped. Requires the
+index (exit `4`).
 
 ```jsonc
 // kore links Dune --json
@@ -617,7 +641,7 @@ a link whose target is private is dropped. Requires the index (exit `4`).
   "path": "notes/dune.md",
   "stale": false,
   "links": [
-    { "target": "Frank Herbert", "path": "notes/frank-herbert.md", "title": "Frank Herbert" },
+    { "target": "Frank Herbert", "path": "notes/frank-herbert.md", "title": "Frank Herbert", "relations": ["author"] },
     { "target": "Arrakis", "path": null, "title": null }
   ]
 }

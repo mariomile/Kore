@@ -107,8 +107,8 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
 
   const insertLink = database.prepare(
     `INSERT INTO links(
-      source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const link of indexed.links) {
     insertLink.run(
@@ -118,6 +118,7 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
       link.targetKey,
       link.targetPathKey,
       link.alias,
+      link.relation,
       link.posFrom,
       link.posTo,
     )

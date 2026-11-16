@@ -45,6 +45,7 @@ function sampleNote(overrides: Partial<IndexedNote> = {}): IndexedNote {
         targetKey: 'other note',
         targetPathKey: null,
         alias: null,
+        relation: null,
         posFrom: 3,
         posTo: 16,
       },

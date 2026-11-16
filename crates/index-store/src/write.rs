@@ -73,6 +73,9 @@ pub struct IndexedLink {
     /// Folded vault path when the link names a file; None when it names a note.
     pub target_path_key: Option<String>,
     pub alias: Option<String>,
+    /// The frontmatter key the link is the value of; None for a body link.
+    #[serde(default)]
+    pub relation: Option<String>,
     pub pos_from: i64,
     pub pos_to: i64,
 }
@@ -212,8 +215,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
         .execute(params![note.path, note.text])?;
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
         for link in &note.links {
             stmt.execute(params![
@@ -223,6 +226,7 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 link.target_key,
                 link.target_path_key,
                 link.alias,
+                link.relation,
                 link.pos_from,
                 link.pos_to
             ])?;

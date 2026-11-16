@@ -143,8 +143,11 @@ import {
  * 33 - `tasks.tags` (migration 0027): the tags on a task's own line, which
  * make the line a row of that tag's database. Existing rows hold `[]` until
  * the rebuild fills them.
+ * 34 - `links.relation` (migration 0028): the frontmatter key a link is the
+ * value of, so `company: "[[Acme]]"` is a named `company` edge and not a bare
+ * mention. Existing rows hold NULL until the rebuild fills them.
  */
-export const PROJECTION_VERSION = 33
+export const PROJECTION_VERSION = 34
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -203,6 +206,11 @@ export const indexedLinkSchema = z.object({
   /** Folded vault path when the link names a file; null when it names a note. */
   targetPathKey: z.string().nullable(),
   alias: z.string().nullable(),
+  /**
+   * The frontmatter key the link is the value of (`company: "[[Acme]]"`), or
+   * null for a body link. Named relations are what the CLI/MCP filter on.
+   */
+  relation: z.string().nullable(),
   posFrom: z.number(),
   posTo: z.number(),
 })
@@ -457,6 +465,7 @@ export function buildIndexedNote(
           ? foldGraphPath(reference.path)
           : null,
       alias: link.alias ?? null,
+      relation: link.relation ?? null,
       posFrom: link.from,
       posTo: link.to,
     }
@@ -469,6 +478,7 @@ export function buildIndexedNote(
       targetKey: link.href.toLowerCase(),
       targetPathKey: reference?.kind === 'path' ? foldGraphPath(reference.path) : null,
       alias: null,
+      relation: null,
       posFrom: link.from,
       posTo: link.to,
     }

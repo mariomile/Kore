@@ -24,8 +24,8 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
     let properties = extract_properties(split.raw);
     let outline = outline(split.body);
     let tags = note_tags(&opened.conn, &rel_path)?;
-    let links = links::collect(&graph.root, &opened.conn, &rel_path)?;
-    let backlinks = backlinks::collect(&graph.root, &opened.conn, &rel_path)?;
+    let links = links::collect(&graph.root, &opened.conn, &rel_path, None)?;
+    let backlinks = backlinks::collect(&graph.root, &opened.conn, &rel_path, None)?;
     let words = split.body.split_whitespace().count();
 
     if json {

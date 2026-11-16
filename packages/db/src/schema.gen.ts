@@ -25,6 +25,7 @@ export interface Backlinks {
   kind: string | null;
   posFrom: number | null;
   posTo: number | null;
+  relation: string | null;
   sourcePath: string | null;
   targetPath: string | null;
   targetRaw: string | null;
@@ -69,6 +70,7 @@ export interface Links {
   kind: string;
   posFrom: number;
   posTo: number;
+  relation: string | null;
   sourcePath: string;
   targetKey: string;
   targetPathKey: string | null;

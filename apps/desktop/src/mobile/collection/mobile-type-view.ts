@@ -1,22 +1,47 @@
 import type { AllNotesView, CollectionEntry, CollectionPageView, TagProperty } from '@kore/core'
 
 /** The layouts a type's page offers on the phone. */
-export type MobileTypeView = 'table' | 'board' | 'gallery'
+export type MobileTypeView = 'table' | 'board' | 'gallery' | 'calendar'
 
-/** The phone's layouts in switcher order. */
-export const MOBILE_TYPE_VIEWS: readonly MobileTypeView[] = ['table', 'board', 'gallery']
+/** The phone's layouts in switcher order (the Mac's tab order). */
+export const MOBILE_TYPE_VIEWS: readonly MobileTypeView[] = [
+  'table',
+  'board',
+  'calendar',
+  'gallery',
+]
+
+/**
+ * The layouts this type can show: the board needs a field to group by and
+ * the calendar a date field to place rows on.
+ */
+export function availableTypeViews(options: {
+  boardAvailable: boolean
+  calendarAvailable: boolean
+}): MobileTypeView[] {
+  return MOBILE_TYPE_VIEWS.filter(
+    (view) =>
+      (view !== 'board' || options.boardAvailable) &&
+      (view !== 'calendar' || options.calendarAvailable),
+  )
+}
 
 /**
  * Which layout the phone renders for the page's resolved view (the same
- * per-tag entry the Mac writes, so a board picked there opens as a board
- * here). The calendar has no phone layout yet and reads as the table, the
- * collection's own shape; the notes list never reaches a type page.
+ * per-tag entry the Mac writes, so a board or calendar picked there opens
+ * as one here). The notes list never reaches a type page; it reads as the
+ * table, the collection's own shape.
  */
 export function mobileTypeView(view: AllNotesView): MobileTypeView {
-  if (view === 'board') {
-    return 'board'
+  switch (view) {
+    case 'board':
+    case 'calendar':
+      return view
+    case 'grid':
+      return 'gallery'
+    default:
+      return 'table'
   }
-  return view === 'grid' ? 'gallery' : 'table'
 }
 
 /** The stored view a phone layout writes back (`gallery` is the Mac's grid). */

@@ -12,7 +12,6 @@ import {
   errorMessage,
   foldTag,
   tagDisplayName,
-  type CollectionEntry,
   type SavedCollectionView,
   type TagType,
 } from '@kore/core'
@@ -27,6 +26,7 @@ import {
 } from '@/components/all-notes/use-collection-view-settings'
 import {
   BoardView,
+  Calendar,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -50,19 +50,18 @@ import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
 import { cn } from '@/lib/utils'
 import { MobileBoard } from '@/mobile/collection/mobile-board'
 import { hapticImpactLight } from '@/mobile/haptics'
-import { NoteCardGrid } from '@/mobile/note-card-grid'
-import { propertyLine } from '@/mobile/property-line'
 import { SearchInput } from '@/mobile/search-input'
-import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { MobileCalendar } from './mobile-calendar'
 import { MobileCollectionTable } from './mobile-collection-table'
+import { MobileGallery } from './mobile-gallery'
 import { MobileViewOptions, type ViewGrouping } from './mobile-view-options'
 import {
-  MOBILE_TYPE_VIEWS,
+  availableTypeViews,
   mobileTypeView,
   rowsMatchingTitle,
   storedTypeView,
@@ -75,12 +74,14 @@ const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 const VIEW_GLYPH: Record<MobileTypeView, Icon> = {
   table: TableView,
   board: BoardView,
+  calendar: Calendar,
   gallery: LayoutGrid,
 }
 
 const VIEW_LABEL: Record<MobileTypeView, string> = {
   table: 'Table',
   board: 'Board',
+  calendar: 'Calendar',
   gallery: 'Grid',
 }
 
@@ -110,6 +111,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
     boardGroupProperty,
     boardAvailable,
     calendarAvailable,
+    calendarDateProperty,
     view: storedView,
     setViewMode,
     collectionSorts,
@@ -163,6 +165,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   }, [collection, tagType, collectionFilters, filterMatch, deferredQuery])
 
   const view = mobileTypeView(storedView)
+  const layouts = availableTypeViews({ boardAvailable, calendarAvailable })
   const setView = (next: MobileTypeView): void => {
     hapticImpactLight()
     setViewMode(storedTypeView(next))
@@ -222,14 +225,6 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
     [graph, tag, tagType, resolveTemplateValues],
   )
   const open = (path: string): void => navigate(routeForPath(path))
-
-  const galleryRows = useMemo(
-    () =>
-      view !== 'gallery' || rows === undefined || visibleTagType === null
-        ? []
-        : rows.map((entry) => galleryRow(entry, visibleTagType)),
-    [view, rows, visibleTagType],
-  )
 
   const name = tagDisplayName(tag)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -352,7 +347,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
             ) : null}
           </button>
           <div className="flex-1" />
-          <TypeViewToggle view={view} boardAvailable={boardAvailable} onChange={setView} />
+          <TypeViewToggle view={view} layouts={layouts} onChange={setView} />
         </div>
       </header>
 
@@ -374,11 +369,20 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           onGroupChange={setCollectionGroup}
           onOpen={open}
         />
+      ) : view === 'calendar' && calendarDateProperty !== null ? (
+        <MobileCalendar
+          entries={rows}
+          property={calendarDateProperty}
+          tag={tag}
+          type={tagType}
+          cardType={visibleTagType}
+          onOpen={open}
+        />
       ) : view === 'gallery' ? (
-        galleryRows.length === 0 ? (
+        rows.length === 0 ? (
           <EmptyRows searching={deferredQuery.trim() !== ''} name={name} />
         ) : (
-          <NoteCardGrid rows={galleryRows} onOpen={open} />
+          <MobileGallery entries={rows} type={visibleTagType} onOpen={open} />
         )
       ) : (
         <MobileCollectionTable
@@ -423,26 +427,24 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
             </div>
             <p className="px-2 pt-4 pb-1 text-[13px] text-text-muted">New view</p>
             <div className="flex flex-col">
-              {MOBILE_TYPE_VIEWS.filter((entry) => entry !== 'board' || boardAvailable).map(
-                (entry) => {
-                  const Glyph = VIEW_GLYPH[entry]
-                  return (
-                    <button
-                      key={entry}
-                      type="button"
-                      onClick={() => {
-                        hapticImpactLight()
-                        addView(storedTypeView(entry))
-                        setChoosingView(false)
-                      }}
-                      className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
-                    >
-                      <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
-                      <span className="min-w-0 flex-1 truncate">{VIEW_LABEL[entry]}</span>
-                    </button>
-                  )
-                },
-              )}
+              {layouts.map((entry) => {
+                const Glyph = VIEW_GLYPH[entry]
+                return (
+                  <button
+                    key={entry}
+                    type="button"
+                    onClick={() => {
+                      hapticImpactLight()
+                      addView(storedTypeView(entry))
+                      setChoosingView(false)
+                    }}
+                    className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
+                  >
+                    <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
+                    <span className="min-w-0 flex-1 truncate">{VIEW_LABEL[entry]}</span>
+                  </button>
+                )
+              })}
             </div>
           </DrawerBody>
         </DrawerContent>
@@ -471,20 +473,6 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   )
 }
 
-/** A collection row as a gallery card: title, first image, property line. */
-function galleryRow(entry: CollectionEntry, type: TagType): NoteRowModel {
-  const line = propertyLine(type, entry.properties)
-  return {
-    path: entry.path,
-    titleSegments: [{ text: entry.title, highlighted: false }],
-    mtime: entry.mtime,
-    isPinned: entry.isPinned,
-    canDelete: true,
-    snippet: [],
-    ...(line === '' ? {} : { propertyLine: line }),
-  }
-}
-
 function EmptyRows({ searching, name }: { searching: boolean; name: string }): ReactElement {
   return (
     <div
@@ -498,13 +486,13 @@ function EmptyRows({ searching, name }: { searching: boolean; name: string }): R
 
 interface TypeViewToggleProps {
   view: MobileTypeView
-  /** The board needs a field to group by. */
-  boardAvailable: boolean
+  /** The layouts this type can show. */
+  layouts: readonly MobileTypeView[]
   onChange: (view: MobileTypeView) => void
 }
 
-/** Table / Board / Gallery: the page's layout, one tap each. */
-function TypeViewToggle({ view, boardAvailable, onChange }: TypeViewToggleProps): ReactElement {
+/** Table / Board / Calendar / Grid: the page's layout, one tap each. */
+function TypeViewToggle({ view, layouts, onChange }: TypeViewToggleProps): ReactElement {
   const controlRef = useRef<HTMLDivElement | null>(null)
   const indicatorRef = useRef<HTMLSpanElement | null>(null)
   useSlidingIndicator(controlRef, indicatorRef, view)
@@ -521,7 +509,7 @@ function TypeViewToggle({ view, boardAvailable, onChange }: TypeViewToggleProps)
         aria-hidden
         className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
       />
-      {MOBILE_TYPE_VIEWS.filter((entry) => entry !== 'board' || boardAvailable).map((entry) => {
+      {layouts.map((entry) => {
         const Glyph = VIEW_GLYPH[entry]
         return (
           <button

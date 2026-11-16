@@ -149,7 +149,7 @@ const NO_IMAGES: ReadonlyMap<string, string> = new Map()
  * into an asset URL (no network, no SVG). Index-scoped, so an edit that adds
  * or removes a photo refreshes the grid with every other index query.
  */
-function useFirstImages(paths: readonly string[]): ReadonlyMap<string, string> {
+export function useFirstImages(paths: readonly string[]): ReadonlyMap<string, string> {
   const { graph } = useGraph()
   const { resolveImageUrl, resolveAssetOpenPath } = useAssetPersistence(graph?.generation ?? null)
   const resolve = useMemo(

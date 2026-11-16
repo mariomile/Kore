@@ -82,7 +82,7 @@ interface GalleryCardProps {
 }
 
 /** One card; memoized so a cover arriving re-renders only its own card. */
-const GalleryCard = memo(function GalleryCard({
+export const GalleryCard = memo(function GalleryCard({
   entry,
   type,
   cover,
@@ -106,9 +106,9 @@ const GalleryCard = memo(function GalleryCard({
           />
         ) : null}
         <div className="flex flex-col gap-2 p-3">
-          <h2 className="line-clamp-3 text-[14px] font-semibold leading-snug text-text">
+          <span className="line-clamp-3 text-[14px] font-semibold leading-snug text-text">
             {entry.title}
-          </h2>
+          </span>
           <CardPropertyChips type={type} entry={entry} />
         </div>
       </button>

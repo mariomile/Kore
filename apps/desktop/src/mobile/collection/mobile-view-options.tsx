@@ -52,6 +52,8 @@ interface MobileViewOptionsProps {
   onOpenChange: (open: boolean) => void
   /** The saved view the changes land in, for the footer. */
   viewName: string
+  /** Where the view lives, for the footers: a type's saved view, or a note's own fence. */
+  scope?: 'savedView' | 'note'
   layout: MobileTypeView
   /** The full schema (hidden fields included: they still filter and sort). */
   type: TagType
@@ -186,6 +188,7 @@ function PageBody({
 function RootPage({
   go,
   viewName,
+  scope = 'savedView',
   layout,
   type,
   filters,
@@ -195,7 +198,13 @@ function RootPage({
 }: MobileViewOptionsProps & { go: (page: Page) => void }): ReactElement {
   return (
     <>
-      <SettingsGroup footer={`Filter, sort and group are saved in “${viewName}”, on your Mac too.`}>
+      <SettingsGroup
+        footer={
+          scope === 'note'
+            ? 'Saved in this note, so the Mac shows the same view.'
+            : `Filter, sort and group are saved in “${viewName}”, on your Mac too.`
+        }
+      >
         <SettingsNavRow
           label="Filter"
           value={filters.length === 0 ? 'None' : String(filters.length)}
@@ -216,7 +225,9 @@ function RootPage({
         ) : null}
       </SettingsGroup>
       {layout !== 'board' && type.properties.length > 0 ? (
-        <SettingsGroup footer="Which fields show is kept on this iPhone.">
+        <SettingsGroup
+          footer={scope === 'note' ? null : 'Which fields show is kept on this iPhone.'}
+        >
           <SettingsNavRow
             label="Fields"
             value={fieldsSummary(type, hiddenFields)}

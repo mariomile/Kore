@@ -100,4 +100,18 @@ describe('MobileCollectionTable', () => {
     expect(table.getByRole('rowheader', { name: /^Done/ }).elements()).toHaveLength(0)
     expect(table.getByRole('cell', { name: '2', exact: true }).elements()).toHaveLength(0)
   })
+
+  it('drops the New row when it has nowhere to create (an embedded preview)', async () => {
+    const view = await render(
+      <MobileCollectionTable
+        embedded
+        entries={ENTRIES}
+        type={PROJECT}
+        label="Project"
+        onOpen={() => {}}
+      />,
+    )
+    await expect.element(view.getByRole('rowheader', { name: 'Kitchen shelves' })).toBeVisible()
+    expect(view.getByRole('button', { name: 'New', exact: true }).query()).toBeNull()
+  })
 })

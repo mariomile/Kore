@@ -1,5 +1,25 @@
 # Kore working state
 
+## iPhone share sheet, type dialog, UIScene, layout out of settings, 2026-11-16
+
+- [x] iPhone share sheet: when you share a link or an X post, you pick where
+  it goes (today's note under Links, an existing note found by search, or a
+  new note in a folder) and how it's drawn (Link, Compact, Card, Large, Text
+  quote, or the post/video player); you can add a thought, the sheet remembers
+  your last choices, and saving is instant and offline, with the app writing
+  the link the next time it opens (#498).
+- [x] Redesigned type configuration dialog, with value colors and ordering
+  (#501).
+- [x] Open tabs and panel layout move out of the settings file, so navigating
+  no longer rewrites settings; open tabs reset once after updating (#502).
+- [x] The iPhone app adopts the UIScene lifecycle, so builds made with Xcode
+  27 launch; the Record audio quick action keeps working while the app is open
+  (#503).
+- [x] iPhone: long wiki links now wrap instead of staying on one line, so
+  notes no longer scroll sideways (#506).
+- Not verified on a real iPhone; #503 needs a TestFlight check on iOS 26
+  hardware.
+
 ## Graph lint, link and sync fixes, iPhone icon, 2026-11-16
 
 - [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit

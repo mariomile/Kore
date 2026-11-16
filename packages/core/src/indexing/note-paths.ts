@@ -6,7 +6,11 @@ import {
   noteFileStemForTitle,
   templatePath,
 } from '../graph/paths'
+import { frontmatterTagNames } from '../markdown/extract'
+import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { slugForTitle } from '../markdown/slug'
+import { typedNoteFolder } from '../tags/type-folder'
+import { getTagType } from './collections'
 import { db } from './db'
 
 /**
@@ -117,4 +121,35 @@ export async function slugPathForTitle(
   taken: (candidate: string) => Promise<boolean> = pathTaken,
 ): Promise<string> {
   return await probeNotePath(noteFileStemForTitle(title), taken, path)
+}
+
+/**
+ * Where an untitled note's file goes at its birth rename (its first title):
+ * {@link slugPathForTitle}'s slug path, unless the note's type declares a
+ * home folder (`folder:`), in which case the note is born there — a Project
+ * made from a board's "+" lands in `Active/Projects/<Name>/<Name>.md`, not in
+ * the new-note folder. The type is read from the note's own frontmatter
+ * `tags:` (`source`), the first one with a home winning, so the decision
+ * never waits on the index. Only the birth consults the type: a note that
+ * already has a title never moves because of its type.
+ */
+export async function birthPathForTitle(
+  path: string,
+  title: string,
+  source: string,
+  taken: (candidate: string) => Promise<boolean> = pathTaken,
+): Promise<string> {
+  const tags = frontmatterTagNames(parseFrontmatter(splitFrontmatter(source).raw).data)
+  for (const tag of tags) {
+    const home = (await getTagType(tag))?.folder
+    if (home !== undefined) {
+      return await probeNotePath(
+        noteFileStemForTitle(title),
+        taken,
+        path,
+        (stem) => `${typedNoteFolder(home, stem)}/${stem}.md`,
+      )
+    }
+  }
+  return await slugPathForTitle(path, title, taken)
 }

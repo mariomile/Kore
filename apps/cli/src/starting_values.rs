@@ -174,6 +174,7 @@ mod tests {
                 field("number", Start::NextNumber),
             ],
             template: None,
+            folder: None,
         };
         let values = starting_values(&schema, None, &[]).unwrap();
         let keys: Vec<&str> = values.iter().map(|(key, _)| key.as_str()).collect();

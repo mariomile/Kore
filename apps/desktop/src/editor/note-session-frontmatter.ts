@@ -68,6 +68,11 @@ export interface FrontmatterPatch {
    */
   tagTemplate?: string | null
   /**
+   * A type's home folder (`folder:` on the definition): where its new notes
+   * are born. `null` deletes the key; omitted leaves whatever is there.
+   */
+  tagFolder?: string | null
+  /**
    * The note's icon (`icon:`: an emoji, `icon:<name>`, or an image), which
    * is also a tag definition's icon. `null` deletes the key; omitted leaves
    * whatever is there.
@@ -129,6 +134,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.tagTemplate !== undefined) {
     yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
+  }
+  if (patch.tagFolder !== undefined) {
+    yaml['folder'] = patch.tagFolder === null ? undefined : patch.tagFolder
   }
   if (patch.icon !== undefined) {
     yaml['icon'] = patch.icon === null ? undefined : patch.icon

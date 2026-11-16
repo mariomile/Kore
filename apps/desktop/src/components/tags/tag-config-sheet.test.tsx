@@ -51,6 +51,7 @@ beforeEach(() => {
     needsConversion: false,
     properties: [{ name: 'Website', key: 'website', type: 'url' }],
     template: null,
+    folder: null,
     icon: null,
     parents: [],
   }
@@ -91,7 +92,7 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
         { name: 'Deal value', key: 'deal-value', type: 'number' },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(onClose).toHaveBeenCalled()
   })
@@ -116,6 +117,7 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
     await expect.poll(() => saveTagType.mock.calls.length).toBe(1)
     expect(saveTagType).toHaveBeenCalledWith('Company', [], 7, {
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     })

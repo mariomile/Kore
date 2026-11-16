@@ -29,6 +29,7 @@ import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagConfigSheet } from './tag-config-sheet'
 import { TagPresetIcon } from './tag-preset-icon'
+import { TagFolderField } from './tag-folder-field'
 import { TagParentsField } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertySettings } from './tag-property-settings'
@@ -294,6 +295,12 @@ function TypePane({
           </SelectContent>
         </Select>
       </PaneRow>
+      <TagFolderField
+        folder={config.folder}
+        folders={config.folders}
+        onChange={config.setFolder}
+        labelClassName={FIELD_LABEL_CLASS}
+      />
       <TagParentsField
         tag={tagKey}
         parents={config.parents}

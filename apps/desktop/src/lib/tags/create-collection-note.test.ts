@@ -87,6 +87,19 @@ describe('createCollectionNote type placement', () => {
 })
 
 describe('createTitledCollectionNote', () => {
+  it('births the titled row in its type folder when the type has one', async () => {
+    const type = { properties: [], folder: 'Active/Projects/{title}' }
+    await createTitledCollectionNote('project', 3, 'Kore Cloud', type, VALUES)
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Kore Cloud',
+      'project',
+      {},
+      3,
+      '',
+      'Active/Projects/{title}',
+    )
+  })
+
   it('births the titled row with type and starting values in one create', async () => {
     const type = {
       properties: [
@@ -111,6 +124,7 @@ describe('createTitledCollectionNote', () => {
       { status: 'to-read' },
       3,
       '',
+      undefined,
     )
     expect(createNoteIfAbsent).not.toHaveBeenCalled()
   })

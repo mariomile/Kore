@@ -36,6 +36,10 @@ vi.mock('@kore/core', async (importOriginal) => ({
   writeNote: io.writeNote,
   resolveWikiTarget: io.resolveWikiTarget,
   slugPathForTitle: io.slugPathForTitle,
+  // The birth path is the slug path unless the note's type has a home
+  // folder; these notes are untyped, so it delegates (and core tests the rest).
+  birthPathForTitle: async (path: string, title: string): Promise<string> =>
+    String(await io.slugPathForTitle(path, title)),
   moveNoteIndexed: io.moveNoteIndexed,
 }))
 

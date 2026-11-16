@@ -40,6 +40,7 @@ describe('readTagDefinition', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
       views: [],

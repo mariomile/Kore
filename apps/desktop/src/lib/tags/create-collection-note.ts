@@ -3,6 +3,7 @@ import {
   createNoteIfAbsent,
   createTypedNoteWithTitle,
   expandTemplatePlaceholders,
+  getTagType,
   isTemplatePath,
   newNoteId,
   readNote,
@@ -83,7 +84,9 @@ export async function createTitledCollectionNote(
   // the serializer's round-trip form), which the heading stripper ignores.
   const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
   const stamps = { ...(await startingValuesFor(tag, type)), ...properties }
-  return await createTypedNoteWithTitle(title, tag, stamps, generation, body)
+  // Born in the type's home folder when it declares one (`folder:`).
+  const home = (type === undefined ? await getTagType(tag) : type)?.folder
+  return await createTypedNoteWithTitle(title, tag, stamps, generation, body, home)
 }
 
 /**

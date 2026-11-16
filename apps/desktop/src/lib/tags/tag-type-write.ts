@@ -37,6 +37,8 @@ export interface TagDefinitionState {
   properties: TagProperty[]
   /** Bound template path for new rows, or `null` when the type names none. */
   template: string | null
+  /** The type's home folder (`folder:`), or `null` when it has none. */
+  folder: string | null
   /** The tag's emoji glyph, or `null` when the definition sets none. */
   icon: string | null
   /** The tags this one builds on (`extends:`, Plan 33 B2), folded keys. */
@@ -62,6 +64,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
       views: [],
@@ -74,6 +77,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     needsConversion: type === null,
     properties: type?.properties ?? [],
     template: type?.template ?? null,
+    folder: type?.folder ?? null,
     icon: type?.icon ?? null,
     parents: [...(type?.extends ?? [])],
     views: [...(type?.views ?? [])],
@@ -87,6 +91,8 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
  */
 export interface TagTypeExtras {
   template?: string | null
+  /** The type's home folder (`folder:`), where its new notes are born. */
+  folder?: string | null
   icon?: string | null
   /** The `extends:` list (Plan 33 B2). */
   parents?: readonly string[]
@@ -106,7 +112,7 @@ export async function saveTagType(
   tag: string,
   properties: readonly TagProperty[],
   generation: number,
-  { template, icon, parents, views }: TagTypeExtras = {},
+  { template, folder, icon, parents, views }: TagTypeExtras = {},
 ): Promise<void> {
   if (parents !== undefined) {
     const loop = await tagExtendsLoop(tag, parents)
@@ -121,6 +127,7 @@ export async function saveTagType(
   const patch = {
     tagSchema: properties,
     ...(template === undefined ? {} : { tagTemplate: template }),
+    ...(folder === undefined ? {} : { tagFolder: folder }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents === undefined ? {} : { tagExtends: parents }),
     ...(views === undefined ? {} : { tagViews: views }),

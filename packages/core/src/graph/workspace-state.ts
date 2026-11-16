@@ -1,4 +1,4 @@
-import type { OpenColumn, OpenTab } from '../settings/schema'
+import type { OpenColumn, OpenTab } from '../workspace/layout'
 import { dailyPath } from './paths'
 import { writeWorkspaceState } from './commands'
 

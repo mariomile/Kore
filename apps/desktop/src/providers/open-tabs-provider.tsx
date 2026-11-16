@@ -22,15 +22,14 @@ import {
   tabStateEqual,
   updateOpenTabRoute,
 } from '@/providers/open-tab'
-import { useSettings } from '@/providers/settings-provider'
+import { useUpdateWorkspaceLayout, useWorkspaceLayout } from '@/providers/workspace-layout-provider'
 import { useRouter } from '@/routing/router'
 
 /**
  * The open-tabs model behind both tab surfaces (the strip over the note pane
  * and the sidebar's Open section — design options A + B). One ordered list of
- * open tabs per graph, persisted in settings (`openTabs`, keyed by graph
- * root — the settings document is global, and unkeyed tabs would leak into
- * other graphs) so a relaunch restores the session. Notes and conversations
+ * open tabs per pane, persisted in the graph's workspace layout so a relaunch
+ * restores the session. Notes and conversations
  * have distinct identities; workspace pages are singleton tabs whose latest
  * route payload is retained. Settings is a full-page workspace and is not a
  * tab.
@@ -114,7 +113,6 @@ export function OpenTabsProvider({
   paneId: string
   children: ReactNode
 }): ReactElement {
-  const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
   const { route, navigate } = useRouter()
   const chatSession = useOptionalChatSession()
@@ -131,11 +129,9 @@ export function OpenTabsProvider({
   const openConversation = chatSession?.openConversation
 
   const root = graph?.root ?? null
-  const stored = settings.openTabs
-  const pane = useMemo(
-    () => (root === null ? undefined : (findPane(stored[root] ?? [], paneId) ?? undefined)),
-    [stored, root, paneId],
-  )
+  const stored = useWorkspaceLayout(root)
+  const updateLayout = useUpdateWorkspaceLayout()
+  const pane = useMemo(() => findPane(stored, paneId) ?? undefined, [stored, paneId])
   const tabs = useMemo(() => stripOrder(pane?.tabs ?? []), [pane])
 
   // Every write goes through this: read this pane's own list, mutate, store
@@ -149,41 +145,38 @@ export function OpenTabsProvider({
       if (root === null) {
         return
       }
-      updateSettingsWith((current) => {
-        const columns = current.openTabs[root] ?? []
+      updateLayout(root, (columns) => {
         const existing = findPane(columns, paneId) ?? undefined
         const paneTabs = existing?.tabs ?? []
         const next = mutate(paneTabs)
         const nextActiveKey = activeKey ?? existing?.activeKey ?? null
         // Element-wise check: a filter that dropped nothing or a map that
-        // changed nothing is a no-op, and no-op settings writes churn
+        // changed nothing is a no-op, and no-op layout writes churn
         // subscribers.
         const tabsUnchanged =
           next === paneTabs ||
           (next.length === paneTabs.length && next.every((tab, index) => tab === paneTabs[index]))
         if (existing !== undefined && tabsUnchanged && nextActiveKey === existing.activeKey) {
-          return {}
+          return columns
         }
         const updated: OpenPane = { id: paneId, tabs: next, activeKey: nextActiveKey }
         // A pane opened by the split gesture is persisted empty: its first
         // visited route is what creates the entry here when it is missing. It
         // is appended to the first column, creating one when the layout is
         // still empty (a fresh graph, before any pane has written anything).
-        const nextColumns =
-          existing === undefined
-            ? columns.length === 0
-              ? [{ id: MAIN_COLUMN_ID, panes: [updated] }]
-              : columns.map((column, index) =>
-                  index === 0 ? { ...column, panes: [...column.panes, updated] } : column,
-                )
-            : columns.map((column) => ({
-                ...column,
-                panes: column.panes.map((entry) => (entry.id === paneId ? updated : entry)),
-              }))
-        return { openTabs: { ...current.openTabs, [root]: nextColumns } }
+        return existing === undefined
+          ? columns.length === 0
+            ? [{ id: MAIN_COLUMN_ID, panes: [updated] }]
+            : columns.map((column, index) =>
+                index === 0 ? { ...column, panes: [...column.panes, updated] } : column,
+              )
+          : columns.map((column) => ({
+              ...column,
+              panes: column.panes.map((entry) => (entry.id === paneId ? updated : entry)),
+            }))
       })
     },
-    [root, paneId, updateSettingsWith],
+    [root, paneId, updateLayout],
   )
 
   const routeTab = openTabForRoute(route, activeConversationId)

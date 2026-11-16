@@ -566,6 +566,7 @@ export function NotePaneComponent({
         renderCodeBlock={renderCodeBlock}
         smoothCaretAnimation={settings.editorSmoothCaretAnimation}
         timeFormat={settings.timeFormat}
+        dateFormat={settings.dateFormat}
         openLinksInApp={settings.browserOpenLinksInApp}
         bulletAfterHeading={settings.editorBulletAfterHeading}
         // The grip drag-reorders blocks and the "+" inserts a paragraph below.

@@ -8,8 +8,9 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { resourceUrl, errorMessage, type TimeFormat } from '@kore/core'
+import { resourceUrl, errorMessage, type DateFormat, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
+import { DateLinkLabels } from './date-link-labels'
 import { togglePageAtCaret } from './page-block-commands'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
@@ -227,6 +228,11 @@ interface NoteEditorProps {
    */
   timeFormat?: TimeFormat
   /**
+   * How `[[2026-11-20]]` date links read (the user's `dateFormat` setting).
+   * Defaults to `mdy`.
+   */
+  dateFormat?: DateFormat
+  /**
    * Whether web links open in the in-app browser (the `browserOpenLinksInApp`
    * setting). Alt-click always does the opposite. Defaults to `true`.
    */
@@ -359,6 +365,7 @@ export function NoteEditor({
   spellCheck = true,
   smoothCaretAnimation = true,
   timeFormat = '12h',
+  dateFormat = 'mdy',
   openLinksInApp = true,
   bulletAfterHeading = false,
   blockHandle = false,
@@ -656,6 +663,7 @@ export function NoteEditor({
           onExitBoundary={handleExitBoundary}
         >
           <EditorInputTraits />
+          <DateLinkLabels dateFormat={dateFormat} />
           <FocusedEditorTracker />
           <SelectionShape />
           {/* Only a pane that persists files gets the toolbar's attach button;

@@ -1,5 +1,19 @@
 # Kore working state
 
+## Graph lint, aliased path links and sync timeouts, 2026-11-16
+
+- [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit
+  N] [--json]` / MCP graph_lint report graph health: broken wiki links grouped
+  by target, orphan notes (dailies and tag pages skipped), unlinked mentions
+  of a note's title, and relation problems (missing inverse such as supersedes
+  without superseded_by, wrong target type). Report only, never edits; private
+  notes excluded (#495).
+- [x] Fix: tapping an aliased path link such as `[[Folder/Note|Label]]` opens
+  the real note instead of creating an empty one (Mac and iPhone, hover
+  preview too); sync gets network timeouts (30 s connect, 120 s silence) so a
+  fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
+- Not verified on a real iPhone.
+
 ## Link styles, app logos, graph relations and agent tools, 2026-11-16
 
 - [x] Links: choose how each link looks (inline link, compact, card or large)

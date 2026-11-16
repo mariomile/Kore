@@ -32,6 +32,43 @@ function isHttpUrl(value: string): boolean {
 /** Standard padded base64 (what `btoa`/`captureVisibleTab` produce). */
 const BASE64_RE = /^(?:[A-Z0-9+/]{4})*(?:[A-Z0-9+/]{2}==|[A-Z0-9+/]{3}=)?$/i
 
+/**
+ * How a shared link is written into its note — the iOS share sheet's "How"
+ * choice. The editor's link looks, as plain Markdown:
+ *
+ * - `link`: a named `[Title](url)` (never draws as a card).
+ * - `card`: the bare URL on its own line (the default card).
+ * - `compact` / `large`: an ` ```embed ` fence with that `layout:` line.
+ * - `embed`: `![](url)`, the post or video player an X post or a YouTube
+ *   link draws as.
+ * - `text`: a card, then the page's words as a quote — the article, the
+ *   video's transcript, or the post's text.
+ */
+export const captureLookSchema = z.enum(['link', 'card', 'compact', 'large', 'embed', 'text'])
+
+/** Cap on a new note's title, in UTF-16 code units (the share sheet caps too). */
+export const CAPTURE_TITLE_MAX_LENGTH = 1_000
+
+/**
+ * Where a shared link is written — the iOS share sheet's "Where" choice:
+ * today's daily note (under its Links section), the end of an existing note,
+ * or a new note in a folder. `path` and `folder` are graph-relative; the
+ * drain re-checks both and falls back to the daily note when either no
+ * longer names a note or folder it may write.
+ */
+export const captureDestinationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('daily') }),
+  z.object({ kind: z.literal('note'), path: z.string().min(1).max(1_000) }),
+  z.object({
+    kind: z.literal('new'),
+    title: z.string().trim().min(1).max(CAPTURE_TITLE_MAX_LENGTH),
+    folder: z.string().max(1_000),
+  }),
+])
+
+export type CaptureLook = z.infer<typeof captureLookSchema>
+export type CaptureDestination = z.infer<typeof captureDestinationSchema>
+
 /** One captured page, as spooled into the capture inbox. */
 export const captureEnvelopeSchema = z.object({
   /** Envelope format version; bump on breaking changes. */
@@ -69,6 +106,14 @@ export const captureEnvelopeSchema = z.object({
   capturedAt: z.iso.datetime({ offset: true }),
   /** Where the capture originated. */
   source: captureSourceSchema,
+  /**
+   * How to write the link (the share sheet's choice). An envelope carrying
+   * one is placed directly where `destination` says, in that look; one
+   * without keeps the capture-note flow the browser extension uses.
+   */
+  look: captureLookSchema.optional(),
+  /** Where to write a link that carries a `look`; the daily note when absent. */
+  destination: captureDestinationSchema.optional(),
 })
 
 export type CaptureEnvelope = z.infer<typeof captureEnvelopeSchema>
@@ -81,7 +126,7 @@ export type CaptureSource = z.infer<typeof captureSourceSchema>
  * the host tests share one definition of the wire shape.
  */
 export const captureWireMessageSchema = z.object({
-  envelope: captureEnvelopeSchema.omit({ screenshotRef: true }),
+  envelope: captureEnvelopeSchema.omit({ screenshotRef: true, look: true, destination: true }),
   /** JPEG screenshot bytes, base64 (no data-URL prefix). */
   screenshotBase64: z.string().min(1).regex(BASE64_RE, 'must be base64').optional(),
 })

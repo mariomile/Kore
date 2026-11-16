@@ -780,3 +780,71 @@ describe('drainCaptureInbox (iCloud-evicted notes)', () => {
     expect(files.get(DAILY)).toContain(`[[${IDENTITY.base}|An article]]`)
   })
 })
+
+describe('drainCaptureInbox: placed captures (iOS share sheet)', () => {
+  const shared = (overrides: Partial<Parameters<typeof envelope>[0]> = {}) =>
+    envelope({ source: 'ios-share', look: 'card', ...overrides })
+
+  it('writes the link in its look at the end of the daily Links section', async () => {
+    files.set(DAILY, '# plans\n\n## Links\n\n- [[old|Old]]\n\n## Later\n\ntext\n')
+    addSpool(shared({ look: 'large', note: 'Read on the train' }), { screenshot: false })
+
+    const outcome = await drain()
+
+    expect(outcome).toMatchObject({ drained: 1, stopped: null })
+    expect(files.get(DAILY)).toBe(
+      '# plans\n\n## [[Links]]\n\n- [[old|Old]]\n\n```embed\nhttps://example.com/article\nlayout: large\n```\n\nRead on the train\n\n## Later\n\ntext\n',
+    )
+    expect([...files.keys()].some((path) => path.startsWith('notes/capture-'))).toBe(false)
+    expect(spool.size).toBe(0)
+  })
+
+  it('appends to the chosen note, and falls back to the daily when it is gone', async () => {
+    files.set('Projects/Kore.md', '# Kore\n\nIdeas\n')
+    addSpool(shared({ look: 'link', destination: { kind: 'note', path: 'Projects/Kore.md' } }), {
+      screenshot: false,
+    })
+    addSpool(
+      shared({
+        id: '00000000-0000-4000-8000-000000000002',
+        destination: { kind: 'note', path: 'Projects/Deleted.md' },
+      }),
+      { screenshot: false, modifiedMs: 1 },
+    )
+
+    await drain()
+
+    expect(files.get('Projects/Kore.md')).toBe(
+      '# Kore\n\nIdeas\n\n[An article](https://example.com/article)\n',
+    )
+    expect(files.get(DAILY)).toBe('## [[Links]]\n\nhttps://example.com/article\n')
+  })
+
+  it('creates a new note in the chosen folder and links it from the daily', async () => {
+    addSpool(
+      shared({ destination: { kind: 'new', title: 'Bitter lesson', folder: 'Input/Clippings' } }),
+      { screenshot: false },
+    )
+
+    await drain()
+
+    const created = files.get('Input/Clippings/bitter-lesson.md') ?? ''
+    expect(created).toContain('# Bitter lesson\n\nhttps://example.com/article\n')
+    expect(files.get(DAILY)).toBe('## [[Links]]\n\n[[bitter-lesson|Bitter lesson]]\n')
+  })
+
+  it('quotes the selected text, and skips a link the destination already holds', async () => {
+    addSpool(shared({ look: 'text', selection: 'First line\n\nSecond line' }), {
+      screenshot: false,
+    })
+    await drain()
+    expect(files.get(DAILY)).toBe(
+      '## [[Links]]\n\nhttps://example.com/article\n\n> First line\n>\n> Second line\n',
+    )
+
+    addSpool(shared({ id: '00000000-0000-4000-8000-000000000003' }), { screenshot: false })
+    const again = await drain()
+    expect(again).toMatchObject({ drained: 1, deduped: 1 })
+    expect(files.get(DAILY)?.match(/example\.com\/article/g)).toHaveLength(1)
+  })
+})

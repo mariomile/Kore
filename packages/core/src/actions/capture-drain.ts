@@ -22,6 +22,7 @@ import { sectionEnd, topLevelHeadings } from '../markdown/heading-blocks'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { ReconcileStop } from './audio-memo'
 import { ensureBacklinkTarget } from './backlink-target'
+import { drainPlacedCapture } from './placed-capture'
 import {
   captureFromPath,
   captureIdentity,
@@ -201,6 +202,15 @@ export async function drainCaptureInbox(
         await drainTextCapture(envelope, input.generation)
         await captureInboxRemove(name, input.generation)
         drained += 1
+        continue
+      }
+      if (envelope.look !== undefined) {
+        const placed = await drainPlacedCapture(envelope, input.generation)
+        await captureInboxRemove(name, input.generation)
+        drained += 1
+        if (placed.duplicate) {
+          deduped += 1
+        }
         continue
       }
       const fresh = captureIdentity(new Date(envelope.capturedAt), envelope.id)

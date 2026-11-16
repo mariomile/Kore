@@ -238,6 +238,7 @@ export {
   captureSharedInboxRelay,
   promoteCaptureScreenshot,
 } from '../graph/commands'
+export { publishShareTargets } from '../actions/share-targets'
 export { conflictCopyPath, saveConflictCopy } from '../graph/conflict-copy'
 export {
   DEFAULT_VAULT_LAYOUT,

@@ -428,6 +428,17 @@ export async function captureSharedInboxRelay(generation: number): Promise<numbe
 }
 
 /**
+ * Write the share sheet's note list (`share-targets.json`) into the App Group
+ * container the iOS share extension reads, so it can offer "a note" and
+ * "a folder" without opening the vault. A no-op without a shared container
+ * (every platform but iOS). The Rust side only moves bytes (size-capped);
+ * what the list holds is policy in `actions/share-targets`.
+ */
+export async function shareTargetsWrite(json: string): Promise<void> {
+  await call('share_targets_write', { json }, voidSchema)
+}
+
+/**
  * Quarantine an unparseable spool file into `.kore/inbox-rejected/` —
  * moved, never deleted: "the raw link is never lost" holds even for an
  * envelope a newer extension wrote that this app version can't read yet.

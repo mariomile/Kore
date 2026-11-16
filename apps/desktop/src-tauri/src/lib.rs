@@ -453,6 +453,7 @@ pub fn run() {
             capture::capture_inbox_remove,
             capture::capture_inbox_reject,
             capture::capture_shared_inbox_relay,
+            capture::share_targets_write,
             capture::capture_screenshot_promote,
             capture::capture_link_preview,
             capture_fetch::capture_meta_fetch,

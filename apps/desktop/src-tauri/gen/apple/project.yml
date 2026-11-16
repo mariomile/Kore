@@ -127,6 +127,13 @@ targets:
             UIApplicationShortcutItemTitle: Record audio
             UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeAudio
         CFBundleDisplayName: $(KORE_DISPLAY_NAME)
+        # UIScene lifecycle: apps built with the iOS 27 SDK fail to launch
+        # without a scene manifest ("UIScene life cycle is required for apps
+        # built with this SDK"). tao only takes its scene path (TaoSceneDelegate,
+        # first window attached to the main scene) when the manifest enables
+        # multiple scenes; on iPhone the system still runs a single scene.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
         UISupportedInterfaceOrientations:

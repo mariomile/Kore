@@ -703,36 +703,55 @@ class RecordingPlugin: Plugin {
     finalize(recorder, native: .remote)
   }
 
-  /// The home-screen quick action arrives on the app delegate — a runtime
-  /// class tao registers without implementing
-  /// `application:performActionForShortcutItem:completionHandler:`. Add the
-  /// method to that class; if some future delegate already implements it,
-  /// leave theirs alone (the quick action degrades to just opening the app).
+  /// The home-screen quick action arrives on the app delegate, or, now that
+  /// the app runs on the UIScene lifecycle (required by the iOS 27 SDK), on
+  /// tao's scene delegate (`TaoSceneDelegate`). tao implements neither
+  /// `application:performActionForShortcutItem:completionHandler:` nor
+  /// `windowScene:performActionForShortcutItem:completionHandler:`, so add
+  /// both; a class that already implements one keeps its own (the quick
+  /// action then degrades to just opening the app). A quick action that
+  /// cold-launches the app arrives in the scene's connection options, which
+  /// tao does not expose, so that case also just opens the app.
   private static var didInstallShortcutHandler = false
   private static func installShortcutHandler() {
-    guard
-      !didInstallShortcutHandler,
-      let delegate = UIApplication.shared.delegate,
-      let delegateClass = object_getClass(delegate)
-    else { return }
+    guard !didInstallShortcutHandler else { return }
     didInstallShortcutHandler = true
-    let selector = NSSelectorFromString(
-      "application:performActionForShortcutItem:completionHandler:")
-    guard class_getInstanceMethod(delegateClass, selector) == nil else { return }
-    let block:
-      @convention(block) (
-        AnyObject, UIApplication, UIApplicationShortcutItem, @escaping (Bool) -> Void
-      ) -> Void = { _, _, item, completion in
-        let handled = item.type == RecordingPlugin.recordShortcutType
-        if handled {
-          DispatchQueue.main.async {
-            RecordingPlugin.shared?.queueNativeAction("recordAudio")
-          }
+    let handle: (UIApplicationShortcutItem, @escaping (Bool) -> Void) -> Void = {
+      item, completion in
+      let handled = item.type == RecordingPlugin.recordShortcutType
+      if handled {
+        DispatchQueue.main.async {
+          RecordingPlugin.shared?.queueNativeAction("recordAudio")
         }
-        completion(handled)
       }
-    class_addMethod(
-      delegateClass, selector, imp_implementationWithBlock(block), "v@:@@@?")
+      completion(handled)
+    }
+
+    if let delegate = UIApplication.shared.delegate,
+      let delegateClass = object_getClass(delegate)
+    {
+      let block:
+        @convention(block) (
+          AnyObject, UIApplication, UIApplicationShortcutItem, @escaping (Bool) -> Void
+        ) -> Void = { _, _, item, completion in handle(item, completion) }
+      addMethodIfMissing(
+        delegateClass, "application:performActionForShortcutItem:completionHandler:", block)
+    }
+
+    if let sceneDelegateClass = NSClassFromString("TaoSceneDelegate") {
+      let block:
+        @convention(block) (
+          AnyObject, UIWindowScene, UIApplicationShortcutItem, @escaping (Bool) -> Void
+        ) -> Void = { _, _, item, completion in handle(item, completion) }
+      addMethodIfMissing(
+        sceneDelegateClass, "windowScene:performActionForShortcutItem:completionHandler:", block)
+    }
+  }
+
+  private static func addMethodIfMissing(_ cls: AnyClass, _ name: String, _ block: Any) {
+    let selector = NSSelectorFromString(name)
+    guard class_getInstanceMethod(cls, selector) == nil else { return }
+    class_addMethod(cls, selector, imp_implementationWithBlock(block), "v@:@@@?")
   }
 
   // MARK: - Live Activity

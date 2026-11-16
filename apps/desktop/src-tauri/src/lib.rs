@@ -405,6 +405,7 @@ pub fn run() {
             skill::skill_install,
             skill::skill_uninstall,
             mcp_clients::mcp_client_servers,
+            mcp_clients::mcp_client_connect,
             remote_mcp::remote_mcp_start,
             remote_mcp::remote_mcp_stop,
             remote_mcp::remote_mcp_status,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clientsWithPinnedVault, mcpClientSetup } from './agent-skill'
+import { clientsWithPinnedVault, mcpClientConnection, mcpClientSetup } from './agent-skill'
 
 describe('mcpClientSetup', () => {
   it('names no vault path, so the config follows the vault, and quotes the CLI for the shell', () => {
@@ -51,5 +51,26 @@ describe('clientsWithPinnedVault', () => {
     ])
     expect(clientsWithPinnedVault(servers)).toEqual(['Claude Desktop', 'Claude Code'])
     expect(clientsWithPinnedVault(servers, '/Vaults/Other')).toEqual([])
+  })
+})
+
+describe('mcpClientConnection', () => {
+  const kore = '/Applications/Kore.app/Contents/MacOS/kore'
+  const entry = (client: string, args: string[]) => ({
+    client,
+    name: 'kore',
+    command: kore,
+    args,
+    env: {},
+  })
+
+  it('tells a following config from an older pinned one and from none', () => {
+    const servers = [
+      entry('Claude Desktop', ['mcp']),
+      entry('Claude Code', ['--graph', '/v/Brain', 'mcp']),
+    ]
+    expect(mcpClientConnection(servers, 'Claude Desktop')).toBe('connected')
+    expect(mcpClientConnection(servers, 'Claude Code')).toBe('pinned')
+    expect(mcpClientConnection(servers, 'Cursor')).toBe('none')
   })
 })

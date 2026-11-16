@@ -851,7 +851,10 @@ follows the vault open in Kore (see [Graph resolution](#graph-resolution)):
                             "args": ["mcp"] } } }
 ```
 
-or, for Claude Code, `claude mcp add kore -- <cli> mcp`. Add
+or, for Claude Code, `claude mcp add kore -- <cli> mcp`. Settings → Agents →
+Connect an app writes that entry for you: into Claude Desktop's and Cursor's
+config file (keeping a `.kore-backup` copy, replacing older Kore entries), and
+through `claude mcp add --scope user` for Claude Code. Add
 `--graph <root>` before `mcp` to pin a client to one vault instead.
 
 Each tool runs one subcommand above as a child process with `--json`, so the

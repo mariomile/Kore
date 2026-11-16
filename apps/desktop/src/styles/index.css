@@ -2161,7 +2161,9 @@ html[data-sidebar-resizing] aside {
   input[type='checkbox'] {
   transform: translateY(0.02em);
 }
-/* A link (a task's date most of all) never breaks across lines. */
-.kore-editor .md-wikilink-view-label {
+/* A date link (a task's date most of all) never breaks across lines. Other
+   links wrap like the text around them: a long title kept on one line would
+   make the note wider than the phone and let it scroll sideways. */
+.kore-editor .md-wikilink-view-label[data-date-link] {
   white-space: nowrap;
 }

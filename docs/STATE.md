@@ -1,5 +1,13 @@
 # Kore working state
 
+## Rich link cards, 2026-11-16
+
+- [x] Link cards are now rich Craft-style cards (image, title, description,
+  favicon, site and an Open button) drawn where the link sits in the note, on
+  Mac and iPhone; embed blocks no longer show raw URL text with a detached
+  card at the bottom (#471).
+- Not verified on a real Mac or iPhone.
+
 ## Block selection and sub pages on iPhone, 2026-11-16
 
 - [x] iPhone: swipe right on a block selects it and dragging adds more, with a

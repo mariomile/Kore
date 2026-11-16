@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Rich Craft-style link cards drawn where the link sits, on Mac and iPhone
+  (#471).
 - iPhone: swipe to select blocks with an action bar, Craft-style Turn into,
   sub pages as cards on iPhone and Mac, round task boxes, single-row keyboard
   toolbar (#460).

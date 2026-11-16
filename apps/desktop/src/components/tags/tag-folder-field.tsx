@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { isFolderNoteHome, typeHomeFolder, TYPE_FOLDER_TITLE_SEGMENT } from '@kore/core'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -72,18 +72,27 @@ export function TagFolderField({
         </Select>
       </div>
       {base !== null ? (
-        <div className="flex flex-col gap-1.5 pl-[calc(var(--field-label-w,7rem)+0.5rem)]">
+        <div className="flex min-w-0 flex-col gap-1.5 pl-[calc(var(--field-label-w,7rem)+0.5rem)]">
           <label className="flex min-h-6 items-center gap-2 text-xs text-text-secondary">
             <Checkbox checked={perNote} onCheckedChange={(checked) => pick(base, checked)} />A
             folder for each note
           </label>
           <p className="text-xs leading-4 text-text-muted">
             New notes are born in{' '}
-            <code className="font-mono">{perNote ? `${base}/<Name>/<Name>.md` : `${base}/`}</code>.
-            Existing notes stay where they are.
+            <code className="font-mono">
+              {slashBreaks(perNote ? `${base}/<Name>/<Name>.md` : `${base}/`)}
+            </code>
+            . Existing notes stay where they are.
           </p>
         </div>
       ) : null}
     </div>
   )
+}
+
+/** A path that may wrap only after its slashes, never inside a folder name. */
+function slashBreaks(path: string): ReactNode[] {
+  return path
+    .split('/')
+    .flatMap((part, index) => (index === 0 ? [part] : ['/', <wbr key={index} />, part]))
 }

@@ -31,8 +31,14 @@ interface MobileCollectionTableProps {
   /** The type's name, for the table's accessible label. */
   label: string
   onOpen: (path: string) => void
-  /** Create a row titled `title`; resolves once it is written. */
-  onCreate: (title: string) => Promise<void>
+  /** Create a row titled `title`; resolves once it is written. Absent: no "New" row. */
+  onCreate?: ((title: string) => Promise<void>) | undefined
+  /**
+   * Inline in a note: the table takes its rows' height (the note scrolls,
+   * not the table), scrolls only sideways, and renders its few rows without
+   * the virtualizer.
+   */
+  embedded?: boolean
 }
 
 /**
@@ -51,6 +57,7 @@ export function MobileCollectionTable({
   label,
   onOpen,
   onCreate,
+  embedded = false,
 }: MobileCollectionTableProps): ReactElement {
   const items = useMemo(() => tableItems(entries, groupProperty), [entries, groupProperty])
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -62,12 +69,91 @@ export function MobileCollectionTable({
   const widths = type.properties.map(mobileColumnWidth)
   const frozenWidth = NUMBER_WIDTH + TITLE_WIDTH
   const totalWidth = frozenWidth + widths.reduce((sum, width) => sum + width, 0)
+  const renderItem = (item: TableItem): ReactElement => {
+    if (item.kind === 'group') {
+      return (
+        <div key={item.id} role="row" className="flex" style={{ height: GROUP_HEIGHT }}>
+          <div
+            role="rowheader"
+            aria-colspan={type.properties.length + 2}
+            className="sticky left-0 z-10 flex items-center self-end bg-background pb-1"
+            style={{ height: 32 }}
+          >
+            <span
+              aria-hidden
+              className="flex shrink-0 justify-end pr-2"
+              style={{ width: NUMBER_WIDTH }}
+            >
+              <span className={cn('size-2 rounded-full', item.color ?? 'bg-text-muted/40')} />
+            </span>
+            <span className="truncate px-2 text-[13px] font-semibold text-text">{item.label}</span>
+            <span className="pr-3 text-[13px] tabular-nums text-text-muted">{item.count}</span>
+          </div>
+        </div>
+      )
+    }
+    const { entry, number: index } = item
+    return (
+      <div
+        key={entry.path}
+        role="row"
+        data-note-path={entry.path}
+        className="group flex"
+        style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
+      >
+        <div
+          role="cell"
+          className="sticky z-10 flex items-center justify-end bg-background pr-2 text-[13px] tabular-nums text-text-muted"
+          style={{ left: 0, width: NUMBER_WIDTH, minWidth: NUMBER_WIDTH }}
+        >
+          {index}
+        </div>
+        <div
+          role="rowheader"
+          className="mobile-table-frozen-edge sticky z-10 flex bg-background"
+          style={{ left: NUMBER_WIDTH, width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
+        >
+          <button
+            type="button"
+            onClick={() => onOpen(entry.path)}
+            className="flex min-w-0 flex-1 items-center px-2 text-left text-[15px] font-medium text-text active:opacity-60"
+          >
+            <span className="truncate">{entry.title}</span>
+          </button>
+        </div>
+        {type.properties.map((property, column) => {
+          const cellId = `${entry.path}\n${property.key}`
+          return (
+            <div
+              key={property.key}
+              role="cell"
+              className="flex items-center px-3"
+              style={{ width: widths[column], minWidth: widths[column] }}
+            >
+              <TableCell
+                property={property}
+                value={entry.properties[property.key]}
+                active={activeCell === cellId}
+                onActivate={() => setActiveCell(cellId)}
+                onCommit={(next) => commitProperty(entry.path, property.key, next)}
+                onOpenRelation={openRelation}
+              />
+            </div>
+          )
+        })}
+        <div aria-hidden className="flex-1" />
+      </div>
+    )
+  }
 
   return (
     <div
       ref={scrollRef}
       data-base-ui-swipe-ignore
-      className="mobile-collection-table min-h-0 flex-1 overflow-auto overscroll-x-contain"
+      className={cn(
+        'mobile-collection-table overscroll-x-contain',
+        embedded ? 'overflow-x-auto overflow-y-hidden' : 'min-h-0 flex-1 overflow-auto',
+      )}
       // The frozen columns cast their edge only once the rest slides under
       // them; toggled on the element so a scroll never re-renders the rows.
       onScroll={(event) => {
@@ -76,10 +162,14 @@ export function MobileCollectionTable({
           event.currentTarget.toggleAttribute('data-scrolled-x', scrolled)
         }
       }}
-      style={{
-        paddingTop: 'var(--mobile-header-height, 0px)',
-        paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
-      }}
+      style={
+        embedded
+          ? undefined
+          : {
+              paddingTop: 'var(--mobile-header-height, 0px)',
+              paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+            }
+      }
     >
       <div
         role="table"
@@ -95,7 +185,7 @@ export function MobileCollectionTable({
           style={{
             top: 0,
             height: HEADER_HEIGHT,
-            boxShadow: '0 -24px 0 0 var(--color-background)',
+            ...(embedded ? {} : { boxShadow: '0 -24px 0 0 var(--color-background)' }),
           }}
         >
           <HeaderCell frozenLeft={0} width={NUMBER_WIDTH} align="end">
@@ -111,97 +201,20 @@ export function MobileCollectionTable({
           ))}
           <div aria-hidden className="flex-1" />
         </div>
-        <Virtualizer
-          scrollRef={scrollRef}
-          data={items}
-          itemSize={MOBILE_TABLE_ROW_HEIGHT}
-          startMargin={HEADER_HEIGHT}
-          bufferSize={640}
-        >
-          {(item) => {
-            if (item.kind === 'group') {
-              return (
-                <div key={item.id} role="row" className="flex" style={{ height: GROUP_HEIGHT }}>
-                  <div
-                    role="rowheader"
-                    aria-colspan={type.properties.length + 2}
-                    className="sticky left-0 z-10 flex items-center self-end bg-background pb-1"
-                    style={{ height: 32 }}
-                  >
-                    <span
-                      aria-hidden
-                      className="flex shrink-0 justify-end pr-2"
-                      style={{ width: NUMBER_WIDTH }}
-                    >
-                      <span
-                        className={cn('size-2 rounded-full', item.color ?? 'bg-text-muted/40')}
-                      />
-                    </span>
-                    <span className="truncate px-2 text-[13px] font-semibold text-text">
-                      {item.label}
-                    </span>
-                    <span className="pr-3 text-[13px] tabular-nums text-text-muted">
-                      {item.count}
-                    </span>
-                  </div>
-                </div>
-              )
-            }
-            const { entry, number: index } = item
-            return (
-              <div
-                key={entry.path}
-                role="row"
-                data-note-path={entry.path}
-                className="group flex"
-                style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
-              >
-                <div
-                  role="cell"
-                  className="sticky z-10 flex items-center justify-end bg-background pr-2 text-[13px] tabular-nums text-text-muted"
-                  style={{ left: 0, width: NUMBER_WIDTH, minWidth: NUMBER_WIDTH }}
-                >
-                  {index}
-                </div>
-                <div
-                  role="rowheader"
-                  className="mobile-table-frozen-edge sticky z-10 flex bg-background"
-                  style={{ left: NUMBER_WIDTH, width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onOpen(entry.path)}
-                    className="flex min-w-0 flex-1 items-center px-2 text-left text-[15px] font-medium text-text active:opacity-60"
-                  >
-                    <span className="truncate">{entry.title}</span>
-                  </button>
-                </div>
-                {type.properties.map((property, column) => {
-                  const cellId = `${entry.path}\n${property.key}`
-                  return (
-                    <div
-                      key={property.key}
-                      role="cell"
-                      className="flex items-center px-3"
-                      style={{ width: widths[column], minWidth: widths[column] }}
-                    >
-                      <TableCell
-                        property={property}
-                        value={entry.properties[property.key]}
-                        active={activeCell === cellId}
-                        onActivate={() => setActiveCell(cellId)}
-                        onCommit={(next) => commitProperty(entry.path, property.key, next)}
-                        onOpenRelation={openRelation}
-                      />
-                    </div>
-                  )
-                })}
-                <div aria-hidden className="flex-1" />
-              </div>
-            )
-          }}
-        </Virtualizer>
-        <NewRow width={frozenWidth} onCreate={onCreate} />
+        {embedded ? (
+          items.map(renderItem)
+        ) : (
+          <Virtualizer
+            scrollRef={scrollRef}
+            data={items}
+            itemSize={MOBILE_TABLE_ROW_HEIGHT}
+            startMargin={HEADER_HEIGHT}
+            bufferSize={640}
+          >
+            {renderItem}
+          </Virtualizer>
+        )}
+        {onCreate === undefined ? null : <NewRow width={frozenWidth} onCreate={onCreate} />}
       </div>
     </div>
   )

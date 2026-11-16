@@ -1,5 +1,25 @@
 # Kore working state
 
+## Graph lint, link and sync fixes, iPhone icon, 2026-11-16
+
+- [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit
+  N] [--json]` / MCP graph_lint report graph health: broken wiki links grouped
+  by target, orphan notes (dailies and tag pages skipped), unlinked mentions
+  of a note's title, and relation problems (missing inverse such as supersedes
+  without superseded_by, wrong target type). Report only, never edits; private
+  notes excluded (#495).
+- [x] Fix: tapping an aliased path link such as `[[Folder/Note|Label]]` opens
+  the real note instead of creating an empty one (Mac and iPhone, hover
+  preview too); sync gets network timeouts (30 s connect, 120 s silence) so a
+  fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
+- [x] iPhone: full-bleed app icon, and the Kore mark pulses on the launch
+  screen (#490).
+- [x] Editor, Mac and iPhone: date links read as compact dates
+  (`[[2026-11-20]]` shows `Nov 20`, Markdown unchanged, a `|label` wins); ⌥⌘P
+  and a / Page command turn the caret's block into a page; the page card
+  thumbnail sits on the bullet column (#488).
+- Not verified on a real iPhone.
+
 ## Link styles, app logos, graph relations and agent tools, 2026-11-16
 
 - [x] Links: choose how each link looks (inline link, compact, card or large)

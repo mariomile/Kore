@@ -16,6 +16,9 @@ import {
   isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
+  parseEmbedFenceBody,
+  parseFrontmatter,
+  splitFrontmatter,
   wikiLinkTargetForTitle,
   type EmbedHostNote,
 } from '@kore/core'
@@ -65,7 +68,7 @@ import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedBase } from '@/components/notes/embedded-base'
-import { EmbeddedMedia } from '@/components/notes/embedded-media'
+import { EmbedFence } from '@/components/notes/embed-fence'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
 import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
@@ -309,15 +312,12 @@ export function NotePaneComponent({
     epoch: number
     seed: string
   } | null>(null)
-  const {
-    media: mediaEmbeds,
-    transclusions: noteTransclusions,
-    bases: baseEmbeds,
-  } = typedEmbeds !== null &&
-  typedEmbeds.epoch === document.sessionEpoch &&
-  typedEmbeds.seed === document.initialContent
-    ? typedEmbeds.embeds
-    : seedEmbeds
+  const { transclusions: noteTransclusions, bases: baseEmbeds } =
+    typedEmbeds !== null &&
+    typedEmbeds.epoch === document.sessionEpoch &&
+    typedEmbeds.seed === document.initialContent
+      ? typedEmbeds.embeds
+      : seedEmbeds
   const handleEditorChange = useCallback(
     (markdown: string) => {
       const next = parseBodyEmbeds(markdown)
@@ -391,10 +391,19 @@ export function NotePaneComponent({
     () => ({ path, linkTarget: noteLinkTarget }),
     [path, noteLinkTarget],
   )
+  // Remote embeds render nothing in a private note.
+  const privateNote = useMemo(
+    () => parseFrontmatter(splitFrontmatter(document.header).raw).data.private === true,
+    [document.header],
+  )
   const renderCodeBlock = useCallback<CodeBlockRenderer>(
     ({ language, code, updateCode }) => {
       if (language === 'mermaid') {
         return <MermaidDiagram code={code} />
+      }
+      if (language === 'embed') {
+        const block = parseEmbedFenceBody(code)
+        return block === null ? null : <EmbedFence block={block} privateNote={privateNote} />
       }
       if (language !== 'collection') {
         return null
@@ -421,7 +430,7 @@ export function NotePaneComponent({
         </EmbedHostContext>
       )
     },
-    [embedHost],
+    [embedHost, privateNote],
   )
 
   if (document.status === 'loading') {
@@ -651,18 +660,6 @@ export function NotePaneComponent({
           void convertLineToNote()
         }}
       />
-
-      {mediaEmbeds.length > 0 ? (
-        <div className={gutterClassName}>
-          {mediaEmbeds.map((block, index) => (
-            <EmbeddedMedia
-              key={`${block.kind}:${block.kind === 'url' ? block.url : index}:${index}`}
-              block={block}
-              noteHeader={document.header}
-            />
-          ))}
-        </div>
-      ) : null}
 
       {noteTransclusions.length > 0 ? (
         <div className={gutterClassName}>

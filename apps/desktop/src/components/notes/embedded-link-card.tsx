@@ -50,6 +50,8 @@ const PLAYER_SANDBOX =
 
 /**
  * A typed remote URL card that loads image or player content only on request.
+ * It is drawn in the note where its fence sits, on a soft filled surface
+ * (no border, the Craft way).
  * A link with a known player (a video, a song, a Figma file, a pen) names
  * its service and holds the player behind Play or Show.
  */
@@ -58,16 +60,17 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
   const info = linkKindInfo(block.linkKind)
   const Glyph = KIND_GLYPH[block.linkKind]
   const player = block.linkKind === 'image' ? null : embedPlayer(block.url)
+  const eyebrow = player?.provider ?? (block.linkKind === 'link' ? null : info.label)
 
   if (block.linkKind === 'image' && loaded) {
     return (
-      <figure className="mt-6 overflow-hidden rounded-lg border border-border">
+      <figure className="my-1 overflow-hidden rounded-xl bg-surface-hover">
         <img
           src={block.url}
           alt={readableUrl(block.url)}
           className="max-h-[32rem] w-full bg-surface-sunken object-contain"
         />
-        <figcaption className="border-t border-border px-3 py-2 text-xs text-text-muted">
+        <figcaption className="px-3 py-2 text-xs text-text-muted">
           {readableUrl(block.url)}
         </figcaption>
       </figure>
@@ -76,7 +79,7 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
 
   if (loaded && player !== null) {
     return (
-      <div className="mt-6 overflow-hidden rounded-lg border border-border">
+      <div className="my-1 overflow-hidden rounded-xl bg-surface-hover">
         <iframe
           src={player.url}
           title={`${player.provider}: ${readableUrl(block.url)}`}
@@ -94,14 +97,17 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
   }
 
   return (
-    <section className="mt-6 flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-text-muted">
+    <section className="my-1 flex cursor-text items-center gap-3 rounded-xl bg-surface-hover px-3 py-2.5 select-none active:bg-surface-active">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface text-text-muted">
         <Glyph aria-hidden className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-2xs font-medium tracking-wide text-text-muted uppercase">
-          {player?.provider ?? info.label}
-        </span>
+        {/* A plain web page needs no "Link" eyebrow: the address says it. */}
+        {eyebrow !== null ? (
+          <span className="block text-2xs font-medium tracking-wide text-text-muted uppercase">
+            {eyebrow}
+          </span>
+        ) : null}
         <span className="block truncate text-sm text-text">{readableUrl(block.url)}</span>
       </span>
       {player !== null ? (

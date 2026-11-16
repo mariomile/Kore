@@ -43,6 +43,7 @@ export {
 export {
   formatEmbedBlock,
   parseEmbedBlocks,
+  parseEmbedFenceBody,
   type EmbedBlock,
   type HtmlEmbed,
   type UrlEmbed,

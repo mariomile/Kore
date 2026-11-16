@@ -1,6 +1,6 @@
 # Kore working state
 
-## Graph lint, aliased path links and sync timeouts, 2026-11-16
+## Graph lint, link and sync fixes, iPhone icon, 2026-11-16
 
 - [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit
   N] [--json]` / MCP graph_lint report graph health: broken wiki links grouped
@@ -12,6 +12,8 @@
   the real note instead of creating an empty one (Mac and iPhone, hover
   preview too); sync gets network timeouts (30 s connect, 120 s silence) so a
   fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
+- [x] iPhone: full-bleed app icon, and the Kore mark pulses on the launch
+  screen (#490).
 - Not verified on a real iPhone.
 
 ## Link styles, app logos, graph relations and agent tools, 2026-11-16

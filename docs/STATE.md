@@ -14,6 +14,10 @@
   fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
 - [x] iPhone: full-bleed app icon, and the Kore mark pulses on the launch
   screen (#490).
+- [x] Editor, Mac and iPhone: date links read as compact dates
+  (`[[2026-11-20]]` shows `Nov 20`, Markdown unchanged, a `|label` wins); ⌥⌘P
+  and a / Page command turn the caret's block into a page; the page card
+  thumbnail sits on the bullet column (#488).
 - Not verified on a real iPhone.
 
 ## Link styles, app logos, graph relations and agent tools, 2026-11-16

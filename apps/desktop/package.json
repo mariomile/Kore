@@ -1,6 +1,6 @@
 {
   "name": "@kore/desktop",
-  "version": "0.111.0",
+  "version": "0.115.0",
   "private": true,
   "type": "module",
   "scripts": {

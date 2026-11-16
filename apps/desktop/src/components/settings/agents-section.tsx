@@ -9,6 +9,7 @@ import {
   errorMessage,
   type AgentSkillsStatus,
 } from '@kore/core'
+import { AgentsConnectField } from '@/components/settings/agents-connect-field'
 import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
 import { AgentsMemoryKitField } from '@/components/settings/agents-memory-kit-field'
 import { AgentsRemoteAccessField } from '@/components/settings/agents-remote-access-field'
@@ -77,6 +78,7 @@ export function AgentsSection(): ReactElement | null {
   const anyStale = skills.some((skill) => skill.installState === 'stale')
   return (
     <SettingsSection id="agents">
+      {status !== undefined ? <AgentsConnectField cliPath={status.cliPath} /> : null}
       <AgentAccessGroup
         title="On this Mac"
         agents="Claude Code, Codex, Cursor, Claude Desktop"

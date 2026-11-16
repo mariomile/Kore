@@ -137,8 +137,8 @@ private struct LinkPreview: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
         case .compact:
-            HStack(spacing: 10) {
-                SiteTile(host: host, size: 18)
+            HStack(spacing: 12) {
+                SiteTile(host: host, size: 18).frame(width: 32, alignment: .leading)
                 Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 Spacer(minLength: 8)
                 Text(host).font(.caption).foregroundColor(KoreColor.muted).lineLimit(1)
@@ -189,8 +189,8 @@ private struct LinkPreview: View {
             }
         case .text:
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    SiteTile(host: host, size: 18)
+                HStack(spacing: 12) {
+                    SiteTile(host: host, size: 18).frame(width: 32, alignment: .leading)
                     Text(kind == .post ? "@\(handle ?? host) on X" : name)
                         .font(.subheadline.weight(.semibold)).lineLimit(1)
                 }
@@ -283,14 +283,14 @@ private struct ThoughtField: View {
     @Binding var text: String
 
     var body: some View {
-        // The pencil sits in the same 32pt column as the Where rows' icons and
-        // the post's avatar, so every text in the sheet starts on one line; it
-        // is centred on the field's first line, not on the whole field.
+        // The pencil starts at the same left edge as the Where rows' icons and
+        // the post's avatar, inside their 32pt column, so every icon and every
+        // text in the sheet share two edges; it is centred on the first line.
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "pencil")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(KoreColor.muted)
-                .frame(width: 32, height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+                .frame(width: 32, height: UIFont.preferredFont(forTextStyle: .body).lineHeight, alignment: .leading)
             TextField("Add a thought\u{2026}", text: $text, axis: .vertical)
                 .lineLimit(1...4)
                 .font(.body)

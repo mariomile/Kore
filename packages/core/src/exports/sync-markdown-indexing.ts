@@ -181,6 +181,7 @@ export {
   type SourceBacklink,
   formatEmbedBlock,
   parseEmbedBlocks,
+  parseEmbedFenceBody,
   linkKind,
   linkKindInfo,
   LINK_KIND_FALLBACK,

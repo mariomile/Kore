@@ -13,14 +13,17 @@ import {
 import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { openUrlSync } from '@/lib/open-url'
+import { cn } from '@/lib/utils'
 import { requestRemoteAccessRestart, useRemoteAccess } from '@/lib/remote-access-store'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
+import { PROVIDER_BRANDS, ProviderLogo, type ProviderBrand } from './provider-brands'
 
 /** Cloud apps reach the vault through Remote access, each with its own key. */
 const CLOUD_APPS = [
   {
     id: 'claude',
+    brand: 'claude',
     label: 'Claude on the web and iPhone',
     agentName: 'Claude',
     openLabel: 'Open Claude',
@@ -29,6 +32,7 @@ const CLOUD_APPS = [
   },
   {
     id: 'chatgpt',
+    brand: 'openai',
     label: 'ChatGPT',
     agentName: 'ChatGPT',
     openLabel: 'Open ChatGPT',
@@ -46,6 +50,17 @@ const RESTART_HINT: Record<McpClientId, string> = {
   cursor: 'Connected. Reopen Cursor to use it.',
 }
 
+/** Which brand mark each app on this Mac wears. */
+const LOCAL_BRAND: Record<McpClientId, string> = {
+  'claude-desktop': 'claude',
+  'claude-code': 'claude',
+  cursor: 'cursor',
+}
+
+function brandById(id: string): ProviderBrand | undefined {
+  return PROVIDER_BRANDS.find((brand) => brand.id === id)
+}
+
 const SERVERS_KEY = ['mcp-client-servers']
 
 /**
@@ -59,7 +74,10 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
   const queryClient = useQueryClient()
   const { settings, updateSettings } = useSettings()
   const { phase } = useRemoteAccess()
-  const { data: servers } = useQuery({ queryKey: SERVERS_KEY, queryFn: mcpClientServers })
+  const { data: servers } = useQuery({
+    queryKey: SERVERS_KEY,
+    queryFn: mcpClientServers,
+  })
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<McpClientId | null>(null)
   const [error, setError] = useState<{ app: string; message: string } | null>(null)
@@ -128,6 +146,7 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
           return (
             <AppRow
               key={client.id}
+              brand={brandById(LOCAL_BRAND[client.id])}
               label={client.label}
               note={done === client.id ? RESTART_HINT[client.id] : 'On this Mac'}
               error={error?.app === client.id ? error.message : null}
@@ -157,6 +176,7 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
         {CLOUD_APPS.map((app) => (
           <AppRow
             key={app.id}
+            brand={brandById(app.brand)}
             label={app.label}
             note="Over the internet, while Kore is open and this Mac is awake"
             error={error?.app === app.id ? error.message : null}
@@ -196,12 +216,14 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
 }
 
 function AppRow({
+  brand,
   label,
   note,
   error,
   details,
   children,
 }: {
+  brand: ProviderBrand | undefined
   label: string
   note: string
   error: string | null
@@ -211,14 +233,25 @@ function AppRow({
   return (
     <li className="flex flex-col gap-2 py-1.5">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col">
-          <span className="text-sm text-text">{label}</span>
-          <span className="text-xs text-text-muted">{note}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          {brand !== undefined ? (
+            <span className="flex size-8 flex-none items-center justify-center rounded-lg border border-border bg-surface-sunken text-text">
+              <ProviderLogo brand={brand} className="size-4.5" />
+            </span>
+          ) : null}
+          <div className="flex min-w-0 flex-col">
+            <span className="text-sm text-text">{label}</span>
+            <span className="text-xs text-text-muted">{note}</span>
+          </div>
         </div>
         <div className="shrink-0">{children}</div>
       </div>
-      {error !== null ? <p className="text-xs text-destructive">{error}</p> : null}
-      {details}
+      {error !== null ? (
+        <p className={cn('text-xs text-destructive', brand !== undefined && 'pl-11')}>{error}</p>
+      ) : null}
+      {details !== undefined && details !== null ? (
+        <div className={cn(brand !== undefined && 'pl-11')}>{details}</div>
+      ) : null}
     </li>
   )
 }

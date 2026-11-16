@@ -197,9 +197,15 @@ pub async fn git_disconnect(generation: u64, state: State<'_, GraphState>) -> Ap
 /// Clone a backup repository into `path` (restore on a fresh machine). Runs
 /// before any graph is open, so it takes an absolute destination rather than
 /// a graph-relative path; the caller opens the result as a graph afterwards.
+/// `depth` asks for a shallow clone of only the newest commits.
 #[tauri::command]
-pub async fn git_clone(url: String, path: String, token: Option<String>) -> AppResult<()> {
-    run_blocking(move || remote::clone(&url, Path::new(&path), token)).await
+pub async fn git_clone(
+    url: String,
+    path: String,
+    token: Option<String>,
+    depth: Option<u32>,
+) -> AppResult<()> {
+    run_blocking(move || remote::clone(&url, Path::new(&path), token, depth)).await
 }
 
 /// Commit every pending change (no-op when clean). See [`commit::commit_all`].

@@ -390,14 +390,14 @@ fn clone_restores_a_backup_into_an_empty_destination() {
     push(root, None).unwrap();
 
     let target = fixture._dir.path().join("restored");
-    super::remote::clone(&fixture.remote_url, &target, None).unwrap();
+    super::remote::clone(&fixture.remote_url, &target, None, None).unwrap();
     assert_eq!(read(&target, "notes/a.md"), "# A\n");
 
     // A non-empty destination is refused — a restore must never overwrite.
     let occupied = fixture._dir.path().join("occupied");
     fs::create_dir_all(&occupied).unwrap();
     fs::write(occupied.join("keep.txt"), "existing").unwrap();
-    assert!(super::remote::clone(&fixture.remote_url, &occupied, None).is_err());
+    assert!(super::remote::clone(&fixture.remote_url, &occupied, None, None).is_err());
 }
 
 #[test]
@@ -1078,6 +1078,7 @@ fn a_silent_remote_times_out_as_a_network_error() {
     let result = super::remote::clone(
         &format!("http://127.0.0.1:{port}/vault.git"),
         &target.path().join("vault"),
+        None,
         None,
     );
     let elapsed = started.elapsed();

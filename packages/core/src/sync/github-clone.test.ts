@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { PublicRepoRefusedError, cloneGithubVault } from './github-clone'
+import { LIGHT_CLONE_DEPTH, PublicRepoRefusedError, cloneGithubVault } from './github-clone'
 
 afterEach(() => {
   setBridge(null)
@@ -9,11 +9,17 @@ afterEach(() => {
 interface FakeHost {
   secrets: Map<string, string>
   clones: { url: string; path: string; token: string | null }[]
+  /** The `depth` each clone asked for (`null` = full history). */
+  depths: (number | null)[]
 }
 
 /** Keychain + git_clone over the bridge; `cloneError` makes the clone fail. */
 function fakeHost(options: { secrets?: Record<string, string>; cloneError?: unknown } = {}) {
-  const host: FakeHost = { secrets: new Map(Object.entries(options.secrets ?? {})), clones: [] }
+  const host: FakeHost = {
+    secrets: new Map(Object.entries(options.secrets ?? {})),
+    clones: [],
+    depths: [],
+  }
   setBridge({
     invoke: async (command, args) => {
       switch (command) {
@@ -31,6 +37,7 @@ function fakeHost(options: { secrets?: Record<string, string>; cloneError?: unkn
             path: args['path'] as string,
             token: (args['token'] as string | null) ?? null,
           })
+          host.depths.push((args['depth'] as number | null) ?? null)
           return null
         default:
           throw new Error(`unexpected command ${command}`)
@@ -92,6 +99,26 @@ describe('cloneGithubVault', () => {
       kind: 'pat',
       token: 'github_pat_abc',
     })
+  })
+
+  it('downloads only recent history for a light clone, everything otherwise', async () => {
+    const saved = JSON.stringify({ kind: 'pat', token: 'saved' })
+    const host = fakeHost({ secrets: { 'github-auth': saved } })
+    await cloneGithubVault({
+      ref: REF,
+      token: null,
+      destination: '/phone',
+      light: true,
+      fetchFn: github(200, 200),
+    })
+    await cloneGithubVault({
+      ref: REF,
+      token: null,
+      destination: '/mac',
+      fetchFn: github(200, 200),
+    })
+
+    expect(host.depths).toEqual([LIGHT_CLONE_DEPTH, null])
   })
 
   it('uses the saved token when none is pasted, leaving it as it was', async () => {

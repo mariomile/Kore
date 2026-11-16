@@ -416,7 +416,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'Configure #book' }).click()
 
-    await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
+    await expect.element(page.getByRole('dialog', { name: 'Book' })).toBeInTheDocument()
     await view.unmount()
   })
 

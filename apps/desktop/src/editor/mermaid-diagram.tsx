@@ -1,15 +1,6 @@
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactElement,
-} from 'react'
-import { useEditor } from '@meowdown/react'
-import { TextSelection } from '@prosekit/pm/state'
+import { useDeferredValue, useEffect, useRef, useState, type ReactElement } from 'react'
 import type { Mounted, MountOptions } from 'pele/lazy'
+import { useFenceSourceCaret } from './fence-source-caret'
 
 type Pele = typeof import('pele/lazy')
 
@@ -81,7 +72,6 @@ interface MermaidDiagramProps {
 export function MermaidDiagram({ code: liveCode }: MermaidDiagramProps): ReactElement {
   // Typing in the source redraws at the pace React can afford, never per key.
   const code = useDeferredValue(liveCode)
-  const editor = useEditor()
   const hostRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const mountedRef = useRef<Mounted | null>(null)
@@ -131,29 +121,7 @@ export function MermaidDiagram({ code: liveCode }: MermaidDiagramProps): ReactEl
     [],
   )
 
-  // Put the caret at the start of the fence's source, as Meowdown's own
-  // preview does, so the diagram is edited where it is drawn.
-  const editSource = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      const pre = event.currentTarget.closest('[data-meowdown-code-block-custom]')?.parentElement
-        ?.firstElementChild
-      if (!(pre instanceof HTMLElement) || pre.localName !== 'pre' || !editor.mounted) {
-        return
-      }
-      event.preventDefault()
-      const { view } = editor
-      let position: number
-      try {
-        position = view.posAtDOM(pre, 0)
-      } catch {
-        return
-      }
-      const selection = TextSelection.near(view.state.doc.resolve(position), 1)
-      view.dispatch(view.state.tr.setSelection(selection))
-      view.focus()
-    },
-    [editor],
-  )
+  const editSource = useFenceSourceCaret()
 
   return (
     <div

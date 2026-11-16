@@ -1,5 +1,13 @@
 # Kore working state
 
+## Block selection and sub pages on iPhone, 2026-11-16
+
+- [x] iPhone: swipe right on a block selects it and dragging adds more, with a
+  Kore action bar at the bottom; a Craft-style Turn into sheet; sub pages show
+  as cards with a preview on iPhone and Mac (tap zooms in); round task boxes;
+  the keyboard toolbar is back to its single row (#460).
+- Not verified on a real iPhone.
+
 ## Collections inside a note on iPhone, 2026-11-16
 
 - [x] iPhone: a collection inside a note becomes a Craft-style card with its

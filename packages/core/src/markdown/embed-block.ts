@@ -2,8 +2,9 @@ import { linkKind, type LinkKind } from './link-kind'
 
 /**
  * Embed blocks: a fenced ` ```embed ` block in a note body holds either one
- * URL or a snippet of raw HTML, and the app renders it underneath the editor
- * — the same markdown-backed widget contract Collections use. The fence is
+ * URL or a snippet of raw HTML, and the editor draws it in place of the
+ * fence, where it sits in the note — the same markdown-backed widget
+ * contract Collections use. The fence is
  * the portable source of truth: any other markdown editor shows a code block
  * with the URL or the markup inside it, nothing is lost, and nothing is
  * invented outside the file.
@@ -39,7 +40,12 @@ const FENCE_RE = /^```embed[ \t]*\r?\n([\s\S]*?)^```[ \t]*\r?$/gm
 /** Cap on the markup one fence may carry into a frame. */
 const MAX_HTML_CHARS = 20_000
 
-function parseEmbedBody(body: string): EmbedBlock | null {
+/**
+ * One ` ```embed ` fence body as the block it renders, or `null` when it is
+ * malformed and stays visible as code. The editor draws each fence where it
+ * sits from this, the same way it draws a ` ```collection ` fence.
+ */
+export function parseEmbedFenceBody(body: string): EmbedBlock | null {
   const trimmed = body.trim()
   if (trimmed === '') {
     return null
@@ -73,7 +79,7 @@ function parseEmbedBody(body: string): EmbedBlock | null {
 export function parseEmbedBlocks(markdown: string): EmbedBlock[] {
   const blocks: EmbedBlock[] = []
   for (const match of markdown.matchAll(FENCE_RE)) {
-    const parsed = parseEmbedBody(match[1] ?? '')
+    const parsed = parseEmbedFenceBody(match[1] ?? '')
     if (parsed !== null) {
       blocks.push(parsed)
     }

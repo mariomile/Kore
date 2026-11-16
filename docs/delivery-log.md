@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: swipe to select blocks with an action bar, Craft-style Turn into,
+  sub pages as cards on iPhone and Mac, round task boxes, single-row keyboard
+  toolbar (#460).
 - iPhone: collections inside a note as Craft-style cards with view switch,
   preview and a View menu written into the note; Columns menu on the Mac
   (#480).

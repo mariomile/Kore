@@ -1679,11 +1679,11 @@ html[data-sidebar-resizing] aside {
 
 /* A rendered collection fence never shows its source: the widget is the
    whole block, and the caret is kept out of it by CollectionFenceGuard.
-   A diagram fence keeps its source, which Meowdown shows while the caret is
-   inside it. */
+   A diagram or link embed fence keeps its source, which Meowdown shows
+   while the caret is inside it. */
 .kore-editor
   div:has(> [data-meowdown-code-block-custom]):not(
-    :has(> [data-meowdown-code-block-custom] > [data-kore-diagram])
+    :has(> [data-meowdown-code-block-custom] > :is([data-kore-diagram], [data-kore-embed]))
   )
   > pre {
   display: none;

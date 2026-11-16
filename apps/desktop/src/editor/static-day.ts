@@ -20,10 +20,10 @@ import { checkRoundTrip } from './roundtrip'
  *
  * - a cover or an icon in the frontmatter (they sit above the editor),
  * - sync conflict markers and notes the editor opens read-only,
- * - media, note and base embeds under the editor,
+ * - note and base embeds under the editor,
  * - X and YouTube posts, embedded files, images with a stored size, code
- *   fences (collections, diagrams), math, tables, callouts, raw HTML and
- *   attached files.
+ *   fences (collections, diagrams, link embeds), math, tables, callouts,
+ *   raw HTML and attached files.
  *
  * Returns the body to draw, or null when the day needs its editor.
  */
@@ -41,7 +41,7 @@ export function staticDayBody(source: string): string | null {
     return null
   }
   const embeds = parseBodyEmbeds(body)
-  if (embeds.media.length > 0 || embeds.transclusions.length > 0 || embeds.bases.length > 0) {
+  if (embeds.transclusions.length > 0 || embeds.bases.length > 0) {
     return null
   }
   // The same gate the session applies before it lets the editor own a note.

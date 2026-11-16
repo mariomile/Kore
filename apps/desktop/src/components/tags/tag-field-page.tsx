@@ -78,9 +78,7 @@ export function TagFieldPage({
             onChange={(options) => config.updateDraft(draft.rowId, optionsPatch(draft, options))}
           />
           {draft.options.length > 1 ? (
-            <p className="px-1 text-xs text-text-muted">
-              Drag to reorder. Tap the dot for color.
-            </p>
+            <p className="px-1 text-xs text-text-muted">Drag to reorder. Tap the dot for color.</p>
           ) : null}
         </section>
       ) : null}

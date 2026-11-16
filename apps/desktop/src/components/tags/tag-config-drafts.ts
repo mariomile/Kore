@@ -107,9 +107,7 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
 
 /** Option drafts for a stored property: its options in order, each with
  * the color the definition picked (unknown color names read as none). */
-export function optionDraftsFrom(
-  property: Pick<TagProperty, 'options' | 'colors'>,
-): OptionDraft[] {
+export function optionDraftsFrom(property: Pick<TagProperty, 'options' | 'colors'>): OptionDraft[] {
   return (property.options ?? []).map((name, id) => {
     const color = property.colors?.[name]
     return { id, name, original: name, color: isOptionColor(color) ? color : null }

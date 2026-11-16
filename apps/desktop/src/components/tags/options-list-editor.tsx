@@ -1,16 +1,8 @@
 import { useState, type KeyboardEvent, type ReactElement } from 'react'
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -53,10 +45,7 @@ export function OptionsListEditor({
   touch = false,
 }: OptionsListEditorProps): ReactElement {
   const [pending, setPending] = useState('')
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const nextId = options.reduce((max, option) => Math.max(max, option.id), -1) + 1
   const taken = (name: string, exceptId?: number): boolean =>
     options.some((option) => option.id !== exceptId && option.name.trim() === name)
@@ -168,6 +157,8 @@ function OptionRow({
   const [menuOpen, setMenuOpen] = useState(false)
   const shown = option.color ?? hashedOptionColor(option.name.trim())
   const label = option.name.trim() || 'option'
+  // Menu rows: 44pt touch targets on the phone, compact on the Mac.
+  const menuRow = touch ? 'h-11 text-base' : 'h-7 text-sm'
 
   return (
     <li
@@ -236,7 +227,11 @@ function OptionRow({
             )}
           />
         </PopoverTrigger>
-        <PopoverContent align="end" sideOffset={4} className="w-48 gap-0 p-1">
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          className={cn('gap-0 p-1', touch ? 'w-56' : 'w-48')}
+        >
           <p className="px-2 pb-1 pt-1.5 text-2xs font-medium text-text-muted">Color</p>
           <ul role="listbox" aria-label={`Color for ${label}`}>
             {OPTION_COLORS.map((color) => {
@@ -251,14 +246,19 @@ function OptionRow({
                       onColor(color)
                       setMenuOpen(false)
                     }}
-                    className="flex h-7 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-text transition-colors hover:bg-surface-hover"
+                    className={cn(
+                      'flex w-full items-center gap-2.5 rounded-md px-2 text-left text-text transition-colors hover:bg-surface-hover',
+                      menuRow,
+                    )}
                   >
                     <span
                       aria-hidden
                       className={cn('size-3 rounded-full', optionColorDotClass(color))}
                     />
                     <span className="flex-1">{OPTION_COLOR_LABELS[color]}</span>
-                    {selected ? <Check aria-hidden className="size-3.5 text-text-secondary" /> : null}
+                    {selected ? (
+                      <Check aria-hidden className="size-3.5 text-text-secondary" />
+                    ) : null}
                   </button>
                 </li>
               )
@@ -271,9 +271,15 @@ function OptionRow({
                 onColor(null)
                 setMenuOpen(false)
               }}
-              className="mt-0.5 flex h-7 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover"
+              className={cn(
+                'mt-0.5 flex w-full items-center gap-2.5 rounded-md px-2 text-left text-text-secondary transition-colors hover:bg-surface-hover',
+                menuRow,
+              )}
             >
-              <span aria-hidden className="size-3 rounded-full border border-dashed border-border-strong" />
+              <span
+                aria-hidden
+                className="size-3 rounded-full border border-dashed border-border-strong"
+              />
               Automatic
             </button>
           ) : null}
@@ -284,7 +290,10 @@ function OptionRow({
               setMenuOpen(false)
               onRemove()
             }}
-            className="flex h-7 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-destructive transition-colors hover:bg-surface-hover"
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-md px-2 text-left text-destructive transition-colors hover:bg-surface-hover',
+              menuRow,
+            )}
           >
             <Trash aria-hidden className="size-3.5" />
             Delete option

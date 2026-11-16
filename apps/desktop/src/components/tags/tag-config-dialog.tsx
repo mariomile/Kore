@@ -1,27 +1,12 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import {
   foldTag,
   propertyKeyForName,
   tagDisplayName,
   tagPropertyTypeSchema,
   type TagPropertyType,
 } from '@kore/core'
-import { Close, GripVertical, Info, Plus, Settings, Trash } from '@/components/icons'
+import { Close, Info, Plus, Settings, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -40,7 +25,6 @@ import {
 } from '@/components/ui/select'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
-import { cn } from '@/lib/utils'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagConfigSheet } from './tag-config-sheet'
@@ -49,6 +33,7 @@ import { TagParentsField } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertySettings } from './tag-property-settings'
 import { TagViewsStrip } from './tag-views-strip'
+import { NavButton, PropertyNavList } from './tag-config-nav'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -64,6 +49,13 @@ interface TagConfigDialogProps {
  * save; an existing unmarked note at that path is only written after the
  * explicit conversion notice below. A broken-YAML definition refuses the
  * write (`upsertFrontmatter`) and surfaces as a toast — never destroys.
+ *
+ * On the Mac it is two panes, like Notion's and Capacities' type settings:
+ * the type itself and its properties as a sortable list on the left, the
+ * selection's settings on the right (select options with their order,
+ * colors and renames included). When the vault's notes carry the type under
+ * another tag (`#type/project` for a `#project` type) a banner offers to
+ * move the type there.
  *
  * On the phone every entry point opens the same configuration as a bottom
  * sheet ({@link TagConfigSheet}) instead: a centered dialog this dense does
@@ -131,9 +123,7 @@ function TypeSettings({
             </span>
           </DialogDescription>
         </div>
-        <DialogClose
-          render={<Button variant="ghost" size="icon-sm" aria-label="Close" />}
-        >
+        <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="Close" />}>
           <Close aria-hidden />
         </DialogClose>
       </header>
@@ -199,12 +189,16 @@ function TypeSettings({
           {config.needsConversion ? (
             <p className="mb-4 rounded-lg bg-surface-hover px-3 py-2 text-xs text-text-secondary">
               A note already exists at <code className="font-mono">tags/{key}.md</code>. Saving
-              converts it into this type's definition (adds the type marker to its frontmatter);
-              its body is kept.
+              converts it into this type's definition (adds the type marker to its frontmatter); its
+              body is kept.
             </p>
           ) : null}
           {selected === null ? (
-            <TypePane tagKey={key} config={config} onPicked={() => setSelection({ kind: 'type' })} />
+            <TypePane
+              tagKey={key}
+              config={config}
+              onPicked={() => setSelection({ kind: 'type' })}
+            />
           ) : (
             <PropertyPane
               key={selected.rowId}
@@ -221,141 +215,6 @@ function TypeSettings({
 
       <SaveBar config={config} onClose={onClose} />
     </>
-  )
-}
-
-function NavButton({
-  active = false,
-  muted = false,
-  disabled,
-  onClick,
-  children,
-}: {
-  active?: boolean
-  muted?: boolean
-  disabled?: boolean
-  onClick: () => void
-  children: ReactNode
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-current={active || undefined}
-      onClick={onClick}
-      className={cn(
-        'flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors disabled:opacity-50',
-        active ? 'bg-surface-active text-text' : 'hover:bg-surface-hover',
-        muted ? 'text-text-muted hover:text-text-secondary' : !active && 'text-text-secondary',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-/** The properties as a sortable list: drag a row by its handle to reorder. */
-function PropertyNavList({
-  config,
-  selectedRowId,
-  onSelect,
-}: {
-  config: TagConfigDraft
-  selectedRowId: number | null
-  onSelect: (rowId: number) => void
-}): ReactElement {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={(event) => {
-        if (event.over !== null && event.over.id !== event.active.id) {
-          config.moveDraftTo(Number(event.active.id), Number(event.over.id))
-        }
-      }}
-    >
-      <SortableContext
-        items={config.drafts.map((draft) => draft.rowId)}
-        strategy={verticalListSortingStrategy}
-      >
-        <ul className="flex flex-col gap-0.5">
-          {config.drafts.map((draft) => (
-            <PropertyNavRow
-              key={draft.rowId}
-              draft={draft}
-              active={draft.rowId === selectedRowId}
-              invalid={
-                config.invalidNameRowIds.has(draft.rowId) ||
-                config.invalidKeyRowIds.has(draft.rowId)
-              }
-              onSelect={() => onSelect(draft.rowId)}
-            />
-          ))}
-        </ul>
-      </SortableContext>
-    </DndContext>
-  )
-}
-
-function PropertyNavRow({
-  draft,
-  active,
-  invalid,
-  onSelect,
-}: {
-  draft: PropertyDraft
-  active: boolean
-  invalid: boolean
-  onSelect: () => void
-}): ReactElement {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id: draft.rowId })
-  const Glyph = PROPERTY_TYPE_ICONS[draft.type]
-  const label = draft.name.trim()
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        'group/prop relative flex h-8 items-center rounded-md transition-colors',
-        active ? 'bg-surface-active' : 'hover:bg-surface-hover',
-        isDragging && 'z-10 bg-surface shadow-md',
-      )}
-    >
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        aria-label={`Reorder ${label || 'property'}`}
-        className="flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-text-muted opacity-0 transition-opacity group-hover/prop:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical aria-hidden className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-current={active || undefined}
-        className="flex h-8 min-w-0 flex-1 items-center gap-2 pr-2 text-left text-sm"
-      >
-        <Glyph aria-hidden className="size-4 shrink-0 text-text-muted" />
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate',
-            label === '' ? 'text-text-muted' : active ? 'text-text' : 'text-text-secondary',
-          )}
-        >
-          {label || 'Untitled'}
-        </span>
-        {invalid ? (
-          <span aria-label="Needs attention" className="size-1.5 shrink-0 rounded-full bg-destructive" />
-        ) : null}
-      </button>
-    </li>
   )
 }
 
@@ -529,7 +388,13 @@ function PropertyPane({
   )
 }
 
-function SaveBar({ config, onClose }: { config: TagConfigDraft; onClose: () => void }): ReactElement {
+function SaveBar({
+  config,
+  onClose,
+}: {
+  config: TagConfigDraft
+  onClose: () => void
+}): ReactElement {
   const { pendingRenames } = config
   if (pendingRenames !== null) {
     return (

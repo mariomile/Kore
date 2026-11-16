@@ -41,12 +41,7 @@ export {
   type FormulaConfig,
 } from './tag-type'
 export { optionRenameMap, renameOptionValue, type OptionRenameMap } from './option-renames'
-export {
-  suggestTypeTag,
-  tagUseCount,
-  type TagUse,
-  type TypeTagSuggestion,
-} from './tag-binding'
+export { suggestTypeTag, tagUseCount, type TagUse, type TypeTagSuggestion } from './tag-binding'
 export {
   isEmailValue,
   parseRating,

@@ -221,7 +221,9 @@ function TypePage({
       ) : null}
       <p className="-mb-3 px-1 text-xs text-text-muted">
         #{tagKey}
-        {binding.count === null ? '' : ` · ${binding.count} ${binding.count === 1 ? 'note' : 'notes'}`}
+        {binding.count === null
+          ? ''
+          : ` · ${binding.count} ${binding.count === 1 ? 'note' : 'notes'}`}
       </p>
       {config.needsConversion ? (
         <p className="rounded-xl bg-surface-hover px-3 py-2 text-sm text-text-secondary">

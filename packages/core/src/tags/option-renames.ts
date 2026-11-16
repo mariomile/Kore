@@ -15,9 +15,7 @@ export type OptionRenameMap = ReadonlyMap<string, string>
 
 /** The rename map for `renames`, dropping no-ops and keeping the first
  * mapping of a repeated `from`. */
-export function optionRenameMap(
-  renames: readonly { from: string; to: string }[],
-): OptionRenameMap {
+export function optionRenameMap(renames: readonly { from: string; to: string }[]): OptionRenameMap {
   const map = new Map<string, string>()
   for (const { from, to } of renames) {
     if (from !== to && !map.has(from)) {

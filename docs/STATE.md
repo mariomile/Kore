@@ -1,5 +1,15 @@
 # Kore working state
 
+## Open a vault from GitHub, 2026-11-16
+
+- [x] Open a vault from GitHub: a GitHub card on the Mac start screen and
+  'Open a vault from GitHub' in the iPhone onboarding check the token and the
+  repo, warn when the repo is public, then clone and open it; a cloned vault
+  gets no sample notes (#464).
+- [x] iPhone: the caret in quick capture (+) and the other sheets with a text
+  field sits on the text line instead of floating above it (#470).
+- Not verified on a real Mac or iPhone.
+
 ## Agent access settings, agents follow the vault, 2026-11-15
 
 - [x] Settings → Agents becomes Agent access, with agents grouped by where

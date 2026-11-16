@@ -22,8 +22,11 @@ async function renderNote(dateFormat?: 'mdy' | 'dmy' | 'iso'): Promise<NoteEdito
   return handle!
 }
 
-const labels = (): string[] =>
-  [...document.querySelectorAll('.md-wikilink-view-label')].map((label) => label.textContent ?? '')
+function labels(): string[] {
+  return [...document.querySelectorAll('.md-wikilink-view-label')].map(
+    (label) => label.textContent ?? '',
+  )
+}
 
 describe('DateLinkLabels', () => {
   it('reads date links as the compact date and leaves the markdown alone', async () => {

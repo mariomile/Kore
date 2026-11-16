@@ -82,7 +82,6 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
-      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -498,7 +497,6 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
-      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -799,21 +797,11 @@ describe('settingsSchema', () => {
     })
   })
 
-  it('migrates legacy note tabs into generalized workspace tabs', () => {
-    const parsed = settingsSchema.parse({
-      openNoteTabs: {
-        '/g': [
-          { path: 'notes/alpha.md', pinned: true },
-          { kind: 'note', path: 'notes/beta.md', pinned: false },
-          { kind: 'surface', surface: 'settings', pinned: false },
-        ],
-      },
-    })
-    // The pre-pane flat list this migration used to produce no longer
-    // matches the pane shape, so it drops rather than resurrecting half a
-    // session.
-    expect(parsed.openTabs).toEqual({ '/g': [] })
+  it('drops the open tabs that moved to the workspace layout', () => {
+    const parsed = settingsSchema.parse({ openTabs: { '/g': [] }, openNoteTabs: {}, theme: 'dark' })
+    expect('openTabs' in parsed).toBe(false)
     expect('openNoteTabs' in parsed).toBe(false)
+    expect(parsed.theme).toBe('dark')
   })
 
   it('normalizes the sidebar shelf order to a complete list', () => {
@@ -901,117 +889,6 @@ describe('settingsSchema', () => {
       'tasks',
     ])
     expect(moveDetailsSection(order, note, 'tasks', 'up')).toEqual(order)
-  })
-
-  it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/g': [
-          {
-            id: 'main',
-            panes: [
-              {
-                id: 'main',
-                activeKey: null,
-                tabs: [
-                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                  { kind: 'note', path: 'notes/alpha.md', pinned: true },
-                  { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-                  { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
-                  { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-                  { kind: 'surface', surface: 'tasks', pinned: false },
-                  { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
-                ],
-              },
-            ],
-          },
-        ],
-        '/broken': [
-          {
-            id: 'main',
-            panes: [{ id: 'main', activeKey: null, tabs: [{ kind: 'chat', pinned: false }] }],
-          },
-        ],
-      },
-    })
-    expect(parsed.openTabs).toEqual({
-      '/g': [
-        {
-          id: 'main',
-          panes: [
-            {
-              id: 'main',
-              activeKey: null,
-              tabs: [
-                { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                { kind: 'note', path: 'notes/alpha.md', pinned: true },
-                { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-                {
-                  kind: 'surface',
-                  surface: 'allNotes',
-                  filter: { kind: 'tag', tag: 'book' },
-                  pinned: false,
-                },
-                { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-                { kind: 'surface', surface: 'tasks', pinned: false },
-                { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
-              ],
-            },
-          ],
-        },
-      ],
-      '/broken': [{ id: 'main', panes: [{ id: 'main', activeKey: null, tabs: [] }] }],
-    })
-  })
-
-  it('drops a pre-pane flat tab list instead of resurrecting it', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/graph': [{ id: 'main', tabs: [{ kind: 'note', path: 'notes/a.md', pinned: false }] }],
-      },
-    })
-    expect(parsed.openTabs).toEqual({ '/graph': [] })
-  })
-
-  it('drops retired settings and Agents tabs without discarding the rest of the session', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/g': [
-          {
-            id: 'main',
-            panes: [
-              {
-                id: 'main',
-                activeKey: null,
-                tabs: [
-                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                  { kind: 'surface', surface: 'settings', pinned: true },
-                  { kind: 'surface', surface: 'agents', pinned: false },
-                  { kind: 'note', path: 'notes/alpha.md', pinned: false },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    })
-    expect(parsed.openTabs).toEqual({
-      '/g': [
-        {
-          id: 'main',
-          panes: [
-            {
-              id: 'main',
-              activeKey: null,
-              tabs: [
-                { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                { kind: 'note', path: 'notes/alpha.md', pinned: false },
-              ],
-            },
-          ],
-        },
-      ],
-    })
   })
 })
 

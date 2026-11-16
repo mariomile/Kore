@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import type { OpenColumn } from '../settings/schema'
+import type { OpenColumn } from '../workspace/layout'
 import { createWorkspaceStatePublisher, workspaceNotes } from './workspace-state'
 
 const columns: OpenColumn[] = [

@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { noteListFilterSchema, type NoteListFilter } from '../indexing/note-list-filter'
 import { agentRoutinesSchema } from '../ai/agent-routines'
 import { mcpServersSchema } from '../ai/mcp'
 import {
@@ -89,280 +88,6 @@ export * from './schema-editor'
  * and unknown keys are preserved (`.passthrough`) so a document written by a
  * newer app version round-trips through an older one without losing fields.
  */
-
-/**
- * Singleton workspace pages that join notes and conversations in the desktop
- * tab strip. Route payloads such as the focused daily date, collection tag, or
- * search query live on the corresponding tab while identity remains the
- * surface name. Settings is a full-page workspace, not a tab, so it is not a
- * surface here — stored `settings` tabs (and the retired Agents workspace tab,
- * now a Settings page) are dropped on parse.
- */
-export const workspaceSurfaceSchema = z.enum([
-  'daily',
-  'allNotes',
-  'search',
-  'tasks',
-  'insights',
-  'memory',
-  'activity',
-  'graphMap',
-  'terminal',
-  'browser',
-])
-
-export type WorkspaceSurface = z.infer<typeof workspaceSurfaceSchema>
-
-export interface OpenNoteTab {
-  kind: 'note'
-  path: string
-  pinned: boolean
-}
-
-export interface OpenChatTab {
-  kind: 'chat'
-  conversationId: string
-  pinned: boolean
-}
-
-export interface OpenDailyTab {
-  kind: 'surface'
-  surface: 'daily'
-  date: string | null
-  pinned: boolean
-}
-
-export interface OpenAllNotesTab {
-  kind: 'surface'
-  surface: 'allNotes'
-  filter: NoteListFilter
-  pinned: boolean
-}
-
-export interface OpenSearchTab {
-  kind: 'surface'
-  surface: 'search'
-  query: string
-  pinned: boolean
-}
-
-export interface OpenStaticSurfaceTab {
-  kind: 'surface'
-  surface: Exclude<WorkspaceSurface, 'daily' | 'allNotes' | 'search'>
-  pinned: boolean
-}
-
-export type OpenSurfaceTab = OpenDailyTab | OpenAllNotesTab | OpenSearchTab | OpenStaticSurfaceTab
-
-/**
- * An Obsidian base (`.base` file) or, with a null `path`, the list of every
- * base in the vault. `view` is the selected view's name (null: the first).
- */
-export interface OpenBaseTab {
-  kind: 'base'
-  path: string | null
-  view: string | null
-  pinned: boolean
-}
-
-/** An Obsidian canvas (`.canvas` file) or, with a null `path`, every canvas. */
-export interface OpenCanvasTab {
-  kind: 'canvas'
-  path: string | null
-  pinned: boolean
-}
-
-/**
- * One note's local graph opened as a page of its own, out of the Details
- * panel. Keyed by the note, like a base by its file: each note's map keeps its
- * own tab.
- */
-export interface OpenLocalGraphTab {
-  kind: 'localGraph'
-  path: string
-  pinned: boolean
-}
-
-/**
- * A markdown file from the Library (a coding agent's home folder such as
- * `~/.claude`), shown read-only. `root` is the folder's id, `path` the file
- * relative to it.
- */
-export interface OpenLibraryTab {
-  kind: 'library'
-  root: string
-  path: string
-  pinned: boolean
-}
-
-export type OpenTab =
-  | OpenNoteTab
-  | OpenChatTab
-  | OpenSurfaceTab
-  | OpenBaseTab
-  | OpenCanvasTab
-  | OpenLocalGraphTab
-  | OpenLibraryTab
-
-/** One workspace pane's persisted tab strip and the tab it last showed. */
-export interface OpenPane {
-  readonly id: string
-  readonly tabs: OpenTab[]
-  /** `tabKey` of the pane's active tab, or null when it has none yet. */
-  readonly activeKey: string | null
-}
-
-/** One workspace column: a stack of panes rendered top to bottom. */
-export interface OpenColumn {
-  readonly id: string
-  readonly panes: OpenPane[]
-}
-
-const openNoteTabStoredSchema = z.object({
-  kind: z.literal('note'),
-  path: z.string(),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenNoteTab>
-
-const openChatTabStoredSchema = z.object({
-  kind: z.literal('chat'),
-  conversationId: z.string(),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenChatTab>
-
-const openBaseTabStoredSchema = z.object({
-  kind: z.literal('base'),
-  path: z.string().nullable().catch(null),
-  view: z.string().nullable().catch(null),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenBaseTab>
-
-const openCanvasTabStoredSchema = z.object({
-  kind: z.literal('canvas'),
-  path: z.string().nullable().catch(null),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenCanvasTab>
-
-const openLocalGraphTabStoredSchema = z.object({
-  kind: z.literal('localGraph'),
-  path: z.string(),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenLocalGraphTab>
-
-const openLibraryTabStoredSchema = z.object({
-  kind: z.literal('library'),
-  root: z.string(),
-  path: z.string(),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenLibraryTab>
-
-const openDailyTabStoredSchema = z.object({
-  kind: z.literal('surface'),
-  surface: z.literal('daily'),
-  date: z.string().nullable().catch(null),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenDailyTab>
-
-const openAllNotesTabStoredSchema = z
-  .object({
-    kind: z.literal('surface'),
-    surface: z.literal('allNotes'),
-    filter: noteListFilterSchema.optional(),
-    // Older installs stored a tag facet rather than an explicit filter.
-    tag: z.string().nullable().catch(null),
-    pinned: z.boolean().catch(false),
-  })
-  .transform(
-    ({ kind, surface, filter, tag, pinned }): OpenAllNotesTab => ({
-      kind,
-      surface,
-      filter: filter ?? (tag === null ? { kind: 'all' } : { kind: 'tag', tag }),
-      pinned,
-    }),
-  )
-
-const openSearchTabStoredSchema = z.object({
-  kind: z.literal('surface'),
-  surface: z.literal('search'),
-  query: z.string().catch(''),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenSearchTab>
-
-const openStaticSurfaceTabStoredSchema = z.object({
-  kind: z.literal('surface'),
-  surface: z.enum(['tasks', 'insights', 'memory', 'activity', 'graphMap', 'terminal', 'browser']),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenStaticSurfaceTab>
-
-/**
- * Settings (and the Agents workspace that moved into it) used to be
- * strip tabs. Drop stored entries so a restored session keeps the rest
- * of the strip instead of failing the whole list.
- */
-const retiredWorkspaceTabSchema = z.object({
-  surface: z.enum(['settings', 'agents']),
-})
-
-function dropRetiredWorkspaceTabs(value: unknown): unknown {
-  if (!Array.isArray(value)) {
-    return value
-  }
-  return value.filter((entry) => !retiredWorkspaceTabSchema.safeParse(entry).success)
-}
-
-/** Pre-surface shape: `{ path, pinned }` with no `kind`. */
-const legacyOpenNoteTabSchema = z
-  .object({
-    path: z.string(),
-    pinned: z.boolean().catch(false),
-  })
-  .transform((tab): OpenNoteTab => ({ kind: 'note', path: tab.path, pinned: tab.pinned }))
-
-/**
- * One desktop workspace tab: a note, a chat conversation, or a singleton
- * workspace surface. Lists are restored at launch and keyed by graph root so
- * one graph's session can never leak into another. A malformed graph entry
- * drops that graph's list rather than resurrecting half a session; a malformed
- * document (including the pre-keying flat-array shape) degrades to no stored
- * sessions.
- */
-export const openTabSchema: z.ZodType<OpenTab> = z.union([
-  openNoteTabStoredSchema,
-  openChatTabStoredSchema,
-  openBaseTabStoredSchema,
-  openCanvasTabStoredSchema,
-  openLocalGraphTabStoredSchema,
-  openLibraryTabStoredSchema,
-  openDailyTabStoredSchema,
-  openAllNotesTabStoredSchema,
-  openSearchTabStoredSchema,
-  openStaticSurfaceTabStoredSchema,
-  legacyOpenNoteTabSchema,
-])
-
-const openPaneSchema: z.ZodType<OpenPane> = z.object({
-  id: z.string().min(1),
-  tabs: z.preprocess(dropRetiredWorkspaceTabs, z.array(openTabSchema).catch([])),
-  activeKey: z.string().nullable().catch(null),
-})
-
-const openColumnSchema: z.ZodType<OpenColumn> = z.object({
-  id: z.string().min(1),
-  panes: z.array(openPaneSchema),
-})
-
-/**
- * Per graph root, the ordered columns of the workspace, each a stack of
- * panes with its own tab strip. A malformed column (including the pre-column
- * flat pane list) drops the graph's layout rather than restoring half a
- * session.
- */
-export const openTabsSchema = z
-  .record(z.string(), z.array(openColumnSchema).catch([]))
-  // An array is also an object to `z.record` (index keys) — the pre-keying
-  // shape must degrade to "no sessions", not to a graph named "0".
-  .refine((value) => !Array.isArray(value))
-  .catch({})
 
 /**
  * Whether semantic search is on. Off by default — turning it on downloads the
@@ -585,22 +310,20 @@ export const quickCaptureShortcutSchema = z
 export const hapticFeedbackSchema = z.boolean().catch(true)
 
 /**
- * Move the legacy `openNoteTabs` document into the generalized `openTabs`
- * field at the untrusted JSON boundary. The legacy key is removed from the
- * parsed value so the next settings write completes the migration.
+ * Open tabs used to live in this document (`openTabs`, earlier `openNoteTabs`);
+ * they are the workspace layout's now. Drop the keys so the passthrough schema
+ * stops carrying them into every settings save.
  */
-function migrateOpenTabs(value: unknown): unknown {
+function dropWorkspaceLayoutKeys(value: unknown): unknown {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return value
   }
-  if (!('openNoteTabs' in value)) {
+  if (!('openTabs' in value) && !('openNoteTabs' in value)) {
     return value
   }
-  const entries = Object.entries(value).filter(([key]) => key !== 'openNoteTabs')
-  if ('openTabs' in value) {
-    return Object.fromEntries(entries)
-  }
-  return { ...Object.fromEntries(entries), openTabs: value.openNoteTabs }
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => key !== 'openTabs' && key !== 'openNoteTabs'),
+  )
 }
 
 /**
@@ -627,7 +350,7 @@ function hideLibraryShelfOnce(value: unknown): unknown {
 }
 
 function migrateSettings(value: unknown): unknown {
-  return hideLibraryShelfOnce(migrateOpenTabs(value))
+  return hideLibraryShelfOnce(dropWorkspaceLayoutKeys(value))
 }
 
 const settingsDocumentSchema = z.looseObject({
@@ -673,7 +396,6 @@ const settingsDocumentSchema = z.looseObject({
   allNotesFilterTags: allNotesFilterTagsSchema,
   allNotesView: allNotesViewSchema,
   allNotesSort: allNotesSortSchema,
-  openTabs: openTabsSchema,
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,
   collectionGroups: collectionGroupsSchema,

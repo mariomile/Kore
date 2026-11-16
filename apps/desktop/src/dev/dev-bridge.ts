@@ -48,6 +48,7 @@ const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
 const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
 const settingsArgsSchema = z.object({ settings: z.record(z.string(), z.unknown()) })
+const workspaceLayoutArgsSchema = z.object({ layout: z.record(z.string(), z.unknown()) })
 const secretNameArgsSchema = z.object({ name: z.string() })
 const secretSetArgsSchema = z.object({ name: z.string(), value: z.string() })
 const chatSaveArgsSchema = z.object({
@@ -105,6 +106,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
     aiProviders: [demoProvider],
     defaultAiProviderId: demoProvider.id,
   }
+  let workspaceLayoutDocument: Record<string, unknown> = {}
   const assets = new Map<string, string>()
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
@@ -400,6 +402,12 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return settingsDocument
       case 'settings_save': {
         settingsDocument = settingsArgsSchema.parse(args).settings
+        return null
+      }
+      case 'workspace_layout_load':
+        return workspaceLayoutDocument
+      case 'workspace_layout_save': {
+        workspaceLayoutDocument = workspaceLayoutArgsSchema.parse(args).layout
         return null
       }
       case 'secret_get':

@@ -85,6 +85,7 @@ fn wiki(target: &str) -> IndexedLink {
         target_key: target.to_lowercase(),
         target_path_key: None,
         alias: None,
+        relation: None,
         pos_from: 0,
         pos_to: 0,
     }
@@ -98,6 +99,7 @@ fn path_link(kind: &str, target_raw: &str, target_path_key: &str) -> IndexedLink
         target_key: target_raw.to_lowercase(),
         target_path_key: Some(target_path_key.to_string()),
         alias: None,
+        relation: None,
         pos_from: 0,
         pos_to: 0,
     }

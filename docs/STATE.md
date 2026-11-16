@@ -1,5 +1,17 @@
 # Kore working state
 
+## Link styles, app logos and graph relations, 2026-11-16
+
+- [x] Links: choose how each link looks (inline link, compact, card or large)
+  from the button on the card; the choice is saved in the Markdown (#487).
+- [x] Settings → Agents → Connect an app: every row shows the app's logo
+  (Claude, ChatGPT, Cursor), with the same tiles as AI providers (#483).
+- [x] Knowledge graph: links remember their relation (frontmatter field name,
+  e.g. company); CLI/MCP links, backlinks and explain_note show relations and
+  up to 3 context sentences per backlink, with a --relation filter. Migration
+  0028 + projection 34: one index rebuild on first launch (#491).
+- Not verified on a real Mac or iPhone.
+
 ## Rich link cards, 2026-11-16
 
 - [x] Link cards are now rich Craft-style cards (image, title, description,

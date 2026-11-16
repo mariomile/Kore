@@ -143,7 +143,7 @@ private struct LinkPreview: View {
                 Spacer(minLength: 8)
                 Text(host).font(.caption).foregroundColor(KoreColor.muted).lineLimit(1)
             }
-            .padding(14)
+            .padding(16)
         case .card:
             HStack(alignment: .top, spacing: 12) {
                 SiteTile(host: host, size: 64)
@@ -156,7 +156,7 @@ private struct LinkPreview: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(12)
+            .padding(16)
         case .large:
             VStack(alignment: .leading, spacing: 0) {
                 SiteTile(host: host, size: nil)
@@ -168,7 +168,7 @@ private struct LinkPreview: View {
                     }
                     HostLine(host: host)
                 }
-                .padding(14)
+                .padding(16)
             }
         case .embed:
             if kind == .post {
@@ -184,7 +184,7 @@ private struct LinkPreview: View {
                             .background(Circle().fill(Color.black.opacity(0.45)))
                     }
                     .frame(height: 150)
-                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(2).padding(14)
+                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(2).padding(16)
                 }
             }
         case .text:
@@ -226,8 +226,8 @@ private struct PostPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Circle().fill(KoreColor.active).frame(width: 34, height: 34)
+            HStack(spacing: 12) {
+                Circle().fill(KoreColor.active).frame(width: 32, height: 32)
                     .overlay(Text(String(handle.prefix(1)).uppercased()).font(.subheadline.weight(.semibold)).foregroundColor(KoreColor.secondary))
                 VStack(alignment: .leading, spacing: 1) {
                     Text("@\(handle)").font(.subheadline.weight(.semibold))
@@ -283,10 +283,14 @@ private struct ThoughtField: View {
     @Binding var text: String
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        // The pencil sits in the same 32pt column as the Where rows' icons and
+        // the post's avatar, so every text in the sheet starts on one line; it
+        // is centred on the field's first line, not on the whole field.
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "pencil")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(KoreColor.muted)
+                .frame(width: 32, height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
             TextField("Add a thought\u{2026}", text: $text, axis: .vertical)
                 .lineLimit(1...4)
                 .font(.body)
@@ -602,7 +606,7 @@ private struct LookPicker: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
-                    .frame(maxWidth: 96)
+                    .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

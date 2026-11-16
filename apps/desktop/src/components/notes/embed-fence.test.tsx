@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { parseEmbedFenceBody } from '@kore/core'
+import { parseEmbedFenceBody, type LinkPreview } from '@kore/core'
 import '@/test-utils/locator'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { EmbedFence } from './embed-fence'
@@ -16,6 +16,25 @@ vi.mock('@/editor/open-external-link', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/editor/open-external-link')>()),
   openExternalUrl,
 }))
+
+const loadLinkPreview = vi.hoisted(() =>
+  vi.fn<(url: string) => Promise<LinkPreview | null>>(() => Promise.resolve(null)),
+)
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kore/core')>()),
+  loadLinkPreview,
+}))
+
+const CAPTOO: LinkPreview = {
+  kind: 'page',
+  url: 'https://captoo.io',
+  siteName: 'Captoo',
+  provider: null,
+  imageUrl: null,
+  iconUrl: null,
+  title: 'Captoo: be the answer AI gives',
+  description: 'Track how ChatGPT and Perplexity talk about your brand.',
+}
 
 const NOTE = 'before\n\n```embed\nhttps://captoo.io\n```\n\nafter'
 
@@ -79,5 +98,18 @@ describe('EmbedFence', () => {
     expect(openExternalUrl).toHaveBeenCalledWith('https://captoo.io')
     const selection = handle.getSelection?.()
     expect(selection?.type === 'text' ? selection.anchor : null).not.toBe(9)
+  })
+
+  it('becomes a rich card once the page describes itself', async () => {
+    loadLinkPreview.mockResolvedValueOnce(CAPTOO)
+    await renderNote(NOTE)
+    await expect.element(page.getByTestId('rich-link-card')).toBeInTheDocument()
+    await expect.element(page.getByText('Captoo: be the answer AI gives')).toBeVisible()
+    await expect
+      .element(page.getByText('Track how ChatGPT and Perplexity talk about your brand.'))
+      .toBeVisible()
+    expect(page.getByTestId('rich-link-card').element().textContent).toContain('Captoo · captoo.io')
+    await page.getByRole('button', { name: 'Open captoo.io' }).click()
+    expect(openExternalUrl).toHaveBeenCalledWith('https://captoo.io')
   })
 })

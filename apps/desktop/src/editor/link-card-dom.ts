@@ -86,7 +86,43 @@ export function postDate(iso: string | null): string | null {
   return Number.isNaN(time) ? null : dateFormat.format(time)
 }
 
-/** The footer line: the site's mark and name, then whatever else it knows. */
+/** `https://www.captoo.io/x` → `captoo.io`; the raw string when unparsable. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/** The arrow-out-of-box glyph the open button draws. */
+function openGlyph(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '1.75')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  for (const d of [
+    'M14 4h6v6',
+    'M20 4l-9 9',
+    'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4',
+  ]) {
+    const path = document.createElementNS(SVG_NS, 'path')
+    path.setAttribute('d', d)
+    svg.append(path)
+  }
+  return svg
+}
+
+/**
+ * The footer line: the site's mark and name (and its host when the name is
+ * something else), whatever else it knows, then the open button. The button
+ * is the only way to open the link with a thumb: a plain press on the card
+ * puts the caret on its source instead.
+ */
 function siteLine(preview: LinkPreview, extras: readonly string[]): HTMLElement {
   const line = element('div', 'kore-link-card-site')
   if (preview.provider !== null) {
@@ -94,7 +130,16 @@ function siteLine(preview: LinkPreview, extras: readonly string[]): HTMLElement 
   } else if (preview.iconUrl !== null) {
     line.append(image('kore-link-card-icon', preview.iconUrl))
   }
-  line.append(element('span', '', [preview.siteName, ...extras].join(' · ')))
+  const host = hostOf(preview.url)
+  const name = preview.siteName.toLowerCase() === host ? [host] : [preview.siteName, host]
+  line.append(element('span', '', [...name, ...extras].join(' · ')))
+  const open = element('button', 'kore-link-card-open')
+  open.type = 'button'
+  open.dataset.linkCardOpen = ''
+  open.setAttribute('aria-label', `Open ${host}`)
+  open.title = `Open ${host}`
+  open.append(openGlyph())
+  line.append(open)
   return line
 }
 

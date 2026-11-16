@@ -17,7 +17,8 @@ import { linkCardElement } from './link-card-dom'
  * and the paragraph itself is hidden until the caret is on it, the same
  * reveal-on-caret rule callouts use for their marker. A plain click on the
  * card puts the caret on the link (revealing it to edit or delete); a
- * mod-click opens it, the editor's one link-open gesture.
+ * mod-click or the card's open button opens it (the button is the touch
+ * path, where there is no modifier key).
  */
 
 export interface LinkCardOptions {
@@ -113,7 +114,9 @@ function cardWidget(options: LinkCardOptions, preview: LinkPreview, paragraphPos
         return
       }
       event.preventDefault()
-      if (event.metaKey || event.ctrlKey) {
+      const onOpenButton =
+        event.target instanceof Element && event.target.closest('[data-link-card-open]') !== null
+      if (onOpenButton || event.metaKey || event.ctrlKey) {
         options.open(preview.url, event)
         return
       }

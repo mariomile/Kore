@@ -412,6 +412,46 @@ pub(super) fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "graph_lint",
+            description: "The vault's graph health in one call: broken wiki links (targets no note answers to, with their sources), orphan notes (no links in or out), unlinked mentions (a note's title written in another note's text without a link), and inconsistent relations (a relation whose inverse key the vault uses is missing on the other side, or a typed relation pointing at a note of the wrong type). Reports only; it changes nothing. Propose the fixes to the user before editing notes.",
+            effect: Effect::Read,
+            properties: || json!({
+                "checks": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["broken", "orphans", "unlinked", "relations"] },
+                    "description": "Only these checks (default all)"
+                },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 500, "description": "Maximum items per check (default 50)" }
+            }),
+            required: &[],
+            build: |args| {
+                let checks = match args.get("checks") {
+                    None | Some(Value::Null) => None,
+                    Some(Value::Array(items)) => {
+                        let mut names = Vec::new();
+                        for item in items {
+                            match item.as_str() {
+                                Some(name @ ("broken" | "orphans" | "unlinked" | "relations")) => {
+                                    names.push(name.to_string())
+                                }
+                                _ => {
+                                    return Err(
+                                        "`checks` items must be broken, orphans, unlinked or relations"
+                                            .to_string(),
+                                    )
+                                }
+                            }
+                        }
+                        (!names.is_empty()).then(|| names.join(","))
+                    }
+                    Some(_) => return Err("`checks` must be an array".to_string()),
+                };
+                Ok(Invocation::new("lint")
+                    .option("check", checks)
+                    .option("limit", limit_arg(args)?))
+            },
+        },
+        Tool {
             name: "explain_note",
             description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it, each with its named relations and the backlinks' context. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
             effect: Effect::Read,

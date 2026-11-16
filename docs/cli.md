@@ -22,6 +22,7 @@ kore explain <note>        # properties, tags, outline, links and backlinks in o
 kore route <from> <to>     # the shortest chain of links between two notes
 kore neighborhood <note>   # the notes around a note, up to 2 links away, ranked
 kore coverage <question>   # what the vault holds on a question before answering it
+kore lint                  # graph health: broken links, orphans, unlinked mentions, relations
 kore grep <text>           # every line containing an exact text (no index needed)
 kore skills [name]         # the vault's agent skills (agents/skills/), or one in full
 kore active                # the note open in the app and the note tabs beside it
@@ -744,6 +745,41 @@ words, not meaning (`mode: "lexical"`): a paraphrase is a job for `search`.
 }
 ```
 
+### `kore lint [--check broken,orphans,unlinked,relations] [--limit N] [--json]`
+
+The graph's health, for a person tidying the vault or an agent proposing
+fixes. It only reports; it never edits a note. Private notes are left out
+on both sides of every check.
+
+- **broken**: wiki links no note answers to, grouped by target (`count`,
+  up to five `sources` with their relation). Dates (a daily not written
+  yet), links to files other than Markdown and heading-only links are not
+  broken.
+- **orphans**: notes (not dailies or tag pages) with no link in or out.
+- **unlinked**: a note's title written as a phrase in another note's body
+  without a link to it (titles of three or more characters).
+- **relations**: two kinds. `missingInverse`: `A supersedes: [[B]]` while
+  B has no `superseded_by` back to A, checked only for inverse keys the
+  vault already uses somewhere (`supersedes`/`superseded_by`,
+  `parent`/`child`, `X_by`/`X`). `wrongType`: a typed tag's `relation`
+  field with a `target` (or a `person` field) pointing at a note that does
+  not carry the target tag, checked only when some note does.
+
+`counts` always holds every check's total; each list stops at `--limit`
+(default 50, at most 500). Requires the index (exit `4`).
+
+```jsonc
+// kore lint --json
+{
+  "stale": false,
+  "counts": { "broken": 1, "orphans": 1, "unlinked": 1, "relations": 1 },
+  "broken": [{ "target": "Ghost", "count": 1, "sources": [{ "path": "notes/acme.md", "title": "Acme" }] }],
+  "orphans": [{ "path": "notes/lonely.md", "title": "Lonely" }],
+  "unlinked": [{ "path": "notes/lonely.md", "title": "Lonely", "count": 1, "sources": [{ "path": "notes/meeting.md", "title": "Meeting" }] }],
+  "relations": [{ "kind": "missingInverse", "from": { "path": "notes/v2.md", "title": "V2" }, "to": { "path": "notes/v1.md", "title": "V1" }, "relation": "supersedes", "expected": "superseded_by" }]
+}
+```
+
 ### `kore grep <text> [-i] [--limit N] [--json]`
 
 Every line, in every note on disk, that contains the text literally, with
@@ -962,6 +998,7 @@ fails (not found, private, no index) comes back as a tool result with
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
 | `note_neighborhood`, `check_coverage` | `neighborhood`, `coverage` |
+| `graph_lint` | `lint` |
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 | `remember` | `capture` (to today's daily, or `--to <note>`) |

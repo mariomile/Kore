@@ -288,6 +288,15 @@ enum Command {
         #[arg(long, default_value_t = commands::neighborhood::DEFAULT_LIMIT)]
         limit: usize,
     },
+    /// Graph health: broken links, orphan notes, unlinked mentions, inconsistent relations
+    Lint {
+        /// Only these checks, comma-separated: broken, orphans, unlinked, relations
+        #[arg(long, value_name = "CHECKS", value_delimiter = ',')]
+        check: Vec<String>,
+        /// Maximum items per check (1-500)
+        #[arg(long, default_value_t = commands::lint::DEFAULT_LIMIT)]
+        limit: usize,
+    },
     /// A note's place in the graph: properties, tags, outline, links, backlinks
     Explain {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
@@ -554,6 +563,17 @@ fn run(cli: &Cli) -> Result<(), CliError> {
                 limit: *limit,
             },
         ),
+        Command::Lint { check, limit } => {
+            let checks = if check.is_empty() {
+                commands::lint::Check::ALL.to_vec()
+            } else {
+                check
+                    .iter()
+                    .map(|name| commands::lint::Check::parse(name))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
+            commands::lint::run(&graph, cli.json, &checks, *limit)
+        }
         Command::Explain { note } => commands::explain::run(&graph, cli.json, note),
         Command::Skills { name } => commands::skills::run(&graph, cli.json, name.as_deref()),
         Command::Active => commands::active::run(&graph, cli.json),

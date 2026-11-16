@@ -29,6 +29,10 @@ pub struct SchemaProperty {
     /// it (`startingValueOf`); read by `crate::starting_values`.
     #[serde(default)]
     pub start: Option<crate::starting_values::Start>,
+    /// For `relation`/`relations`/`person`: the tag whose notes the field
+    /// points at (no `#`), when declared; read by `kore lint`.
+    #[serde(default)]
+    pub target: Option<String>,
 }
 
 /// A decoded tag type: its properties and the bound new-row template path.
@@ -341,6 +345,7 @@ mod tests {
             kind: kind.to_string(),
             options: None,
             start: None,
+            target: None,
         }
     }
 

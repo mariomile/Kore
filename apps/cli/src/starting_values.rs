@@ -158,6 +158,7 @@ mod tests {
             kind: "text".into(),
             options: None,
             start: Some(start),
+            target: None,
         };
         let schema = TagSchema {
             properties: vec![

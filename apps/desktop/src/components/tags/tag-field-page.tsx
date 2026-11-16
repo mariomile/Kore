@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
-import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { optionsPatch, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { OptionsListEditor } from './options-list-editor'
 import { TagPropertySettings } from './tag-property-settings'
 import type { TagConfigDraft } from './use-tag-config-draft'
 
@@ -37,6 +38,8 @@ export function TagFieldPage({
   const [showAll, setShowAll] = useState(ADVANCED_TYPES.includes(draft.type))
   const types = showAll ? [...QUICK_PROPERTY_TYPES, ...ADVANCED_TYPES] : QUICK_PROPERTY_TYPES
   const nameInvalid = config.invalidNameRowIds.has(draft.rowId)
+  const hasOptions =
+    draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
 
   return (
     <>
@@ -63,6 +66,24 @@ export function TagFieldPage({
           }}
         />
       </label>
+
+      {hasOptions ? (
+        <section className="flex flex-col gap-1.5">
+          <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-text-muted">
+            Options
+          </h3>
+          <OptionsListEditor
+            touch
+            options={draft.options}
+            onChange={(options) => config.updateDraft(draft.rowId, optionsPatch(draft, options))}
+          />
+          {draft.options.length > 1 ? (
+            <p className="px-1 text-xs text-text-muted">
+              Drag to reorder. Tap the dot for color.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-1.5">
         <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-text-muted">Type</h3>
@@ -106,6 +127,7 @@ export function TagFieldPage({
           draft={draft}
           keyInvalid={config.invalidKeyRowIds.has(draft.rowId)}
           updateDraft={config.updateDraft}
+          omitOptions
         />
       </section>
 

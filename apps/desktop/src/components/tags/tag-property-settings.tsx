@@ -13,10 +13,12 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
-import { OptionsChipsEditor } from './options-chips-editor'
+import { OptionsListEditor } from './options-list-editor'
 import { StartingValueField } from './starting-value-field'
 import {
+  draftOptionNames,
   FIELD_LABEL_CLASS,
+  optionsPatch,
   relationTargetSelectItems,
   relationTargetTags,
   type PropertyDraft,
@@ -35,6 +37,8 @@ export interface TagPropertySettingsProps {
   /** The key is malformed, reserved, or a duplicate: the editor auto-opens. */
   keyInvalid: boolean
   updateDraft: (rowId: number, patch: Partial<PropertyDraft>) => void
+  /** The caller shows the options list itself (the phone's own section). */
+  omitOptions?: boolean
 }
 
 /**
@@ -50,6 +54,7 @@ export function TagPropertySettings({
   draft,
   keyInvalid,
   updateDraft,
+  omitOptions = false,
 }: TagPropertySettingsProps): ReactElement {
   const [keyEditing, setKeyEditing] = useState(false)
   const hasOptions =
@@ -78,21 +83,20 @@ export function TagPropertySettings({
   )
   return (
     <>
-      {hasOptions ? (
+      {hasOptions && !omitOptions ? (
         <div className="flex items-start gap-2">
           <span className={FIELD_LABEL_CLASS}>Options</span>
-          <OptionsChipsEditor
-            value={draft.options}
-            onChange={(options) => updateDraft(draft.rowId, { options })}
-          />
+          <div className="min-w-0 flex-1">
+            <OptionsListEditor
+              options={draft.options}
+              onChange={(options) => updateDraft(draft.rowId, optionsPatch(draft, options))}
+            />
+          </div>
         </div>
       ) : null}
       <StartingValueField
         draft={draft}
-        options={draft.options
-          .split(',')
-          .map((option) => option.trim())
-          .filter((option) => option !== '')}
+        options={draftOptionNames(draft)}
         updateDraft={updateDraft}
       />
       {isRelation ? (

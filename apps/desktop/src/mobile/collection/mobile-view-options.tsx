@@ -354,7 +354,7 @@ function FilterFieldPage({
             <ValueRow
               key={value}
               label={value}
-              dot={coloredOptions ? selectOptionDotClass(value) : null}
+              dot={coloredOptions ? selectOptionDotClass(value, property) : null}
               selected={hasFilter(filters, { key: property.key, operator: 'is', text: value })}
               onPress={() => toggle('is', value)}
             />

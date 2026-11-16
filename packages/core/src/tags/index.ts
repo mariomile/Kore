@@ -20,6 +20,10 @@ export {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  OPTION_COLORS,
+  isOptionColor,
+  optionColorOf,
+  type OptionColor,
   relationCreateTarget,
   withPropertyType,
   QUICK_PROPERTY_TYPES,
@@ -36,6 +40,13 @@ export {
   type ReverseConfig,
   type FormulaConfig,
 } from './tag-type'
+export { optionRenameMap, renameOptionValue, type OptionRenameMap } from './option-renames'
+export {
+  suggestTypeTag,
+  tagUseCount,
+  type TagUse,
+  type TypeTagSuggestion,
+} from './tag-binding'
 export {
   isEmailValue,
   parseRating,

@@ -2,8 +2,8 @@ import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { foldTag } from '@kore/core'
-import { ChevronLeft, ChevronRight, List, Plus } from '@/components/icons'
+import { foldTag, tagDisplayName } from '@kore/core'
+import { ChevronLeft, ChevronRight, GripVertical, Info, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import {
@@ -24,6 +24,7 @@ import { TagPresetIcon } from './tag-preset-icon'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
+import { useTypeTagBinding } from './use-type-tag-binding'
 
 interface TagConfigSheetProps {
   /** The tag being configured (display casing). */
@@ -44,7 +45,17 @@ const SWIPE_IGNORE = { 'data-base-ui-swipe-ignore': '' }
  * settings. Nothing is written until Save, and dismissing the sheet discards
  * the edits, like closing the desktop dialog.
  */
-export function TagConfigSheet({ tag, onClose }: TagConfigSheetProps): ReactElement {
+export function TagConfigSheet({ tag: initialTag, onClose }: TagConfigSheetProps): ReactElement {
+  // A rebind moves the type onto another tag; the sheet reopens there.
+  const [tag, setTag] = useState(initialTag)
+  return <TagConfigSheetFor key={foldTag(tag)} tag={tag} onClose={onClose} onRebound={setTag} />
+}
+
+function TagConfigSheetFor({
+  tag,
+  onClose,
+  onRebound,
+}: TagConfigSheetProps & { onRebound: (tag: string) => void }): ReactElement {
   const { navigate } = useRouter()
   // Set by "Show notes": after the save lands, open the type's notes.
   const afterSaveRef = useRef<(() => void) | null>(null)
@@ -86,7 +97,9 @@ export function TagConfigSheet({ tag, onClose }: TagConfigSheetProps): ReactElem
             </Button>
           )}
           <DrawerTitle className="min-w-0 flex-1 truncate px-0 pt-0 text-center text-base font-semibold">
-            {editing === null ? `#${key}` : editing.name.trim() || 'New field'}
+            {editing === null
+              ? tagDisplayName(key.slice(key.lastIndexOf('/') + 1))
+              : editing.name.trim() || 'New field'}
           </DrawerTitle>
           {editing === null ? (
             <Button
@@ -114,6 +127,8 @@ export function TagConfigSheet({ tag, onClose }: TagConfigSheetProps): ReactElem
           {editing === null ? (
             <TypePage
               tagKey={key}
+              tag={tag}
+              onRebound={onRebound}
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
@@ -155,20 +170,59 @@ function Section({
 
 function TypePage({
   tagKey,
+  tag,
+  onRebound,
   config,
   onOpenField,
   onShowNotes,
 }: {
   tagKey: string
+  tag: string
+  onRebound: (tag: string) => void
   config: TagConfigDraft
   onOpenField: (rowId: number) => void
   onShowNotes: () => void
 }): ReactElement {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
+  const binding = useTypeTagBinding(tag)
 
   return (
     <>
+      {binding.suggestion !== null && !loading ? (
+        <div className="flex flex-col gap-3 rounded-xl bg-accent-soft p-3">
+          <p className="flex gap-2 text-sm text-accent-soft-text">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>
+              <span className="font-medium">
+                {binding.suggestion.count} notes use #{binding.suggestion.tag}.
+              </span>{' '}
+              Bind this type to that tag so they show up as its rows. Their folders stay as they
+              are.
+            </span>
+          </p>
+          <Button
+            type="button"
+            className="h-11 text-base"
+            disabled={config.saving || config.hasInvalidRows}
+            onClick={() => {
+              const next = binding.suggestion?.tag
+              if (next === undefined) {
+                return
+              }
+              void config.rebindTo(next).then((moved) => {
+                if (moved) onRebound(next)
+              })
+            }}
+          >
+            Use #{binding.suggestion.tag}
+          </Button>
+        </div>
+      ) : null}
+      <p className="-mb-3 px-1 text-xs text-text-muted">
+        #{tagKey}
+        {binding.count === null ? '' : ` · ${binding.count} ${binding.count === 1 ? 'note' : 'notes'}`}
+      </p>
       {config.needsConversion ? (
         <p className="rounded-xl bg-surface-hover px-3 py-2 text-sm text-text-secondary">
           A note already exists at <code className="font-mono text-xs">tags/{tagKey}.md</code>.
@@ -390,7 +444,7 @@ function FieldRow({
         {...attributes}
         {...listeners}
       >
-        <List aria-hidden className="size-4" />
+        <GripVertical aria-hidden className="size-4" />
       </button>
       <button
         type="button"

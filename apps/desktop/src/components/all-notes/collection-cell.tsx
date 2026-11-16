@@ -183,7 +183,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         <span
           className={cn(
             'truncate rounded-sm px-1.5 py-px text-xs font-medium',
-            selectOptionBadgeClass(reading.text),
+            selectOptionBadgeClass(reading.text, property),
           )}
         >
           {reading.text}

@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Type home folder: new notes of a type are born in its Folder, on every
+  surface (#508).
+- Fix: the iPhone Syncing pill no longer waits for the reindex (#505).
 - iPhone share sheet: choose destination and link style, add a thought,
   offline-instant save (#498).
 - Redesigned type configuration dialog with value colors and ordering (#501).

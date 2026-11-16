@@ -13,6 +13,7 @@ const createCaptureController = vi.hoisted(() =>
 )
 const captureHostRegister = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const captureSharedInboxRelay = vi.hoisted(() => vi.fn<() => Promise<number>>())
+const publishShareTargets = vi.hoisted(() => vi.fn(async () => {}))
 const hasBridge = vi.hoisted(() => vi.fn(() => true))
 const isMobileSurface = vi.hoisted(() => vi.fn(() => false))
 
@@ -20,6 +21,7 @@ vi.mock('@/lib/capture-controller', () => ({ createCaptureController }))
 vi.mock('@kore/core', () => ({
   captureHostRegister,
   captureSharedInboxRelay,
+  publishShareTargets,
   hasBridge,
   subscribeBridgeChanges: () => () => {},
 }))

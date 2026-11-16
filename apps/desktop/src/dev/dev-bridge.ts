@@ -259,6 +259,9 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'capture_shared_inbox_relay':
         // No share-extension App Group inbox in a browser; nothing to relay.
         return 0
+      case 'share_targets_write':
+        // No App Group container in a browser; the share sheet list has no reader.
+        return null
 
       case 'note_read': {
         const { path } = pathArgsSchema.parse(args)

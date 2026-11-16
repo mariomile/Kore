@@ -78,6 +78,7 @@ targets:
       # quick-note intent (Plan 24) spools envelopes from the app process
       # through the same atomic App Group writer the share sheet uses.
       - path: ShareExtension/CaptureInbox.swift
+      - path: ShareExtension/ShareChoices.swift
     info:
       path: kore-open_iOS/Info.plist
       properties:
@@ -229,6 +230,7 @@ targets:
       - path: ShareExtension/ShareState.swift
       - path: ShareExtension/ShareView.swift
       - path: ShareExtension/CaptureInbox.swift
+      - path: ShareExtension/ShareChoices.swift
       # The Safari preprocessor (title/URL/selection/meta description); a
       # bundle resource the NSExtension attributes reference by base name.
       - path: ShareExtension/ExtensionClass.js

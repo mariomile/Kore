@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { dailyPath } from '@kore/core'
 import { NotePane } from '@/components/note-pane'
-import { formatDayLabel } from '@/lib/dates'
+import { formatMobileDayTitle } from '@/lib/dates'
+import { TodayCard } from '@/mobile/today-card'
 import { cn } from '@/lib/utils'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
@@ -106,23 +107,28 @@ export function DaySlide({
       // The tab bar floats over the shell's bottom edge, so the note scrolls
       // under it and pads past its published height. Keyboard avoidance is
       // the shell root's job (it ends at the keyboard's top); the fallback
-      // only clears the home indicator while the tab bar is hidden.
-      style={{ paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))' }}
+      // only clears the home indicator while the tab bar is hidden. The
+      // extra 1.5rem keeps the last line (the incoming backlinks) clear of
+      // the bar instead of touching its top edge.
+      style={{
+        paddingBottom: 'calc(var(--mobile-tab-bar-height, env(safe-area-inset-bottom)) + 1.5rem)',
+      }}
       onScroll={handleScroll}
     >
       <div ref={contentRef}>
-        {/* The date is the daily note's subject (V1 / desktop parity) —
-            chrome above the editor, formatted per the user's setting,
-            tinted on today. Shares the note body's gutter. */}
+        {/* The date is the daily note's subject (V1 / desktop parity):
+            chrome above the editor, on one line (weekday and date, no
+            year), tinted on today. Shares the note body's gutter. */}
         <h2
           className={cn(
-            'kore-daily-subject pt-4 pb-1',
+            'kore-daily-subject pt-4 pb-1 text-[26px] leading-tight',
             MOBILE_CONTENT_GUTTER,
             day === today && 'text-accent',
           )}
         >
-          {formatDayLabel(day, settings.dateFormat)}
+          {formatMobileDayTitle(day, settings.dateFormat)}
         </h2>
+        {day === today ? <TodayCard day={day} /> : null}
         <NotePane
           path={dailyPath(day)}
           lazy
@@ -133,7 +139,7 @@ export function DaySlide({
           onAutoFocused={handleAutoFocused}
           showBacklinks={false}
           gutterClassName={MOBILE_CONTENT_GUTTER}
-          editorClassName="min-h-[60dvh]"
+          editorClassName="min-h-[30dvh]"
         />
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink swipes the carousel to that

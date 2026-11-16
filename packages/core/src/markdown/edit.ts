@@ -4,9 +4,9 @@ import { appendHeadingSection } from './append-section'
 import { parseNote } from './extract'
 import { splitFrontmatter } from './frontmatter'
 import { parseBody } from './grammar'
-import { topLevelHeadings } from './heading-blocks'
+import { sectionEnd, topLevelHeadings } from './heading-blocks'
 import { foldKey } from './keys'
-import { lineEndingAt, offsetBeforeLineEnding } from './line-endings'
+import { documentLineEnding, lineEndingAt, offsetBeforeLineEnding } from './line-endings'
 import type { Heading, TaskMarker, WikiLink } from './model'
 import { normalizeWikiTarget } from './resolve'
 import { scanInlineWikiLinks } from './scan'
@@ -452,4 +452,37 @@ export function appendListItemUnderBacklinkedHeading(
     return appendHeadingSection(upgraded, linkedHeading, listItemBlock(content))
   }
   return appendListItemAtHeading(upgraded, target, content)
+}
+
+/**
+ * Insert `block` as its own paragraph at the end of a backlinked H2 section
+ * (after whatever the section already holds, before the next heading). The
+ * section is found and upgraded like {@link appendListItemUnderBacklinkedHeading};
+ * a missing section is appended as `## [[Title]]`.
+ */
+export function appendBlockUnderBacklinkedHeading(
+  source: string,
+  title: string,
+  block: string,
+  matchingTitles: readonly string[] = [],
+): string {
+  const safeTitle = wikiLinkSafe(title)
+  if (safeTitle === '') {
+    throw new Error('a backlinked heading needs a title')
+  }
+  const upgraded = upgradeSectionHeadingBacklink(source, safeTitle, matchingTitles)
+  const { headings, wikiLinks } = parseNote({ path: '', source: upgraded })
+  const target = matchingBacklinkedHeading(upgraded, headings, wikiLinks, [
+    safeTitle,
+    ...matchingTitles,
+  ])
+  if (target === undefined) {
+    return appendHeadingSection(upgraded, `[[${safeTitle}]]`, block.trim())
+  }
+  const end = sectionEnd(topLevelHeadings(headings), target, upgraded.length)
+  const lineEnding = documentLineEnding(upgraded)
+  const before = upgraded.slice(0, end).replace(/\s*$/, '')
+  const after = upgraded.slice(end)
+  const tail = after.length > 0 ? lineEnding : ''
+  return `${before}${lineEnding.repeat(2)}${block.trim()}${lineEnding}${tail}${after}`
 }

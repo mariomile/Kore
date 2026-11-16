@@ -48,6 +48,7 @@ const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
 const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
 const settingsArgsSchema = z.object({ settings: z.record(z.string(), z.unknown()) })
+const workspaceLayoutArgsSchema = z.object({ layout: z.record(z.string(), z.unknown()) })
 const secretNameArgsSchema = z.object({ name: z.string() })
 const secretSetArgsSchema = z.object({ name: z.string(), value: z.string() })
 const chatSaveArgsSchema = z.object({
@@ -98,10 +99,14 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   // one instead of asking the user to add it.
   const demoProvider = { id: 'dev-demo', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'demo' }
   let settingsDocument: Record<string, unknown> = {
-    mobileOnboarded: true,
+    // `?onboarding` shows the mobile first-run screen instead of skipping it.
+    mobileOnboarded:
+      typeof window === 'undefined' ||
+      !new URLSearchParams(window.location.search).has('onboarding'),
     aiProviders: [demoProvider],
     defaultAiProviderId: demoProvider.id,
   }
+  let workspaceLayoutDocument: Record<string, unknown> = {}
   const assets = new Map<string, string>()
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
@@ -171,6 +176,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           dailyNotes: files.read('.obsidian/daily-notes.json'),
           app: files.read('.obsidian/app.json'),
           templates: files.read('.obsidian/templates.json'),
+          templater: files.read('.obsidian/plugins/templater-obsidian/data.json'),
         }
       case 'list_attachments':
         return []
@@ -255,6 +261,9 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'capture_shared_inbox_relay':
         // No share-extension App Group inbox in a browser; nothing to relay.
         return 0
+      case 'share_targets_write':
+        // No App Group container in a browser; the share sheet list has no reader.
+        return null
 
       case 'note_read': {
         const { path } = pathArgsSchema.parse(args)
@@ -395,6 +404,12 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         settingsDocument = settingsArgsSchema.parse(args).settings
         return null
       }
+      case 'workspace_layout_load':
+        return workspaceLayoutDocument
+      case 'workspace_layout_save': {
+        workspaceLayoutDocument = workspaceLayoutArgsSchema.parse(args).layout
+        return null
+      }
       case 'secret_get':
         return secrets.get(secretNameArgsSchema.parse(args).name) ?? null
       case 'secret_set': {
@@ -413,6 +428,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           return []
         }
         throw new KoreError('notFound', 'dev bridge: no proposals')
+
+      // "Open from GitHub" in the browser harness: nothing is downloaded —
+      // the chooser then opens the demo vault like any other open.
+      case 'git_clone':
+        return null
 
       case 'git_status':
         return {
@@ -489,6 +509,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // Video transcripts need YouTube; the harness is offline, which is
         // exactly what a real fetch reports when there is no network.
         throw new KoreError('network', 'dev bridge: no network for capture_data_fetch')
+
+      case 'mcp_client_servers':
+        // No MCP client configs exist in the browser harness.
+        return []
 
       case 'kit_script_status':
         // No vault kit script runs in the browser harness (Plan 35).

@@ -51,7 +51,9 @@ export type ActivityAuthor =
 const HOST_AUTHOR = 'Kore host'
 
 /** Name a commit's author: the agent trailer wins, then the host, else the owner. */
-export function activityAuthor(commit: ActivityCommit): ActivityAuthor {
+export function activityAuthor(
+  commit: Pick<ActivityCommit, 'authorName' | 'trailers'>,
+): ActivityAuthor {
   const agent = commit.trailers.find((trailer) => trailer.key === AGENT_TRAILER)?.value.trim()
   if (agent !== undefined && agent.length > 0) {
     return { kind: 'agent', name: agent }

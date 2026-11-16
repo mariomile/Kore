@@ -2,7 +2,10 @@ import {
   RESERVED_FRONTMATTER_KEYS,
   TAG_DEFINITION_MARKER,
   TAG_EXTENDS_KEY,
+  TAG_VIEWS_KEY,
+  tagViewsToYaml,
   type GistFrontmatter,
+  type SavedCollectionView,
   type TagProperty,
 } from '@kore/core'
 
@@ -65,15 +68,36 @@ export interface FrontmatterPatch {
    */
   tagTemplate?: string | null
   /**
-   * The tag's emoji (`icon:` on the definition, the note-icon key). `null`
-   * deletes the key; omitted leaves whatever is there.
+   * A type's home folder (`folder:` on the definition): where its new notes
+   * are born. `null` deletes the key; omitted leaves whatever is there.
    */
-  tagIcon?: string | null
+  tagFolder?: string | null
+  /**
+   * The note's icon (`icon:`: an emoji, `icon:<name>`, or an image), which
+   * is also a tag definition's icon. `null` deletes the key; omitted leaves
+   * whatever is there.
+   */
+  icon?: string | null
+  /**
+   * The note's cover image (`cover:`: a vault-relative image path or an
+   * https link). `null` deletes the key; omitted leaves whatever is there.
+   */
+  cover?: string | null
+  /**
+   * The cover's vertical position (`cover_y:`, 0 top to 100 bottom). `null`
+   * deletes the key, back to centered; omitted leaves whatever is there.
+   */
+  coverY?: number | null
   /**
    * The tags this one builds on (`extends:` on the definition, Plan 33 B2),
    * folded keys. An empty list deletes the key; omitted leaves it alone.
    */
   tagExtends?: readonly string[]
+  /**
+   * A type's saved database views (`views:` on the definition, organization
+   * point 3), in tab order. An empty list deletes the key; omitted leaves it.
+   */
+  tagViews?: readonly SavedCollectionView[]
 }
 
 /**
@@ -111,11 +135,23 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   if (patch.tagTemplate !== undefined) {
     yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
   }
-  if (patch.tagIcon !== undefined) {
-    yaml['icon'] = patch.tagIcon === null ? undefined : patch.tagIcon
+  if (patch.tagFolder !== undefined) {
+    yaml['folder'] = patch.tagFolder === null ? undefined : patch.tagFolder
+  }
+  if (patch.icon !== undefined) {
+    yaml['icon'] = patch.icon === null ? undefined : patch.icon
+  }
+  if (patch.cover !== undefined) {
+    yaml['cover'] = patch.cover === null ? undefined : patch.cover
+  }
+  if (patch.coverY !== undefined) {
+    yaml['cover_y'] = patch.coverY === null ? undefined : patch.coverY
   }
   if (patch.tagExtends !== undefined) {
     yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]
+  }
+  if (patch.tagViews !== undefined) {
+    yaml[TAG_VIEWS_KEY] = patch.tagViews.length === 0 ? undefined : tagViewsToYaml(patch.tagViews)
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

@@ -59,6 +59,9 @@ export {
   parseGithubRemote,
   githubRemoteUrl,
   newRepoUrl,
+  newSyncTokenUrl,
+  FINE_GRAINED_TOKENS_URL,
+  SYNC_TOKEN_EXPIRY_DAYS,
   BACKUP_REPO_DESCRIPTION,
   createGithubRepo,
   getGithubRepo,
@@ -71,6 +74,11 @@ export {
   type GithubRepo,
   type GithubUser,
 } from './github'
+export {
+  cloneGithubVault,
+  PublicRepoRefusedError,
+  type CloneGithubVaultOptions,
+} from './github-clone'
 export { createGist, updateGist, deleteGist, type PublishedGist, type GistFile } from './gists'
 export {
   createSyncEngine,
@@ -94,6 +102,13 @@ export {
   type ActivitySitting,
   type SittingNote,
 } from './activity'
+export {
+  gitBlame,
+  lineAuthorKey,
+  lineAuthors,
+  type LineAuthor,
+  type NoteBlame,
+} from './line-authors'
 export {
   acceptProposal,
   describeProposal,

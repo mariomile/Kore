@@ -11,6 +11,7 @@ import {
   sortNoteList,
   type NoteListFilter,
   type NoteListFolder,
+  type SavedCollectionView,
   type TagPropertyType,
 } from '@kore/core'
 import { Check, Sliders } from '@/components/icons'
@@ -68,6 +69,8 @@ import { FolderPageTitle } from './folder-page-title'
 import { FolderSubfolders } from './folder-subfolders'
 import { NewFolderNoteButton } from './new-folder-note-button'
 import { NewNoteButton } from './new-note-button'
+import { TagMentionsSection } from './tag-mentions-section'
+import { TagTasksSection } from './tag-tasks-section'
 import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
@@ -77,6 +80,9 @@ import { isModEvent } from '@meowdown/core'
 interface AllNotesScreenProps {
   filter: NoteListFilter
 }
+
+/** A type with no stored views: one stable list, so the tabs never re-key. */
+const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
@@ -327,6 +333,10 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     shiftSavedView,
   } = useCollectionSavedViews({
     tagKey,
+    typeViews:
+      loadedTagType === undefined || loadedTagType === null
+        ? loadedTagType
+        : (loadedTagType.views ?? NO_TYPE_VIEWS),
     view,
     collectionSorts,
     boardGroupProperty,
@@ -482,6 +492,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
       </header>
       <FolderSubfolders folder={folderNode} />
       <TagPageDescription tag={tag} />
+      <TagTasksSection tag={tag} />
+      <TagMentionsSection tag={tag} />
       {collectionAvailable && tag !== null ? (
         <div className="flex flex-none flex-wrap items-center justify-between gap-3 pb-3 pl-12 pr-7">
           <CollectionViewTabs

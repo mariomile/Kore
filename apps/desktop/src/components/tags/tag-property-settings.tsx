@@ -1,15 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  listNoteTags,
-  listTagTypes,
-  propertyKeyForName,
-  rollupAggregationSchema,
-  tagPropertyTypeSchema,
-  type TagPropertyType,
-} from '@kore/core'
-import { ArrowDown, ArrowUp, Trash } from '@/components/icons'
-import { Button } from '@/components/ui/button'
+import { listNoteTags, listTagTypes, rollupAggregationSchema } from '@kore/core'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -22,47 +13,49 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
-import { OptionsChipsEditor } from './options-chips-editor'
-import { PROPERTY_TYPE_ICONS } from './property-type-icons'
+import { OptionsListEditor } from './options-list-editor'
 import { StartingValueField } from './starting-value-field'
 import {
+  draftOptionNames,
   FIELD_LABEL_CLASS,
-  PROPERTY_TYPE_LABELS,
+  optionsPatch,
   relationTargetSelectItems,
   relationTargetTags,
   type PropertyDraft,
 } from './tag-config-drafts'
 
-export interface TagPropertyRowProps {
+/** Capitalized once, for both the menu and the closed trigger. */
+const ROLLUP_AGGREGATION_LABELS = Object.fromEntries(
+  rollupAggregationSchema.options.map((aggregation) => [
+    aggregation,
+    aggregation.charAt(0).toUpperCase() + aggregation.slice(1),
+  ]),
+)
+
+export interface TagPropertySettingsProps {
   draft: PropertyDraft
-  /** The name is missing. */
-  nameInvalid: boolean
-  /** The key is malformed, reserved, or a duplicate — the editor auto-opens. */
+  /** The key is malformed, reserved, or a duplicate: the editor auto-opens. */
   keyInvalid: boolean
-  /** Focus the name input on mount (a freshly added row). */
-  autoFocus?: boolean
   updateDraft: (rowId: number, patch: Partial<PropertyDraft>) => void
-  moveDraft: (rowId: number, delta: -1 | 1) => void
-  onRemove: () => void
+  /** The caller shows the options list itself (the phone's own section). */
+  omitOptions?: boolean
 }
 
 /**
- * One property's editable schema row inside {@link TagConfigDialog}: name and
- * type up front, options as chips when the type carries them, and the
- * frontmatter key tucked behind a small mono chip — it follows the name on
- * its own (`propertyKeyForName`) until edited by hand, so most rows never
- * open it. An invalid key opens the editor itself, since a hidden error is
- * not an error the user can fix.
+ * What a property needs beyond its name and type: options as chips when the
+ * type carries them, the starting value, a relation's target, a formula, a
+ * reverse relation or rollup's wiring, and the frontmatter key tucked behind
+ * a small mono chip. It follows the name on its own (`propertyKeyForName`)
+ * until edited by hand, so most rows never open it; an invalid key opens the
+ * editor itself, since a hidden error is not an error the user can fix.
+ * Shared by the desktop dialog's property card and the phone's field page.
  */
-export function TagPropertyRow({
+export function TagPropertySettings({
   draft,
-  nameInvalid,
   keyInvalid,
-  autoFocus = false,
   updateDraft,
-  moveDraft,
-  onRemove,
-}: TagPropertyRowProps): ReactElement {
+  omitOptions = false,
+}: TagPropertySettingsProps): ReactElement {
   const [keyEditing, setKeyEditing] = useState(false)
   const hasOptions =
     draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
@@ -89,98 +82,25 @@ export function TagPropertyRow({
     (tagTypes ?? []).map((entry) => entry.tagKey),
   )
   return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5">
-      <div className="flex items-center gap-1.5">
-        <Input
-          value={draft.name}
-          aria-label="Property name"
-          aria-invalid={nameInvalid || undefined}
-          placeholder="Author"
-          className="flex-1"
-          autoFocus={autoFocus}
-          onChange={(event) => {
-            const name = event.target.value
-            updateDraft(draft.rowId, {
-              name,
-              // Follow the name until the key was edited by hand.
-              ...(draft.key === propertyKeyForName(draft.name)
-                ? { key: propertyKeyForName(name) }
-                : {}),
-            })
-          }}
-        />
-        <Select
-          value={draft.type}
-          items={PROPERTY_TYPE_LABELS}
-          onValueChange={(value) => {
-            const parsed = tagPropertyTypeSchema.safeParse(value)
-            if (parsed.success) {
-              updateDraft(draft.rowId, { type: parsed.data })
-            }
-          }}
-        >
-          <SelectTrigger className="w-36 shrink-0" aria-label="Property type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => {
-              const Glyph = PROPERTY_TYPE_ICONS[value as TagPropertyType]
-              return (
-                <SelectItem key={value} value={value}>
-                  <Glyph aria-hidden className="size-3.5 text-text-muted" />
-                  {label}
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Move property up"
-          onClick={() => moveDraft(draft.rowId, -1)}
-        >
-          <ArrowUp className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Move property down"
-          onClick={() => moveDraft(draft.rowId, 1)}
-        >
-          <ArrowDown className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Remove property"
-          onClick={onRemove}
-        >
-          <Trash className="size-4" />
-        </Button>
-      </div>
-      {hasOptions ? (
-        <div className="flex items-start gap-1.5">
-          <span className={`${FIELD_LABEL_CLASS} pt-1.5`}>Options</span>
-          <OptionsChipsEditor
-            value={draft.options}
-            onChange={(options) => updateDraft(draft.rowId, { options })}
-          />
+    <>
+      {hasOptions && !omitOptions ? (
+        <div className="flex items-start gap-2">
+          <span className={FIELD_LABEL_CLASS}>Options</span>
+          <div className="min-w-0 flex-1">
+            <OptionsListEditor
+              options={draft.options}
+              onChange={(options) => updateDraft(draft.rowId, optionsPatch(draft, options))}
+            />
+          </div>
         </div>
       ) : null}
       <StartingValueField
         draft={draft}
-        options={draft.options
-          .split(',')
-          .map((option) => option.trim())
-          .filter((option) => option !== '')}
+        options={draftOptionNames(draft)}
         updateDraft={updateDraft}
       />
       {isRelation ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Target</span>
           <Select
             value={draft.target === '' ? '__any' : draft.target}
@@ -214,7 +134,7 @@ export function TagPropertyRow({
         </label>
       ) : null}
       {draft.type === 'formula' ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Expression</span>
           <Input
             value={draft.formulaExpression}
@@ -228,8 +148,8 @@ export function TagPropertyRow({
         </label>
       ) : null}
       {draft.type === 'reverse' ? (
-        <div className="flex items-center gap-1.5">
-          <label className="flex flex-1 items-center gap-1.5">
+        <>
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Of</span>
             <Select
               value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
@@ -259,7 +179,7 @@ export function TagPropertyRow({
               </SelectContent>
             </Select>
           </label>
-          <label className="flex flex-1 items-center gap-1.5">
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Via</span>
             <Input
               value={draft.reverseProperty}
@@ -271,40 +191,35 @@ export function TagPropertyRow({
               }
             />
           </label>
-        </div>
+        </>
       ) : null}
       {draft.type === 'rollup' ? (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <label className="flex flex-1 items-center gap-1.5">
-              <span className={FIELD_LABEL_CLASS}>Relation</span>
-              <Input
-                value={draft.rollupRelation}
-                aria-label="Rollup relation key"
-                placeholder="author"
-                className="flex-1 font-mono text-xs"
-                onChange={(event) =>
-                  updateDraft(draft.rowId, { rollupRelation: event.target.value })
-                }
-              />
-            </label>
-            <label className="flex flex-1 items-center gap-1.5">
-              <span className={FIELD_LABEL_CLASS}>Property</span>
-              <Input
-                value={draft.rollupProperty}
-                aria-label="Rollup property key"
-                placeholder="rating"
-                className="flex-1 font-mono text-xs"
-                onChange={(event) =>
-                  updateDraft(draft.rowId, { rollupProperty: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="flex items-center gap-1.5">
+        <>
+          <label className="flex items-center gap-2">
+            <span className={FIELD_LABEL_CLASS}>Relation</span>
+            <Input
+              value={draft.rollupRelation}
+              aria-label="Rollup relation key"
+              placeholder="author"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) => updateDraft(draft.rowId, { rollupRelation: event.target.value })}
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className={FIELD_LABEL_CLASS}>Property</span>
+            <Input
+              value={draft.rollupProperty}
+              aria-label="Rollup property key"
+              placeholder="rating"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) => updateDraft(draft.rowId, { rollupProperty: event.target.value })}
+            />
+          </label>
+          <label className="flex items-center gap-2">
             <span className={FIELD_LABEL_CLASS}>Aggregation</span>
             <Select
               value={draft.rollupAggregation}
+              items={ROLLUP_AGGREGATION_LABELS}
               onValueChange={(value) => {
                 const parsed = rollupAggregationSchema.safeParse(value)
                 if (parsed.success) {
@@ -312,22 +227,22 @@ export function TagPropertyRow({
                 }
               }}
             >
-              <SelectTrigger className="w-40" aria-label="Rollup aggregation">
+              <SelectTrigger className="w-44" aria-label="Rollup aggregation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {rollupAggregationSchema.options.map((aggregation) => (
+                {Object.entries(ROLLUP_AGGREGATION_LABELS).map(([aggregation, label]) => (
                   <SelectItem key={aggregation} value={aggregation}>
-                    {aggregation.charAt(0).toUpperCase() + aggregation.slice(1)}
+                    {label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </label>
-        </div>
+        </>
       ) : null}
       {keyOpen ? (
-        <label className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
           <span className={FIELD_LABEL_CLASS}>Key</span>
           <Input
             value={draft.key}
@@ -349,6 +264,6 @@ export function TagPropertyRow({
           key: {draft.key}
         </button>
       ) : null}
-    </div>
+    </>
   )
 }

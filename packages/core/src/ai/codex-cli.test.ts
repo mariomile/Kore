@@ -545,7 +545,13 @@ describe('codexTurnStartLine', () => {
   it('sends images as data-URL image items after their labels', () => {
     const line: unknown = JSON.parse(
       codexTurnStartLine('thread-1', 'Look', [
-        { label: 'Attachment 1: a.png', name: 'a.png', mediaType: 'image/png', base64: 'AAA' },
+        {
+          label: 'Attachment 1: a.png',
+          name: 'a.png',
+          mediaType: 'image/png',
+          channel: 'image',
+          base64: 'AAA',
+        },
       ]),
     )
     expect(line).toMatchObject({

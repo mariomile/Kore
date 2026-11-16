@@ -16,6 +16,7 @@ import type { NotePaneProps } from './note-pane'
  */
 
 const settings = vi.hoisted(() => ({ editorMarkdownSyntax: 'hide' as 'hide' | 'show' | 'hybrid' }))
+const images = vi.hoisted(() => ({ url: null as string | null }))
 
 vi.mock('@/components/note-pane', () => ({
   NotePane: ({
@@ -41,7 +42,7 @@ vi.mock('@/components/note-children-panel', () => ({ NoteChildrenPanel: () => nu
 vi.mock('@/components/unlinked-mentions-panel', () => ({ UnlinkedMentionsPanel: () => null }))
 vi.mock('@/hooks/use-note-row', () => ({ useNoteRow: () => null }))
 vi.mock('@/editor/use-asset-persistence', () => ({
-  useAssetPersistence: () => ({ resolveImageUrl: () => null }),
+  useAssetPersistence: () => ({ resolveImageUrl: () => images.url }),
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexing: false }),
@@ -109,6 +110,7 @@ const staticDay = () => page.locate('[data-static-day="ready"]')
 afterEach(async () => {
   await cleanup()
   settings.editorMarkdownSyntax = 'hide'
+  images.url = null
 })
 
 describe('DailyDay', () => {
@@ -157,8 +159,26 @@ describe('DailyDay', () => {
     expect(probe().query()).toBeNull()
   })
 
-  it('keeps the editor for a day the static view cannot draw exactly', async () => {
+  it('draws a picture in the box the editor gives it', async () => {
+    // 400 x 1000: the editor caps the height at 500, so the width halves.
+    images.url = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="1000"><rect width="100%" height="100%"/></svg>',
+    )}`
     serveNote('a photo\n\n![](assets/photo.png)\n')
+    await renderDay(<Day live={false} />)
+
+    await expect.element(staticDay()).toBeInTheDocument()
+    expect(probe().query()).toBeNull()
+    await vi.waitFor(() => {
+      const box = staticDay().element().querySelector('img')?.getBoundingClientRect()
+      // WebKit lays out in 1/64 px steps, so the height can land a hair short.
+      expect(box?.width).toBe(200)
+      expect(box?.height).toBeCloseTo(500, 1)
+    })
+  })
+
+  it('keeps the editor for a day the static view cannot draw exactly', async () => {
+    serveNote('a table\n\n| a | b |\n| - | - |\n| 1 | 2 |\n')
     await renderDay(<Day live={false} />)
 
     await expect.element(probe()).toBeInTheDocument()

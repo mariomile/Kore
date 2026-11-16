@@ -41,6 +41,21 @@ export function formatDayLabel(date: string, dateFormat: DateFormat): string {
 }
 
 /**
+ * The iPhone daily heading: weekday and date on one line, without the year
+ * (`Sunday, November 15` / `Sunday 15 November`); `iso` keeps the key.
+ */
+export function formatMobileDayTitle(date: string, dateFormat: DateFormat): string {
+  switch (dateFormat) {
+    case 'dmy':
+      return format(parseIsoDate(date), 'EEEE d MMMM')
+    case 'iso':
+      return date
+    case 'mdy':
+      return format(parseIsoDate(date), 'EEEE, MMMM d')
+  }
+}
+
+/**
  * The app's one compact date, for every place a date sits in a row, a cell,
  * a chip or a pill: `Jun 9` for `mdy`, `9 Jun` for `dmy`, gaining the year
  * only away from the current one (`Dec 31, 2025` / `31 Dec 2025`); `iso`
@@ -65,6 +80,22 @@ function shortDateOf(date: Date, dateFormat: DateFormat, now: Date): string {
     return format(date, sameYear ? 'd MMM' : 'd MMM yyyy')
   }
   return format(date, sameYear ? 'MMM d' : 'MMM d, yyyy')
+}
+
+/**
+ * A weekday and compact date for a list of upcoming days: `Mon, Nov 23` for
+ * `mdy`, `Mon 23 Nov` for `dmy` (day and month in the order the date links
+ * in the text use), and the daily-note key for `iso`.
+ */
+export function formatWeekdayShortDate(date: Date, dateFormat: DateFormat): string {
+  switch (dateFormat) {
+    case 'dmy':
+      return format(date, 'EEE d MMM')
+    case 'iso':
+      return format(date, ISO_DATE_FORMAT)
+    case 'mdy':
+      return format(date, 'EEE, MMM d')
+  }
 }
 
 /**

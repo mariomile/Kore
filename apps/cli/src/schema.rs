@@ -29,13 +29,20 @@ pub struct SchemaProperty {
     /// it (`startingValueOf`); read by `crate::starting_values`.
     #[serde(default)]
     pub start: Option<crate::starting_values::Start>,
+    /// For `relation`/`relations`/`person`: the tag whose notes the field
+    /// points at (no `#`), when declared; read by `kore lint`.
+    #[serde(default)]
+    pub target: Option<String>,
 }
 
-/// A decoded tag type: its properties and the bound new-row template path.
+/// A decoded tag type: its properties, the bound new-row template path and
+/// the home folder its new notes are born in (`folder:`, already validated by
+/// core's `parseTypeFolder` before it reached the stored column).
 #[derive(Clone, Debug, Default)]
 pub struct TagSchema {
     pub properties: Vec<SchemaProperty>,
     pub template: Option<String>,
+    pub folder: Option<String>,
 }
 
 /// The two on-disk forms of `tag_types.schema_json`, mirroring
@@ -49,6 +56,8 @@ enum SchemaJson {
         properties: Vec<SchemaProperty>,
         #[serde(default)]
         template: Option<String>,
+        #[serde(default)]
+        folder: Option<String>,
     },
 }
 
@@ -59,13 +68,16 @@ pub fn decode_schema(schema_json: &str) -> TagSchema {
         Ok(SchemaJson::Properties(properties)) => TagSchema {
             properties,
             template: None,
+            folder: None,
         },
         Ok(SchemaJson::Object {
             properties,
             template,
+            folder,
         }) => TagSchema {
             properties,
             template,
+            folder,
         },
         Err(_) => TagSchema::default(),
     }
@@ -160,6 +172,9 @@ pub fn union_schema(conn: &Connection, tags: &[String]) -> Result<TagSchema, Cli
         };
         if union.template.is_none() {
             union.template = schema.template;
+        }
+        if union.folder.is_none() {
+            union.folder = schema.folder;
         }
         for property in schema.properties {
             if !union
@@ -341,6 +356,7 @@ mod tests {
             kind: kind.to_string(),
             options: None,
             start: None,
+            target: None,
         }
     }
 
@@ -405,6 +421,9 @@ mod tests {
             r#"{"properties":[{"name":"A","key":"a","type":"created","target":"x"}],"template":"templates/book.md"}"#,
         );
         assert_eq!(object.template.as_deref(), Some("templates/book.md"));
+        assert!(object.folder.is_none());
+        let homed = decode_schema(r#"{"properties":[],"folder":"Active/Projects/{title}"}"#);
+        assert_eq!(homed.folder.as_deref(), Some("Active/Projects/{title}"));
         assert!(decode_schema("nonsense").properties.is_empty());
     }
 }

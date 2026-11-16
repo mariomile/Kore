@@ -21,6 +21,7 @@ import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
 import { useWorkspaceStatePublisher } from '@/providers/use-workspace-state-publisher'
 import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
+import { WorkspaceLayoutProvider } from '@/providers/workspace-layout-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { RouterProvider } from '@/routing/router'
@@ -48,17 +49,19 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
   useNoteContentCache(graph.root)
   if (isMainWindow()) {
     return (
-      <PanesProvider key={graph.root}>
-        <ActivePaneRouter>
-          <WorkspaceProviders graph={graph}>
-            {/* Tabs and the focused day are per pane; the chrome reads the
-              active one. */}
-            <ActivePaneChrome>
-              <WorkspaceContent graph={graph} />
-            </ActivePaneChrome>
-          </WorkspaceProviders>
-        </ActivePaneRouter>
-      </PanesProvider>
+      <WorkspaceLayoutProvider>
+        <PanesProvider key={graph.root}>
+          <ActivePaneRouter>
+            <WorkspaceProviders graph={graph}>
+              {/* Tabs and the focused day are per pane; the chrome reads the
+                active one. */}
+              <ActivePaneChrome>
+                <WorkspaceContent graph={graph} />
+              </ActivePaneChrome>
+            </WorkspaceProviders>
+          </ActivePaneRouter>
+        </PanesProvider>
+      </WorkspaceLayoutProvider>
     )
   }
   // A note window's first route is its ⌘-clicked target (seeded by the boot

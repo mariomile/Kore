@@ -31,11 +31,68 @@ pub struct NoteVersion {
 /// Ceiling on commits walked, so a decade-old graph can't stall the panel.
 const MAX_WALKED_COMMITS: usize = 20_000;
 
-/// The blob id `rel_path` has in `commit`'s tree, or `None` when absent.
-fn blob_id(commit: &git2::Commit<'_>, rel_path: &str) -> Option<git2::Oid> {
-    let tree = commit.tree().ok()?;
-    let entry = tree.get_path(Path::new(rel_path)).ok()?;
+/// The trees along a note's folders in one commit: index 0 is the root tree,
+/// index `n` the folder `components[n - 1]`, `None` from the first missing
+/// folder down.
+type FolderChain<'repo> = Vec<Option<git2::Tree<'repo>>>;
+
+/// The note's blob id at the bottom of `chain`, or `None` when absent.
+fn blob_in_chain(chain: &FolderChain<'_>, components: &[&str]) -> Option<git2::Oid> {
+    let folder = chain.last()?.as_ref()?;
+    let entry = folder.get_name(components.last()?)?;
     (entry.kind() == Some(git2::ObjectType::Blob)).then(|| entry.id())
+}
+
+/// The id of the subfolder `name` in `tree`, when it is one.
+fn subfolder_id(tree: Option<&git2::Tree<'_>>, name: &str) -> Option<git2::Oid> {
+    let entry = tree?.get_name(name)?;
+    (entry.kind() == Some(git2::ObjectType::Tree)).then(|| entry.id())
+}
+
+/// `root`'s folder chain along `components`, resolved from scratch.
+fn folder_chain<'repo>(
+    repo: &'repo git2::Repository,
+    root: git2::Tree<'repo>,
+    components: &[&str],
+) -> FolderChain<'repo> {
+    let mut chain = vec![Some(root)];
+    for name in &components[..components.len() - 1] {
+        let next = subfolder_id(chain.last().and_then(Option::as_ref), name)
+            .and_then(|id| repo.find_tree(id).ok());
+        chain.push(next);
+    }
+    chain
+}
+
+/// The parent commit's folder chain, built against its child's `chain`. It
+/// loads a parent folder only while the two commits differ there; from the
+/// first identical folder down it reuses the child's trees. Most autosave
+/// commits touch other folders, so they cost one root tree and an entry
+/// lookup per level, never a reload of a large folder (which libgit2 does
+/// not cache) or a second full path resolution per commit.
+fn parent_chain<'repo>(
+    repo: &'repo git2::Repository,
+    chain: &FolderChain<'repo>,
+    parent_root: git2::Tree<'repo>,
+    components: &[&str],
+) -> FolderChain<'repo> {
+    if chain[0].as_ref().map(git2::Tree::id) == Some(parent_root.id()) {
+        return chain.clone();
+    }
+    let mut parent: FolderChain<'repo> = Vec::with_capacity(chain.len());
+    parent.push(Some(parent_root));
+    for depth in 1..chain.len() {
+        let Some(folder) = subfolder_id(parent[depth - 1].as_ref(), components[depth - 1]) else {
+            parent.resize(chain.len(), None);
+            break;
+        };
+        if chain[depth].as_ref().map(git2::Tree::id) == Some(folder) {
+            parent.extend(chain[depth..].iter().cloned());
+            break;
+        }
+        parent.push(repo.find_tree(folder).ok());
+    }
+    parent
 }
 
 /// The commits (newest first, following first parents) where `rel_path`'s
@@ -47,10 +104,20 @@ pub(super) fn note_history(
 ) -> AppResult<Vec<NoteVersion>> {
     let repo = super::repo::open_existing(root)?;
     let mut versions = Vec::new();
+    let components: Vec<&str> = rel_path
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect();
+    if components.is_empty() {
+        return Ok(versions);
+    }
     let Ok(head) = repo.head() else {
         return Ok(versions); // Unborn branch: no commits yet.
     };
-    let mut current = Some(head.peel_to_commit()?);
+    let head = head.peel_to_commit()?;
+    let mut chain = folder_chain(&repo, head.tree()?, &components);
+    let mut own = blob_in_chain(&chain, &components);
+    let mut current = Some(head);
     let mut walked = 0;
     while let Some(commit) = current {
         walked += 1;
@@ -58,8 +125,11 @@ pub(super) fn note_history(
             break;
         }
         let parent = commit.parent(0).ok();
-        let own = blob_id(&commit, rel_path);
-        let before = parent.as_ref().and_then(|parent| blob_id(parent, rel_path));
+        let parent_chain = match parent.as_ref().map(git2::Commit::tree).transpose()? {
+            Some(parent_root) => parent_chain(&repo, &chain, parent_root, &components),
+            None => vec![None; chain.len()],
+        };
+        let before = blob_in_chain(&parent_chain, &components);
         if let Some(own) = own {
             if Some(own) != before {
                 versions.push(NoteVersion {
@@ -69,6 +139,8 @@ pub(super) fn note_history(
                 });
             }
         }
+        own = before;
+        chain = parent_chain;
         current = parent;
     }
     Ok(versions)
@@ -234,6 +306,37 @@ mod tests {
         );
 
         assert!(super::changed_since(root, "not-a-sha").is_err());
+    }
+
+    #[test]
+    fn timeline_survives_other_folders_and_a_re_creation() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        scaffold(root);
+        fs::create_dir_all(root.join("notes/deep")).unwrap();
+        fs::create_dir_all(root.join("other")).unwrap();
+
+        fs::write(root.join("notes/deep/a.md"), "v1\n").unwrap();
+        commit(root, "create a");
+        fs::write(root.join("other/x.md"), "x\n").unwrap();
+        commit(root, "another folder");
+        fs::write(root.join("notes/deep/b.md"), "b\n").unwrap();
+        commit(root, "a sibling in the same folder");
+        fs::remove_file(root.join("notes/deep/a.md")).unwrap();
+        commit(root, "delete a");
+        fs::write(root.join("notes/deep/a.md"), "v2\n").unwrap();
+        commit(root, "re-create a");
+
+        let versions = note_history(root, "notes/deep/a.md", 50).unwrap();
+        assert_eq!(versions.len(), 2);
+        assert_eq!(
+            note_version_content(root, &versions[0].commit, "notes/deep/a.md").unwrap(),
+            "v2\n"
+        );
+        assert_eq!(
+            note_version_content(root, &versions[1].commit, "notes/deep/a.md").unwrap(),
+            "v1\n"
+        );
     }
 
     #[test]

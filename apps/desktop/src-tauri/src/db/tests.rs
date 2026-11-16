@@ -85,6 +85,7 @@ fn wiki(target: &str) -> IndexedLink {
         target_key: target.to_lowercase(),
         target_path_key: None,
         alias: None,
+        relation: None,
         pos_from: 0,
         pos_to: 0,
     }
@@ -98,6 +99,7 @@ fn path_link(kind: &str, target_raw: &str, target_path_key: &str) -> IndexedLink
         target_key: target_raw.to_lowercase(),
         target_path_key: Some(target_path_key.to_string()),
         alias: None,
+        relation: None,
         pos_from: 0,
         pos_to: 0,
     }
@@ -148,6 +150,7 @@ fn task(marker_offset: i64, text: &str, checked: bool) -> IndexedTask {
         due_date: None,
         due_time: None,
         section: None,
+        tags: vec![],
     }
 }
 
@@ -192,7 +195,11 @@ fn tag_search_indexes_are_created() {
         .unwrap();
     assert_eq!(
         tag_columns,
-        vec![("tag_key".to_string(), 0), ("note_path".to_string(), 1)]
+        vec![
+            ("tag_key".to_string(), 0),
+            ("note_path".to_string(), 1),
+            ("member".to_string(), 2),
+        ]
     );
 
     let notes_columns: Vec<(String, i64, i64)> = conn
@@ -223,6 +230,7 @@ fn preview_and_tag_keys_round_trip() {
     tagged.tags = vec![IndexedTag {
         tag: "Café".to_string(),
         tag_key: "café".to_string(),
+        member: true,
     }];
     apply_note(&conn, &tagged).unwrap();
 
@@ -2409,6 +2417,7 @@ fn rich_note(path: &str, title: &str, tasks: usize) -> IndexedNote {
     sample.tags = vec![IndexedTag {
         tag: "Project".to_string(),
         tag_key: "project".to_string(),
+        member: true,
     }];
     sample.aliases = vec![IndexedAlias {
         alias: format!("{title} alias"),

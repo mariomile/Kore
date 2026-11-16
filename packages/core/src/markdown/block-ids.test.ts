@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   blockIdsIn,
   blockLinkLabel,
+  wikilinkLabel,
+  wikilinkTarget,
   extractBlockSection,
   isBlockId,
   hiddenBlockIdTail,
@@ -158,6 +160,19 @@ describe('blockLinkLabel', () => {
   })
 })
 
+describe('wikilinkLabel', () => {
+  it('shows the alias of any link, the block label of block links, else the source', () => {
+    expect(wikilinkLabel('Input/Granola/Sprint Review, 2026-11-13|Sprint Review')).toBe(
+      'Sprint Review',
+    )
+    expect(wikilinkLabel(String.raw`Notes/Luca\|Luca`)).toBe('Luca')
+    expect(wikilinkLabel('Prezzi#^p1')).toBe('Prezzi')
+    expect(wikilinkLabel('Prezzi#Plans|plans')).toBe('plans')
+    expect(wikilinkLabel('Prezzi|')).toBeNull()
+    expect(wikilinkLabel('CRM/People/Luca')).toBeNull()
+  })
+})
+
 describe('extraction drops ^id markers', () => {
   it('keeps ids out of task text, note text and preview, but not out of code', () => {
     const source = [
@@ -178,5 +193,21 @@ describe('extraction drops ^id markers', () => {
     expect(note.text).not.toMatch(/\^(call1|para|table)/)
     expect(note.text).toContain('x ^code')
     expect(note.previewText).not.toContain('^para')
+  })
+})
+
+describe('wikilinkTarget', () => {
+  it('drops the alias of an Obsidian path link', () => {
+    expect(wikilinkTarget('Input/Granola/2026-11/Standup SaaS, 2026-11-16|Standup SaaS')).toBe(
+      'Input/Granola/2026-11/Standup SaaS, 2026-11-16',
+    )
+  })
+  it('splits the table-escaped pipe the same way', () => {
+    expect(wikilinkTarget(String.raw`Notes/Luca\|Luca`)).toBe('Notes/Luca')
+  })
+  it('keeps headings, block refs and plain links as written', () => {
+    expect(wikilinkTarget('Plan#Next steps|next')).toBe('Plan#Next steps')
+    expect(wikilinkTarget(' Plan ')).toBe('Plan')
+    expect(wikilinkTarget('|only alias')).toBe('')
   })
 })

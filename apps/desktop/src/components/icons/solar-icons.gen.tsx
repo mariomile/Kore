@@ -803,6 +803,17 @@ export const Sliders: Icon = createIcon(
   </>,
 )
 
+/** Solar `smile-circle-linear`. */
+export const Smile: Icon = createIcon(
+  'Smile',
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <path strokeLinecap="round" d="M9 16C9.85038 16.6303 10.8846 17 12 17C13.1154 17 14.1496 16.6303 15 16" />
+    <path d="M15.5 10.5C15.5 11.0523 15.2761 11.5 15 11.5C14.7239 11.5 14.5 11.0523 14.5 10.5C14.5 9.94772 14.7239 9.5 15 9.5C15.2761 9.5 15.5 9.94772 15.5 10.5Z" />
+    <ellipse cx="9" cy="10.5" rx=".5" ry="1" />
+  </>,
+)
+
 /** Solar `stars-linear`. */
 export const Sparkles: Icon = createIcon(
   'Sparkles',

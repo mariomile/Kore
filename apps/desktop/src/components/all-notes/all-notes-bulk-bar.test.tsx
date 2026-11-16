@@ -80,13 +80,16 @@ describe('AllNotesBulkBar', () => {
     await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
 
     await vi.waitFor(() => expect(writeNote).toHaveBeenCalledTimes(2))
-    expect(writeNote).toHaveBeenCalledWith('notes/a.md', 'Some prose.\n\n#reading\n', 7)
-    expect(writeNote).toHaveBeenCalledWith('inbox/b.md', 'Some prose.\n\n#reading\n', 7)
+    // The type goes to the Type field (frontmatter), not a body tag line the
+    // editor would hide and typing could erase.
+    const typed = '---\ntags:\n  - reading\n---\nSome prose.\n'
+    expect(writeNote).toHaveBeenCalledWith('notes/a.md', typed, 7)
+    expect(writeNote).toHaveBeenCalledWith('inbox/b.md', typed, 7)
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
-  it('leaves a note that already carries the tag byte-identical', async () => {
-    readNoteSource.mockResolvedValue('Some prose. #reading\n')
+  it('leaves a note that already has the type byte-identical', async () => {
+    readNoteSource.mockResolvedValue('---\ntags: [reading]\n---\nSome prose.\n')
     await renderBar(['notes/a.md'])
     await userEvent.click(page.getByRole('button', { name: 'Add type (1)' }))
     await userEvent.fill(page.getByLabelText('Type name'), 'reading')
@@ -94,6 +97,23 @@ describe('AllNotesBulkBar', () => {
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it('types a note that only mentions the tag in prose', async () => {
+    // A mention is not membership (#401), so Add type must still type it.
+    readNoteSource.mockResolvedValue('Some prose. #reading\n')
+    await renderBar(['notes/a.md'])
+    await userEvent.click(page.getByRole('button', { name: 'Add type (1)' }))
+    await userEvent.fill(page.getByLabelText('Type name'), 'reading')
+    await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
+
+    await vi.waitFor(() =>
+      expect(writeNote).toHaveBeenCalledWith(
+        'notes/a.md',
+        '---\ntags:\n  - reading\n---\nSome prose. #reading\n',
+        7,
+      ),
+    )
   })
 
   it('never writes over a note with unsaved changes', async () => {

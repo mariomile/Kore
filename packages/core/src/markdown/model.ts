@@ -158,6 +158,11 @@ export interface WikiLink extends Span {
   target: string
   /** Display alias after `|`, if present. */
   alias?: string | undefined
+  /**
+   * The frontmatter key the link is the value of (`company: "[[Acme]]"` is a
+   * `company` relation). Undefined for body links: a mention, not a relation.
+   */
+  relation?: string | undefined
 }
 
 /** A standard markdown link or autolink `[text](href)`. */
@@ -242,6 +247,13 @@ export interface ParsedTask extends TaskMarker {
    * The Projects view lists a project's tasks under these, like Todoist.
    */
   section: string | null
+  /**
+   * The folded tags written on the task's own marker line (`- [ ] call
+   * Andrea #lead`), first-seen order, code excluded. A tag there makes the
+   * line a row of that tag's database (organization point 4); it stays a
+   * mention for the note, which only frontmatter or a tag line makes a member.
+   */
+  tags: readonly string[]
 }
 
 /** Version of the extraction contract; bump on breaking shape changes.
@@ -256,8 +268,12 @@ export interface ParsedTask extends TaskMarker {
  * hashtags (TDR 0005 amendment).
  * 8 — `previewText`: the plain text without code, comments, and Obsidian
  * plugin syntax, for list-row previews.
- * 9 — `tasks[].section`: the nearest top-level heading above the task. */
-export const PARSED_NOTE_VERSION = 9
+ * 9 — `tasks[].section`: the nearest top-level heading above the task.
+ * 10 — `memberTags`: the tags that make the note a member (frontmatter
+ * `tags:` and a tag-only first or last paragraph), apart from mentions.
+ * 11 — `tasks[].tags`: the tags on a task's own marker line.
+ * 12 — `wikiLinks[].relation`: the frontmatter key a header link belongs to. */
+export const PARSED_NOTE_VERSION = 12
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {
@@ -274,6 +290,12 @@ export interface ParsedNote {
   links: MarkdownLink[]
   /** Body `#tag` names (without the leading `#`), deduped, in document order. */
   tags: string[]
+  /**
+   * The subset of {@link tags} the note *is*, folded: the frontmatter `tags:`
+   * names plus the tags of a tag-only first or last body paragraph (the line
+   * Kore writes when it gives a note a tag). Every other `#tag` is a mention.
+   */
+  memberTags: string[]
   headings: Heading[]
   assets: AssetRef[]
   /** Kore task items in document order — the Tasks projection (Plan 18). */

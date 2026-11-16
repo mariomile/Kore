@@ -200,3 +200,17 @@ export function filterAiPrompts(prompts: readonly AiPrompt[], query: string): Ai
   if (!needle) return all
   return all.filter((prompt) => prompt.label.toLowerCase().includes(needle))
 }
+
+/**
+ * The saved prompts the chat can offer as starters: the ones whose body
+ * stands on its own. A body that references `{{selectedText}}` is a
+ * transformation of an editor selection, and the chat has no selection to
+ * fill it with, so it stays in the editor's AI menu only. Built-ins are all
+ * selection transformations and never appear here.
+ */
+export function chatStarterPrompts(prompts: readonly AiPrompt[]): AiPrompt[] {
+  return prompts.filter((prompt) => {
+    SELECTED_TEXT_PLACEHOLDER.lastIndex = 0
+    return !SELECTED_TEXT_PLACEHOLDER.test(prompt.body)
+  })
+}

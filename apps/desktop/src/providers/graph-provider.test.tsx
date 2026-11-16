@@ -397,7 +397,7 @@ describe('GraphProvider local-folder sync offer', () => {
   })
 
   it('does not offer sync after picking a folder already in iCloud Drive', async () => {
-    const icloudRoot = '/Users/alex/Library/Mobile Documents/iCloud~app~lore/Documents/Notes'
+    const icloudRoot = '/Users/alex/Library/Mobile Documents/iCloud~app~kore/Documents/Notes'
     vi.mocked(open).mockResolvedValue(icloudRoot)
     const { result, act } = await renderHook(() => useGraph(), { wrapper })
     await vi.waitFor(() => expect(result.current.status).toBe('choosing'))

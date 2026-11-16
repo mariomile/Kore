@@ -41,52 +41,54 @@ export function TagParentsField({
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-start gap-2">
         <span className={FIELD_LABEL_CLASS}>Builds on</span>
-        {parents.map((parent) => (
-          <span
-            key={parent}
-            className="flex items-center gap-1 rounded-md bg-surface-hover py-0.5 pl-2 pr-1 text-xs text-text"
-          >
-            #{parent}
-            <button
-              type="button"
-              aria-label={`Stop building on #${parent}`}
-              className="app-icon-button text-text-muted hover:text-text"
-              onClick={() => onChange(parents.filter((entry) => entry !== parent))}
+        <div className="flex min-h-8 flex-1 flex-wrap items-center gap-1.5">
+          {parents.map((parent) => (
+            <span
+              key={parent}
+              className="flex items-center gap-1 rounded-md bg-surface-hover py-0.5 pl-2 pr-1 text-xs text-text"
             >
-              <Close aria-hidden className="size-3" />
-            </button>
-          </span>
-        ))}
-        {addable.length > 0 ? (
-          <Select
-            value={ADD_PLACEHOLDER}
-            items={{
-              [ADD_PLACEHOLDER]: parents.length === 0 ? 'Pick a tag…' : 'Add…',
-              ...Object.fromEntries(addable.map((candidate) => [candidate, `#${candidate}`])),
-            }}
-            onValueChange={(value) => {
-              if (typeof value === 'string' && value !== ADD_PLACEHOLDER) {
-                onChange([...parents, value])
-              }
-            }}
-          >
-            <SelectTrigger aria-label={`Tag #${tag} builds on`} data-size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {addable.map((candidate) => (
-                <SelectItem key={candidate} value={candidate}>
-                  #{candidate}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
+              #{parent}
+              <button
+                type="button"
+                aria-label={`Stop building on #${parent}`}
+                className="app-icon-button text-text-muted hover:text-text"
+                onClick={() => onChange(parents.filter((entry) => entry !== parent))}
+              >
+                <Close aria-hidden className="size-3" />
+              </button>
+            </span>
+          ))}
+          {addable.length > 0 ? (
+            <Select
+              value={ADD_PLACEHOLDER}
+              items={{
+                [ADD_PLACEHOLDER]: parents.length === 0 ? 'Pick a tag…' : 'Add…',
+                ...Object.fromEntries(addable.map((candidate) => [candidate, `#${candidate}`])),
+              }}
+              onValueChange={(value) => {
+                if (typeof value === 'string' && value !== ADD_PLACEHOLDER) {
+                  onChange([...parents, value])
+                }
+              }}
+            >
+              <SelectTrigger aria-label={`Tag #${tag} builds on`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {addable.map((candidate) => (
+                  <SelectItem key={candidate} value={candidate}>
+                    #{candidate}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+        </div>
       </div>
       {parents.length > 0 ? (
-        <p className="text-xs text-text-muted">
+        <p className="pl-30 text-xs text-text-muted">
           Notes tagged #{tag} also get the fields of{' '}
           {parents.map((parent) => `#${parent}`).join(', ')}, and they show in{' '}
           {parents.length === 1 ? 'its' : 'their'} collection.

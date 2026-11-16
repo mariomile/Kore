@@ -19,6 +19,9 @@ export interface FormattingToolbarCapabilities {
   canAttachFiles: boolean
 }
 
+/** Block kinds the iPhone block selection's Turn into switches between. */
+export type FormattingBlockKind = 'text' | 'heading' | 'bullet' | 'task' | 'quote'
+
 /** Autocomplete-trigger characters the toolbar can type into the editor. */
 export type FormattingTriggerText = '/' | '[[' | '#'
 

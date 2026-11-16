@@ -16,8 +16,13 @@ import {
   isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
+  parseEmbedFenceBody,
+  parseFrontmatter,
+  splitFrontmatter,
   wikiLinkTargetForTitle,
+  type EmbedHostNote,
 } from '@kore/core'
+import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
@@ -37,6 +42,7 @@ import {
   unregisterNoteEditorHandle,
 } from '@/editor/editor-handle-registry'
 import { markModeFromSyntax } from '@/editor/mark-mode'
+import { MermaidDiagram } from '@/editor/mermaid-diagram'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { useResourceCollection } from '@/editor/use-resource-collection'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -44,10 +50,14 @@ import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
+import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
+import { PageBlocks } from '@/editor/page-blocks'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
+import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { NoteTitleIcon } from '@/editor/note-title-icon'
 import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
 import { MoveBranch } from '@/editor/move-branch-picker'
@@ -57,15 +67,19 @@ import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
+import { usePageSlashItems } from '@/editor/use-page-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedBase } from '@/components/notes/embedded-base'
-import { EmbeddedMedia } from '@/components/notes/embedded-media'
+import { EmbedFence } from '@/components/notes/embed-fence'
+import { LinkLayoutMenu } from '@/editor/link-layout-menu'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
+import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { CollectionFenceRemoval } from '@/editor/collection-fence-removal'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
@@ -238,6 +252,16 @@ export function NotePaneComponent({
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
   const noteRow = useNoteRow(path)
+  // The header's "Add icon" and "Add cover" are pointer affordances for
+  // regular notes: daily notes stack in a stream where every day would grow
+  // them, and touch has no hover to reveal them.
+  const appearanceEdit = useNoteAppearanceEdit(path, generation)
+  const editableAppearance =
+    appearanceEdit !== null && !dailyNote && !isTouchEditorSurface() ? appearanceEdit : null
+  const onIconChange = editableAppearance?.setIcon
+  // A note with a `#` title draws its icon on that line, left of the text;
+  // only a title-less note keeps it above the body.
+  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
   const noteLinkTarget =
     noteRow === null
       ? null
@@ -268,14 +292,16 @@ export function NotePaneComponent({
   const collectionSlashItems = useCollectionSlashItems(getEditor)
   const calloutSlashItems = useCalloutSlashItems(getEditor)
   const embedSlashItems = useEmbedSlashItems(getEditor)
+  const pageSlashItems = usePageSlashItems(getEditor)
   const onSlashMenuSearch = useCallback(
     async (query: string) => [
+      ...(await pageSlashItems(query)),
       ...(await collectionSlashItems(query)),
       ...(await calloutSlashItems(query)),
       ...(await embedSlashItems(query)),
       ...(await templateSlashItems(query)),
     ],
-    [collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
+    [pageSlashItems, collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
   )
   // The embeds under the body: the typed ones while this session's seed is
   // unchanged, otherwise the snapshot's (a new session or an external
@@ -291,15 +317,12 @@ export function NotePaneComponent({
     epoch: number
     seed: string
   } | null>(null)
-  const {
-    media: mediaEmbeds,
-    transclusions: noteTransclusions,
-    bases: baseEmbeds,
-  } = typedEmbeds !== null &&
-  typedEmbeds.epoch === document.sessionEpoch &&
-  typedEmbeds.seed === document.initialContent
-    ? typedEmbeds.embeds
-    : seedEmbeds
+  const { transclusions: noteTransclusions, bases: baseEmbeds } =
+    typedEmbeds !== null &&
+    typedEmbeds.epoch === document.sessionEpoch &&
+    typedEmbeds.seed === document.initialContent
+      ? typedEmbeds.embeds
+      : seedEmbeds
   const handleEditorChange = useCallback(
     (markdown: string) => {
       const next = parseBodyEmbeds(markdown)
@@ -368,23 +391,52 @@ export function NotePaneComponent({
     }
   }, [dailyDate, onExitBoundary])
 
-  const renderCodeBlock = useCallback<CodeBlockRenderer>(({ language, code, updateCode }) => {
-    if (language !== 'collection') {
-      return null
-    }
-    const embed = parseCollectionEmbedBody(code)
-    if (embed === null) {
-      return null
-    }
-    return (
-      <Suspense fallback={null}>
-        <EmbeddedCollection
-          embed={embed}
-          onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
-        />
-      </Suspense>
-    )
-  }, [])
+  // The note a collection fence sits in, for its `key = this` filters.
+  const embedHost = useMemo<EmbedHostNote>(
+    () => ({ path, linkTarget: noteLinkTarget }),
+    [path, noteLinkTarget],
+  )
+  // Remote embeds render nothing in a private note.
+  const privateNote = useMemo(
+    () => parseFrontmatter(splitFrontmatter(document.header).raw).data.private === true,
+    [document.header],
+  )
+  const renderCodeBlock = useCallback<CodeBlockRenderer>(
+    ({ language, code, updateCode }) => {
+      if (language === 'mermaid') {
+        return <MermaidDiagram code={code} />
+      }
+      if (language === 'embed') {
+        const block = parseEmbedFenceBody(code)
+        return block === null ? null : <EmbedFence block={block} privateNote={privateNote} />
+      }
+      if (language !== 'collection') {
+        return null
+      }
+      const embed = parseCollectionEmbedBody(code)
+      if (embed === null) {
+        return null
+      }
+      return (
+        <EmbedHostContext value={embedHost}>
+          <CollectionFenceRemoval>
+            {(remove) => (
+              <Suspense fallback={null}>
+                <EmbeddedCollection
+                  embed={embed}
+                  onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+                  // Touch has no block grip to delete the fence with; desktop
+                  // keeps its grip menu and Backspace on the selected block.
+                  onRemove={isTouchEditorSurface() ? remove : undefined}
+                />
+              </Suspense>
+            )}
+          </CollectionFenceRemoval>
+        </EmbedHostContext>
+      )
+    },
+    [embedHost, privateNote],
+  )
 
   if (document.status === 'loading') {
     // Keep fast local reads invisible; a genuinely slow read gets a layout
@@ -465,7 +517,7 @@ export function NotePaneComponent({
   )
 
   return (
-    <div className={cn('relative', className)} aria-label={`Editing ${path}`}>
+    <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
         <NoteBreadcrumb path={path} />
 
@@ -500,6 +552,11 @@ export function NotePaneComponent({
         source={document.header}
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
+        onIconChange={onIconChange}
+        onCoverChange={editableAppearance?.setCover}
+        uploadCover={editableAppearance === null ? undefined : saveFile}
+        onCoverPositionChange={editableAppearance?.setCoverPosition}
       />
 
       <NoteEditor
@@ -519,6 +576,7 @@ export function NotePaneComponent({
         renderCodeBlock={renderCodeBlock}
         smoothCaretAnimation={settings.editorSmoothCaretAnimation}
         timeFormat={settings.timeFormat}
+        dateFormat={settings.dateFormat}
         openLinksInApp={settings.browserOpenLinksInApp}
         bulletAfterHeading={settings.editorBulletAfterHeading}
         // The grip drag-reorders blocks and the "+" inserts a paragraph below.
@@ -578,10 +636,29 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <LinkLayoutMenu />
+        <NoteTitleIcon
+          header={document.header}
+          resolveImageUrl={resolveImageUrl}
+          onIconChange={onIconChange}
+          onTitle={setTitleDrawsIcon}
+        />
+        <LineAuthorShading
+          enabled={settings.editorLineAuthors}
+          path={path}
+          generation={generation}
+          header={document.header}
+        />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
-        {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
+        {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
+        {/* Every surface: a sub page reads as a card, a tap zooms into it. */}
+        <PageBlocks />
+        {/* Touch only: closing the keyboard blurs the editor, and an open
+            [[ / slash menu must not outlive it (pointer users dismiss it by
+            clicking outside). */}
+        {isTouchEditorSurface() ? <AutocompleteBlurDismiss /> : null}
       </NoteEditor>
 
       <TagActionsMenu
@@ -592,18 +669,6 @@ export function NotePaneComponent({
           void convertLineToNote()
         }}
       />
-
-      {mediaEmbeds.length > 0 ? (
-        <div className={gutterClassName}>
-          {mediaEmbeds.map((block, index) => (
-            <EmbeddedMedia
-              key={`${block.kind}:${block.kind === 'url' ? block.url : index}:${index}`}
-              block={block}
-              noteHeader={document.header}
-            />
-          ))}
-        </div>
-      ) : null}
 
       {noteTransclusions.length > 0 ? (
         <div className={gutterClassName}>

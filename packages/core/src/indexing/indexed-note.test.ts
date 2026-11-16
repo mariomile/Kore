@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(31)
+    expect(PROJECTION_VERSION).toBe(35)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {
@@ -52,7 +52,7 @@ describe('buildIndexedNote', () => {
       { alias: 'PJX', aliasKey: 'pjx' },
       { alias: 'Proj X', aliasKey: 'proj x' },
     ])
-    expect(indexed.tags).toEqual([{ tag: 'status', tagKey: 'status' }])
+    expect(indexed.tags).toEqual([{ tag: 'status', tagKey: 'status', member: false }])
 
     const wiki = indexed.links.filter((link) => link.kind === 'wiki')
     expect(
@@ -98,7 +98,11 @@ describe('buildIndexedNote', () => {
     })
     const wiki = indexed.links.filter((link) => link.kind === 'wiki')
     expect(wiki).toHaveLength(1)
-    expect(wiki[0]).toMatchObject({ targetRaw: 'James Clear', targetKey: 'james clear' })
+    expect(wiki[0]).toMatchObject({
+      targetRaw: 'James Clear',
+      targetKey: 'james clear',
+      relation: 'author',
+    })
     // Real spans: the retitle splice reaches the YAML value.
     expect(source.slice(wiki[0]!.posFrom, wiki[0]!.posTo)).toBe('[[James Clear]]')
     expect(indexed.propertiesText).toBe('author [[James Clear]]\nstatus reading')
@@ -211,7 +215,7 @@ describe('buildIndexedNote', () => {
     })
     expect(indexed.preview).toBe('First body line. #CAFÉ')
     // Folding is Unicode-aware — exactly what SQLite's ASCII-only lower() misses.
-    expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café' }])
+    expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café', member: false }])
   })
 
   it('previews the prose under an Obsidian query block, not the query', () => {

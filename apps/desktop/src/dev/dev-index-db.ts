@@ -156,8 +156,8 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       for (const link of note.links) {
         run(
           db,
-          `INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to)
-           VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to)
+           VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             note.path,
             link.kind,
@@ -165,16 +165,18 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
             link.targetKey,
             link.targetPathKey,
             link.alias,
+            link.relation,
             link.posFrom,
             link.posTo,
           ],
         )
       }
       for (const tag of note.tags) {
-        run(db, 'INSERT INTO tags(note_path, tag, tag_key) VALUES(?, ?, ?)', [
+        run(db, 'INSERT INTO tags(note_path, tag, tag_key, member) VALUES(?, ?, ?, ?)', [
           note.path,
           tag.tag,
           tag.tagKey,
+          tag.member ? 1 : 0,
         ])
       }
       for (const alias of note.aliases) {
@@ -204,7 +206,7 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       for (const task of note.tasks) {
         run(
           db,
-          'INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section, tags) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             note.path,
             task.markerOffset,
@@ -215,6 +217,7 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
             task.dueDate,
             task.dueTime,
             task.section,
+            JSON.stringify(task.tags),
           ],
         )
       }

@@ -73,6 +73,9 @@ pub struct IndexedLink {
     /// Folded vault path when the link names a file; None when it names a note.
     pub target_path_key: Option<String>,
     pub alias: Option<String>,
+    /// The frontmatter key the link is the value of; None for a body link.
+    #[serde(default)]
+    pub relation: Option<String>,
     pub pos_from: i64,
     pub pos_to: i64,
 }
@@ -82,6 +85,8 @@ pub struct IndexedLink {
 pub struct IndexedTag {
     pub tag: String,
     pub tag_key: String,
+    /// Membership (frontmatter `tags:` or a tag-only line) rather than a mention.
+    pub member: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -164,6 +169,9 @@ pub struct IndexedTask {
     /// Nearest top-level heading above the task (level 2+), or None.
     #[serde(default)]
     pub section: Option<String>,
+    /// Folded tags on the task's own marker line (organization point 4).
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -207,8 +215,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
         .execute(params![note.path, note.text])?;
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
         for link in &note.links {
             stmt.execute(params![
@@ -218,16 +226,18 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 link.target_key,
                 link.target_path_key,
                 link.alias,
+                link.relation,
                 link.pos_from,
                 link.pos_to
             ])?;
         }
     }
     {
-        let mut stmt =
-            conn.prepare_cached("INSERT INTO tags(note_path, tag, tag_key) VALUES(?1, ?2, ?3)")?;
+        let mut stmt = conn.prepare_cached(
+            "INSERT INTO tags(note_path, tag, tag_key, member) VALUES(?1, ?2, ?3, ?4)",
+        )?;
         for tag in &note.tags {
-            stmt.execute(params![note.path, tag.tag, tag.tag_key])?;
+            stmt.execute(params![note.path, tag.tag, tag.tag_key, tag.member])?;
         }
     }
     {
@@ -262,11 +272,13 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
     }
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time, section, tags) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         )?;
         for task in &note.tasks {
             let breadcrumbs = serde_json::to_string(&task.breadcrumbs)
                 .map_err(|err| StoreError::io(format!("serialize task breadcrumbs: {err}")))?;
+            let tags = serde_json::to_string(&task.tags)
+                .map_err(|err| StoreError::io(format!("serialize task tags: {err}")))?;
             stmt.execute(params![
                 note.path,
                 task.marker_offset,
@@ -276,7 +288,8 @@ pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
                 i64::from(task.checked),
                 task.due_date,
                 task.due_time,
-                task.section
+                task.section,
+                tags
             ])?;
         }
     }

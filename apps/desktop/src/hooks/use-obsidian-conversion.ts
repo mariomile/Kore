@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   buildObsidianConversion,
   convertObsidianVault,
+  gitStatus,
   readObsidianImportSource,
   type ConversionProgress,
   type ConversionResult,
@@ -12,10 +14,15 @@ import {
 import { dirtyOpenPaths, flushOpenDocuments } from '@/editor/open-documents'
 import { canonicalizeImportBody } from '@/editor/roundtrip'
 import { useAsyncAction } from '@/hooks/use-async-action'
+import { useBridgeReady } from '@/hooks/use-bridge-ready'
 
 export interface ObsidianConversionState {
-  /** Pick an empty folder and convert the open vault into it. */
-  readonly convert: (mapping: ImportMapping) => void
+  /**
+   * Pick an empty folder and convert the open vault into it. `keepHistory`
+   * carries the vault's Git repository into the copy and commits the
+   * conversion on it.
+   */
+  readonly convert: (mapping: ImportMapping, keepHistory: boolean) => void
   readonly pending: boolean
   readonly progress: ConversionProgress | null
   readonly result: ConversionResult | null
@@ -33,7 +40,7 @@ export function useObsidianConversion(graph: GraphInfo | null): ObsidianConversi
   const [progress, setProgress] = useState<ConversionProgress | null>(null)
   const [result, setResult] = useState<ConversionResult | null>(null)
 
-  const convert = (mapping: ImportMapping): void => {
+  const convert = (mapping: ImportMapping, keepHistory: boolean): void => {
     if (graph === null) {
       return
     }
@@ -63,6 +70,7 @@ export function useObsidianConversion(graph: GraphInfo | null): ObsidianConversi
           mapping,
           source,
           convert: canonicalizeImportBody,
+          keepHistory,
         })
         setResult(
           await convertObsidianVault({
@@ -79,4 +87,20 @@ export function useObsidianConversion(graph: GraphInfo | null): ObsidianConversi
   }
 
   return { convert, pending: action.pending, progress, result, error: action.error }
+}
+
+/**
+ * Whether the open vault has a Git repository a conversion could carry on.
+ * `false` while unknown or when the status can't be read.
+ */
+export function useVaultHasGitHistory(generation: number | null): boolean {
+  const bridgeReady = useBridgeReady()
+  const { data } = useQuery({
+    queryKey: ['obsidian-conversion-git', generation] as const,
+    queryFn: async () => (generation === null ? false : (await gitStatus(generation)).initialized),
+    enabled: bridgeReady && generation !== null,
+    staleTime: 30_000,
+    retry: false,
+  })
+  return data === true
 }

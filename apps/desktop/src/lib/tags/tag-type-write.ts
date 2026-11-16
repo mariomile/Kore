@@ -6,6 +6,7 @@ import {
   parseTagTypeFrontmatter,
   tagDefinitionPath,
   upsertFrontmatter,
+  type SavedCollectionView,
   type TagProperty,
 } from '@kore/core'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
@@ -36,10 +37,14 @@ export interface TagDefinitionState {
   properties: TagProperty[]
   /** Bound template path for new rows, or `null` when the type names none. */
   template: string | null
+  /** The type's home folder (`folder:`), or `null` when it has none. */
+  folder: string | null
   /** The tag's emoji glyph, or `null` when the definition sets none. */
   icon: string | null
   /** The tags this one builds on (`extends:`, Plan 33 B2), folded keys. */
   parents: string[]
+  /** The type's saved database views (`views:`), in tab order; absent = none. */
+  views?: SavedCollectionView[]
 }
 
 /** Read the tag's definition state for the config dialog. */
@@ -49,14 +54,20 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
   try {
     source = await readNoteSource(path)
   } catch {
+    source = ''
+  }
+  // A missing note reads as empty: there is nothing to convert either way.
+  if (source.trim() === '') {
     return {
       path,
       exists: false,
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
+      views: [],
     }
   }
   const type = parseTagTypeFrontmatter(parseNote({ path, source }).frontmatter)
@@ -66,8 +77,10 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     needsConversion: type === null,
     properties: type?.properties ?? [],
     template: type?.template ?? null,
+    folder: type?.folder ?? null,
     icon: type?.icon ?? null,
     parents: [...(type?.extends ?? [])],
+    views: [...(type?.views ?? [])],
   }
 }
 
@@ -78,9 +91,13 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
  */
 export interface TagTypeExtras {
   template?: string | null
+  /** The type's home folder (`folder:`), where its new notes are born. */
+  folder?: string | null
   icon?: string | null
   /** The `extends:` list (Plan 33 B2). */
   parents?: readonly string[]
+  /** The saved database views (`views:`), replaced whole. */
+  views?: readonly SavedCollectionView[]
 }
 
 /**
@@ -95,7 +112,7 @@ export async function saveTagType(
   tag: string,
   properties: readonly TagProperty[],
   generation: number,
-  { template, icon, parents }: TagTypeExtras = {},
+  { template, folder, icon, parents, views }: TagTypeExtras = {},
 ): Promise<void> {
   if (parents !== undefined) {
     const loop = await tagExtendsLoop(tag, parents)
@@ -110,8 +127,10 @@ export async function saveTagType(
   const patch = {
     tagSchema: properties,
     ...(template === undefined ? {} : { tagTemplate: template }),
-    ...(icon === undefined ? {} : { tagIcon: icon }),
+    ...(folder === undefined ? {} : { tagFolder: folder }),
+    ...(icon === undefined ? {} : { icon }),
     ...(parents === undefined ? {} : { tagExtends: parents }),
+    ...(views === undefined ? {} : { tagViews: views }),
   }
   const path = tagDefinitionPath(tag)
   // The seed rides the SAME serializer as the update path below — a schema
@@ -124,4 +143,20 @@ export async function saveTagType(
     return
   }
   await commitNoteFrontmatter(path, patch, generation)
+}
+
+/**
+ * Persist a type's saved database views into its definition note
+ * (`views:`), the same session-or-disk channel as the schema so an open
+ * definition takes them into its live header. Only an existing, marked
+ * definition is written: an untyped tag keeps its views in local settings,
+ * and saving a tab must never turn a plain tag into a type behind the
+ * user's back.
+ */
+export async function saveTagViews(
+  tag: string,
+  views: readonly SavedCollectionView[],
+  generation: number,
+): Promise<void> {
+  await commitNoteFrontmatter(tagDefinitionPath(tag), { tagViews: views }, generation)
 }

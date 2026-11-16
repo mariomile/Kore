@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
 
@@ -15,6 +16,9 @@ import {
   isFalsePlistValue,
   normalizeApiKeyContent,
   parseDwarfdumpUuids,
+  iosShortVersion,
+  pngHasAlpha,
+  withShortVersion,
   resolveBuildNumber,
 } from './release-ios.mjs'
 
@@ -164,11 +168,11 @@ test('altool validation uses the same upload credentials', () => {
 test('altool app lookup filters by bundle identifier', () => {
   const authArgs = ['--api-key', 'ABC123DEFG', '--api-issuer', 'issuer-uuid']
 
-  expect(createAltoolListAppsArgs({ authArgs, bundleIdentifier: 'app.lore.ios' })).toEqual([
+  expect(createAltoolListAppsArgs({ authArgs, bundleIdentifier: 'app.kore.ios' })).toEqual([
     'altool',
     '--list-apps',
     '--filter-bundle-id',
-    'app.lore.ios',
+    'app.kore.ios',
     '--api-key',
     'ABC123DEFG',
     '--api-issuer',
@@ -248,4 +252,75 @@ test('Info.plist export-compliance false values are normalized', () => {
   expect(isFalsePlistValue('NO')).toBe(true)
   expect(isFalsePlistValue('0')).toBe(true)
   expect(isFalsePlistValue('true')).toBe(false)
+})
+
+function pngHeader(colourType, extraChunkType) {
+  const signature = Buffer.from('89504e470d0a1a0a', 'hex')
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4)
+    length.writeUInt32BE(data.length)
+    return Buffer.concat([length, Buffer.from(type, 'latin1'), data, Buffer.alloc(4)])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(1, 0)
+  ihdr.writeUInt32BE(1, 4)
+  ihdr[8] = 8
+  ihdr[9] = colourType
+  const chunks = [chunk('IHDR', ihdr)]
+  if (extraChunkType) chunks.push(chunk(extraChunkType, Buffer.alloc(1)))
+  chunks.push(chunk('IDAT', Buffer.alloc(1)), chunk('IEND', Buffer.alloc(0)))
+  return Buffer.concat([signature, ...chunks])
+}
+
+test('pngHasAlpha flags alpha colour types and tRNS chunks', () => {
+  expect(pngHasAlpha(pngHeader(2))).toBe(false)
+  expect(pngHasAlpha(pngHeader(6))).toBe(true)
+  expect(pngHasAlpha(pngHeader(4))).toBe(true)
+  expect(pngHasAlpha(pngHeader(2, 'tRNS'))).toBe(true)
+  expect(() => pngHasAlpha(Buffer.from('not a png'))).toThrow('not a PNG file')
+})
+
+test('the committed iOS app icons have no alpha channel', () => {
+  const dir = join(
+    import.meta.dirname,
+    '..',
+    'src-tauri',
+    'gen',
+    'apple',
+    'Assets.xcassets',
+    'AppIcon.appiconset',
+  )
+  const transparent = readdirSync(dir)
+    .filter((name) => name.endsWith('.png'))
+    .filter((name) => pngHasAlpha(readFileSync(join(dir, name))))
+  expect(transparent).toEqual([])
+})
+
+test('iosShortVersion strips prerelease and build suffixes', () => {
+  expect(iosShortVersion('0.103.1')).toBe('0.103.1')
+  expect(iosShortVersion('1.2.3-beta.4')).toBe('1.2.3')
+  expect(iosShortVersion('1.2.3+5')).toBe('1.2.3')
+  expect(() => iosShortVersion('1.2')).toThrow()
+})
+
+test('withShortVersion replaces only CFBundleShortVersionString', () => {
+  const plist = [
+    '<dict>',
+    '\t<key>CFBundleShortVersionString</key>',
+    '\t<string>0.6.0</string>',
+    '\t<key>CFBundleVersion</key>',
+    '\t<string>0.6.0.8</string>',
+    '</dict>',
+  ].join('\n')
+  const updated = withShortVersion(plist, '0.103.1')
+  expect(updated).toContain('<string>0.103.1</string>')
+  expect(updated).toContain('<string>0.6.0.8</string>')
+  expect(() => withShortVersion('<dict></dict>', '1.0.0')).toThrow()
+})
+
+test('every app extension Info.plist has a version to sync', () => {
+  for (const name of ['ShareExtension', 'RecordingWidget']) {
+    const path = join(import.meta.dirname, '..', 'src-tauri', 'gen', 'apple', name, 'Info.plist')
+    expect(() => withShortVersion(readFileSync(path, 'utf8'), '1.0.0')).not.toThrow()
+  }
 })

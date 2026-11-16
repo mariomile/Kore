@@ -49,8 +49,11 @@ pub fn run(
         .map(|key| tag_match_sql("t.tag_key", key, &mut binds))
         .collect::<Vec<_>>()
         .join(" OR ");
-    let member_filter =
-        format!("EXISTS (SELECT 1 FROM tags t WHERE t.note_path = n.path AND ({member_clauses}))");
+    // Members only (`t.member`), like `listCollection`: a note that mentions
+    // the tag in its prose is not one of the collection's rows.
+    let member_filter = format!(
+        "EXISTS (SELECT 1 FROM tags t WHERE t.note_path = n.path AND t.member = 1 AND ({member_clauses}))"
+    );
 
     // Mirrors `listCollection`: missing sort values last regardless of
     // direction, then the numeric key, then the string form, case-insensitive.

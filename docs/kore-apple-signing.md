@@ -4,12 +4,12 @@ Kore carries its own Apple-facing identity, distinct from upstream Reflect:
 
 | What | Value |
 | --- | --- |
-| macOS bundle ids | `app.lore.desktop` / `.beta` / `.dev` |
-| iOS bundle ids | `app.lore.ios` / `.dev` (+ `.share`, `.widgets` extensions) |
-| iCloud container | `iCloud.app.lore` (shown as **Kore** in Files/Finder) |
-| App Group | `group.app.lore` / `group.app.lore.dev` |
+| macOS bundle ids | `app.kore.desktop` / `.beta` / `.dev` |
+| iOS bundle ids | `app.kore.ios` / `.dev` (+ `.share`, `.widgets` extensions) |
+| iCloud container | `iCloud.app.kore` (shown as **Kore** in Files/Finder) |
+| App Group | `group.app.kore` / `group.app.kore.dev` |
 | Product names | Kore / Kore Beta / Kore Dev |
-| Keychain service | `lore` |
+| Keychain service | `kore` (older builds: `lore`, migrated on first read) |
 
 Everything builds and runs **without any Apple account**: unsigned/dev builds
 simply report iCloud as unavailable, and GitHub sync works regardless. The
@@ -24,13 +24,13 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    is still in place and will not sign for you).
 3. **iOS: let Xcode do the rest.** The first entitled build with automatic
    signing (open `gen/apple/kore-open.xcodeproj`, select your team)
-   registers the App IDs, the `iCloud.app.lore` container, and the
-   `group.app.lore` App Group on your team automatically.
+   registers the App IDs, the `iCloud.app.kore` container, and the
+   `group.app.kore` App Group on your team automatically.
 4. **macOS iCloud (optional, for signed distribution builds):** upstream's
    committed `Reflect.provisionprofile` / `Reflect-beta.provisionprofile`
    are bound to their Developer ID and *your* builds will refuse them
    loudly. Generate your own Developer ID provisioning profiles for
-   `app.lore.desktop` / `.beta` with the iCloud capability, drop them in
+   `app.kore.desktop` / `.beta` with the iCloud capability, drop them in
    `apps/desktop/src-tauri/` under the same file names, and follow
    [macos-distribution.md](macos-distribution.md). Plain `pnpm tauri build`
    for personal use needs none of this.
@@ -38,24 +38,33 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    key sits in `tauri.conf.json`, the private key belongs in the repo's
    Actions secrets (`TAURI_SIGNING_PRIVATE_KEY` +
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) — and the `Release DMG` workflow
-   (`.github/workflows/release-dmg.yml`) builds an unsigned DMG plus
-   signed updater artifacts on every `v*` tag, publishing them to the
-   GitHub release the in-app updater polls
-   (`releases/latest/download/latest.json`). Apple signing is *not*
-   required for self-update; it only removes the one-time Gatekeeper
-   quarantine on fresh installs (recent macOS calls the unsigned app
-   "damaged" — cleared with `xattr -cr /Applications/Kore.app`). For a
-   prompt-free install, use release.yml, the signed + notarized pipeline.
+   (`.github/workflows/release-dmg.yml`) builds a DMG plus signed updater
+   artifacts on every `v*` tag, publishing them to the GitHub release the
+   in-app updater polls (`releases/latest/download/latest.json`).
+6. **Developer ID signing for the Release DMG.** With a Developer ID
+   Application certificate in the repo secrets (`APPLE_CERTIFICATE`, the
+   base64 of the exported `.p12`, and `APPLE_CERTIFICATE_PASSWORD`) plus the
+   App Store Connect API key TestFlight already uses (`APPLE_API_KEY`,
+   `APPLE_API_ISSUER`, `APPLE_API_KEY_CONTENT`), `Release DMG` signs and
+   notarizes the app. That does two things: a fresh download opens without
+   `xattr -cr`, and macOS keeps calendar, contacts, microphone and
+   notification permissions across updates (an ad-hoc signed app gets a new
+   identity on every build, so TCC forgets them). The signed build uses the
+   iCloud-free `Entitlements.dev.plist` and embeds no provisioning profile,
+   so macOS iCloud stays off until a Developer ID profile for
+   `app.kore.desktop` with `iCloud.app.kore` is committed (step 4). Without
+   `APPLE_CERTIFICATE` the workflow builds the ad-hoc DMG as before.
 
-## What deliberately did NOT change
+## Older names still in the tree
 
 - `@kore/*` package and `reflect-*` crate names (internal; renamed in a
   separate mechanical pass). The deep-link scheme (`kore://`), the vault
   directory (`.kore/`), the native-messaging host (`app.kore.capture`) and the
   config dir (`kore/`) are Kore since the rename; each old name is migrated
   on first launch.
-- Apple technical identity: bundle ids `app.lore.*`, iCloud container key
-  `iCloud.app.lore`, App Group `group.app.lore`, and keychain service `lore`.
+- Apple technical identity is Kore too: bundle ids `app.kore.*`, iCloud
+  container `iCloud.app.kore`, App Group `group.app.kore`, keychain service
+  `kore` (older `app.lore.*` data and `lore` keychain entries are migrated).
 - Desktop bundle name `Kore.app` (`productName` in `tauri.conf.json`).
 
 ## Publishing a Kore release
@@ -75,7 +84,8 @@ The publish path is a bump followed by a build:
 3. Fast-forward the `release/dmg` pointer:
    `git push origin origin/master:release/dmg`.
 4. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`) builds an
-   unsigned DMG plus signed updater artifacts from that pointer, creates the
+   DMG (Developer ID signed and notarized when step 6's secrets are set) plus
+   signed updater artifacts from that pointer, creates the
    `v<version>` tag, and publishes the GitHub release the in-app updater polls.
 
 Step 3 is not optional: merging the Release PR publishes nothing on its own —

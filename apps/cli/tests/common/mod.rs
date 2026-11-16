@@ -193,6 +193,38 @@ impl Fixture {
 }
 
 impl Fixture {
+    /// Insert one wiki link over `needle`'s span in the note's file (UTF-16
+    /// offsets, like the desktop projection), with its frontmatter relation.
+    pub fn insert_link_at(
+        &self,
+        source: &str,
+        target_title: &str,
+        needle: &str,
+        relation: Option<&str>,
+    ) {
+        let content = std::fs::read_to_string(self.root().join(source)).unwrap();
+        let byte = content.find(needle).expect("needle in note");
+        let from = content[..byte].encode_utf16().count() as i64;
+        let to = from + needle.encode_utf16().count() as i64;
+        self.index_conn()
+            .execute(
+                "INSERT INTO links(source_path, kind, target_raw, target_key, alias,
+                                   relation, pos_from, pos_to, target_path_key)
+                 VALUES(?1, 'wiki', ?2, ?3, NULL, ?4, ?5, ?6, NULL)",
+                params![
+                    source,
+                    target_title,
+                    fold_key(target_title),
+                    relation,
+                    from,
+                    to
+                ],
+            )
+            .unwrap();
+    }
+}
+
+impl Fixture {
     pub fn index_conn(&self) -> rusqlite::Connection {
         rusqlite::Connection::open(self.root().join(".kore").join("index.sqlite")).unwrap()
     }

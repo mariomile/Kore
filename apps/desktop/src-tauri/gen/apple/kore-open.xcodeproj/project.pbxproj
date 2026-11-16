@@ -16,9 +16,13 @@
 		5693613DE956199D6486EA26 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8D0D6D72E614086946EBF890 /* LaunchScreen.storyboard */; };
 		5C88834F22D37FFC49CBD2F1 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 38829A9D2116D0D324C18C4B /* main.mm */; };
 		6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357D2D54012FD394DF9423E /* CaptureInbox.swift */; };
+		A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
+		A1C4E7F20B3D5E6F7A8B9C03 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
 		74275EAEFEA922B7D8A2C78F /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5249E1475DBD7CCB817F7D1B /* CoreGraphics.framework */; };
 		775E33492750BC96D2399943 /* StopRecordingLiveActivityIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */; };
 		85FC869F776C24A9ED0A1779 /* RecordingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */; };
+		169786C71C03518553671315 /* DailyNoteWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */; };
+		B5B843DAF2FE8A112571657A /* DailyWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */; };
 		93F2A1181D6BC7832338EE9C /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93EF89A222208D739ABC00B8 /* ShareView.swift */; };
 		9611839F9E9EC688FCDFCC91 /* RecordingWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */; };
 		961AA49623F0DDC7AB09B777 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39269153EFAD0C2FEFBE6696 /* UIKit.framework */; };
@@ -151,6 +155,8 @@
 		BC3901740F3A40252C3750C7 /* kore-open_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "kore-open_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE29DCB2F9FA318E5936F05C /* routine_script.rs */ = {isa = PBXFileReference; path = routine_script.rs; sourceTree = "<group>"; };
 		C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingActivityAttributes.swift; sourceTree = "<group>"; };
+		E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyNoteWidget.swift; sourceTree = "<group>"; };
+		545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWidgetSnapshot.swift; sourceTree = "<group>"; };
 		C38A6847351881E6D17A1DC2 /* migrations.rs */ = {isa = PBXFileReference; path = migrations.rs; sourceTree = "<group>"; };
 		C7BE8291B337F95D913C6AE9 /* commit_message.rs */ = {isa = PBXFileReference; path = commit_message.rs; sourceTree = "<group>"; };
 		C94374B175075AF3AA7DE586 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
@@ -159,6 +165,7 @@
 		D05B757D9AB841897576F256 /* merge3.rs */ = {isa = PBXFileReference; path = merge3.rs; sourceTree = "<group>"; };
 		D2398DBC3478C5F96CC89402 /* background_task.rs */ = {isa = PBXFileReference; path = background_task.rs; sourceTree = "<group>"; };
 		D357D2D54012FD394DF9423E /* CaptureInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureInbox.swift; sourceTree = "<group>"; };
+		A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareChoices.swift; sourceTree = "<group>"; };
 		D3691D8F671B7FA21D1E7BD7 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
 		D7AC6BF821D47F74D41DFAFE /* RecordAudioWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordAudioWidget.swift; sourceTree = "<group>"; };
 		D7DA2E13EA6655A16DFDE015 /* secrets.rs */ = {isa = PBXFileReference; path = secrets.rs; sourceTree = "<group>"; };
@@ -205,6 +212,7 @@
 			children = (
 				D357D2D54012FD394DF9423E /* CaptureInbox.swift */,
 				536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */,
+				A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */,
 				89342C7501B47DBB934B2D27 /* ShareState.swift */,
 				93EF89A222208D739ABC00B8 /* ShareView.swift */,
 				1A58A746A41B6BF1D50A8547 /* ShareViewController.swift */,
@@ -281,6 +289,7 @@
 		503727866B7D08BD30A503FF /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */,
 				C228C4BA95B0BADA424A9E8A /* RecordingActivityAttributes.swift */,
 			);
 			name = Sources;
@@ -361,6 +370,7 @@
 		90B73AA2E17A6707CD2373F8 /* RecordingWidget */ = {
 			isa = PBXGroup;
 			children = (
+				E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */,
 				D7AC6BF821D47F74D41DFAFE /* RecordAudioWidget.swift */,
 				1A3930E6E7AB28929B07A6D0 /* RecordingActivityWidget.swift */,
 				A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */,
@@ -531,15 +541,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					665EB942B5F6FB93F8DF2A57 = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 					85FC564C07724F1F4E282538 = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 					E2CEE6E5CCFA69CBA5F9AA3F = {
-						DevelopmentTeam = 789ULN5MZB;
+						DevelopmentTeam = ZQG9377GFQ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -656,6 +666,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BEA09DBDD61413051FFEB9E3 /* CaptureInbox.swift in Sources */,
+				A1C4E7F20B3D5E6F7A8B9C03 /* ShareChoices.swift in Sources */,
 				B6B5B091EADAF6EAEC6E2EDA /* ShareState.swift in Sources */,
 				93F2A1181D6BC7832338EE9C /* ShareView.swift in Sources */,
 				495C9E97530FC781EB5645D6 /* ShareViewController.swift in Sources */,
@@ -666,6 +677,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				169786C71C03518553671315 /* DailyNoteWidget.swift in Sources */,
+				B5B843DAF2FE8A112571657A /* DailyWidgetSnapshot.swift in Sources */,
 				E7D75AA83CFA468E0EFBAB21 /* RecordAudioWidget.swift in Sources */,
 				85FC869F776C24A9ED0A1779 /* RecordingActivityAttributes.swift in Sources */,
 				D37EE1ED817FDDC16C5643BB /* RecordingActivityWidget.swift in Sources */,
@@ -679,6 +692,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */,
+				A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */,
 				134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */,
 				C3F8EB03E386D36B71BF8772 /* RecordingIntents.swift in Sources */,
 				775E33492750BC96D2399943 /* StopRecordingLiveActivityIntent.swift in Sources */,
@@ -707,14 +721,14 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.share;
 				PRODUCT_NAME = ShareExtension;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -734,7 +748,7 @@
 				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "789ULN5MZB";
+				DEVELOPMENT_TEAM = "ZQG9377GFQ";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -748,7 +762,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -826,7 +840,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -834,7 +848,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -848,14 +862,14 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.share;
 				PRODUCT_NAME = ShareExtension;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -869,7 +883,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 789ULN5MZB;
+				DEVELOPMENT_TEAM = ZQG9377GFQ;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -877,7 +891,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				KORE_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -897,7 +911,7 @@
 				CODE_SIGN_ENTITLEMENTS = "kore-open_iOS/kore-open_iOS.dev.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "789ULN5MZB";
+				DEVELOPMENT_TEAM = "ZQG9377GFQ";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -911,7 +925,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				KORE_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;

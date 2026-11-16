@@ -166,7 +166,7 @@ export function boardColumns(
       columns.push({
         label,
         commit: label,
-        color: selectOptionDotClass(label),
+        color: selectOptionDotClass(label, property),
         entries: sortByRank(group),
       })
     }
@@ -216,7 +216,7 @@ export function boardColumns(
     columns.push({
       label,
       commit: group.commit,
-      color: selectOptionDotClass(label),
+      color: selectOptionDotClass(label, property),
       entries: sortByRank(group.entries),
     })
   }
@@ -258,7 +258,7 @@ interface BoardMove {
 }
 
 /** A committed value as the stored row the overlay projects it to. */
-function overlayValue(value: unknown): CollectionValue | null {
+export function overlayValue(value: unknown): CollectionValue | null {
   if (Array.isArray(value)) {
     // The projection's own list shape (JSON array text), so the optimistic
     // card reads exactly like the re-indexed row will.

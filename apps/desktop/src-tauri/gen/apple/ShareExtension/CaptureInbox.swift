@@ -16,8 +16,15 @@ struct LinkCaptureEnvelope: Encodable {
     var title: String
     var selection: String?
     var metaDescription: String?
+    /// The user's own words from the sheet's "Add a thought" field.
+    var note: String?
     var capturedAt: String
     var source = "ios-share"
+    /// How to write the link (`captureLookSchema`); nil keeps the
+    /// capture-note flow an older sheet produced.
+    var look: ShareLook?
+    /// Where to write it (`captureDestinationSchema`); nil is today's daily.
+    var destination: ShareDestination?
 }
 
 /// Shared non-URL text, as `textCaptureEnvelopeSchema`: one folded line the
@@ -50,6 +57,7 @@ private enum FieldCap {
     static let title = 1_000
     static let selection = 10_000
     static let description = 2_000
+    static let note = 10_000
     static let textMax = 10_000
 }
 
@@ -60,9 +68,9 @@ enum CaptureInbox {
     /// group so a dev install never drains the production app's inbox; the
     /// Rust side switches on `debug_assertions` the same way.
     #if DEBUG
-        static let groupId = "group.app.lore.dev"
+        static let groupId = "group.app.kore.dev"
     #else
-        static let groupId = "group.app.lore"
+        static let groupId = "group.app.kore"
     #endif
 
     /// Where envelopes spool inside the container; the Rust relay reads the
@@ -75,20 +83,35 @@ enum CaptureInbox {
 
     /// Spool a link capture. Empty titles are allowed (the drain falls back
     /// to the URL's host); empty selections and descriptions are dropped.
+    /// `look` and `destination` are the share sheet's choices; a new
+    /// note's title is capped like a page title.
     static func spoolLink(
         url: String,
         title: String,
         selection: String?,
-        metaDescription: String?
+        metaDescription: String?,
+        note: String? = nil,
+        look: ShareLook? = nil,
+        destination: ShareDestination? = nil
     ) throws {
         let id = envelopeId()
+        var target = destination
+        if case let .new(newTitle, folder) = destination {
+            let name = capped(newTitle, at: FieldCap.title)
+            let resolved = name.isEmpty ? capped(title, at: FieldCap.title) : name
+            // Nothing to name the note with: today's daily instead.
+            target = resolved.isEmpty ? .daily : .new(title: resolved, folder: folder)
+        }
         var envelope = LinkCaptureEnvelope(
             id: id,
             url: url,
             title: capped(title, at: FieldCap.title),
             selection: nonEmpty(capped(selection ?? "", at: FieldCap.selection)),
             metaDescription: nonEmpty(capped(metaDescription ?? "", at: FieldCap.description)),
-            capturedAt: capturedAt()
+            note: nonEmpty(capped(note ?? "", at: FieldCap.note)),
+            capturedAt: capturedAt(),
+            look: look,
+            destination: target
         )
         // The URL is the one uncapped field (truncating it would save a
         // broken link): a pathological one can outgrow the spool cap. Shed

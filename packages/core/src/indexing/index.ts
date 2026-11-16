@@ -34,7 +34,12 @@ export {
   type MovedHandler,
 } from './live'
 export { hashContent } from './hash'
-export { availableTemplatePath, slugPathForTitle, templateSlugPathForTitle } from './note-paths'
+export {
+  availableTemplatePath,
+  birthPathForTitle,
+  slugPathForTitle,
+  templateSlugPathForTitle,
+} from './note-paths'
 export { listTemplates, type TemplateEntry } from './template-list'
 export {
   buildIndexedNote,
@@ -80,6 +85,7 @@ export {
   countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
+  getTasksForTag,
   getProjectNotePaths,
   getTaskProjectLinks,
   getCompletedTasks,
@@ -206,10 +212,13 @@ export {
   type RecentNotesOptions,
 } from './note-list'
 export { sortNoteList } from './note-list-sort'
+export { listTagMentions, type TagMention } from './tag-mentions'
 export {
   buildTagTree,
   getTagTree,
   hasNestedTags,
+  splitTypesFromTags,
+  type TypeShelfEntry,
   listTagTreeCounts,
   type TagTreeCount,
   type TagTreeNode,
@@ -317,6 +326,7 @@ export {
   type FilteredSearchOptions,
   type SearchHit,
 } from './filtered-search'
+export { firstImageAssets } from './asset-refs'
 export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,

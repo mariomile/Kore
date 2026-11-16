@@ -3,7 +3,7 @@ import { createWorkspaceStatePublisher, workspaceNotes } from '@kore/core'
 import { useToday } from '@/lib/use-today'
 import { useGraph } from '@/providers/graph-provider'
 import { usePanes } from '@/providers/panes-provider'
-import { useSettings } from '@/providers/settings-provider'
+import { useWorkspaceLayout } from '@/providers/workspace-layout-provider'
 
 /**
  * Mirrors the main window's open notes into `.kore/workspace.json` so
@@ -12,12 +12,12 @@ import { useSettings } from '@/providers/settings-provider'
  */
 export function useWorkspaceStatePublisher(): void {
   const { graph } = useGraph()
-  const { settings } = useSettings()
   const { activePane } = usePanes()
   const today = useToday()
   const root = graph?.root ?? null
   const generation = graph?.generation ?? null
-  const columns = root === null ? null : (settings.openTabs[root] ?? [])
+  const stored = useWorkspaceLayout(root)
+  const columns = root === null ? null : stored
   const activePaneId = activePane.id
 
   const publisher = useMemo(

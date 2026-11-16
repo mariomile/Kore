@@ -137,8 +137,20 @@ import {
  * `notes.is_private` like `private: true`. Rows indexed before hold `false`,
  * so the CLI, `kore mcp` and search would still serve those notes until they
  * were edited: the bump reprojects every note so the block holds at once.
+ * 32 - `tags.member` (migration 0026) tells membership from mentions: only
+ * frontmatter `tags:` and a tag-only first or last paragraph make a note a
+ * member. Existing rows default to members until the rebuild sorts them.
+ * 33 - `tasks.tags` (migration 0027): the tags on a task's own line, which
+ * make the line a row of that tag's database. Existing rows hold `[]` until
+ * the rebuild fills them.
+ * 34 - `links.relation` (migration 0028): the frontmatter key a link is the
+ * value of, so `company: "[[Acme]]"` is a named `company` edge and not a bare
+ * mention. Existing rows hold NULL until the rebuild fills them.
+ * 35 - a type's `folder:` (its home, where its new notes are born) rides the
+ * stored tag type JSON. Definitions indexed before it lack the key until the
+ * rebuild re-reads them.
  */
-export const PROJECTION_VERSION = 31
+export const PROJECTION_VERSION = 35
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -197,6 +209,11 @@ export const indexedLinkSchema = z.object({
   /** Folded vault path when the link names a file; null when it names a note. */
   targetPathKey: z.string().nullable(),
   alias: z.string().nullable(),
+  /**
+   * The frontmatter key the link is the value of (`company: "[[Acme]]"`), or
+   * null for a body link. Named relations are what the CLI/MCP filter on.
+   */
+  relation: z.string().nullable(),
   posFrom: z.number(),
   posTo: z.number(),
 })
@@ -207,6 +224,8 @@ export const indexedTagSchema = z.object({
   tag: z.string(),
   /** Case-folded match key ({@link foldTag}) — what queries compare against. */
   tagKey: z.string(),
+  /** The note *is* this tag (frontmatter or tag-only line), not just mentions it. */
+  member: z.boolean(),
 })
 export type IndexedTag = z.infer<typeof indexedTagSchema>
 
@@ -255,6 +274,8 @@ export const indexedTaskSchema = z.object({
   dueTime: z.string().nullable(),
   /** The nearest top-level heading above the task (level 2+), or null. */
   section: z.string().nullable(),
+  /** Folded tags on the task's own marker line: the tag databases it is a row of. */
+  tags: z.array(z.string()),
 })
 export type IndexedTask = z.infer<typeof indexedTaskSchema>
 
@@ -447,6 +468,7 @@ export function buildIndexedNote(
           ? foldGraphPath(reference.path)
           : null,
       alias: link.alias ?? null,
+      relation: link.relation ?? null,
       posFrom: link.from,
       posTo: link.to,
     }
@@ -459,6 +481,7 @@ export function buildIndexedNote(
       targetKey: link.href.toLowerCase(),
       targetPathKey: reference?.kind === 'path' ? foldGraphPath(reference.path) : null,
       alias: null,
+      relation: null,
       posFrom: link.from,
       posTo: link.to,
     }
@@ -500,7 +523,10 @@ export function buildIndexedNote(
     assetText: meta.assetText ?? '',
     preview: previewSnippet(parsed.previewText, parsed.title),
     links: [...wikiLinks, ...mdLinks],
-    tags: parsed.tags.map((tag) => ({ tag, tagKey: foldTag(tag) })),
+    tags: parsed.tags.map((tag) => {
+      const tagKey = foldTag(tag)
+      return { tag, tagKey, member: parsed.memberTags.includes(tagKey) }
+    }),
     aliases,
     claims: projectNoteClaims(parsed, aliases),
     emails: extractEmailFields(body).map((email) => ({ email, emailKey: foldEmail(email) })),
@@ -516,6 +542,7 @@ export function buildIndexedNote(
       dueDate: task.dueDate,
       dueTime: task.dueTime,
       section: task.section,
+      tags: [...task.tags],
     })),
     properties,
     // FTS5's tokenizer splits on the punctuation ([["quotes"]], commas), so

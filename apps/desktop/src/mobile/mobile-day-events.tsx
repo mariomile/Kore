@@ -69,7 +69,7 @@ export function MobileDayEvents({ date }: MobileDayEventsProps): ReactElement | 
   }
 
   return (
-    <section aria-label="Today’s meetings" className="shrink-0 border-b border-border px-4 py-2">
+    <section aria-label="Today’s meetings" className="shrink-0 px-4 py-2">
       <ul className="flex flex-col gap-1">
         {events.map((event) => {
           const key = `${event.id}-${event.startsAt}`

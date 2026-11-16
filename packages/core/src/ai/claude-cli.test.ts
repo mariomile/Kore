@@ -3,7 +3,7 @@ import type { FilePart, ModelMessage } from 'ai'
 import { setBridge } from '../ipc/bridge'
 import { agentCliInput, agentCliPrompt } from './agent-cli-input'
 import {
-  claudeCliAcceptsAttachment,
+  CLAUDE_CLI_CHANNELS,
   claudeCliArgs,
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
@@ -221,7 +221,7 @@ describe('agentCliInput', () => {
         { role: 'assistant', content: [{ type: 'text', text: 'Seen' }] },
         { role: 'user', content: [file('new'), { type: 'text', text: 'And this?' }] },
       ],
-      claudeCliAcceptsAttachment,
+      CLAUDE_CLI_CHANNELS,
     )
     expect(input.attachments.map((attachment) => attachment.label)).toEqual([
       'Attachment 1: old.png',
@@ -232,14 +232,41 @@ describe('agentCliInput', () => {
     expect(input.text.endsWith('Current question:\n[Attachment 2: new.png]\nAnd this?')).toBe(true)
   })
 
+  it('carries only the channels an engine reads, and only the newest within the cap', () => {
+    const file = (name: string, mediaType: string): FilePart => ({
+      type: 'file',
+      data: `data:${mediaType};base64,${name}`,
+      mediaType,
+      filename: name,
+    })
+    const images = Array.from({ length: 9 }, (_, index) => file(`${index}.png`, 'image/png'))
+    const input = agentCliInput(
+      [{ role: 'user', content: [...images, file('doc.pdf', 'application/pdf')] }],
+      new Set(['image']),
+    )
+    expect(input.attachments).toHaveLength(8)
+    expect(input.attachments[0]).toMatchObject({ label: 'Attachment 1: 1.png', channel: 'image' })
+    expect(input.text).toContain('[Earlier attachment: 0.png — not resent]')
+    expect(input.text).toContain(
+      '[Attachment: doc.pdf (application/pdf) — this engine cannot read it]',
+    )
+  })
+
   it('puts images and PDFs in the stream-json line as content blocks', () => {
     const line: unknown = JSON.parse(
       claudeStreamJsonUserLine('Compare them', [
-        { label: 'Attachment 1: a.png', name: 'a.png', mediaType: 'image/png', base64: 'AAA' },
+        {
+          label: 'Attachment 1: a.png',
+          name: 'a.png',
+          mediaType: 'image/png',
+          channel: 'image',
+          base64: 'AAA',
+        },
         {
           label: 'Attachment 2: b.pdf',
           name: 'b.pdf',
           mediaType: 'application/pdf',
+          channel: 'document',
           base64: 'BBB',
         },
       ]),

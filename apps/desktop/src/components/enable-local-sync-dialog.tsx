@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
+import { PinnedAgentsNotice } from '@/components/settings/pinned-agents-notice'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { suggestRepoName } from '@/lib/github-repos'
 import { adoptGraphToIcloud } from '@/lib/icloud-adopt'
@@ -50,6 +51,11 @@ export function EnableLocalSyncDialog(): ReactElement | null {
     return null
   }
 
+  // The folder already points at a GitHub repo (a clone, or a vault synced
+  // from another Mac): the only sensible offer is to resume that repo.
+  // Copying it into iCloud would leave its Git history behind.
+  const linkedRepo = backup.phase === 'disconnected' ? (backup.linkedRepo ?? null) : null
+
   // The GitHub wizard starts the backup controller (`loading`) before it
   // finishes connecting — keep it mounted through that, or the sheet vanishes
   // mid-flow. Auto-dismiss on `connected` still ends the offer after success.
@@ -57,6 +63,7 @@ export function EnableLocalSyncDialog(): ReactElement | null {
     return (
       <ConnectGithubDialog
         suggestedRepoName={suggestRepoName(graph.name)}
+        initialRepo={linkedRepo}
         onClose={() => setGithubOpen(false)}
       />
     )
@@ -97,6 +104,43 @@ export function EnableLocalSyncDialog(): ReactElement | null {
     }
   }
 
+  if (linkedRepo !== null) {
+    return (
+      <Dialog
+        open
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            dismissLocalSyncOffer()
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false} className="w-[30rem]">
+          <DialogHeader>
+            <DialogTitle>Resume GitHub sync?</DialogTitle>
+            <DialogDescription>
+              This folder syncs with{' '}
+              <strong className="text-text">
+                {linkedRepo.owner}/{linkedRepo.name}
+              </strong>
+              . Connect GitHub on this Mac to pick up where it left off.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button className="w-full" onClick={() => setGithubOpen(true)}>
+              Resume sync…
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={dismissLocalSyncOffer}>
+              Not now
+            </Button>
+            <p className="text-center text-xs text-text-muted">
+              You can resume later in Settings → Sync.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog
       open
@@ -127,6 +171,7 @@ export function EnableLocalSyncDialog(): ReactElement | null {
               <p className="text-xs leading-5 text-text-muted">
                 Copies these notes into iCloud Drive. This folder stays on disk as a recovery copy.
               </p>
+              {graph !== null ? <PinnedAgentsNotice root={graph.root} enabled /> : null}
             </div>
           ) : null}
 

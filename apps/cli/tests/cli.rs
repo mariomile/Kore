@@ -1119,6 +1119,157 @@ fn backlinks_lists_linking_notes_and_excludes_private_sources() {
 }
 
 #[test]
+fn backlinks_and_links_name_relations_and_quote_their_context() {
+    let fixture = graph();
+    fixture.write_note("notes/acme.md", "# Acme\nbody\n");
+    fixture.write_note(
+        "notes/ada.md",
+        "---\ncompany: \"[[Acme]]\"\n---\n# Ada\n\nAda left [[Acme]] in May.\n",
+    );
+    fixture.write_note(
+        "daily/2026-11-15.md",
+        "# 2026-11-15\n\n- Call with [[Acme]] about pricing\n- other\n",
+    );
+    fixture.build_index();
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]]\"", Some("company"));
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]] in May", None);
+    fixture.insert_link_at("daily/2026-11-15.md", "Acme", "[[Acme]]", None);
+
+    let value = json(&kore(&fixture, &["backlinks", "Acme", "--json"]));
+    let backlinks = value["backlinks"].as_array().unwrap();
+    assert_eq!(backlinks.len(), 2, "{value}");
+    let ada = backlinks
+        .iter()
+        .find(|b| b["path"] == "notes/ada.md")
+        .unwrap();
+    assert_eq!(ada["count"], 2);
+    assert_eq!(ada["relations"], serde_json::json!(["company"]));
+    assert_eq!(ada["mentions"][0]["relation"], "company");
+    assert_eq!(ada["mentions"][0]["context"], "company: \"[[Acme]]\"");
+    assert_eq!(ada["mentions"][1]["context"], "Ada left [[Acme]] in May.");
+    assert!(ada["mentions"][1].get("relation").is_none());
+    let daily = backlinks
+        .iter()
+        .find(|b| b["path"] == "daily/2026-11-15.md")
+        .unwrap();
+    assert!(
+        daily.get("relations").is_none(),
+        "a mention has no relations: {daily}"
+    );
+    assert_eq!(
+        daily["mentions"][0]["context"],
+        "- Call with [[Acme]] about pricing"
+    );
+
+    // --relation keeps only the notes linking under that key (any case).
+    let filtered = json(&kore(
+        &fixture,
+        &["backlinks", "Acme", "--relation", "Company", "--json"],
+    ));
+    let filtered = filtered["backlinks"].as_array().unwrap();
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0]["path"], "notes/ada.md");
+    assert_eq!(filtered[0]["count"], 1);
+
+    let links = json(&kore(&fixture, &["links", "notes/ada.md", "--json"]));
+    assert_eq!(links["links"][0]["path"], "notes/acme.md");
+    assert_eq!(
+        links["links"][0]["relations"],
+        serde_json::json!(["company"])
+    );
+    let none = json(&kore(
+        &fixture,
+        &["links", "notes/ada.md", "--relation", "author", "--json"],
+    ));
+    assert_eq!(none["links"].as_array().unwrap().len(), 0);
+
+    let human = stdout(&kore(&fixture, &["backlinks", "Acme"]));
+    assert!(
+        human.contains("notes/ada.md\tAda\t(company)\t(2 links)"),
+        "{human}"
+    );
+}
+
+#[test]
+fn neighborhood_walks_two_hops_with_relations_and_skips_private_notes() {
+    let fixture = graph();
+    fixture.write_note("notes/acme.md", "# Acme\nsee [[Roadmap]]\n");
+    fixture.write_note("notes/roadmap.md", "# Roadmap\nbody\n");
+    fixture.write_note("notes/ada.md", "---\ncompany: \"[[Acme]]\"\n---\n# Ada\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\n[[Acme]]\n",
+    );
+    fixture.build_index();
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]]", Some("company"));
+    fixture.insert_link_at("notes/acme.md", "Roadmap", "[[Roadmap]]", None);
+    fixture.insert_link_at("notes/secret.md", "Acme", "[[Acme]]", None);
+
+    let one = json(&kore(&fixture, &["neighborhood", "Ada", "--json"]));
+    let notes = one["notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 1, "{one}");
+    assert_eq!(notes[0]["path"], "notes/acme.md");
+    assert_eq!(notes[0]["via"][0]["relation"], "company");
+
+    let two = json(&kore(
+        &fixture,
+        &["neighborhood", "Ada", "--depth", "2", "--json"],
+    ));
+    let paths: Vec<&str> = two["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|note| note["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["notes/acme.md", "notes/roadmap.md"], "{two}");
+
+    let from_acme = json(&kore(&fixture, &["neighborhood", "Acme", "--json"]));
+    assert!(!from_acme.to_string().contains("secret"), "{from_acme}");
+
+    let bad = kore(&fixture, &["neighborhood", "Ada", "--depth", "3"]);
+    assert_eq!(bad.status.code(), Some(2));
+}
+
+#[test]
+fn coverage_reports_found_and_missing_words() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/pricing.md",
+        "# Pricing\nAcme pricing plan for 2026\n",
+    );
+    fixture.write_note("notes/acme.md", "# Acme\nCustomer since May\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nzanzibar treaty\n",
+    );
+    fixture.build_index();
+
+    let value = json(&kore(
+        &fixture,
+        &["coverage", "Che pricing ha Acme?", "--json"],
+    ));
+    assert_eq!(value["verdict"], "covered", "{value}");
+    assert_eq!(value["notes"][0]["path"], "notes/pricing.md");
+    assert_eq!(
+        value["notes"][0]["matched"],
+        serde_json::json!(["pricing", "acme"])
+    );
+    assert_eq!(value["missing"], serde_json::json!([]));
+
+    let partial = json(&kore(&fixture, &["coverage", "Acme zanzibar", "--json"]));
+    assert_eq!(partial["verdict"], "partial", "{partial}");
+    assert_eq!(
+        partial["missing"],
+        serde_json::json!(["zanzibar"]),
+        "private notes never count"
+    );
+
+    let none = json(&kore(&fixture, &["coverage", "zanzibar", "--json"]));
+    assert_eq!(none["verdict"], "none");
+    assert_eq!(none["notes"].as_array().unwrap().len(), 0);
+}
+
+#[test]
 fn backlinks_refuses_a_private_target_and_needs_the_index() {
     let fixture = graph();
     let no_index = kore(&fixture, &["backlinks", "Anything"]);
@@ -1821,4 +1972,111 @@ fn active_reads_the_app_state_and_drops_private_tabs() {
         body["openNotes"],
         serde_json::json!([{ "path": "notes/Ada.md", "title": "Ada" }])
     );
+}
+
+#[test]
+fn lint_reports_broken_links_orphans_unlinked_mentions_and_relations() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/acme.md",
+        "# Acme\nsee [[Ghost]] and [[2026-01-05]]\n",
+    );
+    fixture.write_note("notes/ada.md", "---\ncompany: \"[[Acme]]\"\n---\n# Ada\n");
+    fixture.write_note("notes/lonely.md", "# Lonely\nnobody links here\n");
+    fixture.write_note(
+        "notes/meeting.md",
+        "# Meeting\nWe talked about Lonely today.\n",
+    );
+    fixture.write_note("notes/v2.md", "---\nsupersedes: \"[[V1]]\"\n---\n# V2\n");
+    fixture.write_note("notes/v1.md", "# V1\n");
+    fixture.write_note("notes/v4.md", "---\nsuperseded_by: \"[[V5]]\"\n---\n# V4\n");
+    fixture.write_note("notes/v5.md", "---\nsupersedes: \"[[V4]]\"\n---\n# V5\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\n[[Nowhere]] Lonely\n",
+    );
+    fixture.build_index();
+    fixture.insert_link_at("notes/acme.md", "Ghost", "[[Ghost]]", None);
+    fixture.insert_link_at("notes/acme.md", "2026-01-05", "[[2026-01-05]]", None);
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]]", Some("company"));
+    fixture.insert_link_at("notes/v2.md", "V1", "[[V1]]", Some("supersedes"));
+    fixture.insert_link_at("notes/v4.md", "V5", "[[V5]]", Some("superseded_by"));
+    fixture.insert_link_at("notes/v5.md", "V4", "[[V4]]", Some("supersedes"));
+    fixture.insert_link_at("notes/secret.md", "Nowhere", "[[Nowhere]]", None);
+
+    let value = json(&kore(&fixture, &["lint", "--json"]));
+    let text = value.to_string();
+    assert!(
+        !text.contains("secret") && !text.contains("Nowhere"),
+        "{value}"
+    );
+
+    let broken = value["broken"].as_array().unwrap();
+    assert_eq!(broken.len(), 1, "{value}");
+    assert_eq!(broken[0]["target"], "Ghost");
+    assert_eq!(broken[0]["sources"][0]["path"], "notes/acme.md");
+
+    let orphans: Vec<&str> = value["orphans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|note| note["path"].as_str().unwrap())
+        .collect();
+    assert!(orphans.contains(&"notes/lonely.md"), "{value}");
+    assert!(!orphans.contains(&"notes/ada.md"), "{value}");
+
+    let unlinked = value["unlinked"].as_array().unwrap();
+    assert!(
+        unlinked.iter().any(|item| item["path"] == "notes/lonely.md"
+            && item["sources"][0]["path"] == "notes/meeting.md"),
+        "{value}"
+    );
+
+    let relations = value["relations"].as_array().unwrap();
+    assert_eq!(relations.len(), 1, "{value}");
+    assert_eq!(relations[0]["from"]["path"], "notes/v2.md");
+    assert_eq!(relations[0]["to"]["path"], "notes/v1.md");
+
+    let only = json(&kore(&fixture, &["lint", "--check", "broken", "--json"]));
+    assert!(only.get("orphans").is_none(), "{only}");
+    assert_eq!(only["counts"]["broken"], 1);
+
+    let bad = kore(&fixture, &["lint", "--check", "typos"]);
+    assert_eq!(bad.status.code(), Some(2));
+}
+
+#[test]
+fn lint_flags_a_typed_relation_pointing_at_the_wrong_type() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/ada.md",
+        "---\ncompany: \"[[Pricing]]\"\n---\n# Ada #person\n",
+    );
+    fixture.write_note(
+        "notes/bob.md",
+        "---\ncompany: \"[[Acme]]\"\n---\n# Bob #person\n",
+    );
+    fixture.write_note("notes/acme.md", "# Acme #company\n");
+    fixture.write_note("notes/pricing.md", "# Pricing\n");
+    fixture.build_index();
+    fixture.insert_tag_type(
+        "person",
+        r#"[{"name":"Company","key":"company","type":"relation","target":"company"}]"#,
+    );
+    for (path, tag) in [
+        ("notes/ada.md", "person"),
+        ("notes/bob.md", "person"),
+        ("notes/acme.md", "company"),
+    ] {
+        fixture.insert_tag(path, tag);
+    }
+    fixture.insert_link_at("notes/ada.md", "Pricing", "[[Pricing]]", Some("company"));
+    fixture.insert_link_at("notes/bob.md", "Acme", "[[Acme]]", Some("company"));
+
+    let value = json(&kore(&fixture, &["lint", "--check", "relations", "--json"]));
+    let relations = value["relations"].as_array().unwrap();
+    assert_eq!(relations.len(), 1, "{value}");
+    assert_eq!(relations[0]["kind"], "wrongType");
+    assert_eq!(relations[0]["from"]["path"], "notes/ada.md");
+    assert_eq!(relations[0]["expected"], "company");
 }

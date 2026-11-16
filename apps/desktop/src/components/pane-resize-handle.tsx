@@ -1,4 +1,4 @@
-import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { cn } from '@/lib/utils'
 
 interface PaneResizeHandleProps {
@@ -9,9 +9,24 @@ interface PaneResizeHandleProps {
 /**
  * Divider between two panes. Drag sets the previous sibling's flex-basis in
  * pixels for this session only; sizes reset on relaunch by design.
+ *
+ * The divider only exists while there is a pane after it, so when that pane
+ * closes the divider unmounts and hands its sibling back to the layout's own
+ * `flex-1`. Left pinned, the surviving pane would keep its dragged width and
+ * the space the closed pane held would stay an empty hole in the window.
  */
 export function PaneResizeHandle({ axis }: PaneResizeHandleProps): ReactElement {
   const rows = axis === 'rows'
+  // The pane this divider has pinned, if any. A plain holder rather than a
+  // DOM ref: it names the sibling, which React never hands this component.
+  const pinned = useRef<{ element: HTMLElement | null }>({ element: null })
+  useEffect(() => {
+    const holder = pinned.current
+    return () => {
+      holder.element?.style.removeProperty('flex')
+      holder.element = null
+    }
+  }, [])
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const handle = event.currentTarget
     // The handle resizes its previous sibling: the pane to its left on the
@@ -24,6 +39,7 @@ export function PaneResizeHandle({ axis }: PaneResizeHandleProps): ReactElement 
     const box = before.getBoundingClientRect()
     const startSize = rows ? box.height : box.width
     const minimum = rows ? 200 : 360
+    pinned.current.element = before
     try {
       handle.setPointerCapture(event.pointerId)
     } catch {

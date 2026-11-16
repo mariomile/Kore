@@ -11,6 +11,11 @@ const KORE_MARK = new URL('./kore-mark.png', import.meta.url).href
  * rather than a blank frame. Light themes invert the grayscale artwork so the
  * same asset stays a mark, not a white blob on paper.
  *
+ * iPhone shows it too, right after the native launch screen, which paints the
+ * same mark at the same size on the same background (gen/apple
+ * LaunchScreen.storyboard), so the hand-off reads as the mark starting to
+ * breathe. `h-dvh` keeps it centred on the full iOS viewport.
+ *
  * `prefers-reduced-motion` stops the breathe app-wide (styles/index.css).
  */
 export function AppBootScreen(): ReactElement {
@@ -18,7 +23,7 @@ export function AppBootScreen(): ReactElement {
     <div
       role="status"
       aria-label="Opening your vault"
-      className="flex h-screen w-screen items-center justify-center bg-surface-app"
+      className="flex h-dvh w-screen items-center justify-center bg-surface-app"
     >
       <span aria-hidden className="kore-boot-mark">
         <img src={KORE_MARK} alt="" className="h-24 w-auto invert dark:invert-0" />

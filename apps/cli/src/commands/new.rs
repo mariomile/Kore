@@ -1,6 +1,7 @@
 //! `kore new <title>` — create a regular note the way the app would: a
 //! title-derived filename (`notes/<slug>.md`, `-2` suffix on collision,
-//! claimed with an atomic no-clobber create) and an H1 title. `--template`
+//! claimed with an atomic no-clobber create) and an H1 title. A `--tag`
+//! whose type declares a home folder (`folder:`) places the note there. `--template`
 //! seeds the body from a `templates/` file with its frontmatter stripped and
 //! the `{{date}}`/`{{date:iso}}`/`{{time}}`/`{{title}}` placeholders
 //! expanded (`packages/core/src/markdown/template-placeholders.ts`). The CLI
@@ -192,6 +193,23 @@ fn seed_body(
     Ok(None)
 }
 
+/// The `{title}` segment a type's `folder:` may end in: one folder per note.
+const TITLE_SEGMENT: &str = "{title}";
+
+/// Where a new note with file stem `stem` is created: its type's home folder
+/// when the type declares one (`folder:`), else Kore's `notes/`. A trailing
+/// `{title}` gives the note its own folder, named like it. Mirrors core's
+/// `typedNoteFolder` (`packages/core/src/tags/type-folder.ts`).
+fn typed_note_path(folder: Option<&str>, stem: &str) -> String {
+    match folder {
+        None => format!("notes/{stem}.md"),
+        Some(home) => match home.strip_suffix(TITLE_SEGMENT) {
+            Some(base) => format!("{base}{stem}/{stem}.md"),
+            None => format!("{home}/{stem}.md"),
+        },
+    }
+}
+
 pub fn run(
     graph: &Graph,
     json: bool,
@@ -278,7 +296,7 @@ pub fn run(
         } else {
             format!("{slug}-{ordinal}")
         };
-        let rel_path = format!("notes/{stem}.md");
+        let rel_path = typed_note_path(schema.folder.as_deref(), &stem);
         let absolute = graph.root.join(&rel_path);
         if !create_noclobber(&absolute, &content)? {
             continue;
@@ -302,7 +320,7 @@ pub fn run(
 
 #[cfg(test)]
 mod tests {
-    use super::{expand_placeholders, ordinal_suffix, TemplateValues};
+    use super::{expand_placeholders, ordinal_suffix, typed_note_path, TemplateValues};
 
     fn values() -> TemplateValues {
         TemplateValues {
@@ -333,6 +351,19 @@ mod tests {
         assert_eq!(
             expand_placeholders("{{ {{date:iso}} }}", &values()),
             "{{ 2026-08-20 }}"
+        );
+    }
+
+    #[test]
+    fn places_typed_notes_in_their_home_folder() {
+        assert_eq!(typed_note_path(None, "acme"), "notes/acme.md");
+        assert_eq!(
+            typed_note_path(Some("CRM/People"), "ada"),
+            "CRM/People/ada.md"
+        );
+        assert_eq!(
+            typed_note_path(Some("Active/Projects/{title}"), "kore-cloud"),
+            "Active/Projects/kore-cloud/kore-cloud.md"
         );
     }
 

@@ -2,8 +2,9 @@ import { useState, type ReactElement } from 'react'
 import { dailyFormatProblem, type ImportMapping, type ObsidianImportReport } from '@kore/core'
 import { ChevronDown, Refresh } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
-import { useObsidianConversion } from '@/hooks/use-obsidian-conversion'
+import { useObsidianConversion, useVaultHasGitHistory } from '@/hooks/use-obsidian-conversion'
 import { useObsidianImportDryRun } from '@/hooks/use-obsidian-import-dry-run'
 import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
@@ -113,6 +114,8 @@ function ConvertBlock({ mapping }: ConvertBlockProps): ReactElement {
   const { graph, openRecent } = useGraph()
   const conversion = useObsidianConversion(graph)
   const [opening, setOpening] = useState(false)
+  const [keepHistory, setKeepHistory] = useState(false)
+  const hasHistory = useVaultHasGitHistory(graph?.generation ?? null)
   const [openError, setOpenError] = useState<string | null>(null)
   const available = isNativeShell() && !isMobileSurface()
   const blocked = mapping.daily !== null && dailyFormatProblem(mapping.daily.format) !== null
@@ -123,14 +126,17 @@ function ConvertBlock({ mapping }: ConvertBlockProps): ReactElement {
     status =
       progress.phase === 'copying'
         ? 'Copying the vault…'
-        : `Writing converted notes: ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}…`
+        : progress.phase === 'committing'
+          ? 'Recording the conversion in the vault’s history…'
+          : `Writing converted notes: ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}…`
   } else if (result !== null) {
-    status = `Converted copy written to ${result.destination}: ${count(result.files, 'file', 'files')}, ${count(result.written, 'converted', 'converted')}. This vault is unchanged.`
+    status = `Converted copy written to ${result.destination}: ${count(result.files, 'file', 'files')}, ${count(result.written, 'converted', 'converted')}.${result.commit === null ? '' : ' The conversion is one commit on the vault’s history, and backup picks up from there when you open the copy.'} This vault is unchanged.`
   } else if (!available) {
     status = 'Converting is available in the Mac app.'
   } else {
-    status =
-      'Convert into a new, empty folder. This vault is only read; its Git history isn’t copied.'
+    status = keepHistory
+      ? 'Convert into a new, empty folder. This vault is only read; the copy continues its Git history.'
+      : 'Convert into a new, empty folder. This vault is only read; its Git history isn’t copied.'
   }
 
   const openCopy = (): void => {
@@ -159,7 +165,7 @@ function ConvertBlock({ mapping }: ConvertBlockProps): ReactElement {
             type="button"
             size="sm"
             disabled={!available || blocked || conversion.pending}
-            onClick={() => conversion.convert(mapping)}
+            onClick={() => conversion.convert(mapping, keepHistory && hasHistory)}
           >
             {conversion.pending ? <Spinner /> : null}
             Convert to a copy…
@@ -170,6 +176,21 @@ function ConvertBlock({ mapping }: ConvertBlockProps): ReactElement {
           </Button>
         )}
       </div>
+      {result === null && hasHistory && available ? (
+        <label className="flex items-start gap-2 text-xs text-text-muted">
+          <Checkbox
+            checked={keepHistory}
+            disabled={conversion.pending}
+            onCheckedChange={(checked) => setKeepHistory(checked === true)}
+            aria-label="Continue the vault’s Git history"
+          />
+          <span>
+            Continue the vault’s Git history: the copy keeps its repository and remote, and the
+            conversion is recorded as one commit. Use this when you switch to the copy for good, so
+            its backup goes on in the same repository.
+          </span>
+        </label>
+      ) : null}
       {result !== null && result.symlinks > 0 ? (
         <p className="text-[11px] text-text-muted">
           {count(result.symlinks, 'symbolic link was', 'symbolic links were')} not copied.

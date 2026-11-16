@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
 import { useRouter } from '@/routing/router'
+import { ConvertToTypes } from './convert-to-types'
 import { useBaseFiles } from './use-base-view'
 
 /** Every `.base` file in the vault, each opening its Base screen. */
@@ -24,22 +25,25 @@ export function BasesIndex(): ReactElement {
           No .base files yet. Bases made in Obsidian show up here.
         </p>
       ) : (
-        <ul className="mt-6 flex flex-col">
-          {paths.map((path) => (
-            <li key={path}>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate({ kind: 'base', path, view: null })
-                }}
-                className="flex w-full min-w-0 items-baseline gap-3 rounded-md px-2 py-1.5 text-left hover:bg-surface-hover"
-              >
-                <span className="text-[13px] font-medium text-text">{baseDisplayName(path)}</span>
-                <span className="min-w-0 truncate text-xs text-text-muted">{path}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ConvertToTypes paths={paths} label="Convert bases to type views" />
+          <ul className="mt-6 flex flex-col">
+            {paths.map((path) => (
+              <li key={path}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate({ kind: 'base', path, view: null })
+                  }}
+                  className="flex w-full min-w-0 items-baseline gap-3 rounded-md px-2 py-1.5 text-left hover:bg-surface-hover"
+                >
+                  <span className="text-[13px] font-medium text-text">{baseDisplayName(path)}</span>
+                  <span className="min-w-0 truncate text-xs text-text-muted">{path}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   )

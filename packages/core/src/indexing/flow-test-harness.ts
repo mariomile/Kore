@@ -107,8 +107,8 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
 
   const insertLink = database.prepare(
     `INSERT INTO links(
-      source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const link of indexed.links) {
     insertLink.run(
@@ -118,14 +118,17 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
       link.targetKey,
       link.targetPathKey,
       link.alias,
+      link.relation,
       link.posFrom,
       link.posTo,
     )
   }
 
-  const insertTag = database.prepare('INSERT INTO tags(note_path, tag, tag_key) VALUES (?, ?, ?)')
+  const insertTag = database.prepare(
+    'INSERT INTO tags(note_path, tag, tag_key, member) VALUES (?, ?, ?, ?)',
+  )
   for (const tag of indexed.tags) {
-    insertTag.run(indexed.path, tag.tag, tag.tagKey)
+    insertTag.run(indexed.path, tag.tag, tag.tagKey, tag.member ? 1 : 0)
   }
 
   const insertProperty = database.prepare(
@@ -143,8 +146,8 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
 
   const insertTask = database.prepare(
     `INSERT INTO tasks(
-      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time, section
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time, section, tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const task of indexed.tasks) {
     insertTask.run(
@@ -157,6 +160,7 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
       task.dueDate,
       task.dueTime,
       task.section,
+      JSON.stringify(task.tags),
     )
   }
 }

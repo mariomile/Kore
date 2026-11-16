@@ -40,3 +40,6 @@ kore-index-store = { path = "crates/index-store" }
 [profile.release]
 codegen-units = 1
 lto = "fat"
+# The release binaries carry no debug info, only the symbol table (~12 MB of
+# the desktop binary); panics still report their message and source location.
+strip = "symbols"

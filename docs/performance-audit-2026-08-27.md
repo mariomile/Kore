@@ -21,7 +21,7 @@ Recommended order: measure native footprint correctly, reproduce with a controll
 | Local documentation commit | `d72533f1 docs(planning): define the Kore personal OS architecture and roadmap` |
 | Working branch | `docs/personal-os-planning`, documentation commit rebased onto the source baseline |
 | Observed executable | `/Applications/Memento.app/Contents/MacOS/reflect-open` |
-| Observed version and PID | `0.28.9`, PID `11878`, identifier `app.lore.desktop` |
+| Observed version and PID | `0.28.9`, PID `11878`, identifier `app.kore.desktop` |
 | Host | ARM64, macOS 26.5.2 (`25F84`) |
 | Process launch | 2026-08-27 20:05:53.269 +0200 |
 | Observation window | Approximately 23:31–23:40 +0200 on the same day |

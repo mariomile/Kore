@@ -280,6 +280,7 @@ async function tagKeysForPaths(paths: readonly string[]): Promise<Map<string, Se
     const rows = await db
       .selectFrom('tags')
       .where('notePath', 'in', chunk)
+      .where('member', '=', 1)
       .select(['notePath', 'tagKey'])
       .distinct()
       .execute()

@@ -488,7 +488,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByRole('button', { name: 'Add property' })).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Configure #book' }).click()
-    await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
+    await expect.element(page.getByRole('dialog', { name: 'Book' })).toBeInTheDocument()
     await view.unmount()
   })
 

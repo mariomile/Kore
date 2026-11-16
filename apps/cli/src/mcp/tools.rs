@@ -218,19 +218,33 @@ pub(super) fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "backlinks",
-            description: "List the notes that link to a note.",
+            description: "List the notes that link to a note. Each one names its relations (the frontmatter keys it links under, e.g. a person whose `company:` is this note) and gives up to 3 mentions: the paragraph, list item or frontmatter line each link sits in, to quote as the source. Pass relation to keep only notes linking under that key.",
             effect: Effect::Read,
-            properties: || json!({ "note": note_schema() }),
+            properties: || json!({
+                "note": note_schema(),
+                "relation": { "type": "string", "description": "Only notes linking under this frontmatter key, case-insensitive (e.g. company, author, up)" }
+            }),
             required: &["note"],
-            build: |args| Ok(Invocation::new("backlinks").positionals(&[required_string(args, "note")?])),
+            build: |args| {
+                Ok(Invocation::new("backlinks")
+                    .option("relation", string_arg(args, "relation")?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
         },
         Tool {
             name: "links",
-            description: "List the wiki links a note makes, each resolved to its target note when it exists.",
+            description: "List the wiki links a note makes, each resolved to its target note when it exists and naming its relations: the frontmatter keys it is the value of (company, author, up…); a link with no relations is a mention in the body. Pass relation to keep only links under that key.",
             effect: Effect::Read,
-            properties: || json!({ "note": note_schema() }),
+            properties: || json!({
+                "note": note_schema(),
+                "relation": { "type": "string", "description": "Only links made under this frontmatter key, case-insensitive (e.g. company, author, up)" }
+            }),
             required: &["note"],
-            build: |args| Ok(Invocation::new("links").positionals(&[required_string(args, "note")?])),
+            build: |args| {
+                Ok(Invocation::new("links")
+                    .option("relation", string_arg(args, "relation")?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
         },
         Tool {
             name: "note_properties",
@@ -355,8 +369,91 @@ pub(super) fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "check_coverage",
+            description: "Before answering a question from the vault, check what the vault holds on it: each content word with how many notes contain it, the words no note contains (missing), the best-matching notes with the words they hold, their tags, dates and the relations around them, and a verdict: covered, partial or none. When the verdict is partial or none, say what the vault does not cover instead of guessing. Matches words, not meaning: also try search for paraphrases.",
+            effect: Effect::Read,
+            properties: || json!({
+                "question": { "type": "string", "description": "The question or topic, in plain words" },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 50, "description": "Maximum notes (default 10)" }
+            }),
+            required: &["question"],
+            build: |args| {
+                Ok(Invocation::new("coverage")
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "question")?]))
+            },
+        },
+        Tool {
+            name: "note_neighborhood",
+            description: "The notes around a note in one call, up to two links away, following links in both directions: each with its depth, tags and the edges (with their relation, e.g. company, author) that tie it in. Named relations rank first. Use it to gather context before answering about a person, project or company. Daily notes appear as neighbors but are not expanded. truncated is true when more notes matched than limit.",
+            effect: Effect::Read,
+            properties: || json!({
+                "note": note_schema(),
+                "depth": { "type": "integer", "minimum": 1, "maximum": 2, "description": "1 = direct neighbors (default), 2 = also their neighbors" },
+                "relation": { "type": "string", "description": "Walk only edges under this frontmatter key (e.g. company, project)" },
+                "tag": { "type": "string", "description": "Return only notes carrying this tag or a child of it (e.g. type/person)" },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 200, "description": "Maximum notes (default 40)" }
+            }),
+            required: &["note"],
+            build: |args| {
+                let depth = match args.get("depth") {
+                    None | Some(Value::Null) => None,
+                    Some(value) => match value.as_u64() {
+                        Some(depth @ 1..=2) => Some(depth.to_string()),
+                        _ => return Err("`depth` must be 1 or 2".to_string()),
+                    },
+                };
+                Ok(Invocation::new("neighborhood")
+                    .option("depth", depth)
+                    .option("relation", string_arg(args, "relation")?)
+                    .option("tag", string_arg(args, "tag")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
+        },
+        Tool {
+            name: "graph_lint",
+            description: "The vault's graph health in one call: broken wiki links (targets no note answers to, with their sources), orphan notes (no links in or out), unlinked mentions (a note's title written in another note's text without a link), and inconsistent relations (a relation whose inverse key the vault uses is missing on the other side, or a typed relation pointing at a note of the wrong type). Reports only; it changes nothing. Propose the fixes to the user before editing notes.",
+            effect: Effect::Read,
+            properties: || json!({
+                "checks": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["broken", "orphans", "unlinked", "relations"] },
+                    "description": "Only these checks (default all)"
+                },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 500, "description": "Maximum items per check (default 50)" }
+            }),
+            required: &[],
+            build: |args| {
+                let checks = match args.get("checks") {
+                    None | Some(Value::Null) => None,
+                    Some(Value::Array(items)) => {
+                        let mut names = Vec::new();
+                        for item in items {
+                            match item.as_str() {
+                                Some(name @ ("broken" | "orphans" | "unlinked" | "relations")) => {
+                                    names.push(name.to_string())
+                                }
+                                _ => {
+                                    return Err(
+                                        "`checks` items must be broken, orphans, unlinked or relations"
+                                            .to_string(),
+                                    )
+                                }
+                            }
+                        }
+                        (!names.is_empty()).then(|| names.join(","))
+                    }
+                    Some(_) => return Err("`checks` must be an array".to_string()),
+                };
+                Ok(Invocation::new("lint")
+                    .option("check", checks)
+                    .option("limit", limit_arg(args)?))
+            },
+        },
+        Tool {
             name: "explain_note",
-            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
+            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it, each with its named relations and the backlinks' context. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
             effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
@@ -498,7 +595,7 @@ pub(super) fn tools() -> Vec<Tool> {
             properties: || json!({
                 "title": { "type": "string" },
                 "body": { "type": "string", "description": "Markdown placed under the title" },
-                "tags": { "type": "array", "items": { "type": "string" } },
+                "tags": { "type": "array", "items": { "type": "string" }, "description": "A tag whose type has a home folder places the note there" },
                 "properties": { "type": "object", "description": "Frontmatter values by key; lists as arrays" }
             }),
             required: &["title"],

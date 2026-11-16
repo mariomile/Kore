@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useImperativeHandle,
   useInsertionEffect,
   useRef,
@@ -7,8 +8,10 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { resourceUrl, errorMessage, type TimeFormat } from '@kore/core'
+import { resourceUrl, errorMessage, type DateFormat, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
+import { DateLinkLabels } from './date-link-labels'
+import { togglePageAtCaret } from './page-block-commands'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
   AcceptPendingReplacementOptions,
@@ -37,6 +40,7 @@ import {
 } from '@meowdown/react'
 import { EditorInputTraits } from '@/editor/editor-input-traits'
 import { FocusedEditorTracker } from './focused-editor'
+import { SelectionShape } from './selection-shape'
 import { BlockActionToolbar } from '@/editor/block-action-toolbar'
 import { FormattingToolbarBridge } from '@/editor/formatting-toolbar-bridge'
 import {
@@ -57,6 +61,7 @@ import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 import { revealBlockId } from '@/editor/block-id-plugin'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
+import { markLaunch } from '@/lib/launch-timing'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
@@ -194,6 +199,11 @@ export interface NoteEditorHandle {
   /** Redo the latest undone editor transaction. */
   redo(): void
   /**
+   * Turn the caret's block into a page, or a page back into a block (the
+   * `/` menu's Page row). Returns why it could not, or null.
+   */
+  togglePage?(): string | null
+  /**
    * Move the caret to the heading a link fragment names (text or slug), or to
    * the line a `^id` fragment names, and scroll it into view; false when the
    * note has no such heading or line.
@@ -217,6 +227,11 @@ interface NoteEditorProps {
    * `timeFormat` setting). Defaults to `12h`.
    */
   timeFormat?: TimeFormat
+  /**
+   * How `[[2026-11-20]]` date links read (the user's `dateFormat` setting).
+   * Defaults to `mdy`.
+   */
+  dateFormat?: DateFormat
   /**
    * Whether web links open in the in-app browser (the `browserOpenLinksInApp`
    * setting). Alt-click always does the opposite. Defaults to `true`.
@@ -350,6 +365,7 @@ export function NoteEditor({
   spellCheck = true,
   smoothCaretAnimation = true,
   timeFormat = '12h',
+  dateFormat = 'mdy',
   openLinksInApp = true,
   bulletAfterHeading = false,
   blockHandle = false,
@@ -382,6 +398,9 @@ export function NoteEditor({
 }: NoteEditorProps): ReactElement {
   const innerRef = useRef<EditorHandle>(null)
   const followDeepLink = useFollowDeepLink()
+  useEffect(() => {
+    markLaunch('editor')
+  }, [])
 
   // The handlers below keep a stable identity for meowdown's lifetime — a new
   // identity rebuilds its extensions, which an uncontrolled editor cannot
@@ -450,6 +469,10 @@ export function NoteEditor({
       findPrevious: () => innerRef.current?.findPrevious(),
       undo: () => innerRef.current?.editor?.commands.undo(),
       redo: () => innerRef.current?.editor?.commands.redo(),
+      togglePage: () => {
+        const editor = innerRef.current?.editor
+        return editor === undefined || editor === null ? null : togglePageAtCaret(editor)
+      },
       revealHeading: (fragment) => revealHeading(innerRef.current, fragment),
     }),
     [],
@@ -640,7 +663,9 @@ export function NoteEditor({
           onExitBoundary={handleExitBoundary}
         >
           <EditorInputTraits />
+          <DateLinkLabels dateFormat={dateFormat} />
           <FocusedEditorTracker />
+          <SelectionShape />
           {/* Only a pane that persists files gets the toolbar's attach button;
             `handleFilePaste` is the same handler meowdown pastes through. */}
           <FormattingToolbarBridge

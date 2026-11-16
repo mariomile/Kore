@@ -8,6 +8,7 @@ import { PropertyValueEditor } from './property-editors'
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
 const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
 const createNoteWithTitle = vi.hoisted(() => vi.fn())
+const createTypedNoteWithTitle = vi.hoisted(() => vi.fn())
 const getTagType = vi.hoisted(() => vi.fn())
 const getWikiAddressForPath = vi.hoisted(() => vi.fn())
 const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
@@ -15,6 +16,7 @@ const vaultTags = vi.hoisted(() => ({ current: [] as string[] }))
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteWithTitle,
+  createTypedNoteWithTitle,
   getTagType,
   getWikiAddressForPath,
   listNoteTags: async () => vaultTags.current.map((tag) => ({ tag, count: 1 })),
@@ -24,9 +26,9 @@ vi.mock('@kore/core', async (importOriginal) => ({
     claimedTargetKeys: [],
     queryReadsAsDate: false,
   }),
-  suggestRelationTargets: async (_query: string, tagKey: string) => {
+  suggestRelationTargets: async (_query: string, tagKey: string, limit = 8) => {
     scopedTargetKeys.current.push(tagKey)
-    return { suggestions: relationSuggestions.current, claimedTargetKeys: [] }
+    return { suggestions: relationSuggestions.current.slice(0, limit), claimedTargetKeys: [] }
   },
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -39,6 +41,7 @@ const onCommit = vi.fn<(value: unknown) => void>()
 beforeEach(() => {
   onCommit.mockClear()
   createNoteWithTitle.mockReset()
+  createTypedNoteWithTitle.mockReset()
   getTagType.mockReset().mockResolvedValue(null)
   getWikiAddressForPath.mockReset()
   vaultTags.current = []
@@ -230,7 +233,7 @@ describe('PropertyValueEditor', () => {
   it('creates a new note from an untargeted relation into the collection named like the field', async () => {
     relationSuggestions.current = []
     vaultTags.current = ['meeting', 'Company']
-    createNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
+    createTypedNoteWithTitle.mockResolvedValue('notes/trade-republic.md')
     getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
     const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
     const view = await render(editor(property))
@@ -239,7 +242,40 @@ describe('PropertyValueEditor', () => {
     await userEvent.keyboard('Trade Republic')
     await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
     await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
-    expect(createNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 1, '#company')
+    // The type lands in the new note's Type field in the one create, never
+    // as a hidden body `#company` line that typing in the body could erase.
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Trade Republic',
+      'company',
+      {},
+      1,
+      undefined,
+      undefined,
+    )
+    expect(createNoteWithTitle).not.toHaveBeenCalled()
+  })
+
+  it('creates the related note in the target type folder when it has one', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['Company']
+    getTagType.mockResolvedValue({ properties: [], folder: 'CRM/Companies' })
+    createTypedNoteWithTitle.mockResolvedValue('CRM/Companies/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Trade Republic',
+      'company',
+      {},
+      1,
+      undefined,
+      'CRM/Companies',
+    )
   })
 
   it('creates a plain note from an untargeted relation when no collection matches', async () => {
@@ -307,7 +343,7 @@ describe('PropertyValueEditor', () => {
       },
     ]
     let resolveCreate: ((path: string) => void) | undefined
-    createNoteWithTitle.mockImplementationOnce(
+    createTypedNoteWithTitle.mockImplementationOnce(
       async () =>
         await new Promise<string>((resolve) => {
           resolveCreate = resolve
@@ -340,6 +376,36 @@ describe('PropertyValueEditor', () => {
     await expect
       .poll(() => onCommit.mock.calls.at(-1)?.[0])
       .toEqual(['[[Frank Herbert]]', '[[Octavia Butler]]'])
+  })
+
+  it('lists every row of a target collection larger than six', async () => {
+    const areas = [
+      'Health',
+      'Money & Admin',
+      'Network',
+      'Building',
+      'Weekly Review',
+      'Now',
+      'Career',
+    ]
+    relationSuggestions.current = areas.map((title) => ({
+      target: title,
+      insertText: title,
+      path: `areas/${title}.md`,
+      title,
+      alias: null,
+      date: null,
+    }))
+    const property: TagProperty = { name: 'Area', key: 'area', type: 'relations', target: 'area' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Area' }).click()
+    await expect.element(view.getByPlaceholder('Link #area rows…')).toBeVisible()
+    for (const title of areas) {
+      await expect
+        .element(view.getByRole('option', { name: title, exact: true }))
+        .toBeInTheDocument()
+    }
   })
 
   it('deletes the key on the last unlink of a multi-relation', async () => {

@@ -23,8 +23,10 @@ names are migrated on first open; never write them again. **Reflect** (the
 upstream project this repo forked from) survives only where it means that
 upstream app (the Reflect V1 importer, upstream docs) and in history;
 packages are `@kore/*`, crates `kore-*`. `pnpm lint:names` fails when a file
-gains a new "reflect" name. Apple identity stays `app.lore.*` and the keychain
-service stays `"lore"` until their own migration ships. See AGENTS.md, Naming.
+gains a new "reflect" name. The Apple identity is `app.kore.*`
+(`iCloud.app.kore`, `group.app.kore`) and the keychain service is `"kore"`;
+the old `app.lore.*` data folder and `"lore"` keychain entries are read as
+migration fallbacks only. See AGENTS.md, Naming.
 
 ## Layering rules
 
@@ -120,7 +122,8 @@ notarized **Release** workflow.
 
 4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
    That build creates the `v<version>` tag and publishes `Kore v<version>`
-   (unsigned Apple Silicon DMG plus updater `latest.json`). That is the bump;
+   (Apple Silicon DMG, Developer ID signed and notarized when the
+   `APPLE_CERTIFICATE` secrets are set, plus updater `latest.json`). That is the bump;
    it is done when that run succeeds. The Release PR workflow deliberately
    tags and publishes nothing.
 

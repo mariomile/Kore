@@ -42,7 +42,11 @@ export {
 } from './callout'
 export {
   formatEmbedBlock,
+  formatUrlEmbedBody,
+  EMBED_LAYOUTS,
+  type EmbedLayout,
   parseEmbedBlocks,
+  parseEmbedFenceBody,
   type EmbedBlock,
   type HtmlEmbed,
   type UrlEmbed,
@@ -52,10 +56,10 @@ export {
   linkKindInfo,
   LINK_KIND_FALLBACK,
   LINK_KINDS,
-  videoPlayerUrl,
   type LinkKind,
   type LinkKindInfo,
 } from './link-kind'
+export { embedPlayer, startSeconds, type EmbedPlayer } from './embed-player'
 export {
   blockIdsIn,
   blockLinkLabel,
@@ -66,6 +70,8 @@ export {
   lineBlockId,
   newBlockId,
   noteLinkBlockId,
+  wikilinkLabel,
+  wikilinkTarget,
   withoutBlockIds,
 } from './block-ids'
 export {
@@ -75,6 +81,14 @@ export {
   type BranchMoveInput,
   type SourceBacklink,
 } from './move-branch'
+export {
+  PAGE_ID_PREFIX,
+  isPageBlockId,
+  linePageId,
+  newPageBlockId,
+  pagePreview,
+  pageTitle,
+} from './sub-page'
 export {
   extractHeadingSection,
   formatNoteTransclusion,
@@ -86,8 +100,11 @@ export {
 } from './note-transclusion'
 export {
   parseNoteAppearance,
+  noteIconValue,
   parseNoteAppearanceFromSource,
   parseNoteCover,
+  parseNoteCoverY,
+  DEFAULT_COVER_Y,
   parseNoteIcon,
   symbolIconValue,
   type NoteAppearance,
@@ -101,7 +118,7 @@ export {
   frontmatterTagNames,
 } from './extract'
 export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
-export { addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
+export { addFrontmatterTag, addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
 export {
   applyReplaceMatches,
   findReplaceMatches,
@@ -156,6 +173,7 @@ export {
 } from './conflict-markers'
 export { canonicalEmail, canonicalEmails, extractEmailFields, foldEmail } from './email-fields'
 export { foldFallbackTitleKey, foldKey, foldTag } from './keys'
+export { isBlankListSkeleton } from './blank-body'
 export { gistBodyHash, gistFilename } from './gist'
 export { slugForTitle } from './slug'
 export { subjectAliases } from './subject-aliases'

@@ -3,8 +3,10 @@ import { DEFAULT_VAULT_OBJECTS, parseNote, setBridge, isPinned } from '@kore/cor
 import {
   DEFAULT_OBJECTS_SEEDED_META_KEY,
   ensureFirstRunSeeds,
+  markFirstRunSeedsConsidered,
   WELCOME_NOTE_PATH,
   WELCOME_SEEDED_META_KEY,
+  welcomeNoteBody,
 } from './welcome-note'
 
 interface WrittenNote {
@@ -123,5 +125,28 @@ describe('ensureFirstRunSeeds', () => {
     expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
     expect(graph.written).toHaveLength(0)
     expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
+  })
+})
+
+describe('markFirstRunSeedsConsidered', () => {
+  it('marks every seed without writing into a vault opened from GitHub, even an empty one', async () => {
+    const graph = installFakeBridge({})
+    await markFirstRunSeedsConsidered(GENERATIONS.indexGeneration)
+
+    expect(graph.written).toEqual([])
+    expect(graph.meta[WELCOME_SEEDED_META_KEY]).toBe('true')
+    expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
+    // A later open considers nothing: the marks stand.
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(graph.written).toEqual([])
+  })
+})
+
+describe('welcomeNoteBody', () => {
+  it('speaks the phone’s language on mobile: tabs, no desktop shortcuts', () => {
+    const mobile = welcomeNoteBody(true)
+    expect(mobile).toContain('Daily tab')
+    expect(mobile).not.toMatch(/⌘|sidebar/)
+    expect(welcomeNoteBody(false)).toContain('⌘D')
   })
 })

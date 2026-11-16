@@ -20,6 +20,10 @@ export {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  OPTION_COLORS,
+  isOptionColor,
+  optionColorOf,
+  type OptionColor,
   relationCreateTarget,
   withPropertyType,
   QUICK_PROPERTY_TYPES,
@@ -31,11 +35,16 @@ export {
   type TagProperty,
   type TagPropertyType,
   type TagType,
+  parseTypeFolder,
+  TAG_FOLDER_KEY,
+  TYPE_FOLDER_TITLE_SEGMENT,
   type RollupAggregation,
   type RollupConfig,
   type ReverseConfig,
   type FormulaConfig,
 } from './tag-type'
+export { optionRenameMap, renameOptionValue, type OptionRenameMap } from './option-renames'
+export { suggestTypeTag, tagUseCount, type TagUse, type TypeTagSuggestion } from './tag-binding'
 export {
   isEmailValue,
   parseRating,
@@ -61,6 +70,7 @@ export {
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
 export { resolveTagTypes, tagDescendants } from './tag-inheritance'
+export { TAG_VIEWS_KEY, parseTagViews, tagViewsToYaml } from './tag-views'
 export { localCalendarDate } from './timestamps'
 export {
   STARTING_VALUE_NEXT_NUMBER,
@@ -97,6 +107,16 @@ export {
   type CollectionEmbedView,
 } from './collection-embed'
 export {
+  THIS_NOTE_FILTER_TEXT,
+  acceptsThisNoteFilter,
+  hostStartingValues,
+  isThisNoteFilterText,
+  linksToHostNote,
+  hasThisNoteFilter,
+  textLinksToHostNote,
+  type EmbedHostNote,
+} from './embed-host'
+export {
   COLLECTION_DEFINITION_MARKER_KEY,
   KORE_CONFIG_KEY,
   collectionDefinitionConfigSchema,
@@ -112,3 +132,4 @@ export {
   writeDefaultVaultObjects,
   type DefaultVaultObject,
 } from './default-objects'
+export { typeHomeFolder, isFolderNoteHome, typedNoteFolder } from './type-folder'

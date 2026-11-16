@@ -1,5 +1,7 @@
 import { ulid } from 'ulidx'
 import { upsertFrontmatter } from '../markdown/frontmatter'
+import { addFrontmatterTag } from '../markdown/note-tag'
+import { typedNoteFolder } from '../tags/type-folder'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
 import {
@@ -123,6 +125,58 @@ export async function createNoteWithTitle(
 }
 
 /**
+ * The on-disk source for a brand-new note of type `tag`: `id:`, the type in
+ * the frontmatter `tags:` list (the Type field, where #401 says a note's
+ * type lives) and any starting `properties`, then the H1. One string, so the
+ * note is born whole in a single atomic create.
+ *
+ * The type deliberately does not ride a `#tag` line in the body: the editor
+ * hides that line under the Type chips, so ordinary typing in the body could
+ * delete it unseen, and with it the note's type and every field the type
+ * brings (the "frontmatter broke" report on a Company created from a
+ * Person's Company field).
+ */
+export function newTypedNoteSource(
+  title: string,
+  tag: string,
+  properties: Record<string, unknown> = {},
+  body?: string,
+): string {
+  const base = newNoteSource(title, body)
+  // The note's own `id:` and type are this function's to write; a starting
+  // value can never replace them.
+  const fields = Object.fromEntries(
+    Object.entries(properties).filter(([key]) => key !== 'id' && key !== 'tags'),
+  )
+  const withProperties = Object.keys(fields).length === 0 ? base : upsertFrontmatter(base, fields)
+  return addFrontmatterTag(withProperties, tag) ?? withProperties
+}
+
+/**
+ * Create a note titled `title` whose type is `tag` (see
+ * {@link newTypedNoteSource}) at a collision-free slug path, optionally with
+ * a body block under the H1. `home` is the type's `folder:` (its new notes
+ * are born there, see `typedNoteFolder`); absent, the vault's new-note
+ * folder. Returns the new graph-relative path.
+ */
+export async function createTypedNoteWithTitle(
+  title: string,
+  tag: string,
+  properties: Record<string, unknown>,
+  generation: number,
+  body?: string,
+  home?: string,
+): Promise<string> {
+  const claimed = await claimNotePathForSlug(
+    noteFileStemForTitle(title),
+    newTypedNoteSource(title, tag, properties, body),
+    generation,
+    home === undefined ? null : (stem) => typedNoteFolder(home, stem),
+  )
+  return claimed.path
+}
+
+/**
  * Create a note titled `title` from a ready `source` (H1, `id:` and any
  * frontmatter already in it) at a collision-free path named like every
  * create-from-title. `folder` is graph-relative (`''` is the vault root);
@@ -142,6 +196,13 @@ export async function createNoteWithSource(
   )
   return claimed.path
 }
+
+/**
+ * Where a create claims its path: the vault's new-note folder (`null`), a
+ * graph-relative folder (`''` is the root), or a folder that depends on the
+ * stem being tried (a type's `{title}` home names a folder after the note).
+ */
+type NoteFolder = string | null | ((stem: string) => string)
 
 /** Far beyond any real graph's same-slug population; fail loud instead of spinning. */
 const MAX_CREATE_ATTEMPTS = 1000
@@ -166,26 +227,26 @@ async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
-  folder: string | null,
+  folder: NoteFolder,
 ): Promise<{ kind: 'created'; path: string }>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
-  folder: string | null,
+  folder: NoteFolder,
   onCollision: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
-  folder: string | null,
+  folder: NoteFolder,
   onCollision?: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult> {
   for (let ordinal = 1; ordinal <= MAX_CREATE_ATTEMPTS; ordinal += 1) {
     const stem = collisionStem(slug, ordinal)
-    const path =
-      folder === null ? notePath(stem) : folder === '' ? `${stem}.md` : `${folder}/${stem}.md`
+    const dir = typeof folder === 'function' ? folder(stem) : folder
+    const path = dir === null ? notePath(stem) : dir === '' ? `${stem}.md` : `${dir}/${stem}.md`
     const outcome = await createNoteIfAbsent(path, source, generation)
     if (outcome.kind === 'created') {
       return { kind: 'created', path }

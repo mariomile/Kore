@@ -184,7 +184,10 @@ describe('createBackupController', () => {
     const controller = createBackupController({ graph: GRAPH, indexGeneration: 1 })
     await controller.start()
 
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     await vi.waitFor(() => {
       expect(calls).toContain('git_commit_all')
     })
@@ -315,7 +318,10 @@ describe('createBackupController', () => {
     const controller = createBackupController({ graph: GRAPH, indexGeneration: 1 })
     await controller.start()
 
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     await vi.waitFor(() => {
       expect(calls).toContain('git_commit_all')
     })
@@ -513,7 +519,10 @@ describe('createBackupController', () => {
     await controller.signOut()
 
     expect(calls).toContain('secret_delete')
-    expect(controller.getState()).toEqual({ phase: 'disconnected' })
+    expect(controller.getState()).toEqual({
+      phase: 'disconnected',
+      linkedRepo: { owner: 'alex', name: 'notes' },
+    })
     controller.dispose()
   })
 
@@ -727,20 +736,19 @@ describe('createBackupController', () => {
         expect(batches).toEqual([[firstChange], [secondChange]])
       })
       // The second callback already fanned out synchronously, but its direct
-      // index write is queued behind the first gated batch.
+      // index write is queued behind the first gated batch. Sync itself is
+      // done: index catch-up never holds the status on Syncing.
       expect(calls.filter((command) => command === 'index_apply_batch')).toHaveLength(1)
-      expect(controller.getState()).toMatchObject({
-        phase: 'connected',
-        status: { state: 'syncing' },
+      await vi.waitFor(() => {
+        expect(controller.getState()).toMatchObject({
+          phase: 'connected',
+          status: { state: 'idle' },
+        })
       })
 
       releaseIndexApply()
       await vi.waitFor(() => {
         expect(calls.filter((command) => command === 'index_apply_batch')).toHaveLength(2)
-        expect(controller.getState()).toMatchObject({
-          phase: 'connected',
-          status: { state: 'idle' },
-        })
       })
     } finally {
       controller.dispose()
@@ -786,7 +794,7 @@ describe('createBackupController', () => {
     expect(calls.filter((command) => command === 'index_apply_batch')).toHaveLength(1)
   })
 
-  it('keeps launch sync active until pulled notes finish direct indexing', async () => {
+  it('reports idle once Git is done, while pulled notes still index in the background', async () => {
     const { calls, releaseIndexApply } = fakeBridge({
       gateIndexApply: true,
       mergeOutcome: {
@@ -801,18 +809,15 @@ describe('createBackupController', () => {
     await vi.waitFor(() => {
       expect(calls).toContain('index_apply_batch')
     })
-    expect(controller.getState()).toMatchObject({
-      phase: 'connected',
-      status: { state: 'syncing' },
-    })
-
-    releaseIndexApply()
+    // The index apply is still held, yet sync has nothing left to move.
     await vi.waitFor(() => {
       expect(controller.getState()).toMatchObject({
         phase: 'connected',
         status: { state: 'idle' },
       })
     })
+
+    releaseIndexApply()
     controller.dispose()
   })
 

@@ -362,9 +362,9 @@ pub async fn capture_inbox_reject<R: tauri::Runtime>(
 /// debug configuration compiles the Rust dev profile, so `debug_assertions`
 /// tracks the flavor exactly.
 #[cfg(all(target_os = "ios", debug_assertions))]
-const SHARED_GROUP_ID: &str = "group.app.lore.dev";
+const SHARED_GROUP_ID: &str = "group.app.kore.dev";
 #[cfg(all(target_os = "ios", not(debug_assertions)))]
-const SHARED_GROUP_ID: &str = "group.app.lore";
+const SHARED_GROUP_ID: &str = "group.app.kore";
 
 /// The envelope spool directory inside the App Group container. The extension
 /// creates it lazily; a missing directory relays as zero.
@@ -437,24 +437,36 @@ fn relay_shared_spools(shared_inbox: &Path, root: &Path) -> AppResult<u32> {
     Ok(relayed)
 }
 
-/// The shared inbox the iOS share extension writes: `<App Group>/inbox`.
-/// `None` when the container is unavailable (non-iOS platforms; a build
-/// without the App Group entitlement).
+/// The App Group container the iOS share extension shares with the app.
+/// `None` when it is unavailable (non-iOS platforms; a build without the App
+/// Group entitlement).
 #[cfg(target_os = "ios")]
-fn shared_inbox_dir() -> Option<PathBuf> {
+fn shared_container_dir() -> Option<PathBuf> {
     use objc2_foundation::{NSFileManager, NSString};
     let manager = NSFileManager::defaultManager();
     let group = NSString::from_str(SHARED_GROUP_ID);
     let container = manager.containerURLForSecurityApplicationGroupIdentifier(&group)?;
     let path = container.path()?.to_string();
-    Some(PathBuf::from(path).join(SHARED_INBOX_DIR))
+    Some(PathBuf::from(path))
 }
 
-/// Only iOS has a share-extension producer; every other platform's capture
-/// producers write the graph inbox directly.
+/// Only iOS has a share extension; every other platform's capture producers
+/// write the graph inbox directly.
 #[cfg(not(target_os = "ios"))]
-fn shared_inbox_dir() -> Option<PathBuf> {
+fn shared_container_dir() -> Option<PathBuf> {
     None
+}
+
+/// The shared inbox the iOS share extension writes: `<App Group>/inbox`.
+fn shared_inbox_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "ios")]
+    {
+        shared_container_dir().map(|dir| dir.join(SHARED_INBOX_DIR))
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        shared_container_dir()
+    }
 }
 
 /// Relay envelopes the iOS share extension spooled into the App Group inbox
@@ -475,6 +487,34 @@ pub async fn capture_shared_inbox_relay(
             crate::blocking::run_blocking(move || relay_shared_spools(&shared, &root)).await
         }
         None => Ok(0),
+    }
+}
+
+/// The share sheet's note list inside the App Group container; the extension
+/// reads the same name (`ShareTargets.fileName`).
+const SHARE_TARGETS_FILE: &str = "share-targets.json";
+
+/// Cap on the share sheet's note list. Thousands of titles and paths fit in
+/// well under this; anything larger is not the list.
+const SHARE_TARGETS_MAX_BYTES: usize = 4 * 1024 * 1024;
+
+fn write_share_targets(container: &Path, json: &str) -> AppResult<()> {
+    if json.len() > SHARE_TARGETS_MAX_BYTES {
+        return Err(AppError::io("share targets exceed the size cap"));
+    }
+    atomic_write_to(&container.join(SHARE_TARGETS_FILE), json)
+}
+
+/// Write the share sheet's note list (`share-targets.json`) into the App
+/// Group container, atomically. Bytes only: what the list holds is decided
+/// in core (`actions/share-targets`). A no-op without a shared container.
+#[tauri::command]
+pub async fn share_targets_write(json: String) -> AppResult<()> {
+    match shared_container_dir() {
+        Some(container) => {
+            crate::blocking::run_blocking(move || write_share_targets(&container, &json)).await
+        }
+        None => Ok(()),
     }
 }
 
@@ -724,6 +764,16 @@ mod tests {
         assert_eq!(relayed, 0);
         assert!(!old.exists());
         assert!(young.exists());
+    }
+
+    #[test]
+    fn share_targets_write_lands_atomically_and_refuses_oversized_lists() {
+        let container = tempfile::tempdir().unwrap();
+        write_share_targets(container.path(), r#"{"version":1}"#).unwrap();
+        let written = fs::read_to_string(container.path().join(SHARE_TARGETS_FILE)).unwrap();
+        assert_eq!(written, r#"{"version":1}"#);
+        let oversized = "x".repeat(SHARE_TARGETS_MAX_BYTES + 1);
+        assert!(write_share_targets(container.path(), &oversized).is_err());
     }
 
     #[test]

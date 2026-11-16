@@ -74,6 +74,7 @@ const HOST_KINDS: ReadonlyArray<readonly [string, LinkKind]> = [
   ['soundcloud.com', 'audio'],
   ['spotify.com', 'audio'],
   ['podcasts.apple.com', 'audio'],
+  ['music.apple.com', 'audio'],
   ['overcast.fm', 'audio'],
   ['x.com', 'social'],
   ['twitter.com', 'social'],
@@ -168,59 +169,4 @@ export function linkKind(url: string): LinkKind {
     }
   }
   return LINK_KIND_FALLBACK
-}
-
-/** YouTube and Vimeo ids, for the players an embed card can offer to load. */
-const PLAYER_PATTERNS: ReadonlyArray<{
-  readonly host: string
-  readonly extract: (url: URL) => string | null
-  readonly embed: (id: string) => string
-}> = [
-  {
-    host: 'youtube.com',
-    extract: (url) => url.searchParams.get('v') ?? shortsId(url),
-    embed: (id) => `https://www.youtube-nocookie.com/embed/${id}`,
-  },
-  {
-    host: 'youtu.be',
-    extract: (url) => url.pathname.split('/').find(Boolean) ?? null,
-    embed: (id) => `https://www.youtube-nocookie.com/embed/${id}`,
-  },
-  {
-    host: 'vimeo.com',
-    extract: (url) => {
-      const first = url.pathname.split('/').find(Boolean) ?? ''
-      return /^\d+$/.test(first) ? first : null
-    },
-    embed: (id) => `https://player.vimeo.com/video/${id}`,
-  },
-]
-
-function shortsId(url: URL): string | null {
-  const segments = url.pathname.split('/').filter(Boolean)
-  return segments[0] === 'shorts' || segments[0] === 'embed' ? (segments[1] ?? null) : null
-}
-
-/**
- * The privacy-preserving player URL for `url`, or `null` when the video has
- * no known embeddable player. YouTube resolves through `youtube-nocookie.com`
- * — the player is only ever loaded on an explicit click, so the request tells
- * the provider the user pressed play, not that they opened a note.
- */
-export function videoPlayerUrl(url: string): string | null {
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return null
-  }
-  const host = parsed.hostname.replace(/^www\./, '').toLowerCase()
-  for (const player of PLAYER_PATTERNS) {
-    if (!hostMatches(host, player.host)) {
-      continue
-    }
-    const id = player.extract(parsed)
-    return id !== null && /^[\w-]+$/.test(id) ? player.embed(id) : null
-  }
-  return null
 }

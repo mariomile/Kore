@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Kore",
   "version": "../package.json",
-  "identifier": "app.lore.desktop",
+  "identifier": "app.kore.desktop",
   "build": {
     "beforeDevCommand": "pnpm sidecar && pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: kore-asset: https:; font-src 'self' data:; frame-src 'self' kore-asset: https://platform.twitter.com https://platform.x.com https://syndication.twitter.com https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://github.com https://api.github.com"
+      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: kore-asset: https:; font-src 'self' data:; frame-src 'self' kore-asset: https://platform.twitter.com https://platform.x.com https://syndication.twitter.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.loom.com https://open.spotify.com https://embed.music.apple.com https://embed.podcasts.apple.com https://www.figma.com https://embed.figma.com https://codepen.io; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://github.com https://api.github.com"
     }
   },
   "plugins": {
@@ -41,7 +41,7 @@
     "active": true,
     "targets": "all",
     "iOS": {
-      "developmentTeam": "789ULN5MZB",
+      "developmentTeam": "ZQG9377GFQ",
       "template": "src-tauri/ios.project.yml"
     },
     "icon": [

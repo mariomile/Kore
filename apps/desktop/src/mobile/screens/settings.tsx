@@ -8,6 +8,7 @@ import {
   normalizeChatSystemPrompt,
   configuredTranscriptionProviders,
   transcriptionModelFor,
+  TRANSCRIPTION_LANGUAGE_OPTIONS,
   TRANSCRIPTION_MODEL_OPTIONS,
   type AiPrompt,
   type AiProviderConfig,
@@ -19,6 +20,7 @@ import { useAppVersion } from '@/hooks/use-app-version'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { marketingVersion } from '@/lib/marketing-version'
 import { openUrlSync } from '@/lib/open-url'
+import { isNativeShell } from '@/lib/platform'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { AddAiProviderDrawer } from '@/mobile/add-ai-provider-drawer'
 import { AiPromptDrawer } from '@/mobile/ai-prompt-drawer'
@@ -78,6 +80,14 @@ function transcriptionModelOptions(
     value: model.id,
     label: model.label,
   }))
+  return curated.some((option) => option.value === current)
+    ? curated
+    : [...curated, { value: current, label: current }]
+}
+
+/** On-device transcription languages, keeping a stored value outside the list. */
+function transcriptionLanguageOptions(current: string): { value: string; label: string }[] {
+  const curated = [...TRANSCRIPTION_LANGUAGE_OPTIONS]
   return curated.some((option) => option.value === current)
     ? curated
     : [...curated, { value: current, label: current }]
@@ -313,7 +323,11 @@ export function MobileSettings(): ReactElement {
           {showAudio ? (
             <SettingsGroup
               header="Audio memos"
-              footer="Uses AI to add punctuation, paragraphs, and light Markdown."
+              footer={
+                transcriptionProviders.length === 0
+                  ? 'Uses AI to add punctuation, paragraphs, and light Markdown once an AI provider is set. Without one, memos are transcribed on this iPhone and the audio never leaves it.'
+                  : 'Uses AI to add punctuation, paragraphs, and light Markdown.'
+              }
               footerId={audioMemoDescriptionId}
             >
               <SettingsSwitchRow
@@ -322,6 +336,14 @@ export function MobileSettings(): ReactElement {
                 descriptionId={audioMemoDescriptionId}
                 onCheckedChange={(transcriptionFormat) => updateSettings({ transcriptionFormat })}
               />
+              {isNativeShell() ? (
+                <SettingsChipsRow
+                  label="Spoken language"
+                  value={settings.transcriptionLanguage}
+                  options={transcriptionLanguageOptions(settings.transcriptionLanguage)}
+                  onChange={(transcriptionLanguage) => updateSettings({ transcriptionLanguage })}
+                />
+              ) : null}
               {transcriptionProviders.map((provider) => (
                 <SettingsChipsRow
                   key={provider}

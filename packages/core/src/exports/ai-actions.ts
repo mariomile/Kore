@@ -286,6 +286,7 @@ export {
 export { chatToMarkdown } from '../ai/chat/export'
 export {
   BUILT_IN_AI_PROMPTS,
+  chatStarterPrompts,
   filterAiPrompts,
   renderSelectionPrompt,
 } from '../ai/selection-prompts'
@@ -332,6 +333,7 @@ export {
   CHAT_ATTACHMENT_ACCEPT,
   chatAttachmentMediaType,
   isImageMediaType,
+  isPortableImageType,
   MAX_ATTACHMENT_BYTES,
 } from '../ai/chat/attachment-types'
 export {
@@ -371,7 +373,19 @@ export {
   AUDIO_MEMO_MAX_DURATION_MS,
   AUDIO_MEMO_SEGMENT_MS,
   type AudioMemoSession,
+  type SegmentTranscriber,
 } from '../actions/audio-memo-session'
+export {
+  DAILY_WIDGET_TASK_LIMIT,
+  dailyWidgetSnapshot,
+  readDailyWidgetSnapshot,
+  type DailyWidgetSnapshot,
+} from '../actions/daily-widget'
+export {
+  isOnDeviceTranscriptionUnavailable,
+  createNativeOnDeviceTranscriber,
+  OnDeviceTranscriptionUnavailableError,
+} from '../ai/transcribe-on-device'
 export {
   captureAckSchema,
   captureEnvelopeSchema,

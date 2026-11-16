@@ -3,6 +3,7 @@ import { render as renderBare } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import type { CollectionEntry, TagType } from '@kore/core'
+import { EmbedHostContext } from './embed-host-context'
 import { EmbeddedCollection } from './embedded-collection'
 
 const useReusableCollection = vi.hoisted(() => vi.fn())
@@ -33,6 +34,7 @@ const ENTRIES: CollectionEntry[] = [
     properties: {
       author: { value: 'Herbert', valueType: 'string', valueNumber: null },
       status: { value: 'reading', valueType: 'string', valueNumber: null },
+      series: { value: '[[Dune saga]]', valueType: 'string', valueNumber: null },
     },
   },
   {
@@ -234,6 +236,93 @@ describe('EmbeddedCollection', () => {
     )
     await expect.element(view.getByText('Dune')).toBeInTheDocument()
     expect(view.getByText('The Dispossessed').query()).toBeNull()
+  })
+
+  it('keeps only the rows linking to the note it sits in under a `key = this` filter', async () => {
+    useTagType.mockReturnValue({
+      properties: [...BOOK_TYPE.properties, { name: 'Series', key: 'series', type: 'relation' }],
+    })
+    try {
+      const view = await render(
+        <EmbedHostContext value={{ path: 'Series/Dune saga.md', linkTarget: 'Dune saga' }}>
+          <EmbeddedCollection
+            embed={{
+              selection: { kind: 'tag', tag: 'book' },
+              view: 'table',
+              sorts: [],
+              match: 'all',
+              group: null,
+              filters: [{ key: 'series', operator: 'is', text: 'this' }],
+            }}
+            onChange={vi.fn()}
+          />
+        </EmbedHostContext>,
+      )
+      await expect.element(view.getByText('Dune', { exact: true })).toBeInTheDocument()
+      expect(view.getByText('The Dispossessed').query()).toBeNull()
+      await expect.element(view.getByText('Series: this note')).toBeInTheDocument()
+    } finally {
+      useTagType.mockReturnValue(BOOK_TYPE)
+    }
+  })
+
+  it('shows nothing under a `key = this` filter outside a note', async () => {
+    useTagType.mockReturnValue({
+      properties: [...BOOK_TYPE.properties, { name: 'Series', key: 'series', type: 'relation' }],
+    })
+    try {
+      const view = await render(
+        <EmbeddedCollection
+          embed={{
+            selection: { kind: 'tag', tag: 'book' },
+            view: 'table',
+            sorts: [],
+            match: 'all',
+            group: null,
+            filters: [{ key: 'series', operator: 'is', text: 'this' }],
+          }}
+        />,
+      )
+      await expect.element(view.getByTestId('collection-embed')).toBeInTheDocument()
+      expect(view.getByText('The Dispossessed').query()).toBeNull()
+      expect(view.getByText('Dune', { exact: true }).query()).toBeNull()
+    } finally {
+      useTagType.mockReturnValue(BOOK_TYPE)
+    }
+  })
+
+  const TAG_EMBED = {
+    selection: { kind: 'tag' as const, tag: 'book' },
+    view: 'table' as const,
+    sorts: [],
+    group: null,
+    filters: [],
+    match: 'all' as const,
+  }
+
+  it('shows no remove button when the host cannot delete the fence', async () => {
+    const view = await render(<EmbeddedCollection embed={TAG_EMBED} />)
+    await expect.element(view.getByText('Dune')).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Remove collection from note' }).query()).toBeNull()
+  })
+
+  it('removes a tag collection from the note on request', async () => {
+    const onRemove = vi.fn()
+    const view = await render(<EmbeddedCollection embed={TAG_EMBED} onRemove={onRemove} />)
+    await view.getByRole('button', { name: 'Remove collection from note' }).click()
+    expect(onRemove).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes a named collection from the note on request', async () => {
+    const onRemove = vi.fn()
+    const view = await render(
+      <EmbeddedCollection
+        embed={{ ...TAG_EMBED, selection: { kind: 'definition', reference: '01COLLECTION' } }}
+        onRemove={onRemove}
+      />,
+    )
+    await view.getByRole('button', { name: 'Remove collection from note' }).click()
+    expect(onRemove).toHaveBeenCalledTimes(1)
   })
 
   it('renders the live table for a typed tag fence', async () => {

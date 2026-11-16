@@ -6,6 +6,7 @@ import { keybindingFor } from '@/lib/commands/app-commands'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { useOptimisticPinToggle } from '@/lib/notes/use-optimistic-pin-toggle'
+import { LineAuthorsAction } from './line-authors-action'
 import { NoteExportAction } from './note-export-action'
 import { NoteGistAction } from './note-gist-action'
 import { NoteTrashAction } from './note-trash-action'
@@ -71,6 +72,7 @@ export function NoteActionsSection({
       />
       <NoteGistAction path={path} keybinding={GIST_KEYBINDING} />
       <NoteExportAction path={path} keybinding={EXPORT_KEYBINDING} />
+      <LineAuthorsAction />
       {showTrash ? <NoteTrashAction path={path} /> : null}
     </SidebarSection>
   )

@@ -6,6 +6,7 @@ import {
   pickTranscriptionConfig,
   type AiProvidersState,
   type GraphInfo,
+  type SegmentTranscriber,
 } from '@kore/core'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import { startOperation } from '@/lib/operations'
@@ -59,6 +60,11 @@ export interface UseAudioMemoPipelineOptions {
    * error can never park the queue invisibly.
    */
   isErrorSurfaceVisible: () => boolean
+  /**
+   * The platform's keyless speech engine (iOS), used when no cloud provider
+   * has a key. Fixed for the surface's lifetime.
+   */
+  onDeviceTranscriber?: SegmentTranscriber | undefined
 }
 
 /**
@@ -71,7 +77,7 @@ export interface UseAudioMemoPipelineValue {
   pendingCount: number
   /** True while a reconcile pass has memos to transcribe. */
   transcribing: boolean
-  /** False when no OpenAI/Gemini model is configured. */
+  /** False when no OpenAI/Gemini model is configured and the device can't transcribe. */
   hasTranscriptionConfig: boolean
   /** The failure shown in the error phase. */
   error: string | null
@@ -95,7 +101,7 @@ export interface UseAudioMemoPipelineValue {
 export function useAudioMemoPipeline(
   options: UseAudioMemoPipelineOptions,
 ): UseAudioMemoPipelineValue {
-  const { graph } = options
+  const { graph, onDeviceTranscriber } = options
   const { settings } = useSettings()
 
   const [pendingCount, setPendingCount] = useState(0)
@@ -103,6 +109,7 @@ export function useAudioMemoPipeline(
   const [resume, setResume] = useState<PendingAudioCapture | null>(null)
 
   const hasTranscriptionConfig =
+    onDeviceTranscriber !== undefined ||
     pickTranscriptionConfig({
       providers: settings.aiProviders,
       defaultProviderId: settings.defaultAiProviderId,
@@ -161,6 +168,7 @@ export function useAudioMemoPipeline(
       getProviders: () => providersRef.current,
       getTranscriptionFormat: () => transcriptionFormatRef.current,
       getTranscriptionModels: () => transcriptionModelsRef.current,
+      onDeviceTranscriber,
     })
     setReconciler(next)
     reconcilerRef.current = next
@@ -170,7 +178,7 @@ export function useAudioMemoPipeline(
       reconcilerRef.current = null
       setReconciler((current) => (current === next ? null : current))
     }
-  }, [graph.generation])
+  }, [graph.generation, onDeviceTranscriber])
 
   // Passes gate on a configured model before any IO — when the user adds the
   // first key mid-session, kick the pass that gate was suppressing.

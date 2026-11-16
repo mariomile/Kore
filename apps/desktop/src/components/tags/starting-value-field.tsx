@@ -50,7 +50,7 @@ export function StartingValueField({
   const pickFromOptions =
     draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       <span className={FIELD_LABEL_CLASS}>Starting value</span>
       <Select
         value={kind}

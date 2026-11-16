@@ -24,6 +24,7 @@ const definition = vi.hoisted(() => ({
     needsConversion: false,
     properties: [],
     template: null,
+    folder: null,
     icon: null,
     parents: [],
   } as TagDefinitionState,
@@ -59,6 +60,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
   listNoteTags: async () => noteTagsRows.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
+const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/editor/move-note', () => ({ moveNoteCarryingSession }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 7 } }),
 }))
@@ -74,6 +77,7 @@ beforeEach(() => {
     needsConversion: false,
     properties: [],
     template: null,
+    folder: null,
     icon: null,
     parents: [],
   }
@@ -84,6 +88,7 @@ beforeEach(() => {
   saveTagType.mockClear()
   invalidateQueries.mockClear()
   commitNoteFrontmatter.mockClear()
+  moveNoteCarryingSession.mockClear()
 })
 
 describe('TagConfigDialog', () => {
@@ -94,17 +99,20 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
     const onClose = vi.fn()
     const view = await render(<Dialog tag="Book" onClose={onClose} />)
 
+    // The left pane lists the properties; picking one opens its settings.
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
     await expect.element(view.getByRole('textbox', { name: 'Property name' })).toHaveValue('Author')
 
+    // A new property opens straight away, its name focused.
     await view.getByRole('button', { name: 'Add property' }).click()
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await names.nth(1).fill('Read on')
+    await view.getByRole('textbox', { name: 'Property name' }).fill('Read on')
 
     await view.getByRole('button', { name: 'Save' }).click()
 
@@ -115,10 +123,41 @@ describe('TagConfigDialog', () => {
         { name: 'Read on', key: 'read-on', type: 'text' },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('shows the type folder and saves a change to it', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      folder: 'Active/Projects/{title}',
+      icon: null,
+      parents: [],
+    }
+    const view = await render(<Dialog tag="project" onClose={vi.fn()} />)
+
+    await expect
+      .element(view.getByRole('combobox', { name: 'Folder for new notes' }))
+      .toHaveTextContent('Active/Projects')
+    await expect
+      .element(view.getByText('Active/Projects/<Name>/<Name>.md', { exact: true }))
+      .toBeInTheDocument()
+    // One folder for all of them instead of one per note.
+    await view.getByRole('checkbox', { name: 'A folder for each note' }).click()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith('project', [], 7, {
+      template: null,
+      folder: 'Active/Projects',
+      icon: null,
+      parents: [],
+    })
   })
 
   it('picks a tag to build on and saves it as the definition’s parents', async () => {
@@ -129,6 +168,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: ['person'],
     }
@@ -142,6 +182,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('client', [], 7, {
       template: null,
+      folder: null,
       icon: null,
       parents: ['contact'],
     })
@@ -155,6 +196,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -163,6 +205,7 @@ describe('TagConfigDialog', () => {
       { tagKey: 'company', notePath: 'tags/company.md' },
     ]
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     // Author becomes a relation; the Target selector appears with the typed
     // tags, defaulting to "Any note".
@@ -179,7 +222,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'relation', target: 'person' }],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -190,12 +233,14 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Topic', key: 'topic', type: 'relations' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
     tagTypesRows.current = [{ tagKey: 'person', notePath: 'tags/person.md' }]
     noteTagsRows.current = [{ tag: 'topic', count: 3 }]
     const view = await render(<Dialog tag="skills" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Topic', exact: true }).click()
 
     await view.getByRole('combobox', { name: 'Relation target' }).click()
     await expect.element(view.getByRole('option', { name: '#topic' })).toBeInTheDocument()
@@ -210,6 +255,7 @@ describe('TagConfigDialog', () => {
       needsConversion: true,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -226,6 +272,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -237,6 +284,7 @@ describe('TagConfigDialog', () => {
     ]
     const onClose = vi.fn()
     const view = await render(<Dialog tag="book" onClose={onClose} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     // The key editor folds behind its mono chip until asked for.
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
@@ -253,7 +301,7 @@ describe('TagConfigDialog', () => {
       'book',
       [{ name: 'Author', key: 'writer', type: 'text' }],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -270,6 +318,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -280,6 +329,7 @@ describe('TagConfigDialog', () => {
       },
     ]
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
     await view.getByRole('textbox', { name: 'Frontmatter key' }).fill('writer')
@@ -297,9 +347,9 @@ describe('TagConfigDialog', () => {
     // deleted default is one click from coming back on any tag.
     await view.getByRole('button', { name: /^Project Status/ }).click()
 
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await expect.element(names.nth(0)).toHaveValue('Status')
-    await expect.element(names.nth(2)).toHaveValue('Priority')
+    const nav = view.getByRole('navigation', { name: 'Type settings' })
+    await expect.element(nav.getByRole('button', { name: 'Status', exact: true })).toBeVisible()
+    await expect.element(nav.getByRole('button', { name: 'Priority', exact: true })).toBeVisible()
     // The preset carries a status and a date, so Board and Calendar light
     // up in the strip — named after the property powering each.
     await expect.element(view.getByText('Board · Status')).toBeInTheDocument()
@@ -321,7 +371,7 @@ describe('TagConfigDialog', () => {
         { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -332,6 +382,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -344,29 +395,135 @@ describe('TagConfigDialog', () => {
     await expect.element(view.getByText('Calendar — add a Date')).toBeInTheDocument()
   })
 
-  it('edits select options as chips and saves the survivors', async () => {
+  it('adds, deletes and colors select options and saves the colors by name', async () => {
     definition.current = {
       path: 'tags/book.md',
       exists: true,
       needsConversion: false,
       properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
 
-    await expect.element(view.getByText('to-read')).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('textbox', { name: 'Option name: to-read' }))
+      .toHaveValue('to-read')
     await view.getByRole('textbox', { name: 'Add option' }).fill('reading')
     await userEvent.keyboard('{Enter}')
-    await view.getByRole('button', { name: 'Remove to-read' }).click()
+    await view.getByRole('button', { name: 'Color and actions for to-read' }).click()
+    await view.getByRole('button', { name: 'Delete option' }).click()
+    await view.getByRole('button', { name: 'Color and actions for done' }).click()
+    await view.getByRole('option', { name: 'Green' }).click()
 
     await view.getByRole('button', { name: 'Save' }).click()
     expect(saveTagType).toHaveBeenCalledWith(
       'book',
-      [{ name: 'Status', key: 'status', type: 'select', options: ['done', 'reading'] }],
+      [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'select',
+          options: ['done', 'reading'],
+          colors: { done: 'green' },
+        },
+      ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
+    )
+  })
+
+  it('renames an option, keeps its color and starting value, and moves the notes along', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['Todo', 'Done'],
+          colors: { Todo: 'gray' },
+          default: 'Todo',
+        },
+      ],
+      template: null,
+      folder: null,
+      icon: null,
+      parents: [],
+    }
+    propertyUses.current = [
+      { notePath: 'p/a.md', value: { value: 'Todo', valueType: 'string', valueNumber: null } },
+      { notePath: 'p/b.md', value: { value: 'Done', valueType: 'string', valueNumber: null } },
+    ]
+    const onClose = vi.fn()
+    const view = await render(<Dialog tag="project" onClose={onClose} />)
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
+
+    await view.getByRole('textbox', { name: 'Option name: Todo' }).fill('To do')
+    await expect.element(view.getByText('was Todo')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'project',
+      [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['To do', 'Done'],
+          colors: { 'To do': 'gray' },
+          default: 'To do',
+        },
+      ],
+      7,
+      { template: null, folder: null, icon: null, parents: [] },
+    )
+    // Only the note on the old text is rewritten.
+    expect(commitNoteFrontmatter).toHaveBeenCalledTimes(1)
+    expect(commitNoteFrontmatter).toHaveBeenCalledWith(
+      'p/a.md',
+      { properties: { status: 'To do' } },
+      7,
+    )
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('offers to bind the type to the nested tag its notes use and moves the definition', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Due', key: 'due', type: 'date' }],
+      template: null,
+      folder: null,
+      icon: null,
+      parents: [],
+    }
+    noteTagsRows.current = [
+      { tag: 'type/project', count: 165 },
+      { tag: 'domain/ai', count: 40 },
+    ]
+    tagTypesRows.current = [{ tagKey: 'project', notePath: 'tags/project.md' }]
+    const view = await render(<Dialog tag="project" onClose={() => {}} />)
+
+    await expect.element(view.getByText('165 notes use #type/project.')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Use #type/project' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'project',
+      [{ name: 'Due', key: 'due', type: 'date' }],
+      7,
+      { template: null, folder: null, icon: null, parents: [] },
+    )
+    expect(moveNoteCarryingSession).toHaveBeenCalledWith(
+      'tags/project.md',
+      'tags/type/project.md',
+      7,
     )
   })
 
@@ -380,14 +537,18 @@ describe('TagConfigDialog', () => {
         { name: 'Status', key: 'status', type: 'select', options: ['draft', 'sent'] },
       ],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
     const view = await render(<Dialog tag="invoice" onClose={() => {}} />)
 
-    const [numberStart, statusStart] = view.getByRole('combobox', { name: 'Starting value' }).all()
-    await expect.element(numberStart!).toHaveTextContent('Next number')
-    await statusStart!.click()
+    await view.getByRole('button', { name: 'Number', exact: true }).click()
+    await expect
+      .element(view.getByRole('combobox', { name: 'Starting value' }))
+      .toHaveTextContent('Next number')
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
+    await view.getByRole('combobox', { name: 'Starting value' }).click()
     await view.getByRole('option', { name: 'Fixed value' }).click()
     await view.getByRole('combobox', { name: 'Fixed starting value' }).click()
     await view.getByRole('option', { name: 'draft' }).click()
@@ -406,7 +567,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -417,14 +578,14 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await view.getByRole('button', { name: 'Add property' }).click()
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await names.nth(1).fill('Author')
+    await view.getByRole('textbox', { name: 'Property name' }).fill('Author')
 
     await expect.element(view.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(saveTagType).not.toHaveBeenCalled()
@@ -437,6 +598,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -452,7 +614,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'text' }],
       7,
-      { template: null, icon: '📚', parents: [] },
+      { template: null, folder: null, icon: '📚', parents: [] },
     )
   })
 
@@ -463,6 +625,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: '📚',
       parents: [],
     }
@@ -479,6 +642,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     })
@@ -491,6 +655,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -505,6 +670,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
       template: null,
+      folder: null,
       icon: 'icon:folder',
       parents: [],
     })

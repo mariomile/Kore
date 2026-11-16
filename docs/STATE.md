@@ -1,23 +1,366 @@
 # Kore working state
 
-## Kore Cloud slice 1: the Worker, 2026-11-09
+## iPhone share sheet, type dialog, UIScene, layout out of settings, 2026-11-16
 
-Ask (Mario, 2026-11-09): Kore always on for every agent without the Mac,
-free, no server, a flow anyone can do; on the decision card he chose notes in
-the user's own Cloudflare (D1), app syncing both ways. Plan
-[34](plans/34-kore-cloud.md); PR #332 (VM route) is superseded.
+- [x] iPhone share sheet: when you share a link or an X post, you pick where
+  it goes (today's note under Links, an existing note found by search, or a
+  new note in a folder) and how it's drawn (Link, Compact, Card, Large, Text
+  quote, or the post/video player); you can add a thought, the sheet remembers
+  your last choices, and saving is instant and offline, with the app writing
+  the link the next time it opens (#498).
+- [x] Redesigned type configuration dialog, with value colors and ordering
+  (#501).
+- [x] Open tabs and panel layout move out of the settings file, so navigating
+  no longer rewrites settings; open tabs reset once after updating (#502).
+- [x] The iPhone app adopts the UIScene lifecycle, so builds made with Xcode
+  27 launch; the Record audio quick action keeps working while the app is open
+  (#503).
+- [x] iPhone: long wiki links now wrap instead of staying on one line, so
+  notes no longer scroll sideways (#506).
+- Not verified on a real iPhone; #503 needs a TestFlight check on iOS 26
+  hardware.
 
-- [x] `apps/cloud/` (`@kore/cloud`): D1 store with per-note versions,
-  vault-wide `seq` and tombstones (`store.ts`, `schema.ts`); structural edits
-  mirroring the CLI (`edits.ts`); MCP tools with CAS retry (`tools.ts`,
-  `mcp.ts`); OAuth consent with the access key (`consent.ts`, `worker.ts`);
-  app sync API (`sync.ts`); vault layout from `KORE_VAULT_LAYOUT`.
-- [x] 37 tests (better-sqlite3 D1 stand-in, full OAuth round trip in Node);
-  `wrangler dev` smoke: 5,165-note push in 16 s locally, MCP calls 9-26 ms.
-- [x] Core exports `./graph/paths` and `./graph/vault-layout` (plus the
-  markdown modules) for the Worker.
-- Next: slice 2, `kore cloud setup` and the first run on Mario's account
-  (measure CPU per request and rows written for the first upload).
+## Graph lint, link and sync fixes, iPhone icon, 2026-11-16
+
+- [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit
+  N] [--json]` / MCP graph_lint report graph health: broken wiki links grouped
+  by target, orphan notes (dailies and tag pages skipped), unlinked mentions
+  of a note's title, and relation problems (missing inverse such as supersedes
+  without superseded_by, wrong target type). Report only, never edits; private
+  notes excluded (#495).
+- [x] Fix: tapping an aliased path link such as `[[Folder/Note|Label]]` opens
+  the real note instead of creating an empty one (Mac and iPhone, hover
+  preview too); sync gets network timeouts (30 s connect, 120 s silence) so a
+  fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
+- [x] iPhone: full-bleed app icon, and the Kore mark pulses on the launch
+  screen (#490).
+- [x] Editor, Mac and iPhone: date links read as compact dates
+  (`[[2026-11-20]]` shows `Nov 20`, Markdown unchanged, a `|label` wins); ⌥⌘P
+  and a / Page command turn the caret's block into a page; the page card
+  thumbnail sits on the bullet column (#488).
+- Not verified on a real iPhone.
+
+## Link styles, app logos, graph relations and agent tools, 2026-11-16
+
+- [x] Links: choose how each link looks (inline link, compact, card or large)
+  from the button on the card; the choice is saved in the Markdown (#487).
+- [x] Settings → Agents → Connect an app: every row shows the app's logo
+  (Claude, ChatGPT, Cursor), with the same tiles as AI providers (#483).
+- [x] Knowledge graph: links remember their relation (frontmatter field name,
+  e.g. company); CLI/MCP links, backlinks and explain_note show relations and
+  up to 3 context sentences per backlink, with a --relation filter. Migration
+  0028 + projection 34: one index rebuild on first launch (#491).
+- [x] Agents: `kore neighborhood` / MCP note_neighborhood returns a note's
+  surroundings up to 2 hops (named relations first, dailies and index notes
+  not expanded); `kore coverage` / MCP check_coverage tells an agent whether
+  the vault covers a question (found/missing terms, named notes, best notes,
+  verdict) (#493).
+- Not verified on a real Mac or iPhone.
+
+## Rich link cards, 2026-11-16
+
+- [x] Link cards are now rich Craft-style cards (image, title, description,
+  favicon, site and an Open button) drawn where the link sits in the note, on
+  Mac and iPhone; embed blocks no longer show raw URL text with a detached
+  card at the bottom (#471).
+- Not verified on a real Mac or iPhone.
+
+## Block selection and sub pages on iPhone, 2026-11-16
+
+- [x] iPhone: swipe right on a block selects it and dragging adds more, with a
+  Kore action bar at the bottom; a Craft-style Turn into sheet; sub pages show
+  as cards with a preview on iPhone and Mac (tap zooms in); round task boxes;
+  the keyboard toolbar is back to its single row (#460).
+- Not verified on a real iPhone.
+
+## Collections inside a note on iPhone, 2026-11-16
+
+- [x] iPhone: a collection inside a note becomes a Craft-style card with its
+  name and count (a tap opens the type page), the Table/Board/Calendar/Grid
+  switch and an 8-row preview with Show all; the View menu edits filter, sort,
+  group and hidden fields (hide: lines) right in the note, so the Mac shows
+  the same view; the Mac gets a new Columns menu for collections in notes
+  (#480).
+- Not verified on a real iPhone.
+
+## View options and calendar on iPhone type pages, 2026-11-16
+
+- [x] iPhone: on a type page the View options menu filters (values in the
+  option colors, before/after, more/less and contains conditions), sorts,
+  groups and picks the fields; filter, sort and group stay in the saved view
+  shared with the Mac; a grouped table has a header for each group (#475).
+- [x] iPhone: a type page with a date field gets a Calendar (month with dots,
+  the day's notes below, New already dated, the same date field as the Mac);
+  the Grid becomes a moodboard with the note's first image as its cover
+  (#477).
+- Not verified on a real iPhone.
+
+## Type pages on iPhone, one-click app connections, 2026-11-16
+
+- [x] iPhone: every type has its own page with a Craft-style Table (# and
+  Title pinned), Kanban, Grid and the saved views shared with the Mac; Types
+  opens the type page; new Table and Kanban icons on the Mac too (#469).
+- [x] Settings → Agents → 'Connect an app': Claude Desktop, Claude Code and
+  Cursor connect in one click, with Kore writing the `kore mcp` entry into
+  their config after backing it up to `<file>.kore-backup` (mode 0600); for
+  Claude web/iPhone and ChatGPT it turns on Remote access with a dedicated key
+  and shows the steps (#468).
+- Not verified on a real Mac or iPhone.
+
+## Open a vault from GitHub, 2026-11-16
+
+- [x] Open a vault from GitHub: a GitHub card on the Mac start screen and
+  'Open a vault from GitHub' in the iPhone onboarding check the token and the
+  repo, warn when the repo is public, then clone and open it; a cloned vault
+  gets no sample notes (#464).
+- [x] iPhone: the caret in quick capture (+) and the other sheets with a text
+  field sits on the text line instead of floating above it (#470).
+- Not verified on a real Mac or iPhone.
+
+## Agent access settings, agents follow the vault, 2026-11-15
+
+- [x] Settings → Agents becomes Agent access, with agents grouped by where
+  they run; AI → MCP servers becomes Chat tools; the GitHub token step has
+  three steps with a prefilled link (1-year expiry) and 'Use a different
+  token'; a vault already linked to a repo shows 'Resume sync…' (#465).
+- [x] Agents stay connected when the vault moves: `kore mcp` without `--graph`
+  serves the vault Kore opened last; Settings → Agents copies a path-free
+  config and flags older pinned ones; moving a vault into iCloud warns about
+  agents still tied to the old folder (#463).
+- Not verified on a real Mac.
+
+## Craft-style Chat on iPhone, 2026-11-15
+
+- [x] iPhone Chat tab redesigned: floating pill header, plain Suggestions and
+  Your prompts lists, and a composer card with an All notes context chip
+  (#459).
+- Not verified on a real iPhone.
+
+## iPhone design pass and wikilink aliases, 2026-11-15
+
+- [x] iPhone design pass: the note page is 17pt with folded properties, the
+  title moves into the bar and the tab bar hides on scroll; the keyboard
+  toolbar has block pills, dictation and undo; the daily reads as Today (one-
+  line date and a due-today card); quick capture from the +; Dataview blocks
+  show as a chip. No performance regression at 4x CPU (#451).
+- [x] Wikilinks written as `[[Folder/Note|Name]]` show Name, as in Obsidian
+  (#457).
+- Not verified on a real iPhone.
+
+## Obsidian conversion keeps Git history, Mermaid with Pele, 2026-11-15
+
+- [x] Converting an Obsidian vault can continue its Git history: the copy
+  keeps the repository and the conversion lands as one commit, so backup goes
+  on in the same GitHub repo. It also fixes the conversion failing with
+  Permission denied on read-only files, a 0.107.0 regression (#453).
+- [x] The Obsidian conversion keeps each file's modification date, repoints
+  `.base` views that filter on the moved daily, attachment and template
+  folders, and keeps notes Obsidian excluded from the attachment folder hidden
+  (#449, shipped in 0.107.0).
+- [x] Mermaid fences render with Pele (MIT, from Obsidian) through a Kore
+  `renderCodeBlock` plugin: every Mermaid 12 diagram type including charts
+  (pie, xychart, gantt, sankey), lazy-loaded per type only when a diagram
+  nears the viewport, themed with Kore tokens; vault-compat now flags only
+  ZenUML and plugins (#450).
+- [x] A text selection highlights only the text, with no full-width slabs or
+  filled checkbox column on Mac and iPhone: a Kore plugin marks selected
+  textblocks so WebKit skips its selection-gap fill, and the tint is the
+  accent at 26% (#452).
+- Not verified on a real Mac or iPhone.
+
+## Block zoom on iPhone, 2026-11-15
+
+- [x] iPhone: tap a bullet to zoom into that block; the header back arrow or
+  breadcrumb steps out, the edge back-swipe is off while zoomed, and task
+  checkboxes still toggle (#446).
+- Not verified on a real iPhone.
+
+## On-device memo transcription, type board and daily widget on iPhone, 2026-11-15
+
+- [x] iPhone: audio memos transcribe with Apple's on-device speech recognizer
+  when no OpenAI or Gemini key is set, so the audio never leaves the phone; a
+  configured cloud key still wins (#440). The spoken language is chosen in
+  Settings > Audio memos (#443).
+- [x] iPhone: a typed tag's page offers a board next to the list and cards
+  views when the type has a property to group by, one lane at a time; cards
+  show the type's fields (#444).
+- [x] iPhone: a daily note widget for the home screen (small, medium, large)
+  shows today's preview and open tasks; a tap opens the daily and the mic
+  button starts a voice memo (#441).
+- [x] Mobile polish: compact note rows without a preview, Templater template
+  folders hidden from lists, empty states and an iPhone welcome note; the
+  vault reindexes once (#438).
+- Not verified on a real iPhone or Mac.
+
+## Tagged checkboxes are rows, collections filter by this note, 2026-11-13
+
+- [x] Organization point 4: a checkbox line carrying a `#tag` is an object of
+  that tag. `- [ ] Send the deck #task` in a project note shows on the `#task`
+  page as an open task linked to its note, toggles in place and shows its due
+  date; done tasks sit behind a toggle. Plain bullets stay text, Markdown on
+  disk is unchanged, and the vault reindexes once (#423).
+- [x] Organization point 5: a collection fence can point at the note it sits
+  in (`filter: project = this`), so a type's template gives every note its own
+  table of the rows that link to it; new rows from that table carry the link
+  (#439).
+- [x] Kore no longer saves over a note another device changed in the meantime:
+  the change becomes a conflict to resolve (Keep mine / Load theirs) (#437).
+- [x] Mobile: the [[ and slash menus close when the keyboard closes (#434).
+  Task checkboxes sit centered on their label text (#432).
+- [x] Local iOS simulator builds work again on Xcode 27 (`pnpm
+  tauri:ios:dev:sim`) (#435).
+- Not verified on a real Mac.
+
+## Embeds play in the note, type views in the type file, 2026-11-13
+
+- [x] Rows created from a collection view (table + New, board lane, calendar
+  day), CSV import and bulk Add type write the type to the frontmatter Type
+  field (`tags:`) through the new core `addFrontmatterTag`, never a hidden
+  #tag line in the body. + New is one atomic create with type and starting
+  values; a note that only mentions the tag in prose now gets typed too.
+  Existing notes are untouched (#419).
+- [x] Organization point 3: a type keeps its saved database views in its own
+  file (`tags/<type>.md`, `views:`), so they follow the vault to every device
+  and to agents; views saved locally move there on first open. 'Convert to
+  type views' turns single-tag `.base` files into tabs and fields of that
+  type; formulas and folder-scoped bases are reported and left as bases, and
+  `.base` files are never changed (#415).
+- [x] Embed cards play Spotify, Apple Music, Apple Podcasts, Figma, Loom and
+  CodePen inline behind a click; the Vimeo player is fixed (#430).
+- [x] Daily notes: touching the empty bullet of a future day no longer creates
+  an empty or nested-bullet file, and an image pasted on the same line as text
+  renders below it (#429).
+- [x] Mobile: note grid cards show the note's first photo (#425), and a note
+  can remove a collection inserted into it (#427).
+- [x] iOS: the share extension and widget carry the app's version, so App
+  Store Connect stops warning about the mismatch (#428).
+- [x] iPhone: types open in a native sheet (add and reorder fields, presets
+  for empty types) from the type chip, the Types gear or the tag list gear;
+  fields are no longer hidden when a note has a blank line before the title,
+  on the Mac too (#431).
+- [x] 0.103.1 confirmed the #417 size drop: DMG 45.6 MB to 32.8 MB, updater
+  archive 46.3 MB to 33.6 MB.
+- Not verified on a real Mac.
+
+## Relation-created notes keep their type, smaller app, launch timings, 2026-11-12
+
+- [x] A note created from a relation field's Create entry (Person > Company >
+  Create DeepAgent) gets its type in the frontmatter Type field (`tags:`) plus
+  its starting values in one atomic create, instead of a hidden #tag line in
+  the body that could be deleted unseen (#416).
+- [x] Release builds ship without source maps and with stripped Rust symbols
+  (frontend 52.6 MB → 11 MB, DMG est. 45.6 MB → ~30 MB); Defuddle loads on the
+  first pasted-link fetch instead of at launch (entry JS 1,869 → 1,573 KB)
+  (#417). DMG size to confirm on the first release after it.
+- [x] The main window logs `launch:` timings to the local log (process start
+  to window loaded, app script, vault ready, first note editor) so launch
+  speed can be measured on a real Mac (#418).
+- Not verified on a real Mac.
+
+## Closing a pane frees its space, Library hidden by default, 2026-11-12
+
+- [x] Dragging a pane divider pinned the left/upper pane to a pixel size, so
+  closing the other pane left the remaining one narrow with an empty hole. The
+  divider now clears its size on unmount (columns and rows); two regression
+  tests in `workspace-pane.test.tsx` (#412).
+- [x] The sidebar Library shelf (coding-agent home folders such as
+  `~/.claude`, `~/.codex`) starts hidden once per settings document
+  (`libraryShelfDefaulted` marker); it can be shown again from the hidden-
+  items menu, which offers it only where agent folders exist (#411).
+- Not verified on a real Mac.
+
+## Open-note perf, Types shelf, signing pipeline and iOS icons, 2026-11-12
+
+- [x] Opening a note or the daily no longer rescans the whole vault Git
+  history for History: 3 to 28 times less CPU per open on a 2,000-commit
+  vault; the macOS Liquid Glass setup no longer re-runs on every navigation
+  (#404).
+- [x] The Details local graph lays out off-screen and paints once instead of
+  animating, about 30-40% less main-thread work per open; the sync-conflict
+  notice reuses the note row query (#407).
+- [x] Note organization step 2 (#405): sidebar Types shelf (tags with a
+  definition, each opens its database) above Tags (topics only), folders
+  below; the type picker splits Types and Tags; the large seed is typed
+  through frontmatter `tags:`.
+- [x] Release DMG signs and notarizes with Kore's Developer ID when
+  `APPLE_CERTIFICATE` is set, else builds ad-hoc as before (#402). 0.102.0
+  still built ad-hoc: the secret is not set.
+- [x] iOS app icons are opaque, and `release:ios` checks them (#408). First
+  TestFlight build uploaded (run 43128582607).
+- Not verified on a real Mac.
+
+## Cover position, daily pictures and tag mentions, 2026-11-11
+
+Ask: Mario, Lotion phase 1 step 3, the daily scroll follow-up and note
+organization step 1.
+
+- [x] Reposition a note's cover by dragging it (#398): Reposition shows only
+  when the image is cropped; drag or arrow keys, Enter saves, Escape cancels.
+  Writes `cover_y:` (0 top to 100 bottom, default 50), a reserved key in core
+  and the CLI; a new or removed cover clears it.
+- [x] Daily days with pictures (markdown images and `[[photo.png]]`) render
+  static while scrolling (#400); `editorImageSize` mirrors Meowdown's box so
+  the row keeps its height at handover. 4x CPU: fps 42-45 → 45-53, frames over
+  100 ms 32-41 → 6-31. Embeds, posts and sized pictures stay editors.
+- [x] Note organization step 1 (#401): one tag, two positions. Frontmatter
+  `tags:` or a paragraph of only tags at the top or bottom makes a note a
+  member of the collection; a #tag inside a sentence is a mention ("Mentioned
+  in" on the tag page). The relation picker lists only members of the type
+  (nested + extends), alphabetically. TDR 0005 Amendment E, migration 0026
+  (full reindex on first launch).
+- Not verified on a real Mac.
+
+## Apple identity becomes Kore, 2026-11-09
+
+Ask (Mario, 2026-11-08, "Vedi cosa rimane ancora di reflect, ora deve essere
+tutto Kore", then "ok" on the three-PR plan). This is PR 2 of 3: the Apple
+identity and the app's own folders. PR 1 (visible leftovers, `.reflect/` in
+the vault) and PR 3 (internal `@reflect/*` / `reflect-*` rename) run in their
+own threads.
+
+- [x] Bundle ids `app.lore.*` → `app.kore.*` (desktop flavors, iOS app, share
+  extension, widgets), `group.app.kore`, `iCloud.app.kore`, the recording
+  notification names and the home-screen shortcut type.
+- [x] `apps/desktop/src-tauri/src/app_dir.rs` (added by #354 for the config
+  dir) also moves `<data dir>/app.lore.<flavor>` into `app.kore.<flavor>` at
+  launch, before any plugin reads it, without overwriting. The CLI's model
+  lookup falls back to the old dirs until then.
+- [x] Keychain service `"kore"`; reads fall back to `"lore"` and
+  `"reflect-open"` and copy forward, keeping the old entry for one release
+  so a rollback still finds the keys (review I8).
+- [x] CLAUDE.md / AGENTS.md naming rule rewritten: Kore everywhere, old names
+  only as migration fallbacks.
+- [x] `DEVELOPMENT_TEAM` is Mario's `ZQG9377GFQ` (was upstream's
+  `789ULN5MZB`); he registered `app.kore.ios` on 2026-11-11. WebKit
+  localStorage under the old bundle id (collapsed sections, theme cache) is
+  not moved; it rebuilds itself. The bundled `Reflect*.provisionprofile`
+  files are upstream's and unused by the unsigned DMG.
+- Known cost: a new bundle id resets macOS permissions (notifications, so
+  task reminders stay silent until re-allowed; calendar, contacts) and WebKit
+  storage (UI conveniences only). Dry run on Kore Dev before the bump.
+- Verified: CLI embed tests, the touched Vitest suites (node + Chromium).
+  The desktop crate can't compile in the container (onnxruntime download
+  blocked), so `app_dir.rs` and `secrets.rs` tests are left to CI. Mac
+  upgrade not tried live.
+
+## Note icon, cover, relation picker and type dialog polish, 2026-11-11
+
+Ask: Mario, Lotion ideas phase 1 and the note properties follow-ups.
+
+- [x] Note icon from the note header (#380): hover shows "Add icon"; the icon
+  sits inline at the start of the title line (`title-icon-plugin.ts`); the
+  picker reopens on click and offers Remove. Picker body shared with tag icons
+  (`IconPickerPanel`); patch field `tagIcon` renamed `icon`.
+- [x] Note cover from the note header (#396): upload, https link or dropped
+  image; uploads reuse `saveFile` and write `cover: assets/…`; Change and
+  Remove on hover. `FrontmatterPatch` gains `cover`.
+- [x] The relation picker lists every row of the target type (up to 50,
+  scrolling) instead of stopping at 6 (#395).
+- [x] Select menus and the Configure type dialog aligned (#394): icons centred
+  on labels, menus open below their trigger, one label column so every control
+  starts at the same x.
+- Not done: cover vertical position (`cover_y`, Lotion step 3).
+- Not verified on a real Mac.
 
 ## Daily stream: static days while scrolling, 2026-11-10
 
@@ -3564,6 +3907,36 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-11 — Quality refactor, no behavior change. Link text is a lookup:
+  `LINK_TEXT_SITES` in `actions/link-text.ts` says which sites keep nothing
+  (X, LinkedIn) or a transcript (YouTube), and any other link keeps its
+  article. The card template (`actions/resource-card.ts`) owns both writing
+  a card's title and retitling it, so link text no longer does string
+  surgery on another module's output. The session's tried-cards memo is
+  capped at 500, and the private-note gate lives only in core (a private
+  note's cards are private, and `saveLinkText` skips them).
+
+- 2026-11-11 — Quality refactor, no behavior change. `ConnectorNote` loses
+  `fileStem`: when the user's pattern renders to nothing, the sync engine
+  names the file with the connector's default pattern (the same names the
+  connectors built by hand), else `<label> <sourceId>`. Tags have one
+  default: the engine resolves them, and the Readwise and Granola renderers
+  no longer default them a second time.
+- 2026-11-11 — Plan 33: A1 ✓ (#343), A2 ✓ (#350), A3 ✓ (#387, who wrote each
+  line, off by default). Next: B2 (tags that extend tags).
+- 2026-11-11 — Internal rename merged (#355): `@kore/*` packages, `kore-*`
+  crates, desktop crate and Xcode project `kore-open`; release-please branch
+  is now `release-please--branches--master--components--kore-open`. The next
+  mobile bump needs a TestFlight run because the Xcode project was renamed.
+- 2026-11-11 — Quality refactor, no behavior change. Chat attachment media
+  types live in one table (`ATTACHMENT_KINDS` in
+  `ai/chat/attachment-types.ts`: media type, extensions, channel image /
+  document / text); the extension maps, the composer's re-encode check and
+  each engine's accepted types derive from it. Engines declare the channels
+  they read (Claude image + document, Codex image) and an attachment carries
+  its channel, so encoders no longer branch on `application/pdf`. A core
+  test holds the Rust store's closed extension lists to the table.
 
 - 2026-11-10 — Plan 35 step 4: memory tools for the chat Mario uses. Found
   that agent-CLI chat runs (Claude Code, Codex) never see the in-process

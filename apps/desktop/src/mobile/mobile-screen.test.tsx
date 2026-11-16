@@ -8,7 +8,7 @@ import { setBridge } from '@kore/core'
 import { clearFormattingToolbar, publishFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { RouterProvider, useRouter } from '@/routing/router'
 import type { Route } from '@/routing/route'
-import { addDaysIso, formatDayLabel, parseIsoDate, todayIso } from '@/lib/dates'
+import { addDaysIso, formatMobileDayTitle, parseIsoDate, todayIso } from '@/lib/dates'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import { monthLabel, monthOf } from '@/lib/month-grid'
 import { fireEvent } from '@/test-utils/fire-event'
@@ -116,6 +116,7 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerContent: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerBody: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children?: import('react').ReactNode }) => <h2>{children}</h2>,
+  DrawerDescription: ({ children }: { children?: import('react').ReactNode }) => <p>{children}</p>,
   DrawerTrigger: ({ children }: { children?: import('react').ReactNode }) => <>{children}</>,
 }))
 
@@ -394,7 +395,7 @@ describe('MobileShell', () => {
     await userEvent.click(view.getByRole('button', { name: label, exact: true }))
     await userEvent.click(view.getByRole('button', { name: 'New' }))
     await userEvent.click(view.getByRole('button', { name: 'Note', exact: true }))
-    await expect.element(view.getByRole('heading', { name: 'New note' })).toBeVisible()
+    await expect.element(view.getByRole('heading', { name: 'New note' })).toBeInTheDocument()
     expect(editorProbe.focusCalls).toBeGreaterThan(0)
   })
 
@@ -422,7 +423,7 @@ describe('MobileShell', () => {
     // The header is the month; the carousel mounts today's slide (±1
     // neighbours), each carrying its formatted date as the note's subject.
     expect(shownMonth(view)).toBe(monthLabel(monthOf(today)))
-    await expect.element(view.getByText(formatDayLabel(today, 'mdy'))).toBeVisible()
+    await expect.element(view.getByText(formatMobileDayTitle(today, 'mdy'))).toBeVisible()
     await waitFor(() => {
       const editors = view.getByTestId('fake-editor').elements()
       expect(editors.some((editor) => editor.textContent?.includes('captured on the go'))).toBe(

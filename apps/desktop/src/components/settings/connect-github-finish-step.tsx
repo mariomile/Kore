@@ -96,34 +96,70 @@ export function ConnectGithubFinishStep({
             </p>
           ) : (
             <p className="text-xs text-text-muted">
-              If it doesn’t connect, add it to your token’s repository access.
+              If it doesn’t connect, add it to your token’s repository access:{' '}
+              <button type="button" className="underline" onClick={wizard.openTokensPage}>
+                edit the token
+              </button>
+              .
             </p>
           )}
         </>
       ) : null}
 
       {view.kind === 'grantAccess' ? (
-        <>
-          <p className="text-sm text-text">
-            Give Kore access to{' '}
-            <strong>
-              {view.repo.owner}/{view.repo.name}
-            </strong>{' '}
-            so it can sync here.
-          </p>
-          <div className={groupClass}>
-            <Button size={buttonSize} onClick={wizard.openInstallPage}>
-              Grant access on GitHub…
-            </Button>
-            {changeRepository()}
-          </div>
-          {/* Steer to per-repo selection: the backup needs exactly one repo,
-              so "All repositories" is needless account-wide risk. */}
-          <p className="text-xs text-text-muted">
-            On GitHub, choose <strong>Only select repositories</strong> — Kore only needs this one.
-          </p>
-          <p className="text-xs text-text-muted">Waiting for access…</p>
-        </>
+        wizard.authKind === 'app' ? (
+          <>
+            <p className="text-sm text-text">
+              Give Kore access to{' '}
+              <strong>
+                {view.repo.owner}/{view.repo.name}
+              </strong>{' '}
+              so it can sync here.
+            </p>
+            <div className={groupClass}>
+              <Button size={buttonSize} onClick={wizard.openInstallPage}>
+                Grant access on GitHub…
+              </Button>
+              {changeRepository()}
+            </div>
+            {/* Steer to per-repo selection: the backup needs exactly one repo,
+                so "All repositories" is needless account-wide risk. */}
+            <p className="text-xs text-text-muted">
+              On GitHub, choose <strong>Only select repositories</strong> — Kore only needs this
+              one.
+            </p>
+            <p className="text-xs text-text-muted">Waiting for access…</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-text">
+              Your saved token can’t see{' '}
+              <strong>
+                {view.repo.owner}/{view.repo.name}
+              </strong>
+              .
+            </p>
+            <p className="text-xs text-text-muted">
+              Add the repository to the token on GitHub (open the token, then Repository access), or
+              paste a different token. Check the name too.
+            </p>
+            <div className={groupClass}>
+              <Button size={buttonSize} onClick={wizard.openTokensPage}>
+                Edit token on GitHub…
+              </Button>
+              <Button
+                variant="outline"
+                size={buttonSize}
+                disabled={wizard.pending}
+                onClick={wizard.switchToken}
+              >
+                Use a different token
+              </Button>
+              {changeRepository()}
+            </div>
+            <p className="text-xs text-text-muted">Waiting for access…</p>
+          </>
+        )
       ) : null}
 
       {view.kind === 'connecting' ? <p className="text-sm text-text-muted">Connecting…</p> : null}

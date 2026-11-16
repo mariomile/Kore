@@ -17,6 +17,7 @@
 
 mod activity;
 mod agent_writes;
+mod blame;
 mod commit;
 mod commit_message;
 mod history;
@@ -37,12 +38,52 @@ use crate::blocking::run_blocking;
 use crate::error::AppResult;
 use crate::fs::GraphState;
 
-use self::commit::CommitOutcome;
+pub(crate) use self::commit::CommitOutcome;
 use self::merge::MergeOutcome;
 use self::remote::{PushOutcome, RemoteDelta};
 
 /// GitHub rejects files over 100 MB, failing the whole push; stop just under.
 const MAX_FILE_BYTES: u64 = 95 * 1024 * 1024;
+
+/// How long a sync may wait to open a connection to the remote.
+const CONNECT_TIMEOUT_MS: i32 = 30_000;
+/// How long a sync may wait on a silent connection before giving up. GitHub
+/// streams progress the whole time it packs, so two quiet minutes means the
+/// socket is dead, not slow.
+const IO_TIMEOUT_MS: i32 = 120_000;
+
+/// Give every fetch, push, and clone a network timeout. libgit2 ships with
+/// none, so a socket that dies mid-transfer (the phone locking or switching
+/// networks during a fetch) blocks the git call forever: the sync engine's one
+/// in-flight cycle never ends and the vault shows `Syncing` until the app is
+/// killed. With a timeout the call fails with a network error, the cycle
+/// reports `Offline`, and the next resume retries.
+///
+/// Must run once at startup, before any thread can call into libgit2.
+pub(crate) fn configure_network_timeouts() {
+    // SAFETY: this runs at the top of `run()`, before Tauri starts its
+    // runtime or any git command.
+    unsafe { set_network_timeouts(CONNECT_TIMEOUT_MS, IO_TIMEOUT_MS) }
+}
+
+/// # Safety
+/// libgit2's options are unsynchronized process globals: call this only while
+/// no other thread can be inside libgit2.
+unsafe fn set_network_timeouts(connect_ms: i32, io_ms: i32) {
+    // Neither setter can fail (git2 documents the Result as always Ok).
+    unsafe {
+        let _ = git2::opts::set_server_connect_timeout_in_milliseconds(connect_ms);
+        let _ = git2::opts::set_server_timeout_in_milliseconds(io_ms);
+    }
+}
+
+/// Commit every change in a folder that isn't the open graph: a vault copy
+/// that carried its source's repository (Plan 31). The caller decides which
+/// folder may be committed; this only stages and commits, like
+/// [`git_commit_all`], with the same large-file guardrail.
+pub(crate) fn commit_folder(root: &Path, message: &str) -> AppResult<CommitOutcome> {
+    commit::commit_all(root, message, MAX_FILE_BYTES)
+}
 
 /// Snapshot of the graph's backup repository for the UI and the sync engine.
 /// Deliberately cheap — refs and config only, no working-tree scan.
@@ -218,6 +259,20 @@ pub async fn git_activity(
 ) -> AppResult<activity::ActivityPage> {
     let root = crate::fs::root_for_generation(&state, generation)?;
     run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
+}
+
+/// Who last changed each line of `content` (the note as the caller shows
+/// it), blamed against the note's committed history. Lines no commit holds
+/// come back without one. See [`blame::blame`].
+#[tauri::command]
+pub async fn git_blame(
+    path: String,
+    content: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<blame::Blame> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || blame::blame(&root, &path, &content)).await
 }
 
 /// What undoing the commits `oldest..=newest` would leave in each file they

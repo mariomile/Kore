@@ -1,4 +1,9 @@
-import { vaultCopyTree, vaultCopyWrite, type VaultCopyStats } from '../graph/commands'
+import {
+  vaultCopyCommit,
+  vaultCopyTree,
+  vaultCopyWrite,
+  type VaultCopyStats,
+} from '../graph/commands'
 import { ASSETS_DIR, DAILY_DIR, TEMPLATES_DIR } from '../graph/paths'
 import type { ObsidianConfigFiles } from '../graph/vault-layout'
 import { splitFrontmatter } from '../markdown/frontmatter'
@@ -35,14 +40,26 @@ export interface ObsidianConversion {
   readonly canonical: number
   /** Notes copied without canonicalizing because Kore can't save them losslessly. */
   readonly lossy: number
+  /**
+   * The copy carries the source's `.git` and the conversion is committed on
+   * top of its history, so a vault already backed up to a remote keeps
+   * syncing to it: one commit of renames instead of a second, unrelated
+   * history that would merge into duplicates.
+   */
+  readonly keepHistory: boolean
 }
 
 /**
- * Left out of every copy. `.git` is the source's history, which the copy
- * doesn't share; `.kore` is Kore's index of the source, rebuilt on open
- * (`.reflect` is its pre-rename name, in a source Kore hasn't reopened since).
+ * Left out of every copy: `.kore` is Kore's index of the source, rebuilt on
+ * open (`.reflect` is its pre-rename name, in a source Kore hasn't reopened
+ * since). `.git`, the source's history, is left out too unless the copy
+ * continues it.
  */
-const ALWAYS_SKIPPED = ['.git', '.kore', '.reflect']
+const ALWAYS_SKIPPED = ['.kore', '.reflect']
+const GIT_DIR = '.git'
+
+/** Subject of the commit a history-keeping conversion adds, when Kore's own summary of the change doesn't fit. */
+export const CONVERSION_COMMIT_MESSAGE = 'Convert to Kore layout'
 
 const OBSIDIAN_FILES = {
   dailyNotes: '.obsidian/daily-notes.json',
@@ -120,9 +137,18 @@ export function convertObsidianSettings(
     }
     const filters = next.userIgnoreFilters
     if (Array.isArray(filters)) {
-      next.userIgnoreFilters = filters.map((filter: unknown) =>
-        typeof filter === 'string' ? repoint(filter) : filter,
-      )
+      // The old entry stays beside the repointed one: notes Obsidian kept
+      // out of the attachment folder (sidecars, scratch) don't move with
+      // the attachments, so dropping it would surface them as notes.
+      next.userIgnoreFilters = [
+        ...new Set(
+          filters.flatMap((filter: unknown) =>
+            typeof filter === 'string' && repoint(filter) !== filter
+              ? [repoint(filter), filter]
+              : [filter],
+          ),
+        ),
+      ]
     }
     emit(OBSIDIAN_FILES.app, config.app, next)
   }
@@ -138,6 +164,57 @@ export function convertObsidianSettings(
 }
 
 /**
+ * A `.base` file with the folders and files the conversion moved repointed:
+ * `file.inFolder("Journal/Daily")` reads `file.inFolder("daily")`, a path
+ * listed in a view's order follows its file. Only whole quoted strings and
+ * plain YAML list items that name a moved folder, something under it, or a
+ * moved file change; everything else, formulas included, stays as written.
+ */
+export function convertBaseFile(
+  content: string,
+  mapping: ImportMapping,
+  moves: ReadonlyMap<string, string>,
+): string {
+  const daily = dailyLayoutOf(mapping) === null ? null : (mapping.daily?.folder ?? null)
+  const repoint = (value: string): string => {
+    const moved = moves.get(value)
+    if (moved !== undefined) {
+      return moved
+    }
+    if (daily !== null && daily !== '' && value === daily) {
+      return DAILY_DIR
+    }
+    for (const [from, to] of [
+      [mapping.attachments, ASSETS_DIR],
+      [mapping.templates, TEMPLATES_DIR],
+    ] as const) {
+      if (from !== null && from !== '' && (value === from || value.startsWith(`${from}/`))) {
+        return to + value.slice(from.length)
+      }
+    }
+    return value
+  }
+  const quoted =
+    (quote: string) =>
+    (whole: string, value: string): string => {
+      const next = repoint(value)
+      return next === value ? whole : `${quote}${next}${quote}`
+    }
+  // Double and single quotes in separate passes: a YAML string in single
+  // quotes often holds an expression with double-quoted folders inside.
+  return content
+    .replaceAll(/"([^"\n\\]+)"/g, quoted('"'))
+    .replaceAll(/'([^'\n\\]+)'/g, quoted("'"))
+    .replaceAll(
+      /^(\s*-\s+)([^\s"'#[{|>&*!%@`][^#\n]*?)(\s*)$/gm,
+      (whole, lead: string, value: string, tail: string) => {
+        const next = repoint(value)
+        return next === value ? whole : `${lead}${next}${tail}`
+      },
+    )
+}
+
+/**
  * Decide every byte of converting a vault into a copy laid out the way
  * `mapping` says: which files move, which are left out, and the new contents
  * of each note whose links moved or that Kore would rewrite canonically.
@@ -146,8 +223,11 @@ export function convertObsidianSettings(
  */
 export function buildObsidianConversion(input: {
   readonly mapping: ImportMapping
-  readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'config'>
+  readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'config'> &
+    Partial<Pick<ObsidianImportSource, 'bases'>>
   readonly convert: ImportCanonicalizer
+  /** Carry `.git` into the copy and commit the conversion on its history. */
+  readonly keepHistory?: boolean
 }): ObsidianConversion {
   const { mapping, source } = input
   const plan = planImportMoves(mapping, [
@@ -178,19 +258,29 @@ export function buildObsidianConversion(input: {
       writes.push({ path: destination.get(note.path) ?? note.path, contents })
     }
   }
+  for (const base of source.bases ?? []) {
+    if (excluded.has(base.path)) {
+      continue
+    }
+    const contents = convertBaseFile(base.content, mapping, destination)
+    if (contents !== base.content) {
+      writes.push({ path: destination.get(base.path) ?? base.path, contents })
+    }
+  }
   writes.push(...convertObsidianSettings(source.config, mapping))
   return {
     renames: plan.moves,
-    skip: [...ALWAYS_SKIPPED, ...mapping.exclude],
+    skip: [...(input.keepHistory === true ? [] : [GIT_DIR]), ...ALWAYS_SKIPPED, ...mapping.exclude],
     writes,
     canonical,
     lossy,
+    keepHistory: input.keepHistory === true,
   }
 }
 
 /** How far a conversion has got: files written out of `total`. */
 export interface ConversionProgress {
-  readonly phase: 'copying' | 'writing'
+  readonly phase: 'copying' | 'writing' | 'committing'
   readonly done: number
   readonly total: number
 }
@@ -199,6 +289,8 @@ export interface ConversionResult extends VaultCopyStats {
   readonly destination: string
   /** Files the conversion rewrote after copying. */
   readonly written: number
+  /** The conversion's commit on the carried history, or `null` when history wasn't kept. */
+  readonly commit: string | null
 }
 
 /** Rewrites go to Rust in batches, so a large vault never sends one huge IPC message. */
@@ -247,5 +339,10 @@ export async function convertObsidianVault(input: {
     }
   }
   await flush()
-  return { ...stats, destination, written: done }
+  let commit: string | null = null
+  if (conversion.keepHistory) {
+    input.onProgress?.({ phase: 'committing', done, total })
+    commit = (await vaultCopyCommit(destination, CONVERSION_COMMIT_MESSAGE)).sha
+  }
+  return { ...stats, destination, written: done, commit }
 }

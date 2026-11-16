@@ -63,6 +63,15 @@ interface GraphMapCanvasProps {
   wheelZoom?: 'always' | 'modifier'
   /** Accessible name of the canvas. */
   label?: string
+  /**
+   * `false` computes the initial layout without drawing it (a few ms of
+   * layout per frame) and paints it once settled, instead of painting every
+   * frame while it settles. Painting is the
+   * expensive half of settling, so a small map that appears alongside a note
+   * (the Details panel's local graph) skips the animation; drags still
+   * animate.
+   */
+  animateInitialLayout?: boolean
 }
 
 /** World→screen viewport: `screen = world * scale + offset`. */
@@ -87,6 +96,11 @@ const MAX_SCALE = 4
 const CLICK_SLOP = 4
 /** A graph this small labels every node it has room for, at any zoom. */
 const LABEL_ALL_BELOW = 60
+/** Ceiling on the steps an unanimated initial layout runs before its first paint. */
+const MAX_SETTLE_STEPS = 600
+/** Layout time an unanimated initial layout may spend per frame (ms). */
+const SETTLE_FRAME_BUDGET_MS = 6
+
 /** Label type, in screen px: names stay this size however far you zoom. */
 const LABEL_FONT_SIZE = 11
 const HUB_LABEL_FONT_SIZE = 12
@@ -108,6 +122,7 @@ export function GraphMapCanvas({
   onFocus,
   wheelZoom = 'always',
   label = 'Note graph',
+  animateInitialLayout = true,
 }: GraphMapCanvasProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const onOpenRef = useRef(onOpen)
@@ -116,6 +131,8 @@ export function GraphMapCanvas({
   onFocusRef.current = onFocus
   const wheelZoomRef = useRef(wheelZoom)
   wheelZoomRef.current = wheelZoom
+  const animateInitialLayoutRef = useRef(animateInitialLayout)
+  animateInitialLayoutRef.current = animateInitialLayout
   const matchesRef = useRef<ReadonlySet<string> | null>(matches)
   matchesRef.current = matches
   // Set by the main effect; lets a matches change repaint the settled
@@ -165,8 +182,28 @@ export function GraphMapCanvas({
      */
     let minScale = MIN_SCALE
     const pacePaint = createPaintPacer()
+    let settleAtOnce = !animateInitialLayoutRef.current && nodes.length > 0
+    let settleSteps = 0
     const frames = createGraphFrameScheduler(() => {
       const frameStart = performance.now()
+      if (settleAtOnce) {
+        // Settle within a frame budget and paint nothing until done, so the
+        // work never grows the frame the note itself is drawn in.
+        while (!isSettled(layout) && performance.now() - frameStart < SETTLE_FRAME_BUDGET_MS) {
+          stepGraphLayout(layout, layoutEdges)
+          settleSteps += 1
+          if (settleSteps >= MAX_SETTLE_STEPS) {
+            break
+          }
+        }
+        if (!isSettled(layout) && settleSteps < MAX_SETTLE_STEPS) {
+          return true
+        }
+        settleAtOnce = false
+        if (autoFit) {
+          fitView()
+        }
+      }
       if (layout.nodes.length > 0 && !isSettled(layout)) {
         // Keep the existing two steps per frame and the same layout policy.
         stepGraphLayout(layout, layoutEdges)

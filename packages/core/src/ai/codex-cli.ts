@@ -1,6 +1,6 @@
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
-import { agentCliInput } from './agent-cli-input'
+import { agentCliInput, type AgentCliChannel } from './agent-cli-input'
 import {
   runAgentCliCommand,
   streamAgentCliTurn,
@@ -273,10 +273,8 @@ export function codexCliArgs(options: {
   ]
 }
 
-/** Whether Codex can take an attachment of this media type (images only). */
-export function codexCliAcceptsAttachment(mediaType: string): boolean {
-  return ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)
-}
+/** The channels Codex reads natively (images only). */
+const CODEX_CLI_CHANNELS: ReadonlySet<AgentCliChannel> = new Set(['image'])
 
 /** Run one chat turn through the Codex CLI (see `./agent-cli`). */
 export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerator<ChatStreamEvent> {
@@ -291,7 +289,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
   })
   // Codex app-server takes images as `image` input items; PDFs have no
   // channel there, so they are named in the prompt as unreadable.
-  const input = agentCliInput(options.messages, codexCliAcceptsAttachment)
+  const input = agentCliInput(options.messages, CODEX_CLI_CHANNELS)
   const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${input.text}`
   const parseState: CodexCliParseState = { sawAgentMessageDelta: false }
   let threadId: string | undefined

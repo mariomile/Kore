@@ -94,8 +94,8 @@ export function useResourceCollection(
           appendResourceSource(cardPath, sourceLink, forGeneration, isStale),
       })
         .then(async (cardPath) => {
-          // Keeping the page's words is an outbound fetch: never for a private note.
-          if (!isPrivate && saveText) await saveLinkText(cardPath, generation)
+          // Core never fetches for a private card (a private note's cards are private).
+          if (saveText) await saveLinkText(cardPath, generation)
         })
         .catch((cause) => {
           if (!isStale()) startOperation('Collecting link').fail(errorMessage(cause))

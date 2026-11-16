@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { call } from '../ipc/invoke'
 
 /** Severity of a webview message recorded in the local log. */
-export type WebviewLogLevel = 'warn' | 'error'
+export type WebviewLogLevel = 'info' | 'warn' | 'error'
 
 /**
  * Record one webview message in the app's local log file (see

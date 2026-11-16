@@ -34,4 +34,13 @@ describe('membershipParagraphCss', () => {
     expect(css).toContain(':nth-child(2)')
     expect(css).not.toContain(':nth-child(3)')
   })
+
+  it('targets the line under a title that follows a blank paragraph', () => {
+    const root = document.createElement('div')
+    root.innerHTML =
+      '<p><br></p><h1>Project</h1><p><span class="md-tag">#project</span></p><p>Body</p>'
+    const css = membershipParagraphCss(root, root.querySelector('h1'))
+    expect(css).toContain(':nth-child(3)')
+    expect(css).not.toContain(':nth-child(4)')
+  })
 })

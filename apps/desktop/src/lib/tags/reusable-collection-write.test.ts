@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CollectionDefinition, CollectionReferenceResolution } from '@kore/core'
 
 const createNoteWithTitle = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
+const createTypedNoteWithTitle = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
 const createNoteIfAbsent = vi.hoisted(() => vi.fn(async () => ({ kind: 'created' as const })))
 const readNote = vi.hoisted(() =>
   vi.fn(
@@ -20,6 +21,7 @@ const resolveCollectionNoteReference = vi.hoisted(() =>
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   createNoteWithTitle,
+  createTypedNoteWithTitle,
   createNoteIfAbsent,
   readNote,
   getNoteIdsByPath,

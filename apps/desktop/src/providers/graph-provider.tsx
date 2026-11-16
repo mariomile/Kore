@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
+  cloneGithubVault,
   deleteGraph as deleteGraphCommand,
   errorMessage,
   forgetRecent,
@@ -13,12 +14,14 @@ import {
   openGraph,
   recentGraphs,
   type AppPlatform,
+  type GithubRepoRef,
   type GraphInfo,
   type RecentGraph,
 } from '@kore/core'
 import { followHealedMove } from '@/editor/move-note'
 import { resetNoteRowOverlays } from '@/hooks/note-row-overlay'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { isICloudRoot } from '@/lib/icloud-controller'
 import { setIndexProgress } from '@/lib/index-progress'
 import {
@@ -26,16 +29,22 @@ import {
   dropSimilarNotesQueries,
   throttledInvalidateIndexQueries,
 } from '@/lib/query-client'
-import { ensureFirstRunSeeds } from '@/lib/welcome-note'
+import { ensureFirstRunSeeds, markFirstRunSeedsConsidered } from '@/lib/welcome-note'
 import { closeSecondaryWindows } from '@/lib/windows/close-secondary-windows'
 import { isMainWindow, requireMainWindow } from '@/lib/windows/window-role'
-import { GraphContext, type GraphContextValue, type GraphStatus } from './graph-context'
+import {
+  GraphContext,
+  type GraphContextValue,
+  type GraphStatus,
+  type OpenGraphOptions,
+} from './graph-context'
 import { createGraphIndex } from './graph-index'
 import { pickerDefaultPath } from './graph-provider-helpers'
 import { useDesktopGraphBoot } from './use-desktop-graph-boot'
 import { useMobileGraphBoot } from './use-mobile-graph-boot'
 import { useNoteWindowBoot } from './use-note-window-boot'
 import { useReconcileRequests } from './use-reconcile-requests'
+import { markLaunch } from '@/lib/launch-timing'
 
 export { useGraph, type GraphStatus } from './graph-context'
 
@@ -175,7 +184,8 @@ export function GraphProvider({
   )
 
   const openRecent = useCallback(
-    (root: string): Promise<boolean> => {
+    (root: string, options?: OpenGraphOptions): Promise<boolean> => {
+      const seedFirstRun = options?.seedFirstRun ?? true
       if (!requireMainWindow('opening a vault')) {
         return Promise.resolve(false)
       }
@@ -231,6 +241,7 @@ export function GraphProvider({
           setIndexGeneration(generation)
           setIndexReady(false)
           setStatus('ready')
+          markLaunch('vault')
           opened = true
           // Onboarding, considered exactly once per graph (the per-seed meta
           // markers): an empty graph gets the pinned "How to use Kore" note
@@ -243,7 +254,15 @@ export function GraphProvider({
           // in the .finally so it always runs after the seed attempt.
           // Best-effort — a failed seed must never block opening.
           if (generation !== null) {
-            ensureFirstRunSeeds({ fileGeneration: info.generation, indexGeneration: generation })
+            // A vault opened from GitHub is the repository's content: it is
+            // only marked, never seeded (the next sync would push the seeds).
+            const seeds = seedFirstRun
+              ? ensureFirstRunSeeds({
+                  fileGeneration: info.generation,
+                  indexGeneration: generation,
+                })
+              : markFirstRunSeedsConsidered(generation)
+            seeds
               .catch((err) => {
                 console.error('first-run seed failed:', errorMessage(err))
               })
@@ -294,6 +313,7 @@ export function GraphProvider({
     mobileStorageResolving,
     mobileStorageKind,
     completeOnboarding,
+    completeOnboardingFromGithub,
   } = useMobileGraphBoot({ platform, openRecent, onParked })
 
   // Secondary note windows never open a graph: they adopt the main window's.
@@ -342,6 +362,28 @@ export function GraphProvider({
         return false
       }
       return await openRecent(root)
+    },
+    [openRecent],
+  )
+
+  const openFromGithub = useCallback(
+    async (
+      ref: GithubRepoRef,
+      token: string | null,
+      destination: string,
+      options?: { allowPublic?: boolean },
+    ): Promise<boolean> => {
+      if (!requireMainWindow('opening a vault')) {
+        return false
+      }
+      await cloneGithubVault({
+        ref,
+        token,
+        destination,
+        allowPublic: options?.allowPublic === true,
+      })
+      invalidateGithubAuth()
+      return await openRecent(destination, { seedFirstRun: false })
     },
     [openRecent],
   )
@@ -475,6 +517,7 @@ export function GraphProvider({
       chooseGraph,
       createAt,
       openRecent,
+      openFromGithub,
       forget,
       deleteGraph,
       needsOnboarding,
@@ -482,6 +525,7 @@ export function GraphProvider({
       mobileStorageResolving,
       mobileStorageKind,
       completeOnboarding,
+      completeOnboardingFromGithub,
       refreshIndex,
     }),
     [
@@ -499,6 +543,7 @@ export function GraphProvider({
       chooseGraph,
       createAt,
       openRecent,
+      openFromGithub,
       forget,
       deleteGraph,
       needsOnboarding,
@@ -506,6 +551,7 @@ export function GraphProvider({
       mobileStorageResolving,
       mobileStorageKind,
       completeOnboarding,
+      completeOnboardingFromGithub,
       refreshIndex,
     ],
   )

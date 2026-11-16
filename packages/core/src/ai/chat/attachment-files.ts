@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { call } from '../../ipc/invoke'
 import type { ChatAttachment } from './transcript'
-import { CHAT_ATTACHMENT_EXTENSIONS } from './attachment-types'
+import { attachmentExtension } from './attachment-types'
 
 /**
  * Chat attachment bytes on disk. A freshly attached file enters the
@@ -30,9 +30,9 @@ export async function persistChatAttachmentFile(
   attachment: ChatAttachment,
   generation: number,
 ): Promise<ChatAttachment> {
-  const extension = CHAT_ATTACHMENT_EXTENSIONS[attachment.mediaType]
+  const extension = attachmentExtension(attachment.mediaType)
   const dataUrl = attachment.dataUrl
-  if (dataUrl === undefined || extension === undefined || attachment.path !== undefined) {
+  if (dataUrl === undefined || extension === null || attachment.path !== undefined) {
     return attachment
   }
   const separator = dataUrl.indexOf(',')

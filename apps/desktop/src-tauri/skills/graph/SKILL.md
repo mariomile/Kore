@@ -40,9 +40,12 @@ folders.
     kore list [--tag T] [--kind daily|note]      # notes newest first, with tags
     kore collection <tag>      # a typed tag's rows with their property values
     kore properties <note>     # a note's frontmatter properties, typed, and tags
-    kore links <note>          # the wiki links a note makes, resolved
+    kore links <note>          # the wiki links a note makes, resolved, with relations
     kore explain <note>        # properties, tags, outline, links, backlinks at once
     kore route <from> <to>     # how two notes connect: the shortest link chain
+    kore neighborhood <note>   # the notes around a note in one call (--depth 2, --relation)
+    kore coverage <question>   # before answering: what the vault holds, what is missing
+    kore lint                  # broken links, orphans, unlinked mentions, bad relations
     kore grep <text>           # every line with an exact text (all of them, unranked)
     kore skills [name]         # the vault's agent skills, or one to follow
     kore active                # the note the user has open in the app right now
@@ -54,7 +57,8 @@ folders.
     kore path <note>           # resolve a note to its absolute path
     kore open <note>           # open the note in the Kore app
     kore tasks                 # the graph's open tasks (--all includes done)
-    kore backlinks <note>      # the notes linking to a note
+    kore backlinks <note>      # the notes linking to a note, with relations and context
+                               # (--relation company: only notes whose company: links it)
     kore recent                # the most recently updated notes, newest first
 
     kore capture <text>        # append a bullet to today's daily note

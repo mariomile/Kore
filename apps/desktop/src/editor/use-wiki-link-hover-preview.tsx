@@ -1,6 +1,11 @@
 import { useCallback, useMemo, type ReactNode } from 'react'
 import type { WikilinkHoverHit } from '@meowdown/core'
-import { resolveExistingWikiTarget, splitFrontmatter, type DateFormat } from '@kore/core'
+import {
+  resolveExistingWikiTarget,
+  splitFrontmatter,
+  wikilinkTarget,
+  type DateFormat,
+} from '@kore/core'
 import { WikiLinkHoverPreview } from '@/components/wiki-link-hover-preview'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
@@ -42,7 +47,7 @@ export function useWikiLinkHoverPreview({
         return null
       }
       try {
-        const resolution = await resolveExistingWikiTarget(target, generation)
+        const resolution = await resolveExistingWikiTarget(wikilinkTarget(target), generation)
         if (resolution.kind !== 'resolved') {
           return null
         }

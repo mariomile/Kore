@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isTemplatePath, TAGS_DIR } from '../graph/paths'
 import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } from '../markdown'
+import { parseTagViews, TAG_VIEWS_KEY, type SavedCollectionView } from './tag-views'
 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
@@ -130,6 +131,30 @@ export const formulaConfigSchema = z.object({
 })
 export type FormulaConfig = z.infer<typeof formulaConfigSchema>
 
+/**
+ * The named palette select options can be painted with, in picker order.
+ * Names, not hex values, so a definition reads the same in light and dark
+ * and an agent can write `colors: { Done: green }` without a lookup.
+ */
+export const OPTION_COLORS = [
+  'gray',
+  'brown',
+  'red',
+  'orange',
+  'amber',
+  'green',
+  'teal',
+  'blue',
+  'violet',
+  'pink',
+] as const
+export type OptionColor = (typeof OPTION_COLORS)[number]
+
+/** Whether `value` names a palette color ({@link OPTION_COLORS}). */
+export function isOptionColor(value: unknown): value is OptionColor {
+  return typeof value === 'string' && (OPTION_COLORS as readonly string[]).includes(value)
+}
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
@@ -138,6 +163,14 @@ export const tagPropertySchema = z.object({
   type: tagPropertyTypeSchema,
   /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
+  /**
+   * Per-option colors for the select-like types, keyed by option text
+   * (`{ Active: green }`). A palette name from {@link OPTION_COLORS}; an
+   * option without one (or with a name this version doesn't know) keeps its
+   * hashed color, so hand-built definitions need no colors at all. Read
+   * through {@link optionColorOf}. Ignored for other types.
+   */
+  colors: z.record(z.string(), z.string()).optional(),
   /**
    * For `relation` / `relations` / `person`: the typed tag whose collection
    * the picker offers (the tag name, no `#`; folded on use). Absent = any
@@ -165,6 +198,19 @@ export const tagPropertySchema = z.object({
   default: z.union([z.string().min(1), z.number(), z.boolean()]).optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
+
+/**
+ * The color a property paints `option` with, or `null` when the definition
+ * picked none (callers fall back to the hashed color). A stale color for an
+ * option the list no longer holds never matches, since lookup is by text.
+ */
+export function optionColorOf(
+  property: Pick<TagProperty, 'colors'> | undefined,
+  option: string,
+): OptionColor | null {
+  const color = property?.colors?.[option]
+  return isOptionColor(color) ? color : null
+}
 
 /** The collection `person` pickers default to: the meeting flow's own
  * convention for people notes (`- Type: #person`). */
@@ -251,6 +297,7 @@ export function withPropertyType(property: TagProperty, type: TagPropertyType): 
     key: property.key,
     type,
     ...(keepsOptions && property.options !== undefined ? { options: property.options } : {}),
+    ...(keepsOptions && property.colors !== undefined ? { colors: property.colors } : {}),
     ...(keepsTarget && property.target !== undefined ? { target: property.target } : {}),
   }
 }
@@ -279,6 +326,19 @@ export interface TagType {
    * on nothing, like `icon`, so the many hand-built types stay valid.
    */
   extends?: readonly string[]
+  /**
+   * The type's saved database views (`views:` on the definition note), in
+   * tab order. Absent when the definition stores none; the tag page then
+   * falls back to its live layout. Never inherited: a child's tabs are its own.
+   */
+  views?: readonly SavedCollectionView[]
+  /**
+   * The type's home folder (`folder:` on the definition note), graph-relative.
+   * New notes of the type are born there; existing notes never move. A trailing `/{title}` segment gives each note its own
+   * folder (`Active/Projects/{title}` → `Active/Projects/Kore/Kore.md`), the
+   * folder-note layout. Absent when the type has no home.
+   */
+  folder?: string
 }
 
 /**
@@ -307,6 +367,7 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'properties',
   'template',
   'cover',
+  'cover_y',
   'icon',
   'kore',
   'koreCollection',
@@ -364,12 +425,47 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
       : undefined
   const icon = tagIconValue(frontmatter['icon'])
   const parents = parseTagExtends(frontmatter['extends'])
+  const views = parseTagViews(frontmatter[TAG_VIEWS_KEY])
+  const folder = parseTypeFolder(frontmatter[TAG_FOLDER_KEY])
   return {
     properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
+    ...(folder === undefined ? {} : { folder }),
   }
+}
+
+/** The frontmatter key a definition names its home folder under. */
+export const TAG_FOLDER_KEY = 'folder'
+
+/** The `{title}` placeholder: one folder per note, the note named like it. */
+export const TYPE_FOLDER_TITLE_SEGMENT = '{title}'
+
+/**
+ * Read a `folder:` value: a graph-relative folder, slashes trimmed, with an
+ * optional final `{title}` segment. Anything unsafe (`..`, backslashes,
+ * absolute paths, a `{title}` that is not the last segment) reads as none.
+ */
+export function parseTypeFolder(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim().replaceAll(/^\/+|\/+$/g, '')
+  if (trimmed === '' || trimmed.includes('\\')) {
+    return undefined
+  }
+  const segments = trimmed.split('/')
+  const bad = segments.some(
+    (segment, index) =>
+      segment === '' ||
+      segment === '.' ||
+      segment === '..' ||
+      (segment.includes('{') &&
+        !(segment === TYPE_FOLDER_TITLE_SEGMENT && index === segments.length - 1)),
+  )
+  return bad ? undefined : trimmed
 }
 
 /** The frontmatter key a definition names its parent tags under. */
@@ -429,7 +525,14 @@ export function tagDisplayName(tag: string): string {
  */
 export function encodeTagTypeJson(type: TagType): string {
   const parents = type.extends ?? []
-  if (type.template === undefined && type.icon === undefined && parents.length === 0) {
+  const views = type.views ?? []
+  if (
+    type.template === undefined &&
+    type.icon === undefined &&
+    parents.length === 0 &&
+    views.length === 0 &&
+    type.folder === undefined
+  ) {
     return JSON.stringify(type.properties)
   }
   return JSON.stringify({
@@ -437,6 +540,8 @@ export function encodeTagTypeJson(type: TagType): string {
     ...(type.template === undefined ? {} : { template: type.template }),
     ...(type.icon === undefined ? {} : { icon: type.icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
+    ...(type.folder === undefined ? {} : { folder: type.folder }),
   })
 }
 
@@ -451,17 +556,23 @@ export function decodeTagTypeJson(column: string): TagType {
       template: z.string().min(1).optional(),
       icon: z.string().min(1).optional(),
       extends: z.array(z.string()).optional(),
+      views: z.unknown().optional(),
+      folder: z.string().optional(),
     })
     .parse(parsed)
   const template =
     object.template !== undefined && isTemplatePath(object.template) ? object.template : undefined
   const icon = tagIconValue(object.icon)
   const parents = parseTagExtends(object.extends)
+  const views = parseTagViews(object.views)
+  const folder = parseTypeFolder(object.folder)
   return {
     properties: object.properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
+    ...(views.length === 0 ? {} : { views }),
+    ...(folder === undefined ? {} : { folder }),
   }
 }
 

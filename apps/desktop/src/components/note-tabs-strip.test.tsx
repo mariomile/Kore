@@ -107,6 +107,27 @@ vi.mock('@/providers/settings-provider', async () => {
     }),
   }
 })
+vi.mock('@/providers/workspace-layout-provider', async () => {
+  const { useSyncExternalStore } = await import('react')
+  const none: OpenColumn[] = []
+  const columnsOf = (root: string | null): readonly OpenColumn[] =>
+    root === null ? none : (settingsStore.get().openTabs[root] ?? none)
+  const updateLayout = (
+    root: string,
+    mutate: (columns: readonly OpenColumn[]) => readonly OpenColumn[],
+  ) => {
+    const current = columnsOf(root)
+    const next = mutate(current)
+    if (next !== current) {
+      settingsStore.set({ openTabs: { ...settingsStore.get().openTabs, [root]: [...next] } })
+    }
+  }
+  return {
+    useWorkspaceLayout: (root: string | null) =>
+      useSyncExternalStore(settingsStore.subscribe, () => columnsOf(root)),
+    useUpdateWorkspaceLayout: () => updateLayout,
+  }
+})
 vi.mock('@/components/command-palette/palette-provider', () => ({
   usePalette: () => ({ openPalette: vi.fn(), open: false }),
 }))

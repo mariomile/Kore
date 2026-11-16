@@ -250,6 +250,7 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
     .selectFrom('tags')
     .innerJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
+    .where('tags.member', '=', 1)
     .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tagTypes.tagKey')
     .execute()
@@ -257,7 +258,8 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
 }
 
 /**
- * Every tag one note carries, schema-bearing or not, in key order. Since
+ * Every tag one note is a member of (not the ones its prose only mentions),
+ * schema-bearing or not, in key order. Since
  * TDR 0005 Amendment A a tag *is* a collection whether or not a definition
  * note declares properties, so the note's Type field lists them all; the
  * property union above still comes from {@link listNoteTagTypes}, because an
@@ -273,6 +275,7 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .selectFrom('tags')
     .leftJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
+    .where('tags.member', '=', 1)
     .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tags.tagKey')
     .execute()
@@ -295,12 +298,31 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
  */
 export async function listNotesWithProperty(
   key: string,
+  options: { tag?: string } = {},
 ): Promise<{ notePath: string; value: CollectionValue }[]> {
-  const rows = await db
-    .selectFrom('noteProperties')
-    .where('key', '=', key)
-    .select(['notePath', 'value', 'valueType', 'valueNumber'])
-    .orderBy('notePath')
+  let query = db.selectFrom('noteProperties').where('noteProperties.key', '=', key)
+  if (options.tag !== undefined) {
+    // Only the tag's own members: another type can use the same key with
+    // its own meaning, and an option rename must not reach it.
+    const tagKey = foldTag(options.tag)
+    query = query.where(({ exists, selectFrom }) =>
+      exists(
+        selectFrom('tags')
+          .select('tags.notePath')
+          .whereRef('tags.notePath', '=', 'noteProperties.notePath')
+          .where('tags.tagKey', '=', tagKey)
+          .where('tags.member', '=', 1),
+      ),
+    )
+  }
+  const rows = await query
+    .select([
+      'noteProperties.notePath',
+      'noteProperties.value',
+      'noteProperties.valueType',
+      'noteProperties.valueNumber',
+    ])
+    .orderBy('noteProperties.notePath')
     .execute()
   return rows.map((row) => ({
     notePath: row.notePath,

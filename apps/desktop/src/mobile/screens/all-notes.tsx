@@ -1,20 +1,17 @@
 import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, LayoutGrid, List, Note, SearchOff } from '@/components/icons'
+import { LayoutGrid, List, Note, SearchOff } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
   parseHighlights,
   searchWithFilters,
-  type AllNotesView,
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useCollection } from '@/hooks/use-collection'
-import { useTagType } from '@/hooks/use-tag-type'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
@@ -26,7 +23,6 @@ import {
   type AllNotesFilters,
 } from '@/mobile/search-filters/filter-state'
 import { NoteRowList } from '@/mobile/note-row-list'
-import { propertyLine } from '@/mobile/property-line'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
@@ -49,7 +45,7 @@ export function rowForHit(hit: FilteredSearchHit): NoteRowModel {
     snippet:
       hit.snippet !== null
         ? parseHighlights(hit.snippet)
-        : hit.preview === ''
+        : hit.preview.trim() === ''
           ? []
           : [{ text: hit.preview, highlighted: false }],
   }
@@ -65,8 +61,6 @@ interface MobileAllNotesProps {
   /** The live search text — lifted to the shell so it survives navigation. */
   query: string
   onQueryChange: (query: string) => void
-  /** The active tag filter from the `allNotes` route (`null` = every note). */
-  tag: string | null
   /** The badge filters — lifted to the shell so they survive navigation. */
   filters: AllNotesFilters
   onFiltersChange: (filters: AllNotesFilters) => void
@@ -81,22 +75,20 @@ interface MobileAllNotesProps {
  * (notes only, pinned first, uncapped), badges and typed tokens narrow it,
  * and free text switches to ranked FTS. A trailing `#…` token switches the bar into
  * tag matching (V1): suggestions replace the badge row until the tag is
- * picked or the token completed. The route's tag (a tag tap landed here)
- * rides along as a badge with a back affordance. The card grid is a reading
+ * picked or the token completed. A tag's own route is its type page
+ * ({@link MobileTypePage}), not this list. The card grid is a reading
  * layout — tap opens; pin and delete stay with the swipeable list.
  */
 export function MobileAllNotes({
   query,
   onQueryChange,
-  tag,
   filters,
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
   const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
   const { settings, updateSettings } = useSettings()
-  const view = settings.allNotesView
-  const { navigate, back, arrivalSeq, arrivalFocusEditor } = useRouter()
+  const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
@@ -113,8 +105,8 @@ export function MobileAllNotes({
   const deferredQuery = useDeferredValue(query)
   const pending = pendingTagToken(query)
   const parsed = useMemo(
-    () => buildAllNotesSearch(deferredQuery, filters, tag),
-    [deferredQuery, filters, tag],
+    () => buildAllNotesSearch(deferredQuery, filters, null),
+    [deferredQuery, filters],
   )
 
   const { data: facets } = useQuery({
@@ -135,33 +127,13 @@ export function MobileAllNotes({
     placeholderData: keepPreviousData,
   })
 
-  // On a typed-tag route, rows carry a compact property summary in place of
-  // the prose snippet — the phone-sized Collection view (TDR 0005). The map
-  // only indexes the fetched values; the display line is formatted lazily
-  // for the hits actually rendered, not the whole collection.
-  const tagType = useTagType(tag)
-  const collection = useCollection(tagType != null ? tag : null, [])
-  const collectionProperties = useMemo(
-    () =>
-      tagType == null || collection === undefined
-        ? null
-        : new Map(collection.map((entry) => [entry.path, entry.properties])),
-    [tagType, collection],
-  )
-  const rows = useMemo(
-    () =>
-      (hits ?? []).map((hit) => {
-        const row = rowForHit(hit)
-        const properties = collectionProperties?.get(hit.path)
-        if (tagType == null || properties === undefined) {
-          return row
-        }
-        const line = propertyLine(tagType, properties)
-        return line === '' ? row : { ...row, propertyLine: line }
-      }),
-    [hits, tagType, collectionProperties],
-  )
+  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
   const pristine = parsed.text === '' && !parsed.filtered
+  const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
+  const setView = (next: AllNotesLayout): void => {
+    hapticImpactLight()
+    updateSettings({ allNotesView: next })
+  }
 
   const removeDeletedRow = (path: string): void => {
     queryClient.setQueriesData<FilteredSearchHit[]>(
@@ -197,17 +169,6 @@ export function MobileAllNotes({
           Notes
         </h1>
         <div className="flex items-center gap-1">
-          {tag !== null && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="-ml-2 size-11 shrink-0"
-              aria-label="Back"
-              onClick={back}
-            >
-              <ChevronLeft />
-            </Button>
-          )}
           <SearchInput
             ref={searchInputRef}
             placeholder="Search anything…"
@@ -217,13 +178,7 @@ export function MobileAllNotes({
             onFocus={searchHeaderFocus.onFocus}
             onBlur={searchHeaderFocus.onBlur}
           />
-          <AllNotesLayoutToggle
-            view={view}
-            onChange={(next) => {
-              hapticImpactLight()
-              updateSettings({ allNotesView: next })
-            }}
-          />
+          <AllNotesLayoutToggle view={view} onChange={setView} />
         </div>
         {pending !== null ? (
           <TagSuggestions
@@ -231,13 +186,7 @@ export function MobileAllNotes({
             onPick={addPendingTag}
           />
         ) : (
-          <FilterBar
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-            facets={facets ?? []}
-            routeTag={tag}
-            onClearRouteTag={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}
-          />
+          <FilterBar filters={filters} onFiltersChange={onFiltersChange} facets={facets ?? []} />
         )}
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
@@ -323,9 +272,12 @@ function Empty({ icon, message }: { icon: ReactElement; message: string }): Reac
   )
 }
 
+/** The Notes tab's two layouts (the same `allNotesView` setting as desktop). */
+type AllNotesLayout = 'list' | 'grid'
+
 interface AllNotesLayoutToggleProps {
-  view: AllNotesView
-  onChange: (view: AllNotesView) => void
+  view: AllNotesLayout
+  onChange: (view: AllNotesLayout) => void
 }
 
 /** Compact list/grid switch — the same labels as desktop so the setting is one. */

@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import {
   foldTag,
-  isPropertyKey,
-  listTagParentCandidates,
-  listTemplates,
-  type TemplateEntry,
+  propertyKeyForName,
+  tagDisplayName,
+  tagPropertyTypeSchema,
+  type TagPropertyType,
 } from '@kore/core'
-import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
+import { Close, Info, Plus, Settings, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -23,36 +23,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { toast } from '@/components/ui/toast'
-import { TAG_SCHEMA_PRESETS, type TagSchemaPreset } from '@/lib/tags/schema-presets'
-import {
-  migratePropertyRenames,
-  planPropertyRenames,
-  type PendingRename,
-} from '@/lib/tags/schema-renames'
-import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
-import { tagTypeQueryKey } from '@/hooks/use-tag-type'
-import { useGraph } from '@/providers/graph-provider'
-import {
-  FIELD_LABEL_CLASS,
-  draftsForNewSchema,
-  draftsFromSchema,
-  schemaFromDrafts,
-  type PropertyDraft,
-} from './tag-config-drafts'
+import { isMobileSurface } from '@/lib/platform-surface'
+import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
+import { PROPERTY_TYPE_ICONS } from './property-type-icons'
+import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { TagConfigSheet } from './tag-config-sheet'
+import { TagPresetIcon } from './tag-preset-icon'
+import { TagFolderField } from './tag-folder-field'
 import { TagParentsField } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
-import { TagPropertyRow } from './tag-property-row'
+import { TagPropertySettings } from './tag-property-settings'
 import { TagViewsStrip } from './tag-views-strip'
-
-/** The presets' row glyphs (kept here so the preset data stays plain). */
-const PRESET_ICONS = {
-  project: Folder,
-  person: User,
-  company: Chart,
-  meeting: Calendar,
-  reading: Book,
-} as const
+import { NavButton, PropertyNavList } from './tag-config-nav'
+import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
+import { useTypeTagBinding } from './use-type-tag-binding'
 
 interface TagConfigDialogProps {
   /** The tag being configured (display casing). */
@@ -66,181 +50,25 @@ interface TagConfigDialogProps {
  * save; an existing unmarked note at that path is only written after the
  * explicit conversion notice below. A broken-YAML definition refuses the
  * write (`upsertFrontmatter`) and surfaces as a toast — never destroys.
+ *
+ * On the Mac it is two panes, like Notion's and Capacities' type settings:
+ * the type itself and its properties as a sortable list on the left, the
+ * selection's settings on the right (select options with their order,
+ * colors and renames included). When the vault's notes carry the type under
+ * another tag (`#type/project` for a `#project` type) a banner offers to
+ * move the type there.
+ *
+ * On the phone every entry point opens the same configuration as a bottom
+ * sheet ({@link TagConfigSheet}) instead: a centered dialog this dense does
+ * not fit a 390pt screen.
  */
-export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactElement {
-  const { graph } = useGraph()
-  const queryClient = useQueryClient()
-  const [loading, setLoading] = useState(true)
-  const [needsConversion, setNeedsConversion] = useState(false)
-  const [drafts, setDrafts] = useState<PropertyDraft[]>([])
-  const [nextRowId, setNextRowId] = useState(0)
-  // The row whose name input takes focus — the one "Add property" just made.
-  const [focusRowId, setFocusRowId] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
-  const [template, setTemplate] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<TemplateEntry[]>([])
-  const [icon, setIcon] = useState<string | null>(null)
-  // The tags this one builds on (Plan 33 B2) and the ones it may pick.
-  const [parents, setParents] = useState<string[]>([])
-  const [parentCandidates, setParentCandidates] = useState<string[]>([])
+export function TagConfigDialog(props: TagConfigDialogProps): ReactElement {
+  return isMobileSurface() ? <TagConfigSheet {...props} /> : <TagConfigDesktopDialog {...props} />
+}
 
-  useEffect(() => {
-    let active = true
-    void (async () => {
-      const definition = await readTagDefinition(tag)
-      let available: TemplateEntry[] = []
-      try {
-        available = await listTemplates()
-      } catch {
-        available = []
-      }
-      let candidates: string[] = []
-      try {
-        candidates = await listTagParentCandidates(tag)
-      } catch {
-        candidates = []
-      }
-      if (!active) {
-        return
-      }
-      setNeedsConversion(definition.needsConversion)
-      const rows = draftsFromSchema(definition.properties)
-      setDrafts(rows)
-      setNextRowId(rows.length)
-      setTemplate(definition.template)
-      setTemplates(available)
-      setIcon(definition.icon)
-      setParents(definition.parents)
-      setParentCandidates(candidates)
-      setLoading(false)
-    })()
-    return () => {
-      active = false
-    }
-  }, [tag])
-
-  // Name and key problems are tracked apart: a missing name only marks its
-  // input, while a bad or duplicate key must pop the (normally folded) key
-  // editor open on its row.
-  const { invalidNameRowIds, invalidKeyRowIds } = useMemo(() => {
-    const names = new Set<number>()
-    const keys = new Set<number>()
-    const seenKeys = new Set<string>()
-    for (const draft of drafts) {
-      if (draft.name.trim() === '') {
-        names.add(draft.rowId)
-      }
-      if (!isPropertyKey(draft.key) || seenKeys.has(draft.key)) {
-        keys.add(draft.rowId)
-      }
-      seenKeys.add(draft.key)
-    }
-    return { invalidNameRowIds: names, invalidKeyRowIds: keys }
-  }, [drafts])
-  const hasInvalidRows = invalidNameRowIds.size > 0 || invalidKeyRowIds.size > 0
-  // What the drafts unlock, live — the views strip re-renders per keystroke.
-  const liveSchema = useMemo(() => schemaFromDrafts(drafts), [drafts])
-
-  const updateDraft = (rowId: number, patch: Partial<PropertyDraft>): void => {
-    setDrafts((current) =>
-      current.map((draft) => (draft.rowId === rowId ? { ...draft, ...patch } : draft)),
-    )
-  }
-
-  const moveDraft = (rowId: number, delta: -1 | 1): void => {
-    setDrafts((current) => {
-      const index = current.findIndex((draft) => draft.rowId === rowId)
-      const target = index + delta
-      if (index < 0 || target < 0 || target >= current.length) {
-        return current
-      }
-      const next = [...current]
-      const [moved] = next.splice(index, 1)
-      next.splice(target, 0, moved!)
-      return next
-    })
-  }
-
-  const addDraft = (): void => {
-    setDrafts((current) => [
-      ...current,
-      {
-        rowId: nextRowId,
-        name: '',
-        key: '',
-        originalKey: null,
-        type: 'text',
-        options: '',
-        target: '',
-        rollupRelation: '',
-        rollupProperty: '',
-        rollupAggregation: 'count',
-        reverseTag: '',
-        reverseProperty: '',
-        formulaExpression: '',
-        startingKind: 'none',
-        startingFixed: '',
-      },
-    ])
-    setFocusRowId(nextRowId)
-    setNextRowId((current) => current + 1)
-  }
-
-  // One click seeds an empty schema with editable rows — nothing is saved
-  // yet, and the views strip lights up to show what the preset unlocked.
-  const seedPreset = (preset: TagSchemaPreset): void => {
-    const rows = draftsForNewSchema(preset.properties)
-    setDrafts(rows)
-    setNextRowId(rows.length)
-    setFocusRowId(null)
-  }
-
-  const performSave = async (renames: PendingRename[], migrate: boolean): Promise<void> => {
-    if (graph === null) {
-      return
-    }
-    setSaving(true)
-    try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, {
-        template,
-        icon,
-        parents,
-      })
-      if (migrate) {
-        await migratePropertyRenames(renames, graph.generation)
-      }
-      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
-      onClose()
-    } catch (error) {
-      toast.add({
-        type: 'error',
-        title: `Couldn't save the #${tag} type`,
-        description: error instanceof Error ? error.message : String(error),
-      })
-      setSaving(false)
-    }
-  }
-
-  const save = async (): Promise<void> => {
-    if (graph === null || saving || hasInvalidRows) {
-      return
-    }
-    // A changed key on a loaded row is a rename; when notes still carry the
-    // old key, saving must not silently orphan their values — surface the
-    // blast radius and let the user migrate (or explicitly not).
-    const affecting = await planPropertyRenames(
-      drafts
-        .filter((draft) => draft.originalKey !== null && draft.originalKey !== draft.key)
-        .map((draft) => ({ from: draft.originalKey!, to: draft.key })),
-    )
-    if (affecting.length > 0) {
-      setPendingRenames(affecting)
-      return
-    }
-    await performSave([], false)
-  }
-
+function TagConfigDesktopDialog({ tag: initialTag, onClose }: TagConfigDialogProps): ReactElement {
+  // A rebind moves the type onto another tag; the settings reopen there.
+  const [tag, setTag] = useState(initialTag)
   return (
     <Dialog
       open
@@ -248,157 +76,388 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         if (!isOpen) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[min(48rem,92vw)] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Configure #{foldTag(tag)}</DialogTitle>
-          <DialogDescription>
-            Properties become columns of the type's collection and fields on every note of this
-            type. They are stored in{' '}
-            <code className="font-mono text-xs">tags/{foldTag(tag)}.md</code>, a note that syncs
-            with the vault.
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[min(42rem,calc(100dvh-2rem))] w-[min(56rem,94vw)] flex-col gap-0 overflow-hidden p-0"
+      >
+        <TypeSettings key={foldTag(tag)} tag={tag} onClose={onClose} onRebound={setTag} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** What the right pane shows: the type's own settings or one property. */
+type Selection = { kind: 'type' } | { kind: 'property'; rowId: number }
+
+function TypeSettings({
+  tag,
+  onClose,
+  onRebound,
+}: {
+  tag: string
+  onClose: () => void
+  onRebound: (tag: string) => void
+}): ReactElement {
+  const config = useTagConfigDraft(tag, onClose)
+  const binding = useTypeTagBinding(tag)
+  const key = foldTag(tag)
+  const [selection, setSelection] = useState<Selection>({ kind: 'type' })
+  const selected =
+    selection.kind === 'property'
+      ? (config.drafts.find((draft) => draft.rowId === selection.rowId) ?? null)
+      : null
+  const name = tagDisplayName(key.slice(key.lastIndexOf('/') + 1))
+
+  return (
+    <>
+      <header className="flex items-center gap-3 px-5 pb-3 pt-4">
+        <TagIconPicker value={config.icon} onChange={config.setIcon} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <DialogTitle className="truncate text-base font-semibold text-text">{name}</DialogTitle>
+          <DialogDescription className="flex items-center gap-1.5 truncate text-xs text-text-muted">
+            <span className="font-mono">#{key}</span>
+            <span aria-hidden>·</span>
+            <span>
+              {binding.count === null
+                ? 'Counting notes…'
+                : `${binding.count} ${binding.count === 1 ? 'note' : 'notes'}`}
+            </span>
           </DialogDescription>
-        </DialogHeader>
-        {needsConversion ? (
-          <p className="rounded-md bg-surface-hover px-3 py-2 text-xs text-text-secondary">
-            A note already exists at <code className="font-mono">tags/{foldTag(tag)}.md</code>.
-            Saving converts it into this type's definition (adds the type marker to its
-            frontmatter); its body is kept.
-          </p>
-        ) : null}
-        <div className="flex items-center gap-3">
-          <span className={FIELD_LABEL_CLASS}>Icon</span>
-          <TagIconPicker value={icon} onChange={setIcon} />
         </div>
-        <TagParentsField
-          tag={foldTag(tag)}
-          parents={parents}
-          candidates={parentCandidates}
-          onChange={setParents}
-        />
-        <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
-          {!loading && drafts.length === 0 ? (
-            <div className="flex flex-col gap-1 rounded-md bg-surface-hover p-2">
-              <p className="px-1 pb-1 text-xs text-text-secondary">
-                Start from a ready-made schema — every property stays editable:
-              </p>
-              {TAG_SCHEMA_PRESETS.map((preset) => {
-                const Glyph = PRESET_ICONS[preset.id as keyof typeof PRESET_ICONS] ?? Plus
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => seedPreset(preset)}
-                    className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-active"
-                  >
-                    <Glyph aria-hidden className="size-4 shrink-0 text-text-muted" />
-                    <span className="flex min-w-0 flex-col">
-                      <span className="text-sm font-medium text-text">{preset.name}</span>
-                      <span className="truncate text-xs text-text-muted">{preset.summary}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
-          {drafts.map((draft) => (
-            <TagPropertyRow
-              key={draft.rowId}
-              draft={draft}
-              nameInvalid={invalidNameRowIds.has(draft.rowId)}
-              keyInvalid={invalidKeyRowIds.has(draft.rowId)}
-              autoFocus={draft.rowId === focusRowId}
-              updateDraft={updateDraft}
-              moveDraft={moveDraft}
-              onRemove={() =>
-                setDrafts((current) => current.filter((row) => row.rowId !== draft.rowId))
+        <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="Close" />}>
+          <Close aria-hidden />
+        </DialogClose>
+      </header>
+
+      {binding.suggestion !== null && !config.loading ? (
+        <div className="mx-5 mb-3 flex items-center gap-3 rounded-lg bg-accent-soft px-3 py-2">
+          <Info aria-hidden className="size-4 shrink-0 text-accent-soft-text" />
+          <p className="min-w-0 flex-1 text-xs text-accent-soft-text">
+            <span className="font-medium">
+              {binding.suggestion.count} notes use #{binding.suggestion.tag}.
+            </span>{' '}
+            Bind this type to that tag so they show up as its rows. Their folders stay as they are.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            disabled={config.saving || config.hasInvalidRows}
+            onClick={() => {
+              const next = binding.suggestion?.tag
+              if (next === undefined) {
+                return
               }
+              void config.rebindTo(next).then((moved) => {
+                if (moved) onRebound(next)
+              })
+            }}
+          >
+            Use #{binding.suggestion.tag}
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="grid min-h-0 flex-1 grid-cols-[15rem_1fr]">
+        <nav
+          aria-label="Type settings"
+          className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3 pb-3"
+          aria-busy={config.loading || undefined}
+        >
+          <NavButton
+            active={selection.kind === 'type'}
+            onClick={() => setSelection({ kind: 'type' })}
+          >
+            <Settings aria-hidden className="size-4 shrink-0 text-text-muted" />
+            <span className="flex-1 truncate">Type</span>
+          </NavButton>
+          <p className="px-2 pb-1 pt-4 text-2xs font-medium text-text-muted">Properties</p>
+          <PropertyNavList
+            config={config}
+            selectedRowId={selected?.rowId ?? null}
+            onSelect={(rowId) => setSelection({ kind: 'property', rowId })}
+          />
+          <NavButton
+            muted
+            disabled={config.loading}
+            onClick={() => setSelection({ kind: 'property', rowId: config.addDraft() })}
+          >
+            <Plus aria-hidden className="size-4 shrink-0" />
+            <span className="flex-1 truncate">Add property</span>
+          </NavButton>
+        </nav>
+
+        <section className="min-h-0 overflow-y-auto px-6 pb-6 pt-1">
+          {config.needsConversion ? (
+            <p className="mb-4 rounded-lg bg-surface-hover px-3 py-2 text-xs text-text-secondary">
+              A note already exists at <code className="font-mono">tags/{key}.md</code>. Saving
+              converts it into this type's definition (adds the type marker to its frontmatter); its
+              body is kept.
+            </p>
+          ) : null}
+          {selected === null ? (
+            <TypePane
+              tagKey={key}
+              config={config}
+              onPicked={() => setSelection({ kind: 'type' })}
             />
+          ) : (
+            <PropertyPane
+              key={selected.rowId}
+              draft={selected}
+              config={config}
+              onRemove={() => {
+                config.removeDraft(selected.rowId)
+                setSelection({ kind: 'type' })
+              }}
+            />
+          )}
+        </section>
+      </div>
+
+      <SaveBar config={config} onClose={onClose} />
+    </>
+  )
+}
+
+/** A labelled row of the right pane: label column, then the control. */
+function PaneRow({ label, children }: { label: string; children: ReactNode }): ReactElement {
+  return (
+    <div className="flex items-start gap-2">
+      <span className={FIELD_LABEL_CLASS}>{label}</span>
+      <div className="flex min-w-0 flex-1 items-center">{children}</div>
+    </div>
+  )
+}
+
+function PaneHeading({ children }: { children: ReactNode }): ReactElement {
+  return <h3 className="pb-3 pt-3 text-sm font-semibold text-text">{children}</h3>
+}
+
+function TypePane({
+  tagKey,
+  config,
+  onPicked,
+}: {
+  tagKey: string
+  config: TagConfigDraft
+  onPicked: () => void
+}): ReactElement {
+  if (config.loading) {
+    return <div aria-busy className="h-40" />
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <PaneHeading>Type</PaneHeading>
+      {config.drafts.length === 0 ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-surface-hover p-2">
+          <p className="px-1 pb-1 text-xs text-text-secondary">
+            Start from a ready-made schema. Every property stays editable.
+          </p>
+          {TAG_SCHEMA_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => {
+                config.seedPreset(preset)
+                onPicked()
+              }}
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-active"
+            >
+              <TagPresetIcon presetId={preset.id} className="size-4 shrink-0 text-text-muted" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-text">{preset.name}</span>
+                <span className="truncate text-xs text-text-muted">{preset.summary}</span>
+              </span>
+            </button>
           ))}
+        </div>
+      ) : null}
+      <TagViewsStrip properties={config.liveSchema} />
+      <PaneRow label="Template">
+        <Select
+          value={config.template ?? 'none'}
+          items={{
+            none: 'None',
+            ...Object.fromEntries(config.templates.map((entry) => [entry.path, entry.title])),
+          }}
+          onValueChange={(value) => config.setTemplate(value === 'none' ? null : value)}
+        >
+          <SelectTrigger aria-label="New-row template" className="min-w-44">
+            <SelectValue placeholder="None" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {config.templates.map((entry) => (
+              <SelectItem key={entry.path} value={entry.path}>
+                {entry.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </PaneRow>
+      <TagFolderField
+        folder={config.folder}
+        folders={config.folders}
+        onChange={config.setFolder}
+        labelClassName={FIELD_LABEL_CLASS}
+      />
+      <TagParentsField
+        tag={tagKey}
+        parents={config.parents}
+        candidates={config.parentCandidates}
+        onChange={config.setParents}
+      />
+      <p className="pt-2 text-xs text-text-muted">
+        Stored in <code className="font-mono">tags/{tagKey}.md</code>, a note that syncs with the
+        vault, so agents read the same schema.
+      </p>
+    </div>
+  )
+}
+
+function PropertyPane({
+  draft,
+  config,
+  onRemove,
+}: {
+  draft: PropertyDraft
+  config: TagConfigDraft
+  onRemove: () => void
+}): ReactElement {
+  const nameInvalid = config.invalidNameRowIds.has(draft.rowId)
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 pt-1">
+        <Input
+          value={draft.name}
+          aria-label="Property name"
+          aria-invalid={nameInvalid || undefined}
+          placeholder="Property name"
+          autoFocus={config.focusRowId === draft.rowId}
+          className="h-9 flex-1 text-base font-medium"
+          onChange={(event) => {
+            const name = event.target.value
+            config.updateDraft(draft.rowId, {
+              name,
+              // Follow the name until the key was edited by hand.
+              ...(draft.key === propertyKeyForName(draft.name)
+                ? { key: propertyKeyForName(name) }
+                : {}),
+            })
+          }}
+        />
+        <Select
+          value={draft.type}
+          items={PROPERTY_TYPE_LABELS}
+          onValueChange={(value) => {
+            const parsed = tagPropertyTypeSchema.safeParse(value)
+            if (parsed.success) {
+              config.updateDraft(draft.rowId, { type: parsed.data })
+            }
+          }}
+        >
+          <SelectTrigger className="h-9 w-44 shrink-0" aria-label="Property type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => {
+              const Glyph = PROPERTY_TYPE_ICONS[value as TagPropertyType]
+              return (
+                <SelectItem key={value} value={value}>
+                  <Glyph aria-hidden className="size-3.5 text-text-muted" />
+                  {label}
+                </SelectItem>
+              )
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-3 pt-1">
+        <TagPropertySettings
+          draft={draft}
+          keyInvalid={config.invalidKeyRowIds.has(draft.rowId)}
+          updateDraft={config.updateDraft}
+        />
+      </div>
+      <div className="pt-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-destructive"
+          onClick={onRemove}
+        >
+          <Trash aria-hidden className="size-3.5" />
+          Delete property
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function SaveBar({
+  config,
+  onClose,
+}: {
+  config: TagConfigDraft
+  onClose: () => void
+}): ReactElement {
+  const { pendingRenames } = config
+  if (pendingRenames !== null) {
+    return (
+      <footer className="flex flex-col gap-2 bg-surface-hover px-5 py-3">
+        <p className="text-xs text-text-secondary">
+          {pendingRenames
+            .map(
+              (rename) =>
+                `${rename.from} → ${rename.to} (${rename.notes.length} ${
+                  rename.notes.length === 1 ? 'note' : 'notes'
+                })`,
+            )
+            .join(' · ')}
+          . Move the stored values to the new key, or keep them under the old one?
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={config.cancelPendingRenames}>
+            Back
+          </Button>
           <Button
             type="button"
             variant="ghost"
-            className="justify-start"
-            onClick={addDraft}
-            disabled={loading}
+            disabled={config.saving}
+            onClick={() => {
+              void config.performSave([], false)
+            }}
           >
-            <Plus className="size-4" /> Add property
+            Save without migrating
+          </Button>
+          <Button
+            type="button"
+            disabled={config.saving}
+            onClick={() => {
+              void config.performSave(pendingRenames, true)
+            }}
+          >
+            Save & migrate values
           </Button>
         </div>
-        {loading ? null : <TagViewsStrip properties={liveSchema} />}
-        <label className="flex flex-col gap-1">
-          <span className={FIELD_LABEL_CLASS}>New-row template</span>
-          <Select
-            value={template ?? 'none'}
-            onValueChange={(value) => setTemplate(value === 'none' ? null : value)}
-          >
-            <SelectTrigger aria-label="New-row template">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {templates.map((entry) => (
-                <SelectItem key={entry.path} value={entry.path}>
-                  {entry.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-        {pendingRenames !== null ? (
-          <div className="flex flex-col gap-2 rounded-md bg-surface-hover px-3 py-2">
-            <p className="text-xs text-text-secondary">
-              {pendingRenames
-                .map(
-                  (rename) =>
-                    `${rename.from} → ${rename.to} (${rename.notes.length} ${
-                      rename.notes.length === 1 ? 'note' : 'notes'
-                    })`,
-                )
-                .join(' · ')}
-              {' — '}migrate the stored values to the new key, or keep them under the old one?
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setPendingRenames(null)}>
-                Back
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={saving}
-                onClick={() => {
-                  void performSave([], false)
-                }}
-              >
-                Save without migrating
-              </Button>
-              <Button
-                type="button"
-                disabled={saving}
-                onClick={() => {
-                  void performSave(pendingRenames, true)
-                }}
-              >
-                Save & migrate values
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                void save()
-              }}
-              disabled={loading || saving || hasInvalidRows}
-            >
-              {needsConversion ? 'Convert & save' : 'Save'}
-            </Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+      </footer>
+    )
+  }
+  return (
+    <footer className="flex items-center justify-end gap-2 px-5 pb-4 pt-3">
+      <Button type="button" variant="ghost" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        onClick={() => {
+          void config.save()
+        }}
+        disabled={config.loading || config.saving || config.hasInvalidRows}
+      >
+        {config.needsConversion ? 'Convert & save' : 'Save'}
+      </Button>
+    </footer>
   )
 }

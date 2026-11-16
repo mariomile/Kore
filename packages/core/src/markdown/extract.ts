@@ -204,6 +204,7 @@ function readTask(
   cuts: Span[],
   literalRanges: Span[],
   wikiLinks: WikiLink[],
+  tagExcluded: Span[],
 ): Omit<ParsedTask, 'section'> | null {
   const { from, to } = taskNode
   if (taskListBullet(body, taskNode) === null) {
@@ -215,7 +216,18 @@ function readTask(
   }
   const lineEnd = lineEndAfter(body, from)
   const markerOffset = from + bodyOffset
+  const tags: string[] = []
+  for (const match of body.slice(from, lineEnd).matchAll(TAG_RE)) {
+    if (inAnyRange(from + (match.index ?? 0) + match[1]!.length, tagExcluded)) {
+      continue
+    }
+    const key = foldTag(match[2]!)
+    if (!tags.includes(key)) {
+      tags.push(key)
+    }
+  }
   return {
+    tags,
     text: plainTextOfRange(body, from, lineEnd, cuts, literalRanges),
     breadcrumbs: taskBreadcrumbs(body, taskNode, cuts, literalRanges),
     raw: body.slice(from, lineEnd),
@@ -282,6 +294,42 @@ export function inlineTagNames(text: string): string[] {
   return [...tags.values()]
 }
 
+/**
+ * The folded tags of the body's membership lines: a paragraph made only of
+ * `#tag` tokens that opens the body (or follows its leading H1) or closes it.
+ * That is the line `appendBodyTag` writes, and the one the editor folds into
+ * the Type field; a `#tag` anywhere else is a mention, not membership.
+ */
+export function membershipLineTags(body: string): string[] {
+  const paragraphs = body.split(/\n[ \t]*\n/u).map((part) => part.trim())
+  const blocks = paragraphs.filter((part) => part !== '')
+  const candidates: string[] = []
+  const first = blocks[0]
+  if (first !== undefined) {
+    const lines = first.split('\n')
+    if (/^#\s/u.test(lines[0] ?? '')) {
+      const rest = lines.slice(1).join('\n').trim()
+      candidates.push(rest !== '' ? rest : (blocks[1] ?? ''))
+    } else {
+      candidates.push(first)
+    }
+  }
+  const last = blocks.at(-1)
+  if (last !== undefined && blocks.length > 1) {
+    candidates.push(last)
+  }
+  const keys = new Set<string>()
+  for (const candidate of candidates) {
+    if (candidate === '' || candidate.replaceAll(TAG_RE, '').trim() !== '') {
+      continue
+    }
+    for (const match of candidate.matchAll(TAG_RE)) {
+      keys.add(foldTag(match[2]!))
+    }
+  }
+  return [...keys]
+}
+
 function collectTags(body: string, excluded: Span[], into: Map<string, string>): void {
   for (const match of body.matchAll(TAG_RE)) {
     // Both groups are mandatory in TAG_RE, so a match always populates them.
@@ -342,6 +390,39 @@ function deriveTitle(frontmatter: Frontmatter, headings: Heading[], path: string
  * inside either part (YAML string values hold these links quoted).
  */
 const FRONTMATTER_WIKI_RE = /\[\[([^[\]|\r\n]+)(\|[^[\]\r\n]*)?\]\]/g
+
+/** A top-level YAML key at the start of a line: `company:`, `"Due date":`. */
+const FRONTMATTER_KEY_RE = /^(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\s#'"\-:][^:\r\n]*?))\s*:(?:\s|$)/
+
+/**
+ * The top-level frontmatter key a header position belongs to: the key on its
+ * own line (`company: "[[Acme]]"`), or the nearest key above it when the
+ * position sits in an indented or `- ` list item (`expertise:` then
+ * `  - "[[Product Discovery]]"`). Undefined when no key owns the position
+ * (the opening fence, a stray line). This is the relation's name: what turns
+ * a frontmatter link into a named edge of the graph.
+ */
+export function frontmatterKeyAt(header: string, index: number): string | undefined {
+  const lines = header.slice(0, index).split('\n')
+  // The last line holds the position itself; anything after it is irrelevant.
+  lines[lines.length - 1] = header.slice(index - (lines.at(-1)?.length ?? 0)).split('\n')[0] ?? ''
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = (lines[i] ?? '').replace(/\r$/, '')
+    if (line === '---') {
+      return undefined
+    }
+    const match = FRONTMATTER_KEY_RE.exec(line)
+    if (match !== null) {
+      const key = (match[1] ?? match[2] ?? match[3] ?? '').trim()
+      return key === '' ? undefined : key
+    }
+    // Only continuation lines (indented, or list items) inherit the key above.
+    if (line !== '' && !/^[\s-]/.test(line)) {
+      return undefined
+    }
+  }
+  return undefined
+}
 
 /** Parse one note's full source into the stable {@link ParsedNote} contract. */
 export function parseNote(input: { path: string; source: string }): ParsedNote {
@@ -454,15 +535,18 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   // retitle splice treat them exactly like body links.
   if (bodyOffset > 0) {
     const headerLinks: WikiLink[] = []
-    for (const match of source.slice(0, bodyOffset).matchAll(FRONTMATTER_WIKI_RE)) {
+    const header = source.slice(0, bodyOffset)
+    for (const match of header.matchAll(FRONTMATTER_WIKI_RE)) {
       const target = (match[1] ?? '').trim()
       if (target === '') {
         continue
       }
       const alias = match[2]?.slice(1)
+      const relation = frontmatterKeyAt(header, match.index)
       headerLinks.push({
         target,
         ...(alias === undefined ? {} : { alias }),
+        ...(relation === undefined ? {} : { relation }),
         from: match.index,
         to: match.index + match[0].length,
       })
@@ -479,6 +563,10 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       tags.set(key, tag)
     }
   }
+  const memberTags = new Set(tags.keys())
+  for (const key of membershipLineTags(body)) {
+    memberTags.add(key)
+  }
   collectTags(body, tagExcluded, tags)
 
   // Obsidian `^id` anchors (Plan 33 C3) are addresses, not words: no task
@@ -488,7 +576,15 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const tasks: ParsedTask[] = []
   const sections = headings.filter((heading) => heading.topLevel)
   for (const taskNode of taskNodes) {
-    const task = readTask(body, taskNode, bodyOffset, cuts, literalPlainText, wikiLinks)
+    const task = readTask(
+      body,
+      taskNode,
+      bodyOffset,
+      cuts,
+      literalPlainText,
+      wikiLinks,
+      tagExcluded,
+    )
     if (task) {
       tasks.push({ ...task, section: taskSection(sections, task.markerOffset) })
     }
@@ -503,6 +599,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     wikiLinks,
     links,
     tags: [...tags.values()],
+    memberTags: [...memberTags],
     headings,
     assets,
     tasks,

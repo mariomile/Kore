@@ -25,7 +25,7 @@
 	     container is the shared folder both apps sync through. -->
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.app.lore</key>
+		<key>iCloud.app.kore</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>

@@ -38,6 +38,7 @@ mod link_preview;
 #[cfg(desktop)]
 mod liquid_glass;
 mod logs;
+mod mcp_clients;
 mod menu;
 mod process_memory;
 mod process_tree;
@@ -53,6 +54,7 @@ mod skill;
 #[cfg(target_os = "macos")]
 mod wake;
 mod windows;
+mod workspace_layout;
 
 // The watcher, embedding runtime, and in-app PTY are desktop capabilities
 // (Plan 19): mobile swaps in stand-ins with the identical command surface,
@@ -148,6 +150,21 @@ fn app_platform() -> &'static str {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Launch timing: the page-load hook below logs how long the main window
+    // took to load from here (the webview adds its own milestones).
+    #[cfg(desktop)]
+    let process_start = std::time::Instant::now();
+    let context = tauri::generate_context!();
+
+    // Before any thread exists: libgit2's options are process globals.
+    git::configure_network_timeouts();
+
+    // Move the pre-rename `app.lore.*` data folder into place before any
+    // plugin or command reads it (see `app_dir.rs`). Mobile installs never
+    // had one: a new bundle id is a new sandbox.
+    #[cfg(desktop)]
+    app_dir::migrate_legacy_data_dir(&context.config().identifier);
+
     let builder = tauri::Builder::default();
 
     // Single-instance must be the first plugin so a second launch is caught
@@ -248,6 +265,10 @@ pub fn run() {
                 return;
             }
             revealed.call_once(|| {
+                tracing::info!(
+                    "launch: main window loaded {} ms after process start",
+                    process_start.elapsed().as_millis()
+                );
                 windows::surface_main_window(webview.app_handle());
             });
         })
@@ -359,6 +380,7 @@ pub fn run() {
             fs::export_write,
             fs::vault_copy::vault_copy_tree,
             fs::vault_copy::vault_copy_write,
+            fs::vault_copy::vault_copy_commit,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,
@@ -380,12 +402,16 @@ pub fn run() {
             recents::forget_recent,
             settings::settings_load,
             settings::settings_save,
+            workspace_layout::workspace_layout_load,
+            workspace_layout::workspace_layout_save,
             library::library_roots,
             library::library_list,
             library::library_read,
             skill::skill_status,
             skill::skill_install,
             skill::skill_uninstall,
+            mcp_clients::mcp_client_servers,
+            mcp_clients::mcp_client_connect,
             remote_mcp::remote_mcp_start,
             remote_mcp::remote_mcp_stop,
             remote_mcp::remote_mcp_status,
@@ -433,6 +459,7 @@ pub fn run() {
             capture::capture_inbox_remove,
             capture::capture_inbox_reject,
             capture::capture_shared_inbox_relay,
+            capture::share_targets_write,
             capture::capture_screenshot_promote,
             capture::capture_link_preview,
             capture_fetch::capture_meta_fetch,
@@ -445,6 +472,7 @@ pub fn run() {
             git::git_commit_all,
             git::git_commit_paths,
             git::git_activity,
+            git::git_blame,
             git::git_undo_preview,
             git::git_agent_writes,
             git::git_agent_writes_clear,
@@ -482,7 +510,7 @@ pub fn run() {
             logs::logs_reveal,
             diagnostics::memory_report,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(move |app, event| match &event {
             // Ready no longer reveals the main window — the page-load hook
@@ -541,16 +569,22 @@ pub fn run() {
                     windows::reopen_main_window(app);
                 }
             }
-            // The lock-screen widget opens `kore://record-audio`; hand it
-            // to the recording plugin's persisted action queue (the V1
-            // handshake) so the request survives webview churn and cold
-            // starts. Desktop scheme opens flow through
-            // tauri-plugin-deep-link to the frontend instead.
+            // The widgets open `kore://record-audio` (start a memo) and
+            // `kore://daily` (show today's note); hand them to the recording
+            // plugin's persisted action queue (the V1 handshake) so the
+            // request survives webview churn and cold starts. Desktop scheme
+            // opens flow through tauri-plugin-deep-link to the frontend
+            // instead.
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             tauri::RunEvent::Opened { urls } => {
                 #[cfg(mobile)]
                 for url in urls {
-                    if url.scheme() == "kore" && url.host_str() == Some("record-audio") {
+                    let action = match (url.scheme(), url.host_str()) {
+                        ("kore", Some("record-audio")) => Some("recordAudio"),
+                        ("kore", Some("daily")) => Some("openDaily"),
+                        _ => None,
+                    };
+                    if let Some(action) = action {
                         // This callback runs on the main thread, and
                         // `run_mobile_plugin` blocks its caller until the
                         // Swift command resolves — which `queueAction` does
@@ -560,8 +594,8 @@ pub fn run() {
                         let app = app.clone();
                         tauri::async_runtime::spawn_blocking(move || {
                             use tauri_plugin_recording::RecordingExt;
-                            if let Err(err) = app.recording().queue_action("recordAudio") {
-                                tracing::warn!(error = %err, "queueing the record-audio action failed");
+                            if let Err(err) = app.recording().queue_action(action) {
+                                tracing::warn!(error = %err, action, "queueing a widget action failed");
                             }
                         });
                     }

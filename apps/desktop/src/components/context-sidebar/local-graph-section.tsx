@@ -161,6 +161,7 @@ export function LocalGraphBody({ path, layout }: LocalGraphBodyProps): ReactElem
             edges={view.edges}
             wheelZoom={page ? 'always' : 'modifier'}
             label="Local graph"
+            animateInitialLayout={page}
             onOpen={(id, openInSplit) => {
               if (id.startsWith('#')) {
                 navigate({ kind: 'allNotes', filter: { kind: 'tag', tag: id.slice(1) } })

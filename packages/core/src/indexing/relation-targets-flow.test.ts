@@ -35,4 +35,23 @@ describe('suggestRelationTargets', () => {
       database.close()
     }
   })
+
+  it('offers the collection rows alphabetically, never a note that only mentions the tag', async () => {
+    const database = openMigratedIndex()
+    applyProjection(database, project('notes/health.md', '---\ntags: [area]\n---\n# Health\n', 10))
+    applyProjection(database, project('notes/career.md', '# Career\n\n#area/work\n', 20))
+    applyProjection(
+      database,
+      project('daily/2026-11-10.md', '# Now\n\nReview each #area today.\n', 30),
+    )
+    connectIndex(database)
+
+    try {
+      const atRest = await suggestRelationTargets('', 'area')
+      expect(atRest.suggestions.map((row) => row.insertText)).toEqual(['Career', 'Health'])
+    } finally {
+      setBridge(null)
+      database.close()
+    }
+  })
 })

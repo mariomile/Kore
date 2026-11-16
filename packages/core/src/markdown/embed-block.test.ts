@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatEmbedBlock, parseEmbedBlocks } from './embed-block'
+import { formatEmbedBlock, formatUrlEmbedBody, parseEmbedBlocks } from './embed-block'
 
 function fence(body: string): string {
   return `Before\n\n\`\`\`embed\n${body}\n\`\`\`\n\nAfter\n`
@@ -8,7 +8,7 @@ function fence(body: string): string {
 describe('parseEmbedBlocks', () => {
   it('classifies a URL embed by what the link points at', () => {
     expect(parseEmbedBlocks(fence('https://github.com/mariomile/Kore'))).toEqual([
-      { kind: 'url', url: 'https://github.com/mariomile/Kore', linkKind: 'repo' },
+      { kind: 'url', url: 'https://github.com/mariomile/Kore', linkKind: 'repo', layout: 'card' },
     ])
     expect(parseEmbedBlocks(fence('https://youtu.be/abc'))[0]).toMatchObject({ linkKind: 'video' })
   })
@@ -41,6 +41,27 @@ describe('parseEmbedBlocks', () => {
 
   it('ignores a fence of another language', () => {
     expect(parseEmbedBlocks('```html\nhttps://youtu.be/abc\n```\n')).toEqual([])
+  })
+
+  it('reads an optional layout line after the URL', () => {
+    expect(parseEmbedBlocks(fence('https://captoo.io\nlayout: compact'))[0]).toMatchObject({
+      url: 'https://captoo.io',
+      layout: 'compact',
+    })
+    expect(parseEmbedBlocks(fence('https://captoo.io\nlayout: large'))[0]).toMatchObject({
+      layout: 'large',
+    })
+    expect(parseEmbedBlocks(fence('https://captoo.io\nlayout: huge'))).toEqual([])
+    expect(parseEmbedBlocks(fence('https://captoo.io\nlayout: large\nmore'))).toEqual([])
+  })
+
+  it('writes the layout line only when it is not the default card', () => {
+    expect(formatUrlEmbedBody('https://captoo.io', 'card')).toBe('https://captoo.io')
+    expect(formatUrlEmbedBody('https://captoo.io', 'large')).toBe(
+      'https://captoo.io\nlayout: large',
+    )
+    const [large] = parseEmbedBlocks(fence('https://captoo.io\nlayout: large'))
+    expect(parseEmbedBlocks(`${formatEmbedBlock(large!)}\n`)).toEqual([large])
   })
 
   it('round-trips through formatEmbedBlock', () => {

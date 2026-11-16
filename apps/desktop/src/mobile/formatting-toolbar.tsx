@@ -42,11 +42,7 @@ export function MobileFormattingToolbar(): ReactElement | null {
   }
   const { capabilities, commands } = toolbar
   return (
-    <div
-      role="toolbar"
-      aria-label="Formatting"
-      className="flex shrink-0 items-center border-t border-border"
-    >
+    <div role="toolbar" aria-label="Formatting" className="flex shrink-0 items-center">
       <div className="flex min-w-0 flex-1 items-center overflow-x-auto px-1">
         <ToolbarButton
           label="Slash command"
@@ -110,7 +106,7 @@ export function MobileFormattingToolbar(): ReactElement | null {
           />
         ) : null}
       </div>
-      <div className="shrink-0 border-l border-border px-1">
+      <div className="shrink-0 px-1">
         <ToolbarButton
           label="Hide keyboard"
           icon={<ChevronDown className="size-5" />}

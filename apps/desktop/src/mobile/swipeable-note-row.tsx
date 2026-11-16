@@ -6,8 +6,14 @@ import { HighlightedText } from '@/mobile/highlighted-text'
 import { useNoteRowSwipe } from '@/mobile/use-note-row-swipe'
 import { useSettings } from '@/providers/settings-provider'
 
-/** V1's fixed row height (px) — placeholder resolution never causes jumps. */
+/** V1's row height (px) for a title over its preview line — also the
+ * virtualizer's size estimate, since most rows carry a preview. */
 export const NOTE_ROW_HEIGHT = 64
+
+/** A row with nothing under its title (no preview, no properties): one
+ * line, so it shrinks to the touch-target minimum instead of centering the
+ * title in an empty second line's worth of space. */
+export const COMPACT_NOTE_ROW_HEIGHT = 44
 
 const ACTION_BUTTON_WIDTH = 68
 
@@ -58,6 +64,10 @@ export function SwipeableNoteRow({
   const { settings } = useSettings()
   const actionWidth = ACTION_BUTTON_WIDTH * (row.canDelete ? 2 : 1)
   const title = row.titleSegments.map((segment) => segment.text).join('')
+  const height =
+    row.propertyLine !== undefined || row.snippet.length > 0
+      ? NOTE_ROW_HEIGHT
+      : COMPACT_NOTE_ROW_HEIGHT
   const swipe = useNoteRowSwipe({
     actionWidth,
     revealed,
@@ -67,7 +77,7 @@ export function SwipeableNoteRow({
   })
 
   return (
-    <div className="relative overflow-hidden" style={{ height: NOTE_ROW_HEIGHT }}>
+    <div className="relative overflow-hidden" style={{ height }}>
       <div
         className="absolute inset-y-0 right-0 flex"
         style={{ width: actionWidth }}
@@ -118,7 +128,7 @@ export function SwipeableNoteRow({
           onOpen()
         }}
         className="absolute inset-0 flex w-full flex-col justify-center gap-0.5 overflow-hidden bg-background px-4 text-left"
-        style={{ height: NOTE_ROW_HEIGHT }}
+        style={{ height }}
       >
         <span className="flex w-full items-baseline gap-2">
           {row.isPinned ? (

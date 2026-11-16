@@ -3,7 +3,9 @@ import { setBridge } from '../ipc/bridge'
 import {
   createNoteWithSource,
   createNoteWithTitle,
+  createTypedNoteWithTitle,
   isUntitledNotePath,
+  newTypedNoteSource,
   openNoteTabTitle,
   resolveOrCreateNoteWithTitle,
   untitledNotePath,
@@ -153,6 +155,77 @@ describe('createNoteWithTitle', () => {
     const args = write?.[1] as { contents: string }
     expect(args.contents).toMatch(
       /^---\nid: [0-9a-z]{26}\n---\n# Ada Lovelace\n\n- Type: #person\n$/,
+    )
+  })
+})
+
+describe('createTypedNoteWithTitle', () => {
+  it('births the note with its type in the frontmatter, never as a body #tag line', async () => {
+    const invoke = bindBridge()
+
+    const path = await createTypedNoteWithTitle('DeepAgent', 'company', {}, 7)
+
+    expect(path).toBe('notes/deepagent.md')
+    const writes = invoke.mock.calls.filter(
+      ([command]) => command === 'note_create' || command === 'note_write',
+    )
+    // One atomic create: no follow-up write can race an editor that opens
+    // the new note right away.
+    expect(writes).toHaveLength(1)
+    const args = writes[0]?.[1] as { contents: string; generation: number }
+    expect(args.generation).toBe(7)
+    expect(args.contents).toMatch(
+      /^---\nid: [0-9a-z]{26}\ntags:\n {2}- company\n---\n# DeepAgent\n$/,
+    )
+    expect(args.contents).not.toContain('#company')
+  })
+
+  it('writes starting values in the same create and keeps id and type its own', async () => {
+    const invoke = bindBridge()
+
+    await createTypedNoteWithTitle(
+      'DeepAgent',
+      'company',
+      { created: '2026-11-12', industry: 'AI', id: 'nope', tags: ['other'] },
+      7,
+    )
+
+    const write = invoke.mock.calls.find(([command]) => command === 'note_create')
+    const contents = (write?.[1] as { contents: string } | undefined)?.contents
+    expect(contents).toMatch(
+      /^---\nid: [0-9a-z]{26}\ncreated: 2026-11-12\nindustry: AI\ntags:\n {2}- company\n---\n# DeepAgent\n$/,
+    )
+  })
+})
+
+describe('createTypedNoteWithTitle in a type home', () => {
+  it('creates the note in the type folder', async () => {
+    bindBridge()
+    await expect(
+      createTypedNoteWithTitle('Ada', 'person', {}, 1, undefined, 'CRM/People'),
+    ).resolves.toBe('CRM/People/ada.md')
+  })
+
+  it('gives each note its own folder under a {title} home, suffixing both on collision', async () => {
+    bindBridge({ occupied: ['Active/Projects/kore-cloud/kore-cloud.md'] })
+    await expect(
+      createTypedNoteWithTitle(
+        'Kore Cloud',
+        'project',
+        {},
+        1,
+        undefined,
+        'Active/Projects/{title}',
+      ),
+    ).resolves.toBe('Active/Projects/kore-cloud-2/kore-cloud-2.md')
+  })
+})
+
+describe('newTypedNoteSource', () => {
+  it('places a body block under the H1 and the type in the frontmatter', () => {
+    const source = newTypedNoteSource('Dune', 'book', {}, 'A #book I loved.')
+    expect(source).toMatch(
+      /^---\nid: [0-9a-z]{26}\ntags:\n {2}- book\n---\n# Dune\n\nA #book I loved\.\n$/,
     )
   })
 })

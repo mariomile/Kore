@@ -283,9 +283,9 @@ Three flavors ship as distinct, coexisting apps:
 
 | Flavor       | Version        | productName  | identifier                 | Icon         | Updater feed      |
 | ------------ | -------------- | ------------ | -------------------------- | ------------ | ----------------- |
-| Kore   | `X.Y.Z`        | Kore   | `app.lore.desktop`      | blue/violet  | `releases/latest` |
-| Kore Beta | `X.Y.Z-beta.N` | Kore Beta | `app.lore.desktop.beta` | purple/violet | `updater-beta`    |
-| Kore Dev  | local builds   | Kore Dev  | `app.lore.desktop.dev`  | green        | `updater-dev-noop` (no-op) |
+| Kore   | `X.Y.Z`        | Kore   | `app.kore.desktop`      | blue/violet  | `releases/latest` |
+| Kore Beta | `X.Y.Z-beta.N` | Kore Beta | `app.kore.desktop.beta` | purple/violet | `updater-beta`    |
+| Kore Dev  | local builds   | Kore Dev  | `app.kore.desktop.dev`  | green        | `updater-dev-noop` (no-op) |
 
 The base `tauri.conf.json` is the stable flavor and uses the shipped gradient icon
 (`icons/`). Beta and dev are config overlays (`src-tauri/tauri.beta.conf.json`,
@@ -320,8 +320,8 @@ for "Kore Beta" is sanitized to `Kore.Beta.app.tar.gz` in `writeUpdaterManifest`
 Do not "fix" the space back, or beta auto-update 404s.
 
 **Beta tester migration (one-time):** before flavors, beta builds were a plain "Reflect"
-(`app.lore.desktop`) that merely polled the beta feed. The first flavored beta is a new
-app (`app.lore.desktop.beta`, "Kore Beta"), so existing beta installs do not migrate
+(`app.kore.desktop`) that merely polled the beta feed. The first flavored beta is a new
+app (`app.kore.desktop.beta`, "Kore Beta"), so existing beta installs do not migrate
 cleanly. Tell testers to delete the old "Reflect" beta and install "Kore Beta" fresh.
 Stable installs are unaffected (same identifier and the shipped icon).
 

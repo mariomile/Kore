@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
+import { addFrontmatterTag, addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
 
 describe('addNoteTag', () => {
   it('grows an existing tags list in place and leaves the body alone', () => {
@@ -19,6 +19,21 @@ describe('addNoteTag', () => {
     expect(addNoteTag('---\ntags: {a: 1}\n---\nBody\n', 'book')).toBe(
       '---\ntags: {a: 1}\n---\nBody\n\n#book\n',
     )
+  })
+})
+
+describe('addFrontmatterTag', () => {
+  it('adds the type to tags: even when the body already has the #tag', () => {
+    expect(addFrontmatterTag('# Dune\n\nReading #book\n', 'book')).toBe(
+      '---\ntags:\n  - book\n---\n# Dune\n\nReading #book\n',
+    )
+    expect(addFrontmatterTag('---\nid: x\n---\n#book\n', 'book')).toBe(
+      '---\nid: x\ntags:\n  - book\n---\n#book\n',
+    )
+  })
+
+  it('is a no-op only when tags: already lists it', () => {
+    expect(addFrontmatterTag('---\ntags: [Book]\n---\n', 'book')).toBeNull()
   })
 })
 

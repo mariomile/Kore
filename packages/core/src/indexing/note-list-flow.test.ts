@@ -6,6 +6,7 @@ import { applyProjection, connectIndex, openMigratedIndex, project } from './flo
 import { listCollection, listTagTypes } from './collections'
 import { listNotes, listNoteTags } from './note-list'
 import { getTagTree, type TagTreeNode } from './tag-tree'
+import { listTagMentions } from './tag-mentions'
 
 /**
  * The All Notes list against a real SQLite built from the production migration
@@ -79,8 +80,8 @@ describe('listNotes against a real index', () => {
   it('lists a tag-filtered note once, carrying its other tags too', async () => {
     // The filter is an EXISTS, so a note matching the tag must not be
     // duplicated, and its full tag set must survive the grouping.
-    addNote('notes/a.md', '# A\n\n#project and #urgent and #later.\n', 3000)
-    addNote('notes/b.md', '# B\n\n#other only.\n', 2000)
+    addNote('notes/a.md', '# A\n\n#project #urgent #later\n', 3000)
+    addNote('notes/b.md', '# B\n\n#other\n', 2000)
 
     const entries = await listNotes({ tag: 'project' })
 
@@ -89,12 +90,26 @@ describe('listNotes against a real index', () => {
   })
 
   it('matches a tag case-insensitively and includes tagged daily notes', async () => {
-    addNote('daily/2026-08-29.md', '# Friday\n\n#Project standup.\n', 4000)
-    addNote('notes/a.md', '# A\n\n#project notes.\n', 3000)
+    addNote('daily/2026-08-29.md', '# Friday\n\n#Project\n', 4000)
+    addNote('notes/a.md', '# A\n\n#project\n', 3000)
 
     const entries = await listNotes({ tag: 'PROJECT' })
 
     expect(entries.map((entry) => entry.path)).toEqual(['daily/2026-08-29.md', 'notes/a.md'])
+  })
+
+  it('lists members only: a #tag inside prose is a mention, not a row', async () => {
+    addNote('notes/member.md', '---\ntags: [area]\n---\n# Health\n\nBody.\n', 3000)
+    addNote('notes/line.md', '# Career\n\nBody.\n\n#area\n', 2000)
+    addNote('daily/2026-08-29.md', '# Friday\n\nPlanned the week by #area today.\n', 1000)
+
+    expect((await listNotes({ tag: 'area' })).map((entry) => entry.path)).toEqual([
+      'notes/member.md',
+      'notes/line.md',
+    ])
+    expect(await listTagMentions('area')).toEqual([
+      { path: 'daily/2026-08-29.md', title: 'Friday' },
+    ])
   })
 
   it('lists a folder page: its own notes, or everything below it, matched literally', async () => {
@@ -115,10 +130,10 @@ describe('listNotes against a real index', () => {
   })
 
   it("lists a parent tag's notes together with every nested tag's, but not look-alikes", async () => {
-    addNote('notes/ai.md', '# AI\n\n#domain/ai and #domain/growth\n', 5000)
+    addNote('notes/ai.md', '# AI\n\n#domain/ai #domain/growth\n', 5000)
     addNote('notes/deep.md', '# Deep\n\n#Domain/design/ux\n', 4000)
     addNote('notes/own.md', '# Own\n\n#domain\n', 3000)
-    addNote('notes/sibling.md', '# Sibling\n\n#domains and #domain-x and #domain_y\n', 2000)
+    addNote('notes/sibling.md', '# Sibling\n\n#domains #domain-x #domain_y\n', 2000)
 
     expect((await listNotes({ tag: 'Domain' })).map((entry) => entry.path)).toEqual([
       'notes/ai.md',
@@ -192,8 +207,8 @@ describe('tag listings for outbound surfaces against a real index', () => {
 
 describe('the tag tree against a real index', () => {
   it('nests tags on `/`, counting each non-daily note once per prefix', async () => {
-    addNote('notes/a.md', '# A\n\n#Domain/ai and #domain/design\n', 3000)
-    addNote('notes/b.md', '# B\n\n#domain/ai/agents and #solo\n', 2000)
+    addNote('notes/a.md', '# A\n\n#Domain/ai #domain/design\n', 3000)
+    addNote('notes/b.md', '# B\n\n#domain/ai/agents #solo\n', 2000)
     addNote('notes/c.md', '# C\n\n#domain\n', 1000)
     addNote('daily/2026-10-17.md', '# Today\n\n#domain/ai\n', 4000)
 

@@ -17,9 +17,12 @@ kore tags                  # every tag with its count and whether it is typed
 kore list                  # notes newest first with tags (--tag, --kind)
 kore collection <tag>      # a typed tag's rows with their property values
 kore properties <note>     # a note's frontmatter properties, typed
-kore links <note>          # the wiki links a note makes, resolved
+kore links <note>          # the wiki links a note makes, resolved, with relations
 kore explain <note>        # properties, tags, outline, links and backlinks in one call
 kore route <from> <to>     # the shortest chain of links between two notes
+kore neighborhood <note>   # the notes around a note, up to 2 links away, ranked
+kore coverage <question>   # what the vault holds on a question before answering it
+kore lint                  # graph health: broken links, orphans, unlinked mentions, relations
 kore grep <text>           # every line containing an exact text (no index needed)
 kore skills [name]         # the vault's agent skills (agents/skills/), or one in full
 kore active                # the note open in the app and the note tabs beside it
@@ -30,7 +33,7 @@ kore show <note>           # print a note by date, path, id, title, or alias
 kore path <note>           # resolve a note to its absolute path
 kore open <note>           # open a note in the app (kore:// deep link)
 kore tasks                 # the graph's open tasks (--all includes done)
-kore backlinks <note>      # the notes linking to a note
+kore backlinks <note>      # the notes linking to a note, with relations and context
 kore recent                # the most recently updated notes, newest first
 kore capture <text>        # append a bullet to today's daily (--to any note, --stdin)
 kore append <note> <text>     # append a markdown block (--stdin)
@@ -64,7 +67,15 @@ First match wins:
    (git-style walk-up).
 
 There is deliberately no fallback to the desktop app's recent-graphs config:
-the CLI stays deterministic for scripts and agents.
+the CLI stays deterministic for scripts and agents. `kore mcp` is the one
+exception: with none of the three, it serves the vault the Kore app opened
+last (the newest entry of `<config dir>/kore/recent-graphs.json`). An MCP
+client's config is pasted once and outlives the folder, so a config without
+`--graph` keeps working when the vault moves or is renamed; the app records
+the new place the first time it opens the vault there. If that vault is no
+longer where Kore last saw it, the server says so and does not fall back to
+an older vault. The server resolves once, at start: a client picks up a
+different vault the next time it starts the server.
 
 ## Privacy
 
@@ -267,7 +278,7 @@ the last index run never surfaces. A stale index warns on stderr and sets
 }
 ```
 
-### `kore backlinks <note> [--json]`
+### `kore backlinks <note> [--relation KEY] [--json]`
 
 Lists the notes linking *to* a note, from the index's `backlinks` view — the
 same resolution the app's Backlinks panel uses (ranked wiki-name joins with
@@ -278,14 +289,35 @@ each linking note's own frontmatter is re-checked on disk before it surfaces.
 Requires the index (exit `4` when missing); a stale index warns and sets
 `"stale": true`.
 
+Each backlink names its **relations**: the frontmatter keys it links under
+(`company: "[[Acme]]"` on a person makes that person a `company` backlink of
+Acme; a link in the body is a mention and adds none). `mentions` gives up to
+3 of its links in document order, each with the words around it read from
+the file: the frontmatter line for a relation, the list item or paragraph
+for a body link (cut to 280 characters around the link). `--relation KEY`
+keeps only the notes linking under that key, case-insensitive, and only
+those links. An index built before relations were stored (an older app)
+reads every link as a mention until the app rebuilds it.
+
 ```jsonc
-// kore backlinks "Project X" --json
+// kore backlinks "Acme" --json
 {
-  "path": "notes/project-x.md",
-  "title": "Project X",
+  "path": "notes/acme.md",
+  "title": "Acme",
   "stale": false,
   "backlinks": [
-    { "path": "notes/standup.md", "title": "Standup", "count": 2 }
+    {
+      "path": "notes/ada.md", "title": "Ada", "count": 2,
+      "relations": ["company"],
+      "mentions": [
+        { "relation": "company", "context": "company: \"[[Acme]]\"" },
+        { "context": "Ada left [[Acme]] in May." }
+      ]
+    },
+    {
+      "path": "daily/2026-11-15.md", "title": "", "count": 1,
+      "mentions": [{ "context": "- Call with [[Acme]] about pricing" }]
+    }
   ]
 }
 ```
@@ -622,12 +654,15 @@ open (empty otherwise). File-only like `show`. A private note is refused
 }
 ```
 
-### `kore links <note> [--json]`
+### `kore links <note> [--relation KEY] [--json]`
 
 The wiki links a note makes, in document order, one entry per distinct
 target, resolved through the index's link resolution to the note that
-answers to it (`path: null` when none does). A private source is refused;
-a link whose target is private is dropped. Requires the index (exit `4`).
+answers to it (`path: null` when none does). Each entry names its
+`relations`, the frontmatter keys the target is the value of (omitted for a
+link only in the body); `--relation KEY` keeps only those links. A private
+source is refused; a link whose target is private is dropped. Requires the
+index (exit `4`).
 
 ```jsonc
 // kore links Dune --json
@@ -635,7 +670,7 @@ a link whose target is private is dropped. Requires the index (exit `4`).
   "path": "notes/dune.md",
   "stale": false,
   "links": [
-    { "target": "Frank Herbert", "path": "notes/frank-herbert.md", "title": "Frank Herbert" },
+    { "target": "Frank Herbert", "path": "notes/frank-herbert.md", "title": "Frank Herbert", "relations": ["author"] },
     { "target": "Arrakis", "path": null, "title": null }
   ]
 }
@@ -668,6 +703,106 @@ even when that would be shorter. No route is exit `3` in text mode and
     { "path": "notes/Acme.md", "title": "Acme", "direction": "links" },
     { "path": "notes/Plan.md", "title": "Plan", "direction": "linkedFrom" }
   ]
+}
+```
+
+### `kore neighborhood <note> [--depth 1|2] [--relation KEY] [--tag TAG] [--limit N] [--json]`
+
+The notes around one note in one call: what an agent gathers before a
+meeting or an answer (the person, their company, its projects, the
+transcripts) instead of chaining `explain`. Links are followed in both
+directions; each returned note has its `depth` (1 or 2), `tags`, and `via`:
+the edges tying it to the center or to a depth-1 note, each with its
+`relation` when it is a frontmatter value. `--depth 2` expands through
+ordinary notes only: daily notes and hubs (notes with more than 50 links,
+like a `persons.base` every person points `up:` to) are returned but not
+expanded. Named relations rank first, then the number of edges, then
+ordinary notes before dailies. `--relation KEY` walks only edges under that
+key; `--tag TAG` returns only notes carrying the tag or a child of it
+(walking still goes through any note). `--limit` (default 40, at most 200)
+caps the list and sets `truncated`. Private notes never appear. Requires
+the index (exit `4`).
+
+```jsonc
+// kore neighborhood Ada --depth 2 --json
+{
+  "path": "notes/ada.md", "title": "Ada", "depth": 2, "stale": false, "truncated": false,
+  "notes": [
+    { "path": "notes/acme.md", "title": "Acme", "depth": 1, "tags": ["type/company"],
+      "via": [{ "from": "notes/ada.md", "to": "notes/acme.md", "relation": "company" }] },
+    { "path": "notes/roadmap.md", "title": "Roadmap", "depth": 2, "tags": [],
+      "via": [{ "from": "notes/acme.md", "to": "notes/roadmap.md" }] }
+  ]
+}
+```
+
+### `kore coverage <question> [--limit N] [--json]`
+
+What the vault holds on a question, *before* an agent answers it, so the
+agent can say what the vault does not cover instead of guessing. Local and
+deterministic (no model): the question's content words (stopwords in
+English and Italian and one- or two-letter words dropped, numbers kept) are
+each counted against the full-text index (`terms`; a word no public note
+contains is in `missing`); runs of up to four words that are a note's title
+or alias are `entities`; the returned `notes` are those entities first,
+then the notes holding the most words, then by search rank, each with the
+words it holds (`matched`), its tags and date. `types` and `relations`
+count the tags and named relations around those notes; `earliest`/`latest`
+span their dates. `verdict` is `covered` (no word missing, and the question
+names a note or the best note holds at least half the words), `partial`
+(some words missing, or no note holds enough of them) or `none`. It matches
+words, not meaning (`mode: "lexical"`): a paraphrase is a job for `search`.
+`--limit` defaults to 10, at most 50. Requires the index (exit `4`).
+
+```jsonc
+// kore coverage "Che pricing ha Acme?" --json
+{
+  "question": "Che pricing ha Acme?", "verdict": "covered", "mode": "lexical", "stale": false,
+  "terms": [{ "term": "pricing", "notes": 3 }, { "term": "acme", "notes": 12 }],
+  "missing": [],
+  "entities": [{ "path": "notes/acme.md", "title": "Acme" }],
+  "notes": [
+    { "path": "notes/acme.md", "title": "Acme", "date": "2026-11-02", "matched": ["acme"], "tags": ["type/company"] },
+    { "path": "notes/pricing.md", "title": "Pricing", "date": "2026-10-20", "matched": ["pricing", "acme"], "tags": [] }
+  ],
+  "types": [{ "name": "type/company", "count": 1 }],
+  "relations": [{ "name": "company", "count": 9 }],
+  "earliest": "2026-10-20", "latest": "2026-11-02"
+}
+```
+
+### `kore lint [--check broken,orphans,unlinked,relations] [--limit N] [--json]`
+
+The graph's health, for a person tidying the vault or an agent proposing
+fixes. It only reports; it never edits a note. Private notes are left out
+on both sides of every check.
+
+- **broken**: wiki links no note answers to, grouped by target (`count`,
+  up to five `sources` with their relation). Dates (a daily not written
+  yet), links to files other than Markdown and heading-only links are not
+  broken.
+- **orphans**: notes (not dailies or tag pages) with no link in or out.
+- **unlinked**: a note's title written as a phrase in another note's body
+  without a link to it (titles of three or more characters).
+- **relations**: two kinds. `missingInverse`: `A supersedes: [[B]]` while
+  B has no `superseded_by` back to A, checked only for inverse keys the
+  vault already uses somewhere (`supersedes`/`superseded_by`,
+  `parent`/`child`, `X_by`/`X`). `wrongType`: a typed tag's `relation`
+  field with a `target` (or a `person` field) pointing at a note that does
+  not carry the target tag, checked only when some note does.
+
+`counts` always holds every check's total; each list stops at `--limit`
+(default 50, at most 500). Requires the index (exit `4`).
+
+```jsonc
+// kore lint --json
+{
+  "stale": false,
+  "counts": { "broken": 1, "orphans": 1, "unlinked": 1, "relations": 1 },
+  "broken": [{ "target": "Ghost", "count": 1, "sources": [{ "path": "notes/acme.md", "title": "Acme" }] }],
+  "orphans": [{ "path": "notes/lonely.md", "title": "Lonely" }],
+  "unlinked": [{ "path": "notes/lonely.md", "title": "Lonely", "count": 1, "sources": [{ "path": "notes/meeting.md", "title": "Meeting" }] }],
+  "relations": [{ "kind": "missingInverse", "from": { "path": "notes/v2.md", "title": "V2" }, "to": { "path": "notes/v1.md", "title": "V1" }, "relation": "supersedes", "expected": "superseded_by" }]
 }
 ```
 
@@ -861,14 +996,19 @@ one (`apps/desktop/src-tauri/src/skill.rs`).
 revisions 2025-06-18, 2025-03-26 and 2024-11-05), so Claude Desktop, Claude
 Code, Cursor, Codex and any other MCP client can use the graph as tools
 without a skill or a shell. Settings → Agents → MCP server shows the config
-to paste, with the bundled CLI path and the open graph's root filled in:
+to paste, with the bundled CLI path filled in and no vault path, so it
+follows the vault open in Kore (see [Graph resolution](#graph-resolution)):
 
 ```json
 { "mcpServers": { "kore": { "command": "/Applications/Kore.app/Contents/MacOS/kore",
-                            "args": ["--graph", "/path/to/graph", "mcp"] } } }
+                            "args": ["mcp"] } } }
 ```
 
-or, for Claude Code, `claude mcp add kore -- <cli> --graph <root> mcp`.
+or, for Claude Code, `claude mcp add kore -- <cli> mcp`. Settings → Agents →
+Connect an app writes that entry for you: into Claude Desktop's and Cursor's
+config file (keeping a `.kore-backup` copy, replacing older Kore entries), and
+through `claude mcp add --scope user` for Claude Code. Add
+`--graph <root>` before `mcp` to pin a client to one vault instead.
 
 Each tool runs one subcommand above as a child process with `--json`, so the
 output contract, the structural writes and the privacy rule are exactly the
@@ -883,6 +1023,8 @@ fails (not found, private, no index) comes back as a tool result with
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
+| `note_neighborhood`, `check_coverage` | `neighborhood`, `coverage` |
+| `graph_lint` | `lint` |
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 | `remember` | `capture` (to today's daily, or `--to <note>`) |

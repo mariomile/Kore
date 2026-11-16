@@ -57,6 +57,12 @@ interface RouterValue {
    * a pushed note so the back-swipe gesture reveals a live screen.
    */
   backRoute: Route | null
+  /**
+   * Whether `back()` steps out of a view (a zoomed block) instead of leaving
+   * the entry. The mobile stack's back-swipe, which slides the screen away,
+   * stays off meanwhile.
+   */
+  viewBack: boolean
   /** Record the active view's scroll offset on the current history entry. */
   saveScrollState: (offset: number) => void
   /**

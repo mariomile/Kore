@@ -27,7 +27,7 @@ fn store_path() -> AppResult<PathBuf> {
 /// Load the stored document. A missing store is an empty object, but a real IO
 /// error or malformed JSON is propagated — silently treating a corrupt store as
 /// empty would let the next save persist that emptiness and wipe every setting.
-fn load_from(path: &Path) -> AppResult<SettingsDoc> {
+pub(crate) fn load_from(path: &Path) -> AppResult<SettingsDoc> {
     let raw = match fs::read_to_string(path) {
         Ok(raw) => raw,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(SettingsDoc::new()),
@@ -36,7 +36,7 @@ fn load_from(path: &Path) -> AppResult<SettingsDoc> {
     serde_json::from_str(&raw).map_err(|err| AppError::io(err.to_string()))
 }
 
-fn save_to(path: &Path, settings: &SettingsDoc) -> AppResult<()> {
+pub(crate) fn save_to(path: &Path, settings: &SettingsDoc) -> AppResult<()> {
     let dir = path
         .parent()
         .ok_or_else(|| AppError::io("settings store path has no parent directory"))?;
@@ -86,7 +86,7 @@ pub async fn settings_save<R: tauri::Runtime>(
     #[cfg(desktop)]
     {
         crate::windows::sync_quick_capture_shortcut(&app, &settings);
-        crate::liquid_glass::sync_from_settings(&app, &settings);
+        crate::liquid_glass::sync_on_save(&app, &settings);
     }
     #[cfg(not(desktop))]
     let _ = app;

@@ -115,7 +115,9 @@ describe('link cards', () => {
     expect(card?.dataset.kind).toBe('page')
     expect(card?.querySelector('.kore-link-card-title')?.textContent).toBe('Startup School')
     expect(card?.querySelector('.kore-link-card-description')?.textContent).toBe(PAGE.description)
-    expect(card?.querySelector('.kore-link-card-site')?.textContent).toBe('Y Combinator')
+    expect(card?.querySelector('.kore-link-card-site')?.textContent).toBe(
+      'Y Combinator · ycombinator.com',
+    )
     expect(card?.querySelector<HTMLImageElement>('.kore-link-card-thumb')?.src).toBe(PAGE.imageUrl)
     const source = host.querySelector('p')
     expect(source?.classList.contains('kore-link-card-source')).toBe(true)
@@ -135,6 +137,15 @@ describe('link cards', () => {
     expect(card?.querySelector('.kore-link-card-site')?.textContent).toBe(
       'x.com · 28 replies · 4 reposts · 70 likes',
     )
+  })
+
+  it('opens the link from the open button, the touch path', () => {
+    const { view, host, open } = mount([linkParagraph(URL_PAGE)])
+    deliverLinkPreview(view, PAGE)
+    const button = host.querySelector<HTMLElement>('[data-link-card-open]')!
+    expect(button.getAttribute('aria-label')).toBe('Open ycombinator.com')
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+    expect(open).toHaveBeenCalledWith(URL_PAGE, expect.any(MouseEvent))
   })
 
   it('a plain click reveals the link for editing; a mod-click opens it', () => {

@@ -98,6 +98,9 @@ enum Command {
     Backlinks {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
+        /// Only notes linking under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
     },
     /// List the most recently updated notes, newest first
     Recent {
@@ -152,6 +155,9 @@ enum Command {
     Links {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
+        /// Only links made under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
     },
     /// Create a note under notes/ with a title-derived filename
     New {
@@ -256,6 +262,40 @@ enum Command {
         /// Give up beyond this many links
         #[arg(long, default_value_t = 6)]
         max_hops: usize,
+    },
+    /// What the vault holds on a question before answering it: words found and missing, best notes
+    Coverage {
+        /// The question or topic, in plain words
+        question: String,
+        /// Maximum number of notes (1-50)
+        #[arg(long, default_value_t = commands::coverage::DEFAULT_LIMIT)]
+        limit: usize,
+    },
+    /// The notes around a note, up to two links away, ranked (named relations first)
+    Neighborhood {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+        /// 1 = direct neighbors, 2 = also their neighbors (dailies are not expanded)
+        #[arg(long, default_value_t = 1)]
+        depth: usize,
+        /// Walk only edges under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
+        /// Return only notes carrying this tag (or a child tag)
+        #[arg(long)]
+        tag: Option<String>,
+        /// Maximum number of notes (1-200)
+        #[arg(long, default_value_t = commands::neighborhood::DEFAULT_LIMIT)]
+        limit: usize,
+    },
+    /// Graph health: broken links, orphan notes, unlinked mentions, inconsistent relations
+    Lint {
+        /// Only these checks, comma-separated: broken, orphans, unlinked, relations
+        #[arg(long, value_name = "CHECKS", value_delimiter = ',')]
+        check: Vec<String>,
+        /// Maximum items per check (1-500)
+        #[arg(long, default_value_t = commands::lint::DEFAULT_LIMIT)]
+        limit: usize,
     },
     /// A note's place in the graph: properties, tags, outline, links, backlinks
     Explain {
@@ -456,6 +496,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Index { .. } | Command::Sources { .. } | Command::Cloud { .. } => {
             graph::resolve_for_index(cli.graph.as_deref())?
         }
+        Command::Mcp { .. } => graph::resolve_for_mcp(cli.graph.as_deref())?,
         _ => graph::resolve(cli.graph.as_deref())?,
     };
     match &cli.command {
@@ -483,7 +524,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             *task,
             to.as_deref(),
         ),
-        Command::Backlinks { note } => commands::backlinks::run(&graph, cli.json, note),
+        Command::Backlinks { note, relation } => {
+            commands::backlinks::run(&graph, cli.json, note, relation.as_deref())
+        }
         Command::Recent { limit } => commands::recent::run(&graph, cli.json, *limit),
         Command::Collection {
             tag,
@@ -501,7 +544,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::list::run(&graph, cli.json, tag.as_deref(), kind.as_deref(), *limit)
         }
         Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
-        Command::Links { note } => commands::links::run(&graph, cli.json, note),
+        Command::Links { note, relation } => {
+            commands::links::run(&graph, cli.json, note, relation.as_deref())
+        }
         Command::Grep {
             text,
             ignore_case,
@@ -509,6 +554,37 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         } => commands::grep::run(&graph, cli.json, text, *ignore_case, *limit),
         Command::Route { from, to, max_hops } => {
             commands::route::run(&graph, cli.json, from, to, *max_hops)
+        }
+        Command::Coverage { question, limit } => {
+            commands::coverage::run(&graph, cli.json, question, *limit)
+        }
+        Command::Neighborhood {
+            note,
+            depth,
+            relation,
+            tag,
+            limit,
+        } => commands::neighborhood::run(
+            &graph,
+            cli.json,
+            note,
+            commands::neighborhood::Filters {
+                depth: *depth,
+                relation: relation.as_deref(),
+                tag: tag.as_deref(),
+                limit: *limit,
+            },
+        ),
+        Command::Lint { check, limit } => {
+            let checks = if check.is_empty() {
+                commands::lint::Check::ALL.to_vec()
+            } else {
+                check
+                    .iter()
+                    .map(|name| commands::lint::Check::parse(name))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
+            commands::lint::run(&graph, cli.json, &checks, *limit)
         }
         Command::Explain { note } => commands::explain::run(&graph, cli.json, note),
         Command::Skills { name } => commands::skills::run(&graph, cli.json, name.as_deref()),

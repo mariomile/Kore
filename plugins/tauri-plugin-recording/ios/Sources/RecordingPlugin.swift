@@ -6,6 +6,9 @@ import WebKit
 #if canImport(ActivityKit)
   import ActivityKit
 #endif
+#if canImport(WidgetKit)
+  import WidgetKit
+#endif
 
 /// The payload of the plugin's ~10 Hz `recordingLevel` event.
 struct RecordingLevel: Encodable {
@@ -42,7 +45,7 @@ struct RecordingStatus: Encodable {
 /// home-screen quick action, the lock-screen widget's `kore://` URL)
 /// asked for something only the webview can present.
 struct NativeAction: Encodable {
-  /// Currently only `recordAudio`.
+  /// `recordAudio` or `openDaily`.
   let action: String
 }
 
@@ -85,6 +88,27 @@ struct StagedPathArgs: Decodable {
   let path: String
 }
 
+struct UpdateDailyWidgetArgs: Decodable {
+  /// A `DailyWidgetSnapshot`, serialized by the app.
+  let json: String
+}
+
+struct TranscribeArgs: Decodable {
+  /// One recording segment's bytes, base64-encoded.
+  let base64: String
+  let mimeType: String
+  /// Spoken language (BCP-47); empty = the phone's preferred languages.
+  let language: String?
+}
+
+/// `transcribeOnDevice`'s response (mirrors `TranscribeResponse` in
+/// `src/models.rs`): `status` is `ok` or `unavailable`.
+struct TranscribeResponse: Encodable {
+  let status: String
+  let text: String
+  let reason: String
+}
+
 /// Kore's native audio-memo recorder (the mobile leg of the raw-first
 /// pipeline in `packages/core/src/actions/audio-memo.ts`).
 ///
@@ -120,11 +144,11 @@ class RecordingPlugin: Plugin {
   /// through NotificationCenter. Names are duplicated in
   /// `gen/apple/Sources/kore-open/` — keep them in sync.
   static let startRequestedNotification = Notification.Name(
-    "app.lore.recording.start-requested")
+    "app.kore.recording.start-requested")
   static let stopRequestedNotification = Notification.Name(
-    "app.lore.recording.stop-requested")
+    "app.kore.recording.stop-requested")
   /// The home-screen quick action's `UIApplicationShortcutItemType`.
-  static let recordShortcutType = "app.lore.record-audio"
+  static let recordShortcutType = "app.kore.record-audio"
   /// The persisted native-action queue (the V1 handshake): an action fired
   /// from an OS entry point survives webview crashes and cold starts here
   /// until the webview confirms it ran.
@@ -353,6 +377,75 @@ class RecordingPlugin: Plugin {
     }
   }
 
+  /// Transcribe one recording segment on the device (`OnDeviceTranscriber`).
+  /// The bytes come from the graph, so they are written to a temp file the
+  /// speech engine can open, and removed once it is done.
+  @objc public func transcribeOnDevice(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(TranscribeArgs.self)
+    guard let data = Data(base64Encoded: args.base64) else {
+      invoke.reject("transcription input is not valid base64")
+      return
+    }
+    guard let fileExtension = Self.speechFileExtension(for: args.mimeType) else {
+      invoke.resolve(
+        TranscribeResponse(
+          status: "unavailable", text: "",
+          reason: "On-device transcription can't read \(args.mimeType) recordings."))
+      return
+    }
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent("kore-transcribe-\(UUID().uuidString).\(fileExtension)")
+    do {
+      try data.write(to: url, options: .atomic)
+    } catch {
+      invoke.reject("staging audio for transcription failed: \(error.localizedDescription)")
+      return
+    }
+    OnDeviceTranscriber.transcribe(fileURL: url, language: args.language ?? "") { result in
+      try? FileManager.default.removeItem(at: url)
+      switch result {
+      case .success(.text(let text)):
+        invoke.resolve(TranscribeResponse(status: "ok", text: text, reason: ""))
+      case .success(.unavailable(let reason)):
+        invoke.resolve(TranscribeResponse(status: "unavailable", text: "", reason: reason))
+      case .failure(let error):
+        invoke.reject("on-device transcription failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Store the daily-note widget's snapshot (`DailyWidgetStore`) and ask
+  /// WidgetKit to redraw that widget. The app only calls this when the
+  /// digest changed, which keeps it inside WidgetKit's reload budget.
+  @objc public func updateDailyWidget(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(UpdateDailyWidgetArgs.self)
+    do {
+      try DailyWidgetStore.write(json: args.json)
+    } catch {
+      invoke.reject("updating the daily widget failed: \(error.localizedDescription)")
+      return
+    }
+    #if canImport(WidgetKit)
+      if #available(iOS 14.0, *) {
+        WidgetCenter.shared.reloadTimelines(ofKind: DailyWidgetStore.widgetKind)
+      }
+    #endif
+    invoke.resolve()
+  }
+
+  /// The extension AVFoundation needs to pick a container parser; `nil` for
+  /// formats it can't open (webm/ogg from a desktop recording).
+  private static func speechFileExtension(for mimeType: String) -> String? {
+    let base = mimeType.split(separator: ";").first.map(String.init) ?? mimeType
+    switch base.trimmingCharacters(in: .whitespaces).lowercased() {
+    case "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac": return "m4a"
+    case "audio/wav", "audio/x-wav", "audio/wave": return "wav"
+    case "audio/mpeg", "audio/mp3": return "mp3"
+    case "audio/aiff", "audio/x-aiff": return "aiff"
+    default: return nil
+    }
+  }
+
   // MARK: - Recording lifecycle (main queue)
 
   private func beginRecording(maxDurationMs: Double) throws {
@@ -385,7 +478,7 @@ class RecordingPlugin: Plugin {
     guard recorder.record(forDuration: maxDurationMs / 1000) else {
       deactivateAudioSession()
       throw NSError(
-        domain: "app.lore.recording", code: 1,
+        domain: "app.kore.recording", code: 1,
         userInfo: [NSLocalizedDescriptionKey: "the audio recorder refused to start"])
     }
 
@@ -610,36 +703,55 @@ class RecordingPlugin: Plugin {
     finalize(recorder, native: .remote)
   }
 
-  /// The home-screen quick action arrives on the app delegate — a runtime
-  /// class tao registers without implementing
-  /// `application:performActionForShortcutItem:completionHandler:`. Add the
-  /// method to that class; if some future delegate already implements it,
-  /// leave theirs alone (the quick action degrades to just opening the app).
+  /// The home-screen quick action arrives on the app delegate, or, now that
+  /// the app runs on the UIScene lifecycle (required by the iOS 27 SDK), on
+  /// tao's scene delegate (`TaoSceneDelegate`). tao implements neither
+  /// `application:performActionForShortcutItem:completionHandler:` nor
+  /// `windowScene:performActionForShortcutItem:completionHandler:`, so add
+  /// both; a class that already implements one keeps its own (the quick
+  /// action then degrades to just opening the app). A quick action that
+  /// cold-launches the app arrives in the scene's connection options, which
+  /// tao does not expose, so that case also just opens the app.
   private static var didInstallShortcutHandler = false
   private static func installShortcutHandler() {
-    guard
-      !didInstallShortcutHandler,
-      let delegate = UIApplication.shared.delegate,
-      let delegateClass = object_getClass(delegate)
-    else { return }
+    guard !didInstallShortcutHandler else { return }
     didInstallShortcutHandler = true
-    let selector = NSSelectorFromString(
-      "application:performActionForShortcutItem:completionHandler:")
-    guard class_getInstanceMethod(delegateClass, selector) == nil else { return }
-    let block:
-      @convention(block) (
-        AnyObject, UIApplication, UIApplicationShortcutItem, @escaping (Bool) -> Void
-      ) -> Void = { _, _, item, completion in
-        let handled = item.type == RecordingPlugin.recordShortcutType
-        if handled {
-          DispatchQueue.main.async {
-            RecordingPlugin.shared?.queueNativeAction("recordAudio")
-          }
+    let handle: (UIApplicationShortcutItem, @escaping (Bool) -> Void) -> Void = {
+      item, completion in
+      let handled = item.type == RecordingPlugin.recordShortcutType
+      if handled {
+        DispatchQueue.main.async {
+          RecordingPlugin.shared?.queueNativeAction("recordAudio")
         }
-        completion(handled)
       }
-    class_addMethod(
-      delegateClass, selector, imp_implementationWithBlock(block), "v@:@@@?")
+      completion(handled)
+    }
+
+    if let delegate = UIApplication.shared.delegate,
+      let delegateClass = object_getClass(delegate)
+    {
+      let block:
+        @convention(block) (
+          AnyObject, UIApplication, UIApplicationShortcutItem, @escaping (Bool) -> Void
+        ) -> Void = { _, _, item, completion in handle(item, completion) }
+      addMethodIfMissing(
+        delegateClass, "application:performActionForShortcutItem:completionHandler:", block)
+    }
+
+    if let sceneDelegateClass = NSClassFromString("TaoSceneDelegate") {
+      let block:
+        @convention(block) (
+          AnyObject, UIWindowScene, UIApplicationShortcutItem, @escaping (Bool) -> Void
+        ) -> Void = { _, _, item, completion in handle(item, completion) }
+      addMethodIfMissing(
+        sceneDelegateClass, "windowScene:performActionForShortcutItem:completionHandler:", block)
+    }
+  }
+
+  private static func addMethodIfMissing(_ cls: AnyClass, _ name: String, _ block: Any) {
+    let selector = NSSelectorFromString(name)
+    guard class_getInstanceMethod(cls, selector) == nil else { return }
+    class_addMethod(cls, selector, imp_implementationWithBlock(block), "v@:@@@?")
   }
 
   // MARK: - Live Activity
@@ -711,7 +823,7 @@ class RecordingPlugin: Plugin {
     let url = URL(fileURLWithPath: path).standardizedFileURL
     guard url.path.hasPrefix(directory.path + "/") else {
       throw NSError(
-        domain: "app.lore.recording", code: 2,
+        domain: "app.kore.recording", code: 2,
         userInfo: [NSLocalizedDescriptionKey: "path is outside the recording staging directory"])
     }
     return url

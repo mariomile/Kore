@@ -76,7 +76,7 @@ describe('resolvePerson', () => {
     expect(String(args['sql'])).toContain('note_emails')
     expect(String(args['sql'])).toContain('tags')
     expect(String(args['sql'])).not.toContain('limit')
-    expect(args['params']).toEqual(['ada@example.com', 'work@example.com', 'person', 'note'])
+    expect(args['params']).toEqual(['ada@example.com', 'work@example.com', 'person', 1, 'note'])
   })
 
   it('deduplicates one owner found through several emails', async () => {

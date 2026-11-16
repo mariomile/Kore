@@ -38,7 +38,24 @@ export function addNoteTag(source: string, tag: string): string | null {
   if (noteHasTag(source, tag)) {
     return null
   }
+  return addFrontmatterTag(source, tag)
+}
+
+/**
+ * `source` with `tag` added to frontmatter `tags:` (the Type field), or
+ * `null` when `tags:` already lists it. Unlike {@link addNoteTag} a body
+ * `#tag` does not count: a mention in prose is not membership (#401), and a
+ * tag line can be deleted unseen under the Type chips, so the writes that
+ * birth a typed note (relation "Create", a collection's "+ New", CSV import,
+ * bulk "Add type") always put the type where only the Type field changes
+ * it. Same fallback as {@link addNoteTag}: frontmatter that cannot take the
+ * tag sends it to the body rather than lose bytes the user wrote.
+ */
+export function addFrontmatterTag(source: string, tag: string): string | null {
   const { raw, body } = splitFrontmatter(source)
+  if (frontmatterHasTag(raw, tag)) {
+    return null
+  }
   if (raw === null) {
     return upsertFrontmatter(source, { tags: [tag] })
   }

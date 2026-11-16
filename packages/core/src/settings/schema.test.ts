@@ -25,12 +25,14 @@ describe('settingsSchema', () => {
       editorSmoothCaretAnimation: true,
       editorTextSize: 'small',
       editorFullWidth: false,
+      editorLineAuthors: false,
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['pinned', 'folders', 'tags', 'library'],
+      sidebarSections: ['pinned', 'types', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
-      hiddenSidebarItems: [],
+      hiddenSidebarItems: ['library'],
+      libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -47,6 +49,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       transcriptionModels: { openai: '', google: '' },
+      transcriptionLanguage: '',
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',
@@ -79,7 +82,6 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
-      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -137,6 +139,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.editorSmoothCaretAnimation).toBe(true)
     expect(DEFAULT_SETTINGS.editorTextSize).toBe('small')
     expect(DEFAULT_SETTINGS.editorFullWidth).toBe(false)
+    expect(DEFAULT_SETTINGS.editorLineAuthors).toBe(false)
     expect(DEFAULT_SETTINGS.sidebarWidth).toBe(260)
     expect(DEFAULT_SETTINGS.contextSidebarWidth).toBe(320)
     expect(DEFAULT_SETTINGS.semanticSearchEnabled).toBe(false)
@@ -210,6 +213,7 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ editorTextSize: 'large' }).editorTextSize).toBe('large')
     expect(settingsSchema.parse({ editorFullWidth: false }).editorFullWidth).toBe(false)
     expect(settingsSchema.parse({ editorFullWidth: true }).editorFullWidth).toBe(true)
+    expect(settingsSchema.parse({ editorLineAuthors: true }).editorLineAuthors).toBe(true)
     expect(settingsSchema.parse({ sidebarWidth: 300 }).sidebarWidth).toBe(300)
     expect(settingsSchema.parse({ sidebarWidth: 200 }).sidebarWidth).toBe(200)
     expect(settingsSchema.parse({ sidebarWidth: 480 }).sidebarWidth).toBe(480)
@@ -278,6 +282,10 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ describeAssets: false }).describeAssets).toBe(false)
     expect(settingsSchema.parse({ transcriptionFormat: true }).transcriptionFormat).toBe(true)
     expect(settingsSchema.parse({ transcriptionFormat: false }).transcriptionFormat).toBe(false)
+    expect(settingsSchema.parse({ transcriptionLanguage: ' it-IT ' }).transcriptionLanguage).toBe(
+      'it-IT',
+    )
+    expect(settingsSchema.parse({ transcriptionLanguage: 42 }).transcriptionLanguage).toBe('')
     expect(settingsSchema.parse({ contactsEnabled: true }).contactsEnabled).toBe(true)
     expect(settingsSchema.parse({ contactsEnabled: false }).contactsEnabled).toBe(false)
     expect(settingsSchema.parse({ allNotesFilterTags: ['meeting'] }).allNotesFilterTags).toEqual([
@@ -335,6 +343,7 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ editorTextSize: 3 }).editorTextSize).toBe('small')
     expect(settingsSchema.parse({ editorFullWidth: 'yes' }).editorFullWidth).toBe(false)
     expect(settingsSchema.parse({ editorFullWidth: 1 }).editorFullWidth).toBe(false)
+    expect(settingsSchema.parse({ editorLineAuthors: 'yes' }).editorLineAuthors).toBe(false)
     expect(settingsSchema.parse({ sidebarWidth: 'wide' }).sidebarWidth).toBe(260)
     // Out-of-range numbers clamp instead of resetting: a near-miss hand-edit
     // keeps its intent.
@@ -431,12 +440,14 @@ describe('settingsSchema', () => {
       editorSmoothCaretAnimation: true,
       editorTextSize: 'small',
       editorFullWidth: false,
+      editorLineAuthors: false,
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['pinned', 'folders', 'tags', 'library'],
+      sidebarSections: ['pinned', 'types', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
-      hiddenSidebarItems: [],
+      hiddenSidebarItems: ['library'],
+      libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -453,6 +464,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       transcriptionModels: { openai: '', google: '' },
+      transcriptionLanguage: '',
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',
@@ -485,7 +497,6 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
-      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -786,21 +797,11 @@ describe('settingsSchema', () => {
     })
   })
 
-  it('migrates legacy note tabs into generalized workspace tabs', () => {
-    const parsed = settingsSchema.parse({
-      openNoteTabs: {
-        '/g': [
-          { path: 'notes/alpha.md', pinned: true },
-          { kind: 'note', path: 'notes/beta.md', pinned: false },
-          { kind: 'surface', surface: 'settings', pinned: false },
-        ],
-      },
-    })
-    // The pre-pane flat list this migration used to produce no longer
-    // matches the pane shape, so it drops rather than resurrecting half a
-    // session.
-    expect(parsed.openTabs).toEqual({ '/g': [] })
+  it('drops the open tabs that moved to the workspace layout', () => {
+    const parsed = settingsSchema.parse({ openTabs: { '/g': [] }, openNoteTabs: {}, theme: 'dark' })
+    expect('openTabs' in parsed).toBe(false)
     expect('openNoteTabs' in parsed).toBe(false)
+    expect(parsed.theme).toBe('dark')
   })
 
   it('normalizes the sidebar shelf order to a complete list', () => {
@@ -808,17 +809,27 @@ describe('settingsSchema', () => {
     // drops out of an older document like any unknown id.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'open', 'pinned'] }).sidebarSections,
-    ).toEqual(['tags', 'pinned', 'folders', 'library'])
+    ).toEqual(['types', 'tags', 'pinned', 'folders', 'library'])
     // Unknown and duplicate entries drop; unmentioned shelves join the end in
     // their default order, so a shelf added later cannot go missing.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'tags', 'ghost'] }).sidebarSections,
-    ).toEqual(['tags', 'pinned', 'folders', 'library'])
+    ).toEqual(['types', 'tags', 'pinned', 'folders', 'library'])
+    // Types split out of the Tags shelf: an arrangement saved before it
+    // existed gets it right above Tags, and one that already places it keeps it.
+    expect(
+      settingsSchema.parse({ sidebarSections: ['folders', 'pinned', 'tags', 'library'] })
+        .sidebarSections,
+    ).toEqual(['folders', 'pinned', 'types', 'tags', 'library'])
+    expect(
+      settingsSchema.parse({ sidebarSections: ['types', 'folders', 'tags'] }).sidebarSections,
+    ).toEqual(['types', 'folders', 'tags', 'pinned', 'library'])
     // A non-array value degrades to the whole default order.
     expect(settingsSchema.parse({ sidebarSections: 'tags' }).sidebarSections).toEqual([
       'pinned',
-      'folders',
+      'types',
       'tags',
+      'folders',
       'library',
     ])
   })
@@ -830,8 +841,20 @@ describe('settingsSchema', () => {
     })
     // The retired terminal row drops like any unknown id.
     expect(parsed.sidebarNav).toEqual(['graph', 'daily', 'newNote', 'allNotes', 'tasks', 'memory'])
-    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags'])
-    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([])
+    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags', 'library'])
+    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([
+      'library',
+    ])
+  })
+
+  it('hides the Library shelf once, then respects showing it again', () => {
+    // An existing document from before the default: Library joins the hidden set.
+    const migrated = settingsSchema.parse({ hiddenSidebarItems: ['tasks'] })
+    expect(migrated.hiddenSidebarItems).toEqual(['tasks', 'library'])
+    expect(migrated.libraryShelfDefaulted).toBe(true)
+    // The user showed it again: the saved document carries the marker, so it stays shown.
+    const shown = settingsSchema.parse({ ...migrated, hiddenSidebarItems: ['tasks'] })
+    expect(shown.hiddenSidebarItems).toEqual(['tasks'])
   })
 
   it('keeps the Details arrangement complete and the hidden list clean', () => {
@@ -866,117 +889,6 @@ describe('settingsSchema', () => {
       'tasks',
     ])
     expect(moveDetailsSection(order, note, 'tasks', 'up')).toEqual(order)
-  })
-
-  it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/g': [
-          {
-            id: 'main',
-            panes: [
-              {
-                id: 'main',
-                activeKey: null,
-                tabs: [
-                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                  { kind: 'note', path: 'notes/alpha.md', pinned: true },
-                  { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-                  { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
-                  { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-                  { kind: 'surface', surface: 'tasks', pinned: false },
-                  { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
-                ],
-              },
-            ],
-          },
-        ],
-        '/broken': [
-          {
-            id: 'main',
-            panes: [{ id: 'main', activeKey: null, tabs: [{ kind: 'chat', pinned: false }] }],
-          },
-        ],
-      },
-    })
-    expect(parsed.openTabs).toEqual({
-      '/g': [
-        {
-          id: 'main',
-          panes: [
-            {
-              id: 'main',
-              activeKey: null,
-              tabs: [
-                { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                { kind: 'note', path: 'notes/alpha.md', pinned: true },
-                { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-                {
-                  kind: 'surface',
-                  surface: 'allNotes',
-                  filter: { kind: 'tag', tag: 'book' },
-                  pinned: false,
-                },
-                { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-                { kind: 'surface', surface: 'tasks', pinned: false },
-                { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
-              ],
-            },
-          ],
-        },
-      ],
-      '/broken': [{ id: 'main', panes: [{ id: 'main', activeKey: null, tabs: [] }] }],
-    })
-  })
-
-  it('drops a pre-pane flat tab list instead of resurrecting it', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/graph': [{ id: 'main', tabs: [{ kind: 'note', path: 'notes/a.md', pinned: false }] }],
-      },
-    })
-    expect(parsed.openTabs).toEqual({ '/graph': [] })
-  })
-
-  it('drops retired settings and Agents tabs without discarding the rest of the session', () => {
-    const parsed = settingsSchema.parse({
-      openTabs: {
-        '/g': [
-          {
-            id: 'main',
-            panes: [
-              {
-                id: 'main',
-                activeKey: null,
-                tabs: [
-                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                  { kind: 'surface', surface: 'settings', pinned: true },
-                  { kind: 'surface', surface: 'agents', pinned: false },
-                  { kind: 'note', path: 'notes/alpha.md', pinned: false },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    })
-    expect(parsed.openTabs).toEqual({
-      '/g': [
-        {
-          id: 'main',
-          panes: [
-            {
-              id: 'main',
-              activeKey: null,
-              tabs: [
-                { kind: 'surface', surface: 'daily', date: null, pinned: false },
-                { kind: 'note', path: 'notes/alpha.md', pinned: false },
-              ],
-            },
-          ],
-        },
-      ],
-    })
   })
 })
 

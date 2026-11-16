@@ -4,6 +4,7 @@ import {
   parseNoteAppearance,
   parseNoteAppearanceFromSource,
   parseNoteCover,
+  parseNoteCoverY,
   parseNoteIcon,
 } from './note-appearance'
 import { isPropertyKey } from '../tags/tag-type'
@@ -66,6 +67,7 @@ describe('parseNoteAppearance', () => {
     expect(parseNoteAppearance(data)).toEqual({
       icon: { kind: 'emoji', glyph: '✨' },
       coverSrc: 'assets/hero.png',
+      coverY: 50,
     })
   })
 
@@ -75,17 +77,43 @@ describe('parseNoteAppearance', () => {
     ).toEqual({
       icon: { kind: 'emoji', glyph: '📚' },
       coverSrc: 'assets/c.png',
+      coverY: 50,
     })
     expect(parseNoteAppearanceFromSource('# Body only\n')).toEqual({
       icon: null,
       coverSrc: null,
+      coverY: 50,
     })
+  })
+})
+
+describe('parseNoteCoverY', () => {
+  it('reads a percentage, clamped and rounded', () => {
+    expect(parseNoteCoverY(30)).toBe(30)
+    expect(parseNoteCoverY('72')).toBe(72)
+    expect(parseNoteCoverY(33.6)).toBe(34)
+    expect(parseNoteCoverY(-5)).toBe(0)
+    expect(parseNoteCoverY(140)).toBe(100)
+  })
+
+  it('falls back to the centered default', () => {
+    expect(parseNoteCoverY(undefined)).toBe(50)
+    expect(parseNoteCoverY('')).toBe(50)
+    expect(parseNoteCoverY('top')).toBe(50)
+    expect(parseNoteCoverY(null)).toBe(50)
+  })
+
+  it('is read with the rest of the appearance', () => {
+    expect(
+      parseNoteAppearanceFromSource('---\ncover: assets/a.png\ncover_y: 20\n---\n').coverY,
+    ).toBe(20)
   })
 })
 
 describe('reserved appearance keys', () => {
   it('refuses cover and icon as tag-property keys', () => {
     expect(isPropertyKey('cover')).toBe(false)
+    expect(isPropertyKey('cover_y')).toBe(false)
     expect(isPropertyKey('icon')).toBe(false)
     expect(isPropertyKey('author')).toBe(true)
   })

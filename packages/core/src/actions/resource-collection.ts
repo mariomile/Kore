@@ -5,6 +5,7 @@ import { hashContent } from '../indexing/hash'
 import { parseNote } from '../markdown/extract'
 import { upsertFrontmatter } from '../markdown/frontmatter'
 import { wikiLinkSafe } from '../markdown/edit'
+import { cardBody, RESOURCE_LABELS } from './resource-card'
 import { TAG_DEFINITION_MARKER } from '../tags/tag-type'
 
 export type ResourceKind = 'link' | 'image' | 'pdf' | 'file'
@@ -16,13 +17,6 @@ export interface ResourceOrigin {
   private: boolean
   /** Desktop metadata updates must respect an open editor's live buffer. */
   updateSources?: (path: string, sourceLink: string, generation: number) => Promise<void>
-}
-
-const labels: Record<ResourceKind, string> = {
-  link: 'Links',
-  image: 'Images',
-  pdf: 'PDFs',
-  file: 'Files',
 }
 
 const assetSchema = z
@@ -97,7 +91,7 @@ async function existingSource(path: string, generation: number): Promise<string 
 async function ensureResourceType(kind: ResourceKind, generation: number): Promise<void> {
   await createNoteIfAbsent(
     `tags/${kind}.md`,
-    upsertFrontmatter(`# ${labels[kind]}\n`, {
+    upsertFrontmatter(`# ${RESOURCE_LABELS[kind]}\n`, {
       ...TAG_DEFINITION_MARKER,
       properties: [
         kind === 'link'
@@ -120,9 +114,7 @@ async function saveCard(
 ): Promise<void> {
   await ensureResourceType(kind, origin.generation)
   const sourceLink = `[[${wikiLinkSafe(origin.sourcePath.replace(/\.md$/, ''))}]]`
-  const safeTitle = wikiLinkSafe(title).replaceAll(/[\r\n]/g, ' ') || labels[kind]
-  const destination = target.replaceAll(' ', '%20').replaceAll('(', '%28').replaceAll(')', '%29')
-  const body = `# ${safeTitle}\n\n#${kind}\n\n${kind === 'image' ? '!' : ''}[${safeTitle.replaceAll(/[[\]]/g, '')}](${destination})\n`
+  const body = cardBody(kind, title, target)
   // Resource identity owns the filename; omit a managed ULID so title edits cannot move it.
   const seed = upsertFrontmatter(body, {
     resourceTarget: target,

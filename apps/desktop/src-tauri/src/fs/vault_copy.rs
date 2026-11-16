@@ -118,6 +118,29 @@ pub async fn vault_copy_write(
     crate::blocking::run_blocking(move || write_files(graph.as_deref(), &destination, &files)).await
 }
 
+/// Commit everything in a copy made by [`vault_copy_tree`] that carried the
+/// source's `.git`, so the conversion continues the vault's history as one
+/// commit instead of starting a second, unrelated one. Only a folder this run
+/// copied into, never the open graph; a copy without a repository fails.
+#[tauri::command]
+pub async fn vault_copy_commit(
+    destination: String,
+    message: String,
+    state: State<'_, GraphState>,
+    copies: State<'_, VaultCopies>,
+) -> AppResult<crate::git::CommitOutcome> {
+    let dest = copies.made(&destination)?;
+    if let Some(graph) = current_root(&state)
+        .ok()
+        .and_then(|graph| graph.canonicalize().ok())
+    {
+        if overlaps(&graph, &dest) {
+            return Err(AppError::io("refusing to commit in the open vault"));
+        }
+    }
+    crate::blocking::run_blocking(move || crate::git::commit_folder(&dest, &message)).await
+}
+
 /// A graph-relative path as a native relative path, refusing anything that
 /// could leave the folder it is joined to.
 fn relative(path: &str) -> AppResult<PathBuf> {
@@ -242,6 +265,13 @@ fn copy_tree(
                 }
                 stats.bytes += fs::copy(entry.path(), &target)
                     .map_err(|err| AppError::io(format!("cannot copy {wire}: {err}")))?;
+                // `fs::copy` keeps the modification time on macOS but not
+                // everywhere; the copy must, or every note reads as edited
+                // today and "recent" lists and `file.mtime` views go blank.
+                if let Ok(modified) = entry.metadata().and_then(|meta| meta.modified()) {
+                    keep_modified(&target, modified)
+                        .map_err(|err| AppError::io(format!("cannot copy {wire}: {err}")))?;
+                }
                 stats.files += 1;
             }
         }
@@ -266,13 +296,97 @@ fn write_files(graph: Option<&Path>, destination: &str, files: &[VaultCopyFile])
         }
         fs::write(&target, &file.contents)
             .map_err(|err| AppError::io(format!("cannot write {}: {err}", file.path)))?;
+        // A rewrite (links repointed, Markdown made canonical) is not an
+        // edit: the file keeps the time the copy gave it, the source's.
+        if let Ok(modified) = meta.modified() {
+            keep_modified(&target, modified)
+                .map_err(|err| AppError::io(format!("cannot write {}: {err}", file.path)))?;
+        }
     }
     Ok(())
+}
+
+/// Set a file's modification time. Opened read-only: setting times needs
+/// ownership, not write access, and Git's object files are read-only.
+fn keep_modified(path: &Path, modified: std::time::SystemTime) -> std::io::Result<()> {
+    fs::File::open(path)?.set_modified(modified)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_copy_that_carries_git_commits_the_conversion_on_its_history() {
+        let vault = tempfile::tempdir().expect("vault");
+        let out = tempfile::tempdir().expect("out");
+        write(vault.path(), "Journal/Daily/09-10-2026.md", "day");
+        write(vault.path(), "Notes/Idea.md", "idea");
+        let repo = git2::Repository::init(vault.path()).expect("init");
+        let mut index = repo.index().expect("index");
+        index
+            .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+            .expect("add");
+        index.write().expect("write index");
+        let tree = repo
+            .find_tree(index.write_tree().expect("tree"))
+            .expect("tree");
+        let who = git2::Signature::now("Mario", "mario@example.com").expect("sig");
+        let base = repo
+            .commit(Some("HEAD"), &who, &who, "vault sync", &tree, &[])
+            .expect("commit");
+
+        let (dest, _) = copy_tree(
+            vault.path(),
+            &dest_str(out.path()),
+            &[rename("Journal/Daily/09-10-2026.md", "daily/2026-10-09.md")],
+            &[".kore".to_string()],
+        )
+        .expect("copy");
+        let outcome = crate::git::commit_folder(&dest, "Convert to Kore layout").expect("commit");
+        assert!(outcome.committed);
+
+        let copy = git2::Repository::open(&dest).expect("open copy");
+        let head = copy.head().expect("head").peel_to_commit().expect("commit");
+        assert_eq!(head.parent_id(0).expect("parent"), base);
+        let tree = head.tree().expect("tree");
+        assert!(tree.get_path(Path::new("daily/2026-10-09.md")).is_ok());
+        assert!(tree
+            .get_path(Path::new("Journal/Daily/09-10-2026.md"))
+            .is_err());
+        // The source's history is untouched.
+        assert_eq!(repo.head().expect("head").target(), Some(base));
+    }
+
+    #[test]
+    fn copies_and_rewrites_keep_the_source_modification_time() {
+        let vault = tempfile::tempdir().expect("vault");
+        let out = tempfile::tempdir().expect("out");
+        write(vault.path(), "Notes/Old.md", "old");
+        let then =
+            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        keep_modified(&vault.path().join("Notes/Old.md"), then).expect("set mtime");
+
+        let (dest, _) = copy_tree(vault.path(), &dest_str(out.path()), &[], &[]).expect("copy");
+        let modified = |rel: &str| {
+            fs::metadata(dest.join(rel))
+                .and_then(|meta| meta.modified())
+                .expect("mtime")
+        };
+        assert_eq!(modified("Notes/Old.md"), then);
+
+        write_files(
+            None,
+            &dest_str(&dest),
+            &[VaultCopyFile {
+                path: "Notes/Old.md".to_string(),
+                contents: "canonical".to_string(),
+            }],
+        )
+        .expect("write");
+        assert_eq!(read(&dest, "Notes/Old.md"), "canonical");
+        assert_eq!(modified("Notes/Old.md"), then);
+    }
 
     fn write(root: &Path, rel: &str, contents: &str) {
         let path = root.join(rel);

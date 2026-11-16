@@ -81,6 +81,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
 }))
 
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: false, isNativeShell: () => true }))
+const navigate = vi.hoisted(() => vi.fn())
+vi.mock('@/routing/router', () => ({ useRouter: () => ({ navigate }) }))
 // The native shell is on, so pin the window role instead of reading Tauri's
 // window metadata, which the test browser does not have.
 vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
@@ -543,6 +545,21 @@ describe('MobileAudioMemoProvider', () => {
     }
   })
 
+  it('the daily widget tap (openDaily) shows today and confirms at once', async () => {
+    await renderHook(() => useMobileAudioMemo(), { wrapper })
+    await vi.waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('plugin:recording|actions_ready', {})
+    })
+
+    await act(async () => {
+      pluginEvents.emit('nativeAction', { action: 'openDaily' })
+    })
+
+    expect(navigate).toHaveBeenCalledWith({ kind: 'today' })
+    expect(invoke).toHaveBeenCalledWith('plugin:recording|action_performed', {})
+    expect(recorderControls.startSpy).not.toHaveBeenCalled()
+  })
+
   it('unknown native actions are ignored', async () => {
     vi.useFakeTimers()
     try {
@@ -563,7 +580,7 @@ describe('MobileAudioMemoProvider', () => {
     }
   })
 
-  it('without an OpenAI or Gemini model, toggle opens the drawer for key setup, never the mic', async () => {
+  it('without an OpenAI or Gemini model, the iPhone still records — it transcribes on the device', async () => {
     SETTINGS.current = {
       aiProviders: [
         {
@@ -580,16 +597,12 @@ describe('MobileAudioMemoProvider', () => {
       wrapper,
     })
 
-    // The FAB stays visible (available) so the feature is discoverable; only
-    // the recording itself waits for a key.
     expect(result.current.available).toBe(true)
-    expect(result.current.hasTranscriptionConfig).toBe(false)
+    expect(result.current.hasTranscriptionConfig).toBe(true)
 
     await act(async () => {
       result.current.toggle()
     })
-    expect(result.current.drawerOpen).toBe(true)
-    expect(result.current.phase).toBe('idle')
-    expect(recorderControls.startSpy).not.toHaveBeenCalled()
+    expect(recorderControls.startSpy).toHaveBeenCalledTimes(1)
   })
 })

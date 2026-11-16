@@ -72,7 +72,8 @@ fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, Cli
     let query = format!(
         "SELECT max(p.value_number) FROM note_properties p
          WHERE p.key = {key_bind} AND p.value_number IS NOT NULL
-           AND EXISTS (SELECT 1 FROM tags t WHERE t.note_path = p.note_path AND ({clauses}))"
+           AND EXISTS (SELECT 1 FROM tags t
+                       WHERE t.note_path = p.note_path AND t.member = 1 AND ({clauses}))"
     );
     let highest: Option<f64> =
         conn.query_row(&query, rusqlite::params_from_iter(binds.values), |row| {
@@ -157,6 +158,7 @@ mod tests {
             kind: "text".into(),
             options: None,
             start: Some(start),
+            target: None,
         };
         let schema = TagSchema {
             properties: vec![
@@ -172,6 +174,7 @@ mod tests {
                 field("number", Start::NextNumber),
             ],
             template: None,
+            folder: None,
         };
         let values = starting_values(&schema, None, &[]).unwrap();
         let keys: Vec<&str> = values.iter().map(|(key, _)| key.as_str()).collect();

@@ -1,11 +1,12 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers } from '@/components/icons'
-import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@kore/core'
+import { conflictMarkerBlockCount, conflictMarkerLabels, readNote } from '@kore/core'
 import { CONFLICT_SIDE_DOT, ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useNoteRow } from '@/hooks/use-note-row'
 import {
   useConflictResolution,
   type ConflictResolutionState,
@@ -59,12 +60,9 @@ export function SyncConflictNotice({
   const localResolution = useConflictResolution(path)
   const { busy, error, resolve } = resolution ?? localResolution
   const bridgeReady = useBridgeReady()
-  const { data } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, 'note-conflict', graph?.root, path],
-    queryFn: async () => (await getNote(path)) ?? null,
-    enabled: bridgeReady && graph !== null,
-  })
-  const indexedConflict = data?.hasConflict === true
+  // The shared note-row query: the editor header already reads this row, so
+  // the notice costs no index query of its own.
+  const indexedConflict = useNoteRow(path)?.hasConflict === true
   const visible = graph !== null && (indexedConflict || markersPresent)
   // The iCloud sweep labels marker sides with real device names (or the two
   // colliding filenames) — read them so the buttons say what they keep. The

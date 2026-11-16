@@ -316,6 +316,73 @@ filters.
 - **Reprojection.** No SQL migration; `PROJECTION_VERSION` 26 and
   `PARSED_NOTE_VERSION` 7 rebuild the projection on next open.
 
+## Amendment E (2026-11-11) — Where a tag sits decides membership; a tag in prose is a mention
+
+One tag, two positions. Treating every inline `#tag` as membership (M1) made
+any sentence that names a tag a row of its collection, so collections, the
+Type field and the relation picker filled up with notes that only talked
+about the tag (an Area picker offering meeting notes that mentioned `#area`).
+
+- **Membership** is frontmatter `tags:` (Amendment D) or a body paragraph made
+  only of tags when it is the first paragraph (right under a `# Title`
+  heading) or the last one. The trailing `#tag` line `kore tag`, the editor and
+  collection rows already write stays membership, so no file is rewritten.
+- **Mention** is any other inline `#tag`. It still indexes as a tag row
+  (search, tag counts, the tag page's "Mentioned in" disclosure,
+  `listTagMentions`) but never makes the note a collection row, a typed note,
+  a person, a relation target or a reusable-collection member.
+- **Index.** `tags.member` (migration 0026, default 1) carries the position;
+  `ParsedNote.memberTags` (`membershipLineTags` in
+  `packages/core/src/markdown/extract.ts`) feeds it. Every membership query
+  (`carriesTagOrNested`, `carriesAnyTagOrNested`, tag types, the tag tree,
+  persons, reusable collections, the CLI's `collection` and starting values)
+  filters `member = 1`. `PROJECTION_VERSION` 32 and `PARSED_NOTE_VERSION` 10
+  rebuild the projection once on next open.
+- **Relation picker.** Targets are the members of the relation's tag and its
+  nested tags and `extends` descendants (`collectionTagKeys`), sorted by title
+  when nothing is typed, up to 50.
+
+## Amendment F (2026-11-12) — A type keeps its saved views in its definition note
+
+A typed tag's named tabs (layout, sort chain, board or table grouping,
+filters and how they combine) are stored under `views:` in `tags/<type>.md`,
+next to `properties`. They travel with the vault, so every device, `kore`
+and agents read the same database tabs. `views` is not a reserved key (a
+note may still have a `views` field); it means saved views only on a marked
+definition, and it is never inherited through `extends`. Which tab is
+selected, column widths and the live lens stay per device in settings, and
+an untyped tag (no definition note) keeps its tabs in settings too: saving a
+tab never creates a definition. Views saved locally before this amendment
+move into the definition the first time the type's page opens.
+
+Obsidian bases stay read-only. A base that lists one tag's notes
+(`file.hasTag("x")`, plus simple comparisons) can be converted: its views
+become that type's tabs and its plain columns become fields typed from the
+values the notes hold. Formulas, folder rules and `file.*` expressions are
+reported, not translated; a base that narrows a tag to a folder is left as a
+base. The `.base` file is never written.
+
+## Amendment G (2026-11-12) — A tag on a checkbox line makes the line a row
+
+A `#tag` written on a checkbox's own line (`- [ ] call Andrea #lead`) makes
+that line a row of the tag's database, wherever the note is: the index stores
+the line's tags on its `tasks` row (`tasks.tags`, migration 0027), and the
+tag page lists those rows above its notes, open first, each tickable and
+naming the note it lives in. For the note the tag stays a mention (Amendment
+E). A line's project still comes from the project it links (#365). Typed
+fields on a line are a later step.
+
+## Amendment H (2026-11-13) — A fence can point at the note it sits in
+
+A collection fence's filter value `this` means the note the fence is in:
+`filter: project = this` on a relation field keeps the rows that link to that
+note, by title, path or file name. The fence reads the same in every note, so
+it can live in a type's template and every new project is born with its own
+"tasks of this project" table. A row added from such a view is born linked to
+the note. The view also lists the checkbox rows of its tag (Amendment G) that
+sit in the note or link to it. Outside a note (a base, a preview) `this`
+matches nothing.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

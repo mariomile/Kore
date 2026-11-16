@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { granolaConnector, renderGranolaNote } from './granola'
+import { renderNotePlacement } from './pattern'
 
 vi.mock('./http', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./http')>()),
@@ -19,7 +20,7 @@ const meeting = {
 
 describe('renderGranolaNote', () => {
   it('writes the summary under an H1 with meeting frontmatter', () => {
-    expect(renderGranolaNote(meeting)).toBe(
+    expect(renderGranolaNote(meeting, granolaConnector.defaultTags)).toBe(
       [
         '---',
         'granola_id: not_abc',
@@ -41,7 +42,7 @@ describe('renderGranolaNote', () => {
   })
 
   it('skips a meeting whose summary is not ready', () => {
-    expect(renderGranolaNote({ ...meeting, summary_markdown: null })).toBeNull()
+    expect(renderGranolaNote({ ...meeting, summary_markdown: null }, [])).toBeNull()
   })
 })
 
@@ -78,9 +79,13 @@ describe('granolaConnector.fetchNotes', () => {
       'https://public-api.granola.ai/v1/notes/not_abc',
       'https://public-api.granola.ai/v1/notes?page_size=30&cursor=next',
     ])
-    expect(notes.map((note) => [note.fileStem, note.fields['month']])).toEqual([
-      ['2026-10-08 Weekly sync roadmap', '2026-10'],
-    ])
+    // The default pattern names the file as before: date, then the cleaned title.
+    expect(
+      notes.map((note) => [
+        renderNotePlacement(granolaConnector.defaultPattern, note.fields, '').stem,
+        note.fields['month'],
+      ]),
+    ).toEqual([['2026-10-08 Weekly sync roadmap', '2026-10']])
     expect(notes[0]?.merge('anything')).toBeNull()
   })
 })

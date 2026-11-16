@@ -12,14 +12,43 @@ use tauri::{AppHandle, Runtime};
 #[cfg(target_os = "macos")]
 const SETTING_KEY: &str = "visualTheme";
 
+/// The Liquid Glass state the last settings save applied; `None` before it.
+#[cfg(target_os = "macos")]
+static APPLIED_ON_SAVE: std::sync::Mutex<Option<bool>> = std::sync::Mutex::new(None);
+
+#[cfg(target_os = "macos")]
+fn wants_glass(settings: &Map<String, Value>) -> bool {
+    settings
+        .get(SETTING_KEY)
+        .and_then(Value::as_str)
+        .is_some_and(|theme| theme == "liquid-glass")
+}
+
+/// [`sync_from_settings`] for a settings save, skipped when the save left the
+/// theme as the previous save had it. Settings are saved on every navigation
+/// (the open tabs live there), and each sync reaches every window's native
+/// view and webview on the main thread, so only a theme change pays for it.
+/// Windows opened later get the material from the page-load sync instead.
+#[cfg(target_os = "macos")]
+pub(crate) fn sync_on_save<R: Runtime>(app: &AppHandle<R>, settings: &Map<String, Value>) {
+    let enabled = wants_glass(settings);
+    {
+        let mut applied = APPLIED_ON_SAVE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if *applied == Some(enabled) {
+            return;
+        }
+        *applied = Some(enabled);
+    }
+    sync_from_settings(app, settings);
+}
+
 #[cfg(target_os = "macos")]
 pub(crate) fn sync_from_settings<R: Runtime>(app: &AppHandle<R>, settings: &Map<String, Value>) {
     use tauri::Manager;
 
-    let enabled = settings
-        .get(SETTING_KEY)
-        .and_then(Value::as_str)
-        .is_some_and(|theme| theme == "liquid-glass");
+    let enabled = wants_glass(settings);
     let available = native_glass_available();
 
     for window in app.webview_windows().into_values() {
@@ -61,6 +90,9 @@ pub(crate) fn sync_from_settings<R: Runtime>(app: &AppHandle<R>, settings: &Map<
 
 #[cfg(not(target_os = "macos"))]
 pub(crate) fn sync_from_settings<R: Runtime>(_app: &AppHandle<R>, _settings: &Map<String, Value>) {}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn sync_on_save<R: Runtime>(_app: &AppHandle<R>, _settings: &Map<String, Value>) {}
 
 #[cfg(target_os = "macos")]
 fn native_glass_available() -> bool {

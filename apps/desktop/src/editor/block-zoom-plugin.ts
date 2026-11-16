@@ -180,9 +180,15 @@ function markerListPos(view: EditorView, marker: Element): number | null {
   return null
 }
 
-/** ⌘-click (Ctrl-click off macOS) on a bullet zooms into it; a plain click keeps folding. */
-function handleMarkerMouseDown(view: EditorView, event: MouseEvent): boolean {
-  if (!(event.metaKey || event.ctrlKey) || event.button !== 0) {
+/**
+ * ⌘-click (Ctrl-click off macOS) on a bullet zooms into it; a plain click
+ * keeps folding. With `tapToZoom` (the phone, which has neither ⌘ nor a block
+ * menu) a plain tap on a bullet or number zooms too, while a task's checkbox
+ * keeps toggling.
+ */
+function handleMarkerMouseDown(view: EditorView, event: MouseEvent, tapToZoom: boolean): boolean {
+  const modified = event.metaKey || event.ctrlKey
+  if (!(modified || tapToZoom) || event.button !== 0) {
     return false
   }
   const target = event.target
@@ -197,9 +203,15 @@ function handleMarkerMouseDown(view: EditorView, event: MouseEvent): boolean {
   if (root === null) {
     return false
   }
+  if (!modified && view.state.doc.nodeAt(root)?.attrs.kind === 'task') {
+    return false
+  }
   event.preventDefault()
   zoomTo(view, { kind: 'list', root })
-  view.focus()
+  // A tap leaves focus alone so the keyboard doesn't rise with the zoom.
+  if (modified) {
+    view.focus()
+  }
   return true
 }
 
@@ -211,6 +223,8 @@ function handleMarkerMouseDown(view: EditorView, event: MouseEvent): boolean {
 export interface BlockZoomOptions {
   /** Called when the zoom starts, moves or ends (null), and on teardown. */
   readonly onZoomChange?: (view: EditorView, target: ZoomTarget | null) => void
+  /** A plain tap on a bullet zooms in (touch surfaces); otherwise it takes ⌘. */
+  readonly tapToZoom?: boolean
 }
 
 export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<BlockZoomState> {
@@ -312,7 +326,7 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         }
       },
       handleDOMEvents: {
-        mousedown: handleMarkerMouseDown,
+        mousedown: (view, event) => handleMarkerMouseDown(view, event, options.tapToZoom === true),
         mousemove: markPointerOverRoot,
         mouseleave: (view) => {
           setPointerOverRoot(view, false)

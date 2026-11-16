@@ -4,9 +4,11 @@
    markdown link, still the file's only content) is hidden until the caret
    is on it, then shows under the card so it can be edited or deleted.
 
-   The look follows Craft/Notion bookmarks: the card sits on the page rather
-   than in a box, and only lifts on hover. A page reads as title, description
-   and site; a post (X) reads as the post: author, words, then counts. */
+   The look follows Craft's rich link block: a soft filled card (no border,
+   no divider) with the page's image on the right, or on top on a phone. A
+   page reads as title, description, then the site's mark, name and host; a
+   post (X) reads as the post: author, words, then counts. The footer ends
+   in an open button, the touch path to the page. */
 
 .kore-editor .kore-link-card-source:not(.is-editing) {
   display: none;
@@ -18,11 +20,11 @@
 
 .kore-editor .kore-link-card {
   display: flex;
-  gap: 1.25rem;
-  align-items: flex-start;
-  margin: 0.35em 0;
-  padding: 0.85rem 1.25rem;
-  border-radius: var(--radius-lg, 8px);
+  align-items: stretch;
+  margin: 0.4em 0;
+  overflow: hidden;
+  border-radius: var(--radius-xl, 12px);
+  background-color: var(--surface-hover);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -32,11 +34,12 @@
      about six times as many frames in the daily stream. */
 }
 .kore-editor .kore-link-card:hover {
-  background-color: var(--surface-hover);
+  background-color: var(--surface-active);
 }
 .kore-editor .kore-link-card[data-kind='post'] {
   flex-direction: column;
   gap: 0.6rem;
+  padding: 0.95rem 1.05rem 0.8rem;
 }
 
 .kore-editor .kore-link-card-body {
@@ -45,6 +48,7 @@
   flex: 1;
   flex-direction: column;
   gap: 0.3rem;
+  padding: 0.95rem 1.05rem 0.8rem;
 }
 .kore-editor .kore-link-card-title {
   display: -webkit-box;
@@ -65,12 +69,24 @@
   line-height: 1.4;
 }
 .kore-editor .kore-link-card-thumb {
-  width: clamp(9rem, 30%, 15rem);
-  max-height: 10rem;
+  width: clamp(8rem, 32%, 14rem);
+  min-height: 100%;
+  max-height: 11rem;
   flex-shrink: 0;
-  border-radius: var(--radius-md, 6px);
   object-fit: cover;
-  object-position: top center;
+  object-position: center;
+}
+/* A phone-wide pane stacks the card: the image across the top at the
+   OpenGraph ratio, the words under it. */
+@media (max-width: 40rem) {
+  .kore-editor .kore-link-card[data-kind='page'] {
+    flex-direction: column-reverse;
+  }
+  .kore-editor .kore-link-card-thumb {
+    width: 100%;
+    max-height: 12rem;
+    aspect-ratio: 1.91 / 1;
+  }
 }
 
 /* Footer: the site's mark and name, and for a post its counts. */
@@ -85,8 +101,37 @@
   white-space: nowrap;
 }
 .kore-editor .kore-link-card-site > span {
+  margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.kore-editor .kore-link-card-button {
+  position: relative;
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin: -0.35rem 0;
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.kore-editor .kore-link-card-button::before {
+  /* A 44px hit area around the 28px glyph, for a thumb; two buttons side by
+     side share the overlap, so neither steals the other's centre. */
+  position: absolute;
+  inset: -0.5rem;
+  content: '';
+}
+.kore-editor .kore-link-card-button:hover {
+  background-color: var(--surface);
+  color: var(--text);
+}
+.kore-editor .kore-link-card-button svg {
+  width: 1rem;
+  height: 1rem;
 }
 .kore-editor .kore-link-card-icon {
   width: 1.05rem;
@@ -155,4 +200,77 @@
 
 .kore-editor .kore-link-card img[hidden] {
   display: none;
+}
+
+/* Appearance: the compact row and the large card (the default is above).
+   Compact is one line: mark, title, host, then the buttons; the site line
+   dissolves into the row so its parts can sit around the title. */
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-body {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site {
+  display: contents;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-icon {
+  order: 0;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-title {
+  order: 1;
+  min-width: 0;
+  flex: 0 1 auto;
+  -webkit-line-clamp: 1;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site > span {
+  order: 2;
+  min-width: 3rem;
+  color: var(--text-muted);
+  font-size: 0.82em;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-button {
+  order: 3;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-description,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-thumb,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-text,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-media {
+  display: none;
+}
+.kore-editor .kore-link-card[data-kind='post'][data-layout='compact'] {
+  padding: 0.6rem 0.8rem;
+}
+
+/* Large: the image across the top at any width, the words bigger. */
+.kore-editor .kore-link-card[data-kind='page'][data-layout='large'] {
+  flex-direction: column-reverse;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-thumb {
+  width: 100%;
+  max-height: 22rem;
+  aspect-ratio: 1.91 / 1;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-body {
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem 0.95rem;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-title {
+  font-size: 1.12em;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-description {
+  -webkit-line-clamp: 3;
+}
+
+/* On a phone-wide pane the compact row keeps the title whole: the host
+   gives way, since the favicon already names the site. */
+@media (max-width: 40rem) {
+  .kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-title {
+    flex: 1 1 auto;
+  }
+  .kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site > span {
+    display: none;
+  }
 }

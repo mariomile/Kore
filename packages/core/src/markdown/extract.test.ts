@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasAuthoredTitle, isTagName, parseNote } from './extract'
+import { frontmatterKeyAt, hasAuthoredTitle, isTagName, parseNote } from './extract'
 
 function parse(source: string, path = 'notes/test.md') {
   return parseNote({ path, source })
@@ -40,6 +40,38 @@ describe('parseNote — wiki links', () => {
     // File-absolute spans: the splice-based retitle rewrites the YAML value
     // exactly like a body link.
     expect(source.slice(relation.from, relation.to)).toBe('[[James Clear]]')
+  })
+
+  it('names each frontmatter link after the key it is the value of', () => {
+    const source = [
+      '---',
+      'company: "[[Acme]]"',
+      'expertise:',
+      '  - "[[Product Discovery]]"',
+      '  - "[[Product Strategy]]"',
+      '"Due date": "[[2026-11-20]]"',
+      'up: [[persons.base]]',
+      'nested:',
+      '  child: "[[Deep]]"',
+      '---',
+      'Body [[Other]].',
+    ].join('\n')
+    const note = parse(source)
+    expect(note.wikiLinks.map((w) => [w.target, w.relation])).toEqual([
+      ['Acme', 'company'],
+      ['Product Discovery', 'expertise'],
+      ['Product Strategy', 'expertise'],
+      ['2026-11-20', 'Due date'],
+      ['persons.base', 'up'],
+      ['Deep', 'nested'],
+      ['Other', undefined],
+    ])
+  })
+
+  it('reads the owning key at any header position', () => {
+    const header = '---\na: x\nlist:\n  - [[One]]\n---\n'
+    expect(frontmatterKeyAt(header, header.indexOf('[[One]]'))).toBe('list')
+    expect(frontmatterKeyAt(header, 1)).toBeUndefined()
   })
 
   it('ignores malformed frontmatter link shapes and notes without frontmatter', () => {
@@ -174,6 +206,15 @@ describe('parseNote — links, assets, tags, text', () => {
     expect(parse('---\ntags: alpha, beta gamma\n---\n').tags).toEqual(['alpha', 'beta', 'gamma'])
   })
 
+  it('tells membership (frontmatter, a tag-only first or last line) from mentions', () => {
+    expect(
+      parse('---\ntags: [book]\n---\n# Dune\n\nI loved this #scifi novel.').memberTags,
+    ).toEqual(['book'])
+    expect(parse('# Dune\n#book #Novel\n\nBody.').memberTags).toEqual(['book', 'novel'])
+    expect(parse('# Dune\n\nBody with #mention.\n\n#book\n').memberTags).toEqual(['book'])
+    expect(parse('# Day\n\nThe #book was good.\n\nMore notes.').memberTags).toEqual([])
+  })
+
   it('skips frontmatter tags the #tag grammar rejects', () => {
     expect(parse('---\ntags: [2024, "two words", ok, {nested: 1}]\n---\n').tags).toEqual(['ok'])
   })
@@ -199,6 +240,15 @@ describe('parseNote — links, assets, tags, text', () => {
 })
 
 describe('parseNote — tasks', () => {
+  it('records the tags written on a task’s own line, not in code or on child lines', () => {
+    const note = parse(
+      '- [ ] call Andrea #Lead #lead `#code`\n  - [ ] follow up #later\n- [ ] plain\n',
+    )
+    expect(note.tasks.map((task) => task.tags)).toEqual([['lead'], ['later'], []])
+    // The note itself only mentions the tags.
+    expect(note.memberTags).toEqual([])
+  })
+
   it('extracts open and checked round task checkboxes with text, raw, marker offset', () => {
     const note = parse('+ [ ] buy milk\n+ [x] call mum\n')
     expect(note.tasks).toEqual([
@@ -211,6 +261,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
       {
         text: 'call mum',
@@ -221,6 +272,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })
@@ -237,6 +289,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })
@@ -324,6 +377,7 @@ describe('parseNote — tasks', () => {
         dueDate: null,
         dueTime: null,
         section: null,
+        tags: [],
       },
     ])
   })

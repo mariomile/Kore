@@ -185,6 +185,23 @@ describe('BlockIds', () => {
     expect(labels).toEqual(['Pricing', 'Link to line', 'the price'])
   })
 
+  it('labels an aliased [[path|alias]] with its alias, as Obsidian does', async () => {
+    const note = [
+      'Met [[Input/Granola/Sprint Review, 2026-11-13|Sprint Review]].',
+      '',
+      'Last line',
+      '',
+    ].join('\n')
+    const handle = await renderNote(note)
+    const labels = [...document.querySelectorAll('.md-wikilink-view-label')].map(
+      (el) => el.textContent,
+    )
+    expect(labels).toEqual(['Sprint Review'])
+    expect(handle.getMarkdown()).toContain(
+      '[[Input/Granola/Sprint Review, 2026-11-13|Sprint Review]]',
+    )
+  })
+
   it('is false for an unknown id', async () => {
     const handle = await renderNote()
     expect(handle.revealHeading?.('^nope')).toBe(false)

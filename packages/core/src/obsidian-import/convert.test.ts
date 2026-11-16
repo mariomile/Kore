@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_VAULT_LAYOUT, type VaultLayout } from '../graph/vault-layout'
 import {
   buildObsidianConversion,
+  convertBaseFile,
   convertObsidianSettings,
   type ImportCanonicalizer,
 } from './convert'
@@ -69,6 +70,7 @@ describe('buildObsidianConversion', () => {
       { from: 'Resources/_attachments/x.png', to: 'assets/x.png', kind: 'attachment' },
     ])
     expect(conversion.skip).toEqual(['.git', '.kore', '.reflect', 'Archive'])
+    expect(conversion.keepHistory).toBe(false)
     expect(conversion.canonical).toBe(1)
     expect(conversion.lossy).toBe(1)
     const writes = new Map(conversion.writes.map((write) => [write.path, write.contents]))
@@ -98,7 +100,8 @@ describe('convertObsidianSettings', () => {
     expect(writes.get('.obsidian/app.json')).toEqual({
       attachmentFolderPath: 'assets',
       newFileFolderPath: '_inbox',
-      userIgnoreFilters: ['.archive', 'assets/'],
+      // The old folder stays excluded: notes it held don't move with the attachments.
+      userIgnoreFilters: ['.archive', 'assets/', 'Resources/_attachments/'],
     })
     expect(writes.get('.obsidian/templates.json')).toEqual({
       folder: 'templates',
@@ -112,5 +115,88 @@ describe('convertObsidianSettings', () => {
     expect(
       convertObsidianSettings({ dailyNotes: '{oops', app: null, templates: null }, MAPPING),
     ).toEqual([])
+  })
+})
+
+describe('convertBaseFile', () => {
+  const moves = new Map([
+    ['Journal/Daily/09-10-2026.md', 'daily/2026-10-09.md'],
+    ['_system/templates/Person.md', 'templates/Person.md'],
+  ])
+
+  it('repoints the folders and files its filters and views name', () => {
+    const base = [
+      'filters:',
+      '  and:',
+      '    - file.inFolder("Journal/Daily")',
+      '    - \'!file.inFolder("_system/templates")\'',
+      '    - file.inFolder("Resources/_attachments/slides")',
+      '    - file.inFolder("Journal/Weekly")',
+      'formulas:',
+      '  day: file.basename',
+      'views:',
+      '  - type: kanban',
+      '    name: Journal/Daily',
+      '    columnOrders:',
+      '      file.file:',
+      '        - Journal/Daily/09-10-2026.md',
+      '        - _system/templates/Person.md',
+      '        - CRM/People/Ada.md',
+      '',
+    ].join('\n')
+    expect(convertBaseFile(base, MAPPING, moves)).toBe(
+      [
+        'filters:',
+        '  and:',
+        '    - file.inFolder("daily")',
+        '    - \'!file.inFolder("templates")\'',
+        '    - file.inFolder("assets/slides")',
+        '    - file.inFolder("Journal/Weekly")',
+        'formulas:',
+        '  day: file.basename',
+        'views:',
+        '  - type: kanban',
+        '    name: Journal/Daily',
+        '    columnOrders:',
+        '      file.file:',
+        '        - daily/2026-10-09.md',
+        '        - templates/Person.md',
+        '        - CRM/People/Ada.md',
+        '',
+      ].join('\n'),
+    )
+  })
+
+  it('is part of the conversion, and an unchanged base is not rewritten', () => {
+    const conversion = buildObsidianConversion({
+      mapping: MAPPING,
+      source: {
+        config: { dailyNotes: null, app: null, templates: null },
+        notes: [{ path: 'Journal/Daily/09-10-2026.md', content: 'day\n' }],
+        attachments: ['views/days.base', 'views/people.base'],
+        bases: [
+          { path: 'views/days.base', content: 'filters:\n  - file.inFolder("Journal/Daily")\n' },
+          { path: 'views/people.base', content: 'filters:\n  - file.hasTag("person")\n' },
+        ],
+      },
+      convert,
+    })
+    expect(conversion.writes).toEqual([
+      { path: 'views/days.base', contents: 'filters:\n  - file.inFolder("daily")\n' },
+    ])
+  })
+})
+
+describe('a conversion that keeps the vault’s history', () => {
+  it('carries .git into the copy and says so', () => {
+    const conversion = buildObsidianConversion({
+      mapping: MAPPING,
+      source: { config: CONFIG, notes: [], attachments: [] },
+      convert,
+      keepHistory: true,
+    })
+    expect(conversion.skip).not.toContain('.git')
+    expect(conversion.skip).toContain('.kore')
+    expect(conversion.keepHistory).toBe(true)
   })
 })

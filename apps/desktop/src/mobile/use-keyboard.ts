@@ -149,7 +149,7 @@ const KEYBOARD_INPUT_TYPES = new Set([
   'url',
 ])
 
-function focusedKeyboardField(): HTMLElement | null {
+function focusedKeyboardField(): HTMLInputElement | HTMLTextAreaElement | null {
   const el = document.activeElement
   if (el instanceof HTMLTextAreaElement) {
     return el
@@ -163,10 +163,50 @@ function focusedKeyboardField(): HTMLElement | null {
 }
 
 /**
+ * Re-anchors iOS's native caret on a focused `<input>` / `<textarea>`.
+ *
+ * WKWebView draws a form field's caret natively, from a rect WebKit sends
+ * only when the selection changes (or when a CSS animation on an ancestor
+ * ends). A field that moves by layout alone keeps its caret where the field
+ * used to be: a bottom sheet growing past the keyboard, or settling after its
+ * open transition, leaves the caret floating above the text (the quick
+ * capture sheet, 2026-11). Setting the same selection again is a no-op in
+ * WebKit, so this clears it and restores it in the same task: a real
+ * selection change, so WebKit recomputes the caret rect at the next paint,
+ * and nothing paints in between, so nothing flickers. Focus, value and the
+ * selection itself are unchanged.
+ */
+export function refreshFieldCaret(field: HTMLInputElement | HTMLTextAreaElement | null): void {
+  if (field === null || document.activeElement !== field) {
+    return
+  }
+  // `selectionStart` throws or is null on types without a text selection
+  // (email, number); their caret is left alone.
+  let start: number | null
+  let end: number | null
+  let direction: HTMLTextAreaElement['selectionDirection'] | null
+  try {
+    ;({ selectionStart: start, selectionEnd: end, selectionDirection: direction } = field)
+  } catch {
+    return
+  }
+  if (start === null || end === null) {
+    return
+  }
+  document.getSelection()?.removeAllRanges()
+  field.setSelectionRange(start, end, direction ?? undefined)
+}
+
+/**
  * Scrolls the focused form field above the keyboard, whenever the keyboard
  * height changes or focus moves. `DrawerContent`'s keyboard padding keeps the
  * scroller above the keyboard; the native scroll pin already blocks WebKit's
  * own reveal, so one plain `scrollIntoView` is enough.
+ *
+ * It also keeps the field's native caret on the text ({@link refreshFieldCaret})
+ * after the two moves WebKit does not report: the keyboard resizing the
+ * layout, and a drawer's open transition ending under a field focused
+ * mid-slide.
  */
 export function useKeyboardFieldReveal(): void {
   const height = useSyncExternalStore(subscribeKeyboard, getKeyboardHeight, getKeyboardHeight)
@@ -176,17 +216,39 @@ export function useKeyboardFieldReveal(): void {
       return
     }
     const reveal = (): void => {
-      focusedKeyboardField()?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      focusedKeyboardField()?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
     }
     // One frame late, so the drawer's keyboard padding is laid out before we
     // measure.
-    const frame = requestAnimationFrame(reveal)
+    const frame = requestAnimationFrame(() => {
+      reveal()
+      refreshFieldCaret(focusedKeyboardField())
+    })
     document.addEventListener('focusin', reveal)
     return () => {
       cancelAnimationFrame(frame)
       document.removeEventListener('focusin', reveal)
     }
   }, [height])
+
+  useEffect(() => {
+    const onTransitionEnd = (event: TransitionEvent): void => {
+      if (event.propertyName !== 'transform' || !(event.target instanceof Element)) {
+        return
+      }
+      const field = focusedKeyboardField()
+      if (field !== null && event.target.contains(field)) {
+        refreshFieldCaret(field)
+      }
+    }
+    document.addEventListener('transitionend', onTransitionEnd)
+    return () => {
+      document.removeEventListener('transitionend', onTransitionEnd)
+    }
+  }, [])
 }
 
 /**

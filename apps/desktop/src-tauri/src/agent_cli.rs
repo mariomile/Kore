@@ -215,7 +215,7 @@ enum CliEvent {
 
 /// Locate the binary. GUI apps on macOS launch with a minimal PATH, so the
 /// common install locations are probed explicitly after `$PATH`.
-fn resolve_binary(binary: AgentCliBinary) -> Option<PathBuf> {
+pub(crate) fn resolve_binary(binary: AgentCliBinary) -> Option<PathBuf> {
     resolve_binary_in(
         binary.file_name(),
         std::env::var_os("PATH").as_deref(),

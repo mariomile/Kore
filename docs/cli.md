@@ -64,7 +64,15 @@ First match wins:
    (git-style walk-up).
 
 There is deliberately no fallback to the desktop app's recent-graphs config:
-the CLI stays deterministic for scripts and agents.
+the CLI stays deterministic for scripts and agents. `kore mcp` is the one
+exception: with none of the three, it serves the vault the Kore app opened
+last (the newest entry of `<config dir>/kore/recent-graphs.json`). An MCP
+client's config is pasted once and outlives the folder, so a config without
+`--graph` keeps working when the vault moves or is renamed; the app records
+the new place the first time it opens the vault there. If that vault is no
+longer where Kore last saw it, the server says so and does not fall back to
+an older vault. The server resolves once, at start: a client picks up a
+different vault the next time it starts the server.
 
 ## Privacy
 
@@ -835,14 +843,19 @@ one (`apps/desktop/src-tauri/src/skill.rs`).
 revisions 2025-06-18, 2025-03-26 and 2024-11-05), so Claude Desktop, Claude
 Code, Cursor, Codex and any other MCP client can use the graph as tools
 without a skill or a shell. Settings → Agents → MCP server shows the config
-to paste, with the bundled CLI path and the open graph's root filled in:
+to paste, with the bundled CLI path filled in and no vault path, so it
+follows the vault open in Kore (see [Graph resolution](#graph-resolution)):
 
 ```json
 { "mcpServers": { "kore": { "command": "/Applications/Kore.app/Contents/MacOS/kore",
-                            "args": ["--graph", "/path/to/graph", "mcp"] } } }
+                            "args": ["mcp"] } } }
 ```
 
-or, for Claude Code, `claude mcp add kore -- <cli> --graph <root> mcp`.
+or, for Claude Code, `claude mcp add kore -- <cli> mcp`. Settings → Agents →
+Connect an app writes that entry for you: into Claude Desktop's and Cursor's
+config file (keeping a `.kore-backup` copy, replacing older Kore entries), and
+through `claude mcp add --scope user` for Claude Code. Add
+`--graph <root>` before `mcp` to pin a client to one vault instead.
 
 Each tool runs one subcommand above as a child process with `--json`, so the
 output contract, the structural writes and the privacy rule are exactly the

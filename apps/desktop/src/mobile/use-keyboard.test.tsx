@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getKeyboardHeight,
   publishKeyboardHeight,
+  refreshFieldCaret,
+  useKeyboardFieldReveal,
   useKeyboardHeightVar,
   useKeyboardVisible,
 } from './use-keyboard'
@@ -129,6 +131,90 @@ describe('useKeyboardHeightVar', () => {
     })
     expect(getKeyboardHeight()).toBe(0)
     vi.useRealTimers()
+    await view.unmount()
+  })
+})
+
+/**
+ * iOS draws a form field's caret natively and only re-reads its rect on a
+ * selection change, so a field that moves by layout (a sheet growing past the
+ * keyboard, an open transition ending) needs a real selection change that
+ * leaves focus, value and selection exactly as they were.
+ */
+describe('refreshFieldCaret', () => {
+  afterEach(() => {
+    document.body.replaceChildren()
+  })
+
+  function mountField(value: string): HTMLTextAreaElement {
+    const field = document.createElement('textarea')
+    field.value = value
+    document.body.append(field)
+    field.focus()
+    return field
+  }
+
+  it('keeps focus and the selection, and reports a selection change', async () => {
+    const field = mountField('Idea widget')
+    field.setSelectionRange(2, 6, 'backward')
+    // Let the selectionchange the setup queued fire before listening.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const changed = vi.fn()
+    document.addEventListener('selectionchange', changed)
+
+    refreshFieldCaret(field)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    document.removeEventListener('selectionchange', changed)
+
+    expect(document.activeElement).toBe(field)
+    expect(field.value).toBe('Idea widget')
+    expect([field.selectionStart, field.selectionEnd, field.selectionDirection]).toEqual([
+      2,
+      6,
+      'backward',
+    ])
+    expect(changed).toHaveBeenCalled()
+  })
+
+  it('keeps the caret of an empty field at its start', () => {
+    const field = mountField('')
+    refreshFieldCaret(field)
+    expect(document.activeElement).toBe(field)
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 0])
+  })
+
+  it('leaves an unfocused field alone', () => {
+    const field = mountField('abc')
+    field.setSelectionRange(1, 1)
+    field.blur()
+    refreshFieldCaret(field)
+    expect(document.activeElement).not.toBe(field)
+    expect(field.selectionStart).toBe(1)
+  })
+
+  it('re-anchors the focused field when a transform transition around it ends', async () => {
+    const view = await renderHook(() => useKeyboardFieldReveal())
+    const sheet = document.createElement('div')
+    document.body.append(sheet)
+    const field = document.createElement('textarea')
+    sheet.append(field)
+    field.focus()
+    const setSelectionRange = vi.spyOn(field, 'setSelectionRange')
+
+    sheet.dispatchEvent(
+      new TransitionEvent('transitionend', {
+        propertyName: 'opacity',
+        bubbles: true,
+      }),
+    )
+    expect(setSelectionRange).not.toHaveBeenCalled()
+    sheet.dispatchEvent(
+      new TransitionEvent('transitionend', {
+        propertyName: 'transform',
+        bubbles: true,
+      }),
+    )
+    expect(setSelectionRange).toHaveBeenCalledWith(0, 0, expect.anything())
     await view.unmount()
   })
 })

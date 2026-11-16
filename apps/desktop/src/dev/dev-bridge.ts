@@ -98,7 +98,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   // one instead of asking the user to add it.
   const demoProvider = { id: 'dev-demo', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'demo' }
   let settingsDocument: Record<string, unknown> = {
-    mobileOnboarded: true,
+    // `?onboarding` shows the mobile first-run screen instead of skipping it.
+    mobileOnboarded:
+      typeof window === 'undefined' ||
+      !new URLSearchParams(window.location.search).has('onboarding'),
     aiProviders: [demoProvider],
     defaultAiProviderId: demoProvider.id,
   }
@@ -415,6 +418,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         }
         throw new KoreError('notFound', 'dev bridge: no proposals')
 
+      // "Open from GitHub" in the browser harness: nothing is downloaded —
+      // the chooser then opens the demo vault like any other open.
+      case 'git_clone':
+        return null
+
       case 'git_status':
         return {
           initialized: false,
@@ -490,6 +498,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // Video transcripts need YouTube; the harness is offline, which is
         // exactly what a real fetch reports when there is no network.
         throw new KoreError('network', 'dev bridge: no network for capture_data_fetch')
+
+      case 'mcp_client_servers':
+        // No MCP client configs exist in the browser harness.
+        return []
 
       case 'kit_script_status':
         // No vault kit script runs in the browser harness (Plan 35).

@@ -76,7 +76,6 @@ function Harness(): ReactElement {
     <MobileAllNotes
       query={query}
       onQueryChange={setQuery}
-      tag={null}
       filters={filters}
       onFiltersChange={setFilters}
     />

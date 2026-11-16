@@ -1,5 +1,61 @@
 # Kore working state
 
+## Collections inside a note on iPhone, 2026-11-16
+
+- [x] iPhone: a collection inside a note becomes a Craft-style card with its
+  name and count (a tap opens the type page), the Table/Board/Calendar/Grid
+  switch and an 8-row preview with Show all; the View menu edits filter, sort,
+  group and hidden fields (hide: lines) right in the note, so the Mac shows
+  the same view; the Mac gets a new Columns menu for collections in notes
+  (#480).
+- Not verified on a real iPhone.
+
+## View options and calendar on iPhone type pages, 2026-11-16
+
+- [x] iPhone: on a type page the View options menu filters (values in the
+  option colors, before/after, more/less and contains conditions), sorts,
+  groups and picks the fields; filter, sort and group stay in the saved view
+  shared with the Mac; a grouped table has a header for each group (#475).
+- [x] iPhone: a type page with a date field gets a Calendar (month with dots,
+  the day's notes below, New already dated, the same date field as the Mac);
+  the Grid becomes a moodboard with the note's first image as its cover
+  (#477).
+- Not verified on a real iPhone.
+
+## Type pages on iPhone, one-click app connections, 2026-11-16
+
+- [x] iPhone: every type has its own page with a Craft-style Table (# and
+  Title pinned), Kanban, Grid and the saved views shared with the Mac; Types
+  opens the type page; new Table and Kanban icons on the Mac too (#469).
+- [x] Settings → Agents → 'Connect an app': Claude Desktop, Claude Code and
+  Cursor connect in one click, with Kore writing the `kore mcp` entry into
+  their config after backing it up to `<file>.kore-backup` (mode 0600); for
+  Claude web/iPhone and ChatGPT it turns on Remote access with a dedicated key
+  and shows the steps (#468).
+- Not verified on a real Mac or iPhone.
+
+## Open a vault from GitHub, 2026-11-16
+
+- [x] Open a vault from GitHub: a GitHub card on the Mac start screen and
+  'Open a vault from GitHub' in the iPhone onboarding check the token and the
+  repo, warn when the repo is public, then clone and open it; a cloned vault
+  gets no sample notes (#464).
+- [x] iPhone: the caret in quick capture (+) and the other sheets with a text
+  field sits on the text line instead of floating above it (#470).
+- Not verified on a real Mac or iPhone.
+
+## Agent access settings, agents follow the vault, 2026-11-15
+
+- [x] Settings → Agents becomes Agent access, with agents grouped by where
+  they run; AI → MCP servers becomes Chat tools; the GitHub token step has
+  three steps with a prefilled link (1-year expiry) and 'Use a different
+  token'; a vault already linked to a repo shows 'Resume sync…' (#465).
+- [x] Agents stay connected when the vault moves: `kore mcp` without `--graph`
+  serves the vault Kore opened last; Settings → Agents copies a path-free
+  config and flags older pinned ones; moving a vault into iCloud warns about
+  agents still tied to the old folder (#463).
+- Not verified on a real Mac.
+
 ## Craft-style Chat on iPhone, 2026-11-15
 
 - [x] iPhone Chat tab redesigned: floating pill header, plain Suggestions and

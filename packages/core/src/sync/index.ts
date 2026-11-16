@@ -74,6 +74,11 @@ export {
   type GithubRepo,
   type GithubUser,
 } from './github'
+export {
+  cloneGithubVault,
+  PublicRepoRefusedError,
+  type CloneGithubVaultOptions,
+} from './github-clone'
 export { createGist, updateGist, deleteGist, type PublishedGist, type GistFile } from './gists'
 export {
   createSyncEngine,

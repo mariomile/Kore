@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { foldTag, type NoteTagFacet } from '@kore/core'
-import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { useRouter } from '@/routing/router'
 import { FilterChip } from './filter-chip'
 import {
   EMPTY_ALL_NOTES_FILTERS,
@@ -20,10 +20,6 @@ interface FilterBarProps {
   onFiltersChange: (filters: AllNotesFilters) => void
   /** Every tag in the graph — the Tags drawer's rows and chip labels. */
   facets: NoteTagFacet[]
-  /** The route's tag (a tag tap landed here); rendered as its own chip. */
-  routeTag: string | null
-  /** Clear the route tag (Reset, or tapping its chip). */
-  onClearRouteTag: () => void
 }
 
 /** The Tags chip's label: the first selected tag's display casing, plus count. */
@@ -46,17 +42,10 @@ function linkLabel(word: string, note: NoteFilterRef | null): string {
  * to/by, Updated, Daily — with a Reset chip appearing once anything is
  * active. Chips with a value set open their picker drawer to change it.
  */
-export function FilterBar({
-  filters,
-  onFiltersChange,
-  facets,
-  routeTag,
-  onClearRouteTag,
-}: FilterBarProps): ReactElement {
+export function FilterBar({ filters, onFiltersChange, facets }: FilterBarProps): ReactElement {
+  const { navigate } = useRouter()
   const [openDrawer, setOpenDrawer] = useState<OpenDrawer>(null)
-  // The type whose configuration sheet is open, from a Types drawer gear.
-  const [configuring, setConfiguring] = useState<string | null>(null)
-  const active = hasActiveFilters(filters) || routeTag !== null
+  const active = hasActiveFilters(filters)
 
   const patch = (changes: Partial<AllNotesFilters>): void => {
     onFiltersChange({ ...filters, ...changes })
@@ -64,9 +53,6 @@ export function FilterBar({
 
   const reset = (): void => {
     onFiltersChange(EMPTY_ALL_NOTES_FILTERS)
-    if (routeTag !== null) {
-      onClearRouteTag()
-    }
   }
 
   return (
@@ -76,11 +62,6 @@ export function FilterBar({
           <FilterChip onClick={reset}>
             <Close className="-ml-1 size-3.5" />
             Reset
-          </FilterChip>
-        )}
-        {routeTag !== null && (
-          <FilterChip active onClick={onClearRouteTag}>
-            #{routeTag}
           </FilterChip>
         )}
         <FilterChip active={filters.pinned} onClick={() => patch({ pinned: !filters.pinned })}>
@@ -120,9 +101,9 @@ export function FilterBar({
         onOpenChange={(open) => setOpenDrawer(open ? 'tags' : null)}
         facets={facets}
         selected={filters.tags}
-        onConfigure={(tag) => {
+        onOpen={(tag) => {
           setOpenDrawer(null)
-          setConfiguring(tag)
+          navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
         }}
         onToggle={(tagKey) =>
           patch({
@@ -152,9 +133,6 @@ export function FilterBar({
         current={filters.updated}
         onApply={(updated) => patch({ updated })}
       />
-      {configuring !== null ? (
-        <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
-      ) : null}
     </>
   )
 }

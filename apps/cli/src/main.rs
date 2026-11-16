@@ -445,6 +445,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Index { .. } | Command::Sources { .. } => {
             graph::resolve_for_index(cli.graph.as_deref())?
         }
+        Command::Mcp { .. } => graph::resolve_for_mcp(cli.graph.as_deref())?,
         _ => graph::resolve(cli.graph.as_deref())?,
     };
     match &cli.command {

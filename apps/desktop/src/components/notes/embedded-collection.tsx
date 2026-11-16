@@ -4,6 +4,7 @@ import {
   EMPTY_TAG_TYPE,
   foldTag,
   hasThisNoteFilter,
+  tagDisplayName,
   hostStartingValues,
   textLinksToHostNote,
   type CollectionEmbed,
@@ -14,13 +15,13 @@ import {
 } from '@kore/core'
 import { isModEvent } from '@meowdown/core'
 import {
+  BoardView,
   Calendar,
   ExternalLink,
-  Layers,
   LayoutGrid,
-  LayoutTemplate,
   Settings,
   Sliders,
+  TableView,
   Trash,
 } from '@/components/icons'
 import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
@@ -71,7 +72,9 @@ import {
 import { useListSelection } from '@/lib/selection/use-list-selection'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
+import { MobileCollectionEmbed } from '@/mobile/collection/mobile-collection-embed'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 import { routeForPath } from '@/routing/route'
@@ -91,7 +94,7 @@ const VIEW_LABEL: Record<CollectionEmbedView, string> = {
   calendar: 'Calendar',
 }
 
-const VIEW_GLYPH = { table: Layers, grid: LayoutGrid, board: LayoutTemplate, calendar: Calendar }
+const VIEW_GLYPH = { table: TableView, grid: LayoutGrid, board: BoardView, calendar: Calendar }
 
 const VIEW_OPTIONS: readonly CollectionEmbedView[] = ['table', 'grid', 'board', 'calendar']
 
@@ -229,6 +232,49 @@ function EmbeddedTagCollection({
   const ViewGlyph = VIEW_GLYPH[view]
   const groupProperties =
     view === 'board' ? boardProperties : groupablePropertiesOf(tagType?.properties ?? [])
+  // `hide:` lines drop columns from this inline view only (the type keeps them).
+  const hidden = new Set(embed.hidden ?? [])
+  const visibleTagType: TagType | undefined =
+    tagType === undefined
+      ? undefined
+      : { ...tagType, properties: tagType.properties.filter((p) => !hidden.has(p.key)) }
+
+  const createRow = async (title: string): Promise<void> => {
+    if (graph === null || tagType === undefined) {
+      return
+    }
+    // A row added under `project = this` is born linked to this note, so it
+    // stays in the view it was typed into.
+    await createTitledCollectionNote(
+      tag,
+      graph.generation,
+      title,
+      tagType,
+      await resolveTemplateValues(null),
+      host === null ? {} : hostStartingValues(embed.filters, tagType.properties, host),
+    )
+  }
+
+  if (isMobileSurface()) {
+    return (
+      <MobileCollectionEmbed
+        embed={embed}
+        onChange={onChange}
+        onRemove={onRemove}
+        title={tagDisplayName(tag)}
+        icon={loadedTagType?.icon}
+        entries={tagType === undefined ? undefined : entries}
+        unfiltered={unfiltered}
+        type={tagType ?? EMPTY_TAG_TYPE}
+        groupProperties={groupablePropertiesOf(tagType?.properties ?? [])}
+        boardProperties={boardProperties}
+        dateProperty={dateProperty}
+        onOpen={(path) => openNote(path)}
+        onOpenAll={() => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })}
+        onCreate={createRow}
+      />
+    )
+  }
 
   return (
     <section
@@ -253,6 +299,34 @@ function EmbeddedTagCollection({
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>
+        {tagType !== undefined && tagType.properties.length > 0 && onChange ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Collection columns"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            >
+              <Sliders aria-hidden className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Columns</DropdownMenuLabel>
+              {tagType.properties.map((property) => (
+                <DropdownMenuCheckboxItem
+                  key={property.key}
+                  checked={!hidden.has(property.key)}
+                  onCheckedChange={(checked) => {
+                    const nextHidden = new Set(hidden)
+                    if (checked) nextHidden.delete(property.key)
+                    else nextHidden.add(property.key)
+                    const { hidden: _drop, ...rest } = embed
+                    onChange(nextHidden.size === 0 ? rest : { ...rest, hidden: [...nextHidden] })
+                  }}
+                >
+                  {property.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         {onRemove ? <RemoveCollectionButton onRemove={onRemove} /> : null}
       </header>
       {tagType !== undefined && onChange ? (
@@ -334,13 +408,13 @@ function EmbeddedTagCollection({
           view === 'table' ? 'min-h-52' : '[&>div]:px-3 [&>div]:pb-3',
         )}
       >
-        {tagType === undefined ? (
+        {tagType === undefined || visibleTagType === undefined ? (
           <p className="px-3 py-6 text-sm text-text-muted">Loading collection…</p>
         ) : view === 'grid' ? (
           <AllNotesGrid
             notes={gridNotes(entries)}
             tag={tag}
-            type={tagType}
+            type={visibleTagType}
             entries={entries}
             onOpen={openNote}
           />
@@ -364,7 +438,7 @@ function EmbeddedTagCollection({
           <CollectionTable
             entries={entries}
             tag={tag}
-            type={tagType}
+            type={visibleTagType}
             selection={selection}
             sorts={embed.sorts}
             onSortChange={(next) => {
@@ -389,21 +463,7 @@ function EmbeddedTagCollection({
               await removeTagProperty(tag, graph.generation, key)
               await refreshTagType()
             }}
-            onCreateRow={async (title) => {
-              if (graph === null) {
-                return
-              }
-              // A row added under `project = this` is born linked to this
-              // note, so it stays in the view it was typed into.
-              await createTitledCollectionNote(
-                tag,
-                graph.generation,
-                title,
-                tagType,
-                await resolveTemplateValues(null),
-                host === null ? {} : hostStartingValues(embed.filters, tagType.properties, host),
-              )
-            }}
+            onCreateRow={createRow}
             groups={groups}
             onOpen={openNote}
             registerScrollToIndex={() => {}}
@@ -540,6 +600,24 @@ function EmbeddedReusableCollection({
       })
       return null
     }
+  }
+
+  if (isMobileSurface()) {
+    return (
+      <MobileCollectionEmbed
+        embed={embed}
+        onChange={onChange}
+        onRemove={onRemove}
+        title={state.definition.title}
+        entries={entries}
+        unfiltered={state.rows}
+        type={fullType}
+        groupProperties={groupable}
+        boardProperties={groupable}
+        dateProperty={dateProperty}
+        onOpen={(path) => openNote(path)}
+      />
+    )
   }
 
   return (

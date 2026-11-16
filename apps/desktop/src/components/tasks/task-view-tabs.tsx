@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import { TASK_VIEWS, type TaskView } from '@kore/core'
 import {
+  BoardView,
   CalendarDays,
   Folder,
   Inbox,
-  LayoutTemplate,
   List,
   Notes,
   Star,
@@ -80,7 +80,7 @@ export function TaskViewTabs({
       </div>
       <div role="group" aria-label="Layout" className="ml-auto flex flex-none items-center gap-0.5">
         {(['list', 'board'] as const).map((entry) => {
-          const Glyph = entry === 'list' ? List : LayoutTemplate
+          const Glyph = entry === 'list' ? List : BoardView
           const label = entry === 'list' ? 'List' : 'Board'
           return (
             <button

@@ -4,6 +4,7 @@ import { icloudStatus } from '@kore/core'
 import { Cloud, Folder, FolderPlus } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
 import { InlineAlert } from '@/components/inline-alert'
+import { OpenFromGithubCard } from '@/components/open-from-github-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,15 +47,15 @@ export function GraphChooser(): ReactElement {
       <div className="space-y-1.5 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Welcome to Kore</h1>
         <p className="text-sm text-text-secondary">
-          Your notes are plain Markdown files. Open an existing folder or choose where new notes
-          live.
+          Your notes are plain Markdown files. Choose where they live, or open a vault you already
+          have.
         </p>
       </div>
 
       <div
         className={cn(
-          'grid items-stretch gap-4',
-          icloudCapable ? 'sm:grid-cols-2' : 'mx-auto max-w-sm',
+          'mx-auto grid w-full items-stretch gap-4',
+          icloudCapable ? 'md:grid-cols-3' : 'max-w-2xl sm:grid-cols-2',
         )}
       >
         {icloudCapable ? <IcloudCard openRecent={openRecent} createAt={createAt} /> : null}
@@ -75,6 +76,10 @@ export function GraphChooser(): ReactElement {
             Choose a folder…
           </Button>
         </section>
+
+        {/* A vault that already lives in a GitHub repository (another Mac's,
+            or one agents write to): clone it and open it, synced. */}
+        <OpenFromGithubCard header={(props) => <CardHeader {...props} />} />
       </div>
 
       {error ? (
@@ -139,7 +144,7 @@ function ChooserShell({ children }: { children: ReactNode }): ReactElement {
       {/* Auto margins (not items-center) so the content centers when it fits but
           scrolls from the top when the recents list outgrows the viewport —
           flex centering would clip the overflowing top edge. */}
-      <div className="m-auto w-full max-w-2xl space-y-8">{children}</div>
+      <div className="m-auto w-full max-w-4xl space-y-8">{children}</div>
     </div>
   )
 }

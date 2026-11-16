@@ -1,14 +1,6 @@
-import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ChevronLeft,
-  LayoutGrid,
-  LayoutTemplate,
-  List,
-  Note,
-  SearchOff,
-  Settings,
-} from '@/components/icons'
+import { LayoutGrid, List, Note, SearchOff } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
@@ -17,16 +9,10 @@ import {
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
-import { groupableProperties } from '@/components/all-notes/collection-board'
-import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useCollection } from '@/hooks/use-collection'
-import { useTagType } from '@/hooks/use-tag-type'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
-import { MobileBoard } from '@/mobile/collection/mobile-board'
-import { mobileNotesView, type MobileNotesView } from '@/mobile/collection/mobile-tag-view'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
@@ -37,7 +23,6 @@ import {
   type AllNotesFilters,
 } from '@/mobile/search-filters/filter-state'
 import { NoteRowList } from '@/mobile/note-row-list'
-import { propertyLine } from '@/mobile/property-line'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
@@ -76,8 +61,6 @@ interface MobileAllNotesProps {
   /** The live search text — lifted to the shell so it survives navigation. */
   query: string
   onQueryChange: (query: string) => void
-  /** The active tag filter from the `allNotes` route (`null` = every note). */
-  tag: string | null
   /** The badge filters — lifted to the shell so they survive navigation. */
   filters: AllNotesFilters
   onFiltersChange: (filters: AllNotesFilters) => void
@@ -92,27 +75,24 @@ interface MobileAllNotesProps {
  * (notes only, pinned first, uncapped), badges and typed tokens narrow it,
  * and free text switches to ranked FTS. A trailing `#…` token switches the bar into
  * tag matching (V1): suggestions replace the badge row until the tag is
- * picked or the token completed. The route's tag (a tag tap landed here)
- * rides along as a badge with a back affordance. The card grid is a reading
+ * picked or the token completed. A tag's own route is its type page
+ * ({@link MobileTypePage}), not this list. The card grid is a reading
  * layout — tap opens; pin and delete stay with the swipeable list.
  */
 export function MobileAllNotes({
   query,
   onQueryChange,
-  tag,
   filters,
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
   const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
-  const { settings, updateSettings, updateSettingsWith } = useSettings()
-  const { navigate, back, arrivalSeq, arrivalFocusEditor } = useRouter()
+  const { settings, updateSettings } = useSettings()
+  const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
-  // A tag page's gear opens that type's configuration sheet.
-  const [configuring, setConfiguring] = useState(false)
 
   // The All-tab double-tap (`focusEditor` arrivals) lands in the search bar,
   // the tab's capture surface — the daily double-tap's All-flavored twin.
@@ -125,8 +105,8 @@ export function MobileAllNotes({
   const deferredQuery = useDeferredValue(query)
   const pending = pendingTagToken(query)
   const parsed = useMemo(
-    () => buildAllNotesSearch(deferredQuery, filters, tag),
-    [deferredQuery, filters, tag],
+    () => buildAllNotesSearch(deferredQuery, filters, null),
+    [deferredQuery, filters],
   )
 
   const { data: facets } = useQuery({
@@ -147,79 +127,13 @@ export function MobileAllNotes({
     placeholderData: keepPreviousData,
   })
 
-  // On a typed-tag route, rows carry a compact property summary in place of
-  // the prose snippet — the phone-sized Collection view (TDR 0005). The map
-  // only indexes the fetched values; the display line is formatted lazily
-  // for the hits actually rendered, not the whole collection.
-  const tagType = useTagType(tag)
-  const collection = useCollection(tagType != null ? tag : null, [])
-  const collectionProperties = useMemo(
-    () =>
-      tagType == null || collection === undefined
-        ? null
-        : new Map(collection.map((entry) => [entry.path, entry.properties])),
-    [tagType, collection],
-  )
-  const rows = useMemo(
-    () =>
-      (hits ?? []).map((hit) => {
-        const row = rowForHit(hit)
-        const properties = collectionProperties?.get(hit.path)
-        if (tagType == null || properties === undefined) {
-          return row
-        }
-        const line = propertyLine(tagType, properties)
-        return line === '' ? row : { ...row, propertyLine: line }
-      }),
-    [hits, tagType, collectionProperties],
-  )
+  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
   const pristine = parsed.text === '' && !parsed.filtered
-
-  // A typed tag's page is its database: list, cards, or (when the schema has
-  // a property to group by) the board, chosen per tag like on the desktop.
-  const tagKey = tag === null ? null : foldTag(tag)
-  const groupProperties = useMemo(
-    () => (tagType == null ? [] : groupableProperties(tagType)),
-    [tagType],
-  )
-  const savedGroupKey = tagKey === null ? undefined : settings.collectionGroups[tagKey]
-  const boardGroup =
-    groupProperties.find((property) => property.key === savedGroupKey) ?? groupProperties[0] ?? null
-  const typed = tagType != null
-  const view = mobileNotesView({
-    tagKey,
-    typed,
-    boardAvailable: boardGroup !== null,
-    globalView: settings.allNotesView,
-    modes: settings.collectionViewModes,
-  })
-  const setView = (next: MobileNotesView): void => {
+  const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
+  const setView = (next: AllNotesLayout): void => {
     hapticImpactLight()
-    if (tagKey !== null && typed) {
-      updateSettingsWith((current) => ({
-        collectionViewModes: { ...current.collectionViewModes, [tagKey]: next },
-      }))
-    } else {
-      updateSettings({ allNotesView: next === 'grid' ? 'grid' : 'list' })
-    }
+    updateSettings({ allNotesView: next })
   }
-  // The board shows the whole collection; typed text or badges narrow it to
-  // the cards the search found.
-  const narrowed =
-    deferredQuery.trim() !== '' ||
-    filters.pinned ||
-    filters.daily ||
-    filters.tags.length > 0 ||
-    filters.linkedTo !== null ||
-    filters.linkedBy !== null ||
-    filters.updated !== null
-  const boardEntries = useMemo(() => {
-    if (collection === undefined || !narrowed || hits === undefined) {
-      return collection
-    }
-    const found = new Set(hits.map((hit) => hit.path))
-    return collection.filter((entry) => found.has(entry.path))
-  }, [collection, narrowed, hits])
 
   const removeDeletedRow = (path: string): void => {
     queryClient.setQueriesData<FilteredSearchHit[]>(
@@ -255,42 +169,16 @@ export function MobileAllNotes({
           Notes
         </h1>
         <div className="flex items-center gap-1">
-          {tag !== null && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="-ml-2 size-11 shrink-0"
-              aria-label="Back"
-              onClick={back}
-            >
-              <ChevronLeft />
-            </Button>
-          )}
           <SearchInput
             ref={searchInputRef}
-            placeholder={tag === null ? 'Search anything…' : 'Search…'}
+            placeholder="Search anything…"
             aria-label="Search notes"
             value={query}
             onValueChange={onQueryChange}
             onFocus={searchHeaderFocus.onFocus}
             onBlur={searchHeaderFocus.onBlur}
           />
-          {tag !== null && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-11 shrink-0"
-              aria-label={`Configure #${foldTag(tag)}`}
-              onClick={() => setConfiguring(true)}
-            >
-              <Settings />
-            </Button>
-          )}
-          <AllNotesLayoutToggle
-            view={view}
-            boardAvailable={view === 'board' || (typed && boardGroup !== null)}
-            onChange={setView}
-          />
+          <AllNotesLayoutToggle view={view} onChange={setView} />
         </div>
         {pending !== null ? (
           <TagSuggestions
@@ -298,32 +186,12 @@ export function MobileAllNotes({
             onPick={addPendingTag}
           />
         ) : (
-          <FilterBar
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-            facets={facets ?? []}
-            routeTag={tag}
-            onClearRouteTag={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}
-          />
+          <FilterBar filters={filters} onFiltersChange={onFiltersChange} facets={facets ?? []} />
         )}
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
-      {view === 'board' && tagType != null && boardGroup !== null && tag !== null ? (
-        <MobileBoard
-          entries={boardEntries}
-          tag={tag}
-          type={tagType}
-          property={boardGroup}
-          groupProperties={groupProperties}
-          onGroupChange={(key) =>
-            updateSettingsWith((current) => ({
-              collectionGroups: { ...current.collectionGroups, [foldTag(tag)]: key },
-            }))
-          }
-          onOpen={(path) => navigate(routeForPath(path))}
-        />
-      ) : isError ? (
+      {isError ? (
         <div
           role="alert"
           className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
@@ -358,9 +226,6 @@ export function MobileAllNotes({
           onDeleted={removeDeletedRow}
         />
       )}
-      {configuring && tag !== null ? (
-        <TagConfigDialog tag={tag} onClose={() => setConfiguring(false)} />
-      ) : null}
     </div>
   )
 }
@@ -407,19 +272,16 @@ function Empty({ icon, message }: { icon: ReactElement; message: string }): Reac
   )
 }
 
+/** The Notes tab's two layouts (the same `allNotesView` setting as desktop). */
+type AllNotesLayout = 'list' | 'grid'
+
 interface AllNotesLayoutToggleProps {
-  view: MobileNotesView
-  /** Offer the board: a typed tag whose schema has a property to group by. */
-  boardAvailable: boolean
-  onChange: (view: MobileNotesView) => void
+  view: AllNotesLayout
+  onChange: (view: AllNotesLayout) => void
 }
 
 /** Compact list/grid switch — the same labels as desktop so the setting is one. */
-function AllNotesLayoutToggle({
-  view,
-  boardAvailable,
-  onChange,
-}: AllNotesLayoutToggleProps): ReactElement {
+function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
   const controlRef = useRef<HTMLDivElement | null>(null)
   const indicatorRef = useRef<HTMLSpanElement | null>(null)
 
@@ -462,20 +324,6 @@ function AllNotesLayoutToggle({
       >
         <LayoutGrid aria-hidden className="size-4" />
       </button>
-      {boardAvailable ? (
-        <button
-          type="button"
-          data-sliding-value="board"
-          aria-label="Board view"
-          aria-pressed={view === 'board'}
-          onClick={() => onChange('board')}
-          className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
-            view === 'board' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
-          }`}
-        >
-          <LayoutTemplate aria-hidden className="size-4" />
-        </button>
-      ) : null}
     </div>
   )
 }

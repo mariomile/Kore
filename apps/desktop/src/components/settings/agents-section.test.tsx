@@ -57,6 +57,16 @@ function installFakeBridge(): void {
       switch (command) {
         case 'skill_status':
           return statusPayload()
+        case 'mcp_client_servers':
+          return [
+            {
+              client: 'Claude Desktop',
+              name: 'kore',
+              command: '/Applications/Kore.app/Contents/MacOS/kore',
+              args: ['--graph', '/graphs/Old place', 'mcp'],
+              env: {},
+            },
+          ]
         case 'skill_install': {
           installCalls.push(args ?? {})
           for (const name of SKILL_NAMES) {
@@ -155,12 +165,15 @@ describe('AgentsSection', () => {
     await expect.element(page.getByText(/Turn on GitHub sync first/)).toBeVisible()
   })
 
-  it('shows the MCP client config for this graph, read-only on request', async () => {
+  it('shows an MCP config that follows the vault, read-only on request, and names older pinned ones', async () => {
     await renderSection()
     const config = page.getByText(/"mcpServers"/)
     await expect.element(config).toHaveTextContent('/Applications/Kore.app/Contents/MacOS/kore')
-    await expect.element(config).toHaveTextContent('/graphs/Personal')
+    expect(config.element().textContent).not.toContain('--graph')
     expect(config.element().textContent).not.toContain('--read-only')
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('Claude Desktop uses an older config tied to one folder')
 
     await page.getByRole('switch', { name: 'Read-only' }).click()
     await expect.element(config).toHaveTextContent('--read-only')

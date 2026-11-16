@@ -33,6 +33,7 @@ import {
   LayoutGrid,
   Search,
   Settings,
+  Sliders,
   TableView,
   type Icon,
 } from '@/components/icons'
@@ -59,6 +60,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { MobileCollectionTable } from './mobile-collection-table'
+import { MobileViewOptions, type ViewGrouping } from './mobile-view-options'
 import {
   MOBILE_TYPE_VIEWS,
   mobileTypeView,
@@ -114,12 +116,15 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
     setCollectionSorts,
     setCollectionGroup,
     tableGroupProperty,
+    tableGroupProperties,
     setTableGroup,
+    hiddenColumns,
+    toggleColumnHidden,
     visibleTagType,
   } = useCollectionViewSettings(tagKey, tagType ?? null)
   const collection = useCollection(tag, collectionSorts)
-  // Filters come with a saved view (the phone has no editor for them yet):
-  // applying one shows the rows the Mac shows for it.
+  // Filters live in the saved view (like the Mac's tab): the View options
+  // sheet edits them and the saved-views hook writes them back.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
   const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
   const { tabs, activeViewId, applySavedView, addView } = useCollectionSavedViews({
@@ -164,6 +169,33 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   }
 
   const [choosingView, setChoosingView] = useState(false)
+  const [adjustingView, setAdjustingView] = useState(false)
+  const grouping: ViewGrouping | null =
+    view === 'table'
+      ? {
+          properties: tableGroupProperties,
+          selected: tableGroupProperty,
+          allowNone: true,
+          onChange: setTableGroup,
+        }
+      : view === 'board'
+        ? {
+            properties: boardProperties,
+            selected: boardGroupProperty,
+            allowNone: false,
+            onChange: (key) => {
+              if (key !== null) {
+                setCollectionGroup(key)
+              }
+            },
+          }
+        : null
+  // The options button lights up while the view narrows, orders or groups
+  // the rows, so a lens left on never hides behind a plain icon.
+  const lensActive =
+    collectionFilters.length > 0 ||
+    collectionSorts.length > 0 ||
+    (view === 'table' && tableGroupProperty !== null)
   const [configuring, setConfiguring] = useState(false)
   const resolveTemplateValues = useTemplateValues()
   const createRow = useCallback(
@@ -193,10 +225,10 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
 
   const galleryRows = useMemo(
     () =>
-      view !== 'gallery' || rows === undefined || tagType === undefined
+      view !== 'gallery' || rows === undefined || visibleTagType === null
         ? []
-        : rows.map((entry) => galleryRow(entry, tagType)),
-    [view, rows, tagType],
+        : rows.map((entry) => galleryRow(entry, visibleTagType)),
+    [view, rows, visibleTagType],
   )
 
   const name = tagDisplayName(tag)
@@ -292,6 +324,33 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
             <span className="truncate">{activeTab?.name ?? VIEW_LABEL[view]}</span>
             <ChevronDown aria-hidden className="size-3.5 shrink-0 text-text-muted" />
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              hapticImpactLight()
+              setAdjustingView(true)
+            }}
+            aria-label={
+              collectionFilters.length > 0
+                ? `View options, ${collectionFilters.length} ${collectionFilters.length === 1 ? 'filter' : 'filters'}`
+                : 'View options'
+            }
+            aria-haspopup="dialog"
+            className={cn(
+              "relative flex h-9 shrink-0 items-center gap-1 rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] transition-colors",
+              collectionFilters.length > 0 ? 'pr-3 pl-2.5' : 'w-9 justify-center',
+              lensActive
+                ? 'bg-accent-soft text-accent-soft-text'
+                : 'bg-surface-hover text-text-muted active:bg-surface-active',
+            )}
+          >
+            <Sliders aria-hidden className="size-[18px]" />
+            {collectionFilters.length > 0 ? (
+              <span className="text-[13px] font-semibold tabular-nums">
+                {collectionFilters.length}
+              </span>
+            ) : null}
+          </button>
           <div className="flex-1" />
           <TypeViewToggle view={view} boardAvailable={boardAvailable} onChange={setView} />
         </div>
@@ -325,6 +384,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
         <MobileCollectionTable
           entries={rows}
           type={visibleTagType}
+          groupProperty={tableGroupProperty}
           label={name}
           onOpen={open}
           onCreate={createRow}
@@ -387,6 +447,25 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+      {tagType !== undefined ? (
+        <MobileViewOptions
+          open={adjustingView}
+          onOpenChange={setAdjustingView}
+          viewName={activeTab?.name ?? VIEW_LABEL[view]}
+          layout={view}
+          type={tagType}
+          entries={collection}
+          filters={collectionFilters}
+          onFiltersChange={setCollectionFilters}
+          match={filterMatch}
+          onMatchChange={setFilterMatch}
+          sorts={collectionSorts}
+          onSortsChange={setCollectionSorts}
+          grouping={grouping}
+          hiddenFields={hiddenColumns}
+          onToggleField={toggleColumnHidden}
+        />
+      ) : null}
       {configuring ? <TagConfigDialog tag={tag} onClose={() => setConfiguring(false)} /> : null}
     </div>
   )

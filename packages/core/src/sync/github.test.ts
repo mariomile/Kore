@@ -390,8 +390,8 @@ describe('newSyncTokenUrl', () => {
 })
 
 describe('githubAppInstallUrl', () => {
-  it('does not direct Kore users to an upstream GitHub App', () => {
-    expect(() => githubAppInstallUrl()).toThrow('personal access token')
+  it("points at Kore's own GitHub App, not an upstream one", () => {
+    expect(githubAppInstallUrl()).toBe('https://github.com/apps/kore-vault-mario/installations/new')
   })
 })
 

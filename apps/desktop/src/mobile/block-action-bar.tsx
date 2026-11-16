@@ -29,7 +29,9 @@ import {
 } from '@/components/ui/drawer'
 import type { BlockSelection } from '@/editor/block-selection-store'
 import type { FormattingBlockKind } from '@/editor/formatting-toolbar-store'
+import { formatWeekdayShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/providers/settings-provider'
 import { hapticImpactLight } from '@/mobile/haptics'
 
 /** The top row: what the block reads as. Page folds it, with its children, into a card. */
@@ -48,6 +50,7 @@ type Sheet = 'turn' | 'date' | null
  * Tasks), move it to another note, zoom into it, ask the AI about it, delete.
  */
 export function MobileBlockActionBar({ selection }: { selection: BlockSelection }): ReactElement {
+  const { settings } = useSettings()
   const { state, commands } = selection
   const [sheet, setSheet] = useState<Sheet>(null)
   const single = state.count === 1
@@ -274,7 +277,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 </span>
                 <span className="flex-1 text-[17px]">{label}</span>
                 <span className="text-[15px] text-text-muted">
-                  {format(addDays(today, days), 'EEE d MMM')}
+                  {formatWeekdayShortDate(addDays(today, days), settings.dateFormat)}
                 </span>
               </button>
             ))}

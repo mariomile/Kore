@@ -83,6 +83,22 @@ function shortDateOf(date: Date, dateFormat: DateFormat, now: Date): string {
 }
 
 /**
+ * A weekday and compact date for a list of upcoming days: `Mon, Nov 23` for
+ * `mdy`, `Mon 23 Nov` for `dmy` (day and month in the order the date links
+ * in the text use), and the daily-note key for `iso`.
+ */
+export function formatWeekdayShortDate(date: Date, dateFormat: DateFormat): string {
+  switch (dateFormat) {
+    case 'dmy':
+      return format(date, 'EEE d MMM')
+    case 'iso':
+      return format(date, ISO_DATE_FORMAT)
+    case 'mdy':
+      return format(date, 'EEE, MMM d')
+  }
+}
+
+/**
  * A date label per the date-format setting: `June 10th, 2026` for `mdy`,
  * `10th June, 2026` for `dmy`, and `2026-06-10` for `iso` (the forms the
  * settings screen shows as the options themselves).

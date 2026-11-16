@@ -43,6 +43,8 @@ folders.
     kore links <note>          # the wiki links a note makes, resolved, with relations
     kore explain <note>        # properties, tags, outline, links, backlinks at once
     kore route <from> <to>     # how two notes connect: the shortest link chain
+    kore neighborhood <note>   # the notes around a note in one call (--depth 2, --relation)
+    kore coverage <question>   # before answering: what the vault holds, what is missing
     kore grep <text>           # every line with an exact text (all of them, unranked)
     kore skills [name]         # the vault's agent skills, or one to follow
     kore active                # the note the user has open in the app right now

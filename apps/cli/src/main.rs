@@ -263,6 +263,31 @@ enum Command {
         #[arg(long, default_value_t = 6)]
         max_hops: usize,
     },
+    /// What the vault holds on a question before answering it: words found and missing, best notes
+    Coverage {
+        /// The question or topic, in plain words
+        question: String,
+        /// Maximum number of notes (1-50)
+        #[arg(long, default_value_t = commands::coverage::DEFAULT_LIMIT)]
+        limit: usize,
+    },
+    /// The notes around a note, up to two links away, ranked (named relations first)
+    Neighborhood {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+        /// 1 = direct neighbors, 2 = also their neighbors (dailies are not expanded)
+        #[arg(long, default_value_t = 1)]
+        depth: usize,
+        /// Walk only edges under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
+        /// Return only notes carrying this tag (or a child tag)
+        #[arg(long)]
+        tag: Option<String>,
+        /// Maximum number of notes (1-200)
+        #[arg(long, default_value_t = commands::neighborhood::DEFAULT_LIMIT)]
+        limit: usize,
+    },
     /// A note's place in the graph: properties, tags, outline, links, backlinks
     Explain {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
@@ -509,6 +534,26 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Route { from, to, max_hops } => {
             commands::route::run(&graph, cli.json, from, to, *max_hops)
         }
+        Command::Coverage { question, limit } => {
+            commands::coverage::run(&graph, cli.json, question, *limit)
+        }
+        Command::Neighborhood {
+            note,
+            depth,
+            relation,
+            tag,
+            limit,
+        } => commands::neighborhood::run(
+            &graph,
+            cli.json,
+            note,
+            commands::neighborhood::Filters {
+                depth: *depth,
+                relation: relation.as_deref(),
+                tag: tag.as_deref(),
+                limit: *limit,
+            },
+        ),
         Command::Explain { note } => commands::explain::run(&graph, cli.json, note),
         Command::Skills { name } => commands::skills::run(&graph, cli.json, name.as_deref()),
         Command::Active => commands::active::run(&graph, cli.json),

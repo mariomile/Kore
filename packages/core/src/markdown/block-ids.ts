@@ -272,6 +272,22 @@ export function blockLinkLabel(target: string): string | null {
 }
 
 /**
+ * The note a `[[...]]` points at, without its alias: `[[Notes/Luca|Luca]]`
+ * goes to `Notes/Luca`. The index already reads links this way, so every
+ * surface that follows a link (taps, hover previews) must too, or it looks up,
+ * and on a miss creates, a note named after the whole bracket text. A `\|`
+ * (the alias pipe escaped inside a table cell) splits the same way.
+ */
+export function wikilinkTarget(target: string): string {
+  const pipe = target.indexOf('|')
+  if (pipe === -1) {
+    return target.trim()
+  }
+  const head = target.slice(0, pipe)
+  return (head.endsWith('\\') ? head.slice(0, -1) : head).trim()
+}
+
+/**
  * The label any `[[...]]` shows in place of its source, or null to show the
  * bracketed text. Block references read as {@link blockLinkLabel}; any other
  * link with an alias (`[[Notes/Luca|Luca]]`, Obsidian's form, and `\|`

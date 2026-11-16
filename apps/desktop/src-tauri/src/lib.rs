@@ -155,6 +155,9 @@ pub fn run() {
     let process_start = std::time::Instant::now();
     let context = tauri::generate_context!();
 
+    // Before any thread exists: libgit2's options are process globals.
+    git::configure_network_timeouts();
+
     // Move the pre-rename `app.lore.*` data folder into place before any
     // plugin or command reads it (see `app_dir.rs`). Mobile installs never
     // had one: a new bundle id is a new sandbox.

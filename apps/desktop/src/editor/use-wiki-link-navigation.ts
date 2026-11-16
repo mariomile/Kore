@@ -10,6 +10,7 @@ import {
   resolveOrCreateNoteWithTitle,
   resolveWikiTarget,
   wikiNoteReference,
+  wikilinkTarget,
 } from '@kore/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
 import { revealNoteHeading } from '@/editor/editor-handle-registry'
@@ -66,7 +67,11 @@ export function useWikiLinkNavigation(
   const { navigate } = useRouter()
 
   return useCallback(
-    ({ target, openInSplit }: { target: string; openInSplit: boolean }) => {
+    ({ target: authored, openInSplit }: { target: string; openInSplit: boolean }) => {
+      // The editor hands over the bracket text as written, so an Obsidian
+      // alias (`[[Input/Granola/Standup|Standup]]`) must come off first:
+      // otherwise the lookup misses and a new note gets the whole text.
+      const target = wikilinkTarget(authored)
       const fragment = noteLinkFragment(target)
       if (wikiNoteReference(target)?.kind === 'self') {
         if (fragment !== null && sourcePath !== undefined) {

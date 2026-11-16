@@ -94,6 +94,34 @@ describe('useWikiLinkNavigation', () => {
     await view.unmount()
   })
 
+  it('follows an aliased path link to its file, never a note named after the alias', async () => {
+    resolveOrCreateNoteWithTitle.mockResolvedValue({
+      kind: 'resolved',
+      path: 'Input/Granola/2026-11/Standup SaaS, 2026-11-16.md',
+    })
+    const view = await renderHost()
+    lastHandler?.({
+      target: 'Input/Granola/2026-11/Standup SaaS, 2026-11-16|Standup SaaS',
+      openInSplit: false,
+    })
+    await vi.waitFor(() => expect(currentRoute(view)).toContain('Standup SaaS, 2026-11-16.md'))
+    expect(resolveOrCreateNoteWithTitle).toHaveBeenCalledWith(
+      'Input/Granola/2026-11/Standup SaaS, 2026-11-16',
+      1,
+    )
+    await view.unmount()
+  })
+
+  it('reads an aliased ISO date as the daily it names', async () => {
+    resolveExistingWikiTarget.mockResolvedValue({ kind: 'missing' })
+    const view = await renderHost()
+    lastHandler?.({ target: '2026-06-09|yesterday', openInSplit: false })
+    await vi.waitFor(() => expect(currentRoute(view)).toContain('"daily"'))
+    expect(resolveExistingWikiTarget).toHaveBeenCalledWith('2026-06-09', 1)
+    expect(resolveOrCreateNoteWithTitle).not.toHaveBeenCalled()
+    await view.unmount()
+  })
+
   it('arrives at a resolved note without a focus intent (no keyboard on navigation)', async () => {
     resolveOrCreateNoteWithTitle.mockResolvedValue({
       kind: 'resolved',

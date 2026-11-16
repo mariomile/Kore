@@ -7,6 +7,7 @@ import { MobileCollectionTable } from './mobile-collection-table'
 const commitProperty = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
+  useCommitNoteProperties: () => () => {},
 }))
 vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => () => {} }))
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({
@@ -38,7 +39,7 @@ const ENTRIES = [
   entry('notes/launch.md', 'V2 launch plan', { status: text('Doing'), due: text('2027-01-13') }),
 ]
 
-async function mount() {
+async function mount(groupProperty: TagProperty | null = null) {
   const onOpen = vi.fn()
   const onCreate = vi.fn(async () => {})
   const view = await render(
@@ -46,6 +47,7 @@ async function mount() {
       <MobileCollectionTable
         entries={ENTRIES}
         type={PROJECT}
+        groupProperty={groupProperty}
         label="Project"
         onOpen={onOpen}
         onCreate={onCreate}
@@ -87,5 +89,15 @@ describe('MobileCollectionTable', () => {
     await userEvent.click(view.getByRole('button', { name: 'New' }))
     await userEvent.type(view.getByRole('textbox', { name: 'New note title' }), 'Garden{Enter}')
     expect(onCreate).toHaveBeenCalledWith('Garden')
+  })
+
+  it('groups the rows under their status, numbering each group from 1', async () => {
+    const { view } = await mount(STATUS)
+    const table = view.getByRole('table', { name: 'Project' })
+    await expect.element(table.getByRole('rowheader', { name: /^Idea\s*1$/ })).toBeVisible()
+    await expect.element(table.getByRole('rowheader', { name: /^Doing\s*1$/ })).toBeVisible()
+    // Done holds no rows, so the table shows no empty shelf for it.
+    expect(table.getByRole('rowheader', { name: /^Done/ }).elements()).toHaveLength(0)
+    expect(table.getByRole('cell', { name: '2', exact: true }).elements()).toHaveLength(0)
   })
 })

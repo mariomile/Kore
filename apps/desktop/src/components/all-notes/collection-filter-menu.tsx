@@ -80,7 +80,7 @@ export function operatorsFor(property: TagProperty): CollectionFilterOperator[] 
   }
 }
 
-const OPERATOR_LABELS: Record<CollectionFilterOperator, string> = {
+export const OPERATOR_LABELS: Record<CollectionFilterOperator, string> = {
   is: 'is',
   contains: 'contains',
   gt: '>',
@@ -179,8 +179,27 @@ export function applyCollectionFilters(
   )
 }
 
+/**
+ * The values a property's equality picks offer: its declared options, then
+ * the distinct values the rows actually hold, capped at `limit`.
+ */
+export function filterValueInventory(
+  property: TagProperty,
+  entries: readonly CollectionEntry[] | undefined,
+  limit = MAX_VALUES_PER_PROPERTY,
+): string[] {
+  const values = new Set<string>(property.options ?? [])
+  for (const entry of entries ?? []) {
+    const text = readCellValue(property, entry.properties[property.key]).text
+    if (text !== '') {
+      values.add(text)
+    }
+  }
+  return [...values].slice(0, limit)
+}
+
 /** The chip's text for one filter. */
-function filterLabel(type: TagType, filter: CollectionFilter): string {
+export function filterLabel(type: TagType, filter: CollectionFilter): string {
   const property = type.properties.find((candidate) => candidate.key === filter.key)
   const name = property?.name ?? filter.key
   if (
@@ -240,15 +259,9 @@ export function CollectionFilterMenu({
   const valuesByProperty = useMemo(() => {
     const inventory = new Map<string, string[]>()
     for (const property of inventoried) {
-      const values = new Set<string>(property.options ?? [])
-      for (const entry of entries ?? []) {
-        const text = readCellValue(property, entry.properties[property.key]).text
-        if (text !== '') {
-          values.add(text)
-        }
-      }
-      if (values.size > 0 || (host !== null && acceptsThisNoteFilter(property))) {
-        inventory.set(property.key, [...values].slice(0, MAX_VALUES_PER_PROPERTY))
+      const values = filterValueInventory(property, entries)
+      if (values.length > 0 || (host !== null && acceptsThisNoteFilter(property))) {
+        inventory.set(property.key, values)
       }
     }
     return inventory

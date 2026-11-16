@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
 import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@kore/core'
+import { tableGroupRows } from '@/components/all-notes/collection-board'
 import { CollectionCell } from '@/components/all-notes/collection-cell'
 import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
@@ -12,6 +13,8 @@ import './mobile-collection-table.css'
 
 /** One row's height: a 44pt hit target plus the hairline breathing room. */
 export const MOBILE_TABLE_ROW_HEIGHT = 48
+/** A group's header band, when the table is grouped. */
+const GROUP_HEIGHT = 44
 /** The column header band. */
 const HEADER_HEIGHT = 36
 /** The frozen row-number column. */
@@ -23,6 +26,8 @@ interface MobileCollectionTableProps {
   entries: readonly CollectionEntry[]
   /** The schema with hidden columns left out: what the table shows. */
   type: TagType
+  /** Group the rows by this field (the board's lanes, empty ones left out); `null` is flat. */
+  groupProperty?: TagProperty | null
   /** The type's name, for the table's accessible label. */
   label: string
   onOpen: (path: string) => void
@@ -42,10 +47,12 @@ interface MobileCollectionTableProps {
 export function MobileCollectionTable({
   entries,
   type,
+  groupProperty = null,
   label,
   onOpen,
   onCreate,
 }: MobileCollectionTableProps): ReactElement {
+  const items = useMemo(() => tableItems(entries, groupProperty), [entries, groupProperty])
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
@@ -106,62 +113,93 @@ export function MobileCollectionTable({
         </div>
         <Virtualizer
           scrollRef={scrollRef}
-          data={entries}
+          data={items}
           itemSize={MOBILE_TABLE_ROW_HEIGHT}
           startMargin={HEADER_HEIGHT}
           bufferSize={640}
         >
-          {(entry, index) => (
-            <div
-              key={entry.path}
-              role="row"
-              data-note-path={entry.path}
-              className="group flex"
-              style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
-            >
-              <div
-                role="cell"
-                className="sticky z-10 flex items-center justify-end bg-background pr-2 text-[13px] tabular-nums text-text-muted"
-                style={{ left: 0, width: NUMBER_WIDTH, minWidth: NUMBER_WIDTH }}
-              >
-                {index + 1}
-              </div>
-              <div
-                role="rowheader"
-                className="mobile-table-frozen-edge sticky z-10 flex bg-background"
-                style={{ left: NUMBER_WIDTH, width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
-              >
-                <button
-                  type="button"
-                  onClick={() => onOpen(entry.path)}
-                  className="flex min-w-0 flex-1 items-center px-2 text-left text-[15px] font-medium text-text active:opacity-60"
-                >
-                  <span className="truncate">{entry.title}</span>
-                </button>
-              </div>
-              {type.properties.map((property, column) => {
-                const cellId = `${entry.path}\n${property.key}`
-                return (
+          {(item) => {
+            if (item.kind === 'group') {
+              return (
+                <div key={item.id} role="row" className="flex" style={{ height: GROUP_HEIGHT }}>
                   <div
-                    key={property.key}
-                    role="cell"
-                    className="flex items-center px-3"
-                    style={{ width: widths[column], minWidth: widths[column] }}
+                    role="rowheader"
+                    aria-colspan={type.properties.length + 2}
+                    className="sticky left-0 z-10 flex items-center self-end bg-background pb-1"
+                    style={{ height: 32 }}
                   >
-                    <TableCell
-                      property={property}
-                      value={entry.properties[property.key]}
-                      active={activeCell === cellId}
-                      onActivate={() => setActiveCell(cellId)}
-                      onCommit={(next) => commitProperty(entry.path, property.key, next)}
-                      onOpenRelation={openRelation}
-                    />
+                    <span
+                      aria-hidden
+                      className="flex shrink-0 justify-end pr-2"
+                      style={{ width: NUMBER_WIDTH }}
+                    >
+                      <span
+                        className={cn('size-2 rounded-full', item.color ?? 'bg-text-muted/40')}
+                      />
+                    </span>
+                    <span className="truncate px-2 text-[13px] font-semibold text-text">
+                      {item.label}
+                    </span>
+                    <span className="pr-3 text-[13px] tabular-nums text-text-muted">
+                      {item.count}
+                    </span>
                   </div>
-                )
-              })}
-              <div aria-hidden className="flex-1" />
-            </div>
-          )}
+                </div>
+              )
+            }
+            const { entry, number: index } = item
+            return (
+              <div
+                key={entry.path}
+                role="row"
+                data-note-path={entry.path}
+                className="group flex"
+                style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
+              >
+                <div
+                  role="cell"
+                  className="sticky z-10 flex items-center justify-end bg-background pr-2 text-[13px] tabular-nums text-text-muted"
+                  style={{ left: 0, width: NUMBER_WIDTH, minWidth: NUMBER_WIDTH }}
+                >
+                  {index}
+                </div>
+                <div
+                  role="rowheader"
+                  className="mobile-table-frozen-edge sticky z-10 flex bg-background"
+                  style={{ left: NUMBER_WIDTH, width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpen(entry.path)}
+                    className="flex min-w-0 flex-1 items-center px-2 text-left text-[15px] font-medium text-text active:opacity-60"
+                  >
+                    <span className="truncate">{entry.title}</span>
+                  </button>
+                </div>
+                {type.properties.map((property, column) => {
+                  const cellId = `${entry.path}\n${property.key}`
+                  return (
+                    <div
+                      key={property.key}
+                      role="cell"
+                      className="flex items-center px-3"
+                      style={{ width: widths[column], minWidth: widths[column] }}
+                    >
+                      <TableCell
+                        property={property}
+                        value={entry.properties[property.key]}
+                        active={activeCell === cellId}
+                        onActivate={() => setActiveCell(cellId)}
+                        onCommit={(next) => commitProperty(entry.path, property.key, next)}
+                        onOpenRelation={openRelation}
+                      />
+                    </div>
+                  )
+                })}
+                <div aria-hidden className="flex-1" />
+              </div>
+            )
+          }}
         </Virtualizer>
         <NewRow width={frozenWidth} onCreate={onCreate} />
       </div>
@@ -349,4 +387,36 @@ function NewRow({
       )}
     </div>
   )
+}
+
+type TableItem =
+  | { kind: 'group'; id: string; label: string; color: string | null; count: number }
+  | { kind: 'row'; entry: CollectionEntry; number: number }
+
+/**
+ * The virtualized list's items: the rows numbered from 1, or, when grouped,
+ * each group's header followed by its rows numbered from 1 again (Craft's
+ * grouped table). Groups follow the board's lanes so the two read alike.
+ */
+function tableItems(
+  entries: readonly CollectionEntry[],
+  groupProperty: TagProperty | null,
+): TableItem[] {
+  if (groupProperty === null) {
+    return entries.map((entry, index) => ({ kind: 'row', entry, number: index + 1 }))
+  }
+  const items: TableItem[] = []
+  for (const [groupIndex, column] of tableGroupRows(entries, groupProperty).entries()) {
+    items.push({
+      kind: 'group',
+      id: `group:${groupIndex}:${column.label}`,
+      label: column.label,
+      color: column.color,
+      count: column.entries.length,
+    })
+    for (const [index, entry] of column.entries.entries()) {
+      items.push({ kind: 'row', entry, number: index + 1 })
+    }
+  }
+  return items
 }

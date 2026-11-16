@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: vaults opened from GitHub clone only the last 50 commits (#509).
 - Type home folder: new notes of a type are born in its Folder, on every
   surface (#508).
 - Fix: the iPhone Syncing pill no longer waits for the reindex (#505).

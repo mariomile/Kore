@@ -1,5 +1,11 @@
 # Kore working state
 
+## Light clone on iPhone, 2026-11-16
+
+- [x] Opening a vault from GitHub on the iPhone downloads only the last 50
+  commits, not the full history; the Mac keeps full clones (#509).
+- Not verified on a real iPhone.
+
 ## Type home folder, Syncing pill, GitHub sign-in, 2026-11-16
 
 - [x] Type home folder: a type's settings gain a Folder field (Mac + iPhone);

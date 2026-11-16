@@ -1,5 +1,21 @@
 # Kore working state
 
+## Type home folder, Syncing pill, GitHub sign-in, 2026-11-16
+
+- [x] Type home folder: a type's settings gain a Folder field (Mac + iPhone);
+  new notes of the type are born there from every surface
+  (table/board/calendar, relations, `kore new --tag`, MCP create_note),
+  optionally one folder per note via `folder: <path>/{title}`; existing notes
+  never move. PROJECTION_VERSION 35: one reindex on upgrade (#508).
+- [x] Fix: the Syncing pill no longer waits for pulled notes to reindex on
+  iPhone (#505).
+- [x] Sign in to GitHub with one click: Kore's GitHub App is registered
+  (Contents read/write + Metadata read only, device flow, refreshing tokens);
+  the Connect GitHub wizard now starts from Sign in with GitHub plus a code,
+  the personal token stays as the alternative, and 'Use a different token'
+  goes straight to token entry (#500).
+- Not verified on a real Mac or iPhone.
+
 ## iPhone share sheet, type dialog, UIScene, layout out of settings, 2026-11-16
 
 - [x] iPhone share sheet: when you share a link or an X post, you pick where

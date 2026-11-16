@@ -1,6 +1,6 @@
 # Kore working state
 
-## Link styles, app logos and graph relations, 2026-11-16
+## Link styles, app logos, graph relations and agent tools, 2026-11-16
 
 - [x] Links: choose how each link looks (inline link, compact, card or large)
   from the button on the card; the choice is saved in the Markdown (#487).
@@ -10,6 +10,11 @@
   e.g. company); CLI/MCP links, backlinks and explain_note show relations and
   up to 3 context sentences per backlink, with a --relation filter. Migration
   0028 + projection 34: one index rebuild on first launch (#491).
+- [x] Agents: `kore neighborhood` / MCP note_neighborhood returns a note's
+  surroundings up to 2 hops (named relations first, dailies and index notes
+  not expanded); `kore coverage` / MCP check_coverage tells an agent whether
+  the vault covers a question (found/missing terms, named notes, best notes,
+  verdict) (#493).
 - Not verified on a real Mac or iPhone.
 
 ## Rich link cards, 2026-11-16

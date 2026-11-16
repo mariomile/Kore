@@ -12,6 +12,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 - Connect an app rows show the app logos (#483).
 - Knowledge graph: named link relations and backlink context in CLI/MCP, with
   --relation (#491).
+- Agents: `kore neighborhood` and `kore coverage` (MCP note_neighborhood,
+  check_coverage) (#493).
 - Rich Craft-style link cards drawn where the link sits, on Mac and iPhone
   (#471).
 - iPhone: swipe to select blocks with an action bar, Craft-style Turn into,

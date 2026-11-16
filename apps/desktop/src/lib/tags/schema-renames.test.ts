@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CollectionValue } from '@kore/core'
 
 const listNotesWithProperty = vi.hoisted(() =>
-  vi.fn<(key: string) => Promise<{ notePath: string; value: CollectionValue }[]>>(),
+  vi.fn<
+    (
+      key: string,
+      options?: { tag?: string },
+    ) => Promise<{ notePath: string; value: CollectionValue }[]>
+  >(),
 )
 const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 
@@ -12,7 +17,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
 
-const { planPropertyRenames, migratePropertyRenames } = await import('./schema-renames')
+const { planPropertyRenames, migratePropertyRenames, migrateOptionRenames } =
+  await import('./schema-renames')
 
 /** One indexed property row, as `listNotesWithProperty` returns it. */
 function row(notePath: string, value: string): { notePath: string; value: CollectionValue } {
@@ -58,6 +64,30 @@ describe('migratePropertyRenames', () => {
     expect(commitNoteFrontmatter.mock.calls).toEqual([
       ['notes/dune.md', { properties: { author: undefined, 'written-by': 'Herbert' } }, 7],
       ['notes/ubik.md', { properties: { author: undefined, 'written-by': 'Dick' } }, 7],
+    ])
+  })
+})
+
+describe('migrateOptionRenames', () => {
+  it('rewrites renamed values on the type’s own notes and skips the rest', async () => {
+    listNotesWithProperty.mockImplementation(async () => [
+      row('p/a.md', 'Todo'),
+      row('p/b.md', 'Done'),
+      {
+        notePath: 'p/c.md',
+        value: { value: '["Todo","Done"]', valueType: 'list', valueNumber: null },
+      },
+    ])
+    const changed = await migrateOptionRenames(
+      'project',
+      [{ key: 'status', renames: [{ from: 'Todo', to: 'To do' }] }],
+      7,
+    )
+    expect(listNotesWithProperty).toHaveBeenCalledWith('status', { tag: 'project' })
+    expect(changed).toBe(2)
+    expect(commitNoteFrontmatter.mock.calls).toEqual([
+      ['p/a.md', { properties: { status: 'To do' } }, 7],
+      ['p/c.md', { properties: { status: ['To do', 'Done'] } }, 7],
     ])
   })
 })

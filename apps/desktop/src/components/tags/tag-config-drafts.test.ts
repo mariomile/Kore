@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  draftOptionRenames,
   draftsFromSchema,
+  optionsPatch,
   relationTargetSelectItems,
   relationTargetTags,
   schemaFromDrafts,
@@ -56,5 +58,49 @@ describe('starting values in drafts', () => {
     expect(schemaFromDrafts([{ ...met!, type: 'number' }])).toEqual([
       { name: 'Met', key: 'met', type: 'number' },
     ])
+  })
+})
+
+describe('options in drafts', () => {
+  const schema = [
+    {
+      name: 'Status',
+      key: 'status',
+      type: 'status' as const,
+      options: ['Todo', 'Done'],
+      colors: { Done: 'green', Todo: 'not-a-color' },
+      default: 'Todo',
+    },
+  ]
+
+  it('round-trips order and known colors, dropping unknown color names', () => {
+    expect(schemaFromDrafts(draftsFromSchema(schema))).toEqual([
+      { ...schema[0], colors: { Done: 'green' } },
+    ])
+  })
+
+  it('drops blank and repeated options and the colors of options that left', () => {
+    const [draft] = draftsFromSchema(schema)
+    const options = [
+      ...draft!.options,
+      { id: 9, name: ' ', original: null, color: 'red' as const },
+      { id: 10, name: 'Done', original: null, color: 'blue' as const },
+    ]
+    expect(schemaFromDrafts([{ ...draft!, options }])[0]).toMatchObject({
+      options: ['Todo', 'Done'],
+      colors: { Done: 'green' },
+    })
+  })
+
+  it('reports renames and lets a fixed starting value follow its option', () => {
+    const [draft] = draftsFromSchema(schema)
+    const renamed = draft!.options.map((option) =>
+      option.name === 'Todo' ? { ...option, name: 'To do' } : option,
+    )
+    expect(draftOptionRenames({ options: renamed })).toEqual([{ from: 'Todo', to: 'To do' }])
+    expect(optionsPatch(draft!, renamed)).toEqual({ options: renamed, startingFixed: 'To do' })
+    expect(optionsPatch({ ...draft!, startingKind: 'none' }, renamed)).toEqual({
+      options: renamed,
+    })
   })
 })

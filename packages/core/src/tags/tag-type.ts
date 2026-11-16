@@ -131,6 +131,30 @@ export const formulaConfigSchema = z.object({
 })
 export type FormulaConfig = z.infer<typeof formulaConfigSchema>
 
+/**
+ * The named palette select options can be painted with, in picker order.
+ * Names, not hex values, so a definition reads the same in light and dark
+ * and an agent can write `colors: { Done: green }` without a lookup.
+ */
+export const OPTION_COLORS = [
+  'gray',
+  'brown',
+  'red',
+  'orange',
+  'amber',
+  'green',
+  'teal',
+  'blue',
+  'violet',
+  'pink',
+] as const
+export type OptionColor = (typeof OPTION_COLORS)[number]
+
+/** Whether `value` names a palette color ({@link OPTION_COLORS}). */
+export function isOptionColor(value: unknown): value is OptionColor {
+  return typeof value === 'string' && (OPTION_COLORS as readonly string[]).includes(value)
+}
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
@@ -139,6 +163,14 @@ export const tagPropertySchema = z.object({
   type: tagPropertyTypeSchema,
   /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
+  /**
+   * Per-option colors for the select-like types, keyed by option text
+   * (`{ Active: green }`). A palette name from {@link OPTION_COLORS}; an
+   * option without one (or with a name this version doesn't know) keeps its
+   * hashed color, so hand-built definitions need no colors at all. Read
+   * through {@link optionColorOf}. Ignored for other types.
+   */
+  colors: z.record(z.string(), z.string()).optional(),
   /**
    * For `relation` / `relations` / `person`: the typed tag whose collection
    * the picker offers (the tag name, no `#`; folded on use). Absent = any
@@ -166,6 +198,19 @@ export const tagPropertySchema = z.object({
   default: z.union([z.string().min(1), z.number(), z.boolean()]).optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
+
+/**
+ * The color a property paints `option` with, or `null` when the definition
+ * picked none (callers fall back to the hashed color). A stale color for an
+ * option the list no longer holds never matches, since lookup is by text.
+ */
+export function optionColorOf(
+  property: Pick<TagProperty, 'colors'> | undefined,
+  option: string,
+): OptionColor | null {
+  const color = property?.colors?.[option]
+  return isOptionColor(color) ? color : null
+}
 
 /** The collection `person` pickers default to: the meeting flow's own
  * convention for people notes (`- Type: #person`). */
@@ -252,6 +297,7 @@ export function withPropertyType(property: TagProperty, type: TagPropertyType): 
     key: property.key,
     type,
     ...(keepsOptions && property.options !== undefined ? { options: property.options } : {}),
+    ...(keepsOptions && property.colors !== undefined ? { colors: property.colors } : {}),
     ...(keepsTarget && property.target !== undefined ? { target: property.target } : {}),
   }
 }

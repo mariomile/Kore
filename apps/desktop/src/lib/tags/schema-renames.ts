@@ -1,4 +1,10 @@
-import { listNotesWithProperty, propertyRowValue, type CollectionValue } from '@kore/core'
+import {
+  listNotesWithProperty,
+  optionRenameMap,
+  propertyRowValue,
+  renameOptionValue,
+  type CollectionValue,
+} from '@kore/core'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
 /**
@@ -56,4 +62,41 @@ export async function migratePropertyRenames(
       )
     }
   }
+}
+
+/** One property's option renames, to land on the type's member notes. */
+export interface OptionRenames {
+  /** The property's frontmatter key as saved. */
+  key: string
+  renames: readonly { from: string; to: string }[]
+}
+
+/**
+ * Rewrite the option values a type settings save renamed, on the type's
+ * own member notes only (another type may use the same key and the same
+ * words with its own meaning). Unlike a key rename there is nothing to
+ * decide: the user renamed the option, and a note left on the old text
+ * would just fall out of the list. Returns how many notes changed.
+ */
+export async function migrateOptionRenames(
+  tag: string,
+  properties: readonly OptionRenames[],
+  generation: number,
+): Promise<number> {
+  let changed = 0
+  for (const { key, renames } of properties) {
+    const map = optionRenameMap(renames)
+    if (map.size === 0) {
+      continue
+    }
+    for (const note of await listNotesWithProperty(key, { tag })) {
+      const next = renameOptionValue(propertyRowValue(note.value), map)
+      if (next === undefined) {
+        continue
+      }
+      await commitNoteFrontmatter(note.notePath, { properties: { [key]: next } }, generation)
+      changed += 1
+    }
+  }
+  return changed
 }

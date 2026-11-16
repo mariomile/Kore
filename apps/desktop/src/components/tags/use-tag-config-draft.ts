@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  foldTag,
   isPropertyKey,
+  tagDefinitionPath,
   listTagParentCandidates,
   listTemplates,
   type TagProperty,
   type TemplateEntry,
 } from '@kore/core'
 import { toast } from '@/components/ui/toast'
+import { moveNoteCarryingSession } from '@/editor/move-note'
 import { tagTypeQueryKey } from '@/hooks/use-tag-type'
 import type { TagSchemaPreset } from '@/lib/tags/schema-presets'
 import {
+  migrateOptionRenames,
   migratePropertyRenames,
   planPropertyRenames,
   type PendingRename,
@@ -19,6 +23,7 @@ import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { useGraph } from '@/providers/graph-provider'
 import {
   draftsForNewSchema,
+  draftOptionRenames,
   draftsFromSchema,
   schemaFromDrafts,
   type PropertyDraft,
@@ -32,7 +37,7 @@ function blankDraft(rowId: number): PropertyDraft {
     key: '',
     originalKey: null,
     type: 'text',
-    options: '',
+    options: [],
     target: '',
     rollupRelation: '',
     rollupProperty: '',
@@ -81,6 +86,13 @@ export interface TagConfigDraft {
   save: () => Promise<void>
   /** Save now, migrating the given renames' values when `migrate`. */
   performSave: (renames: PendingRename[], migrate: boolean) => Promise<void>
+  /**
+   * Move this type onto `nextTag` (the tag its notes actually carry): the
+   * edits so far are saved, then the definition note moves to
+   * `tags/<nextTag>.md` with its body and views. Resolves with whether it
+   * moved; the caller reopens the settings on the new tag.
+   */
+  rebindTo: (nextTag: string) => Promise<boolean>
 }
 
 /**
@@ -92,6 +104,7 @@ export interface TagConfigDraft {
  */
 export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDraft {
   const { graph } = useGraph()
+  const [exists, setExists] = useState(false)
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(true)
   const [needsConversion, setNeedsConversion] = useState(false)
@@ -111,6 +124,9 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     let active = true
     void (async () => {
       const definition = await readTagDefinition(tag)
+      if (active) {
+        setExists(definition.exists)
+      }
       let available: TemplateEntry[] = []
       try {
         available = await listTemplates()
@@ -232,6 +248,15 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
       if (migrate) {
         await migratePropertyRenames(renames, graph.generation)
       }
+      // Renamed options carry their notes along (after a key move, so the
+      // values are already under the key the definition now names).
+      await migrateOptionRenames(
+        tag,
+        drafts
+          .map((draft) => ({ key: draft.key, renames: draftOptionRenames(draft) }))
+          .filter((entry) => entry.renames.length > 0),
+        graph.generation,
+      )
       await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
       onSaved()
     } catch (error) {
@@ -263,7 +288,42 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     await performSave([], false)
   }
 
+  const rebindTo = async (nextTag: string): Promise<boolean> => {
+    if (graph === null || saving || hasInvalidRows || foldTag(nextTag) === foldTag(tag)) {
+      return false
+    }
+    setSaving(true)
+    try {
+      const extras = { template, icon, parents }
+      if (exists) {
+        // Save the edits where they live, then carry the whole note (body,
+        // views, comments) to the new path, refusing an occupied one.
+        await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, extras)
+        await moveNoteCarryingSession(
+          tagDefinitionPath(tag),
+          tagDefinitionPath(nextTag),
+          graph.generation,
+        )
+      } else {
+        await saveTagType(nextTag, schemaFromDrafts(drafts), graph.generation, extras)
+      }
+      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
+      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, nextTag) })
+      return true
+    } catch (error) {
+      toast.add({
+        type: 'error',
+        title: `Couldn't move the type to #${foldTag(nextTag)}`,
+        description: error instanceof Error ? error.message : String(error),
+      })
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return {
+    rebindTo,
     loading,
     needsConversion,
     drafts,

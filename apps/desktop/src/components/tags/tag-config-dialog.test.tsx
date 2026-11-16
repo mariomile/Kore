@@ -59,6 +59,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
   listNoteTags: async () => noteTagsRows.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
+const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/editor/move-note', () => ({ moveNoteCarryingSession }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 7 } }),
 }))
@@ -84,6 +86,7 @@ beforeEach(() => {
   saveTagType.mockClear()
   invalidateQueries.mockClear()
   commitNoteFrontmatter.mockClear()
+  moveNoteCarryingSession.mockClear()
 })
 
 describe('TagConfigDialog', () => {
@@ -100,11 +103,13 @@ describe('TagConfigDialog', () => {
     const onClose = vi.fn()
     const view = await render(<Dialog tag="Book" onClose={onClose} />)
 
+    // The left pane lists the properties; picking one opens its settings.
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
     await expect.element(view.getByRole('textbox', { name: 'Property name' })).toHaveValue('Author')
 
+    // A new property opens straight away, its name focused.
     await view.getByRole('button', { name: 'Add property' }).click()
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await names.nth(1).fill('Read on')
+    await view.getByRole('textbox', { name: 'Property name' }).fill('Read on')
 
     await view.getByRole('button', { name: 'Save' }).click()
 
@@ -163,6 +168,7 @@ describe('TagConfigDialog', () => {
       { tagKey: 'company', notePath: 'tags/company.md' },
     ]
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     // Author becomes a relation; the Target selector appears with the typed
     // tags, defaulting to "Any note".
@@ -196,6 +202,7 @@ describe('TagConfigDialog', () => {
     tagTypesRows.current = [{ tagKey: 'person', notePath: 'tags/person.md' }]
     noteTagsRows.current = [{ tag: 'topic', count: 3 }]
     const view = await render(<Dialog tag="skills" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Topic', exact: true }).click()
 
     await view.getByRole('combobox', { name: 'Relation target' }).click()
     await expect.element(view.getByRole('option', { name: '#topic' })).toBeInTheDocument()
@@ -237,6 +244,7 @@ describe('TagConfigDialog', () => {
     ]
     const onClose = vi.fn()
     const view = await render(<Dialog tag="book" onClose={onClose} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     // The key editor folds behind its mono chip until asked for.
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
@@ -280,6 +288,7 @@ describe('TagConfigDialog', () => {
       },
     ]
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
 
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
     await view.getByRole('textbox', { name: 'Frontmatter key' }).fill('writer')
@@ -297,9 +306,9 @@ describe('TagConfigDialog', () => {
     // deleted default is one click from coming back on any tag.
     await view.getByRole('button', { name: /^Project Status/ }).click()
 
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await expect.element(names.nth(0)).toHaveValue('Status')
-    await expect.element(names.nth(2)).toHaveValue('Priority')
+    const nav = view.getByRole('navigation', { name: 'Type settings' })
+    await expect.element(nav.getByRole('button', { name: 'Status', exact: true })).toBeVisible()
+    await expect.element(nav.getByRole('button', { name: 'Priority', exact: true })).toBeVisible()
     // The preset carries a status and a date, so Board and Calendar light
     // up in the strip — named after the property powering each.
     await expect.element(view.getByText('Board · Status')).toBeInTheDocument()
@@ -344,7 +353,7 @@ describe('TagConfigDialog', () => {
     await expect.element(view.getByText('Calendar — add a Date')).toBeInTheDocument()
   })
 
-  it('edits select options as chips and saves the survivors', async () => {
+  it('adds, deletes and colors select options and saves the colors by name', async () => {
     definition.current = {
       path: 'tags/book.md',
       exists: true,
@@ -355,18 +364,121 @@ describe('TagConfigDialog', () => {
       parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
 
-    await expect.element(view.getByText('to-read')).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('textbox', { name: 'Option name: to-read' }))
+      .toHaveValue('to-read')
     await view.getByRole('textbox', { name: 'Add option' }).fill('reading')
     await userEvent.keyboard('{Enter}')
-    await view.getByRole('button', { name: 'Remove to-read' }).click()
+    await view.getByRole('button', { name: 'Color and actions for to-read' }).click()
+    await view.getByRole('button', { name: 'Delete option' }).click()
+    await view.getByRole('button', { name: 'Color and actions for done' }).click()
+    await view.getByRole('option', { name: 'Green' }).click()
 
     await view.getByRole('button', { name: 'Save' }).click()
     expect(saveTagType).toHaveBeenCalledWith(
       'book',
-      [{ name: 'Status', key: 'status', type: 'select', options: ['done', 'reading'] }],
+      [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'select',
+          options: ['done', 'reading'],
+          colors: { done: 'green' },
+        },
+      ],
       7,
       { template: null, icon: null, parents: [] },
+    )
+  })
+
+  it('renames an option, keeps its color and starting value, and moves the notes along', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['Todo', 'Done'],
+          colors: { Todo: 'gray' },
+          default: 'Todo',
+        },
+      ],
+      template: null,
+      icon: null,
+      parents: [],
+    }
+    propertyUses.current = [
+      { notePath: 'p/a.md', value: { value: 'Todo', valueType: 'string', valueNumber: null } },
+      { notePath: 'p/b.md', value: { value: 'Done', valueType: 'string', valueNumber: null } },
+    ]
+    const onClose = vi.fn()
+    const view = await render(<Dialog tag="project" onClose={onClose} />)
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
+
+    await view.getByRole('textbox', { name: 'Option name: Todo' }).fill('To do')
+    await expect.element(view.getByText('was Todo')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'project',
+      [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['To do', 'Done'],
+          colors: { 'To do': 'gray' },
+          default: 'To do',
+        },
+      ],
+      7,
+      { template: null, icon: null, parents: [] },
+    )
+    // Only the note on the old text is rewritten.
+    expect(commitNoteFrontmatter).toHaveBeenCalledTimes(1)
+    expect(commitNoteFrontmatter).toHaveBeenCalledWith(
+      'p/a.md',
+      { properties: { status: 'To do' } },
+      7,
+    )
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('offers to bind the type to the nested tag its notes use and moves the definition', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Due', key: 'due', type: 'date' }],
+      template: null,
+      icon: null,
+      parents: [],
+    }
+    noteTagsRows.current = [
+      { tag: 'type/project', count: 165 },
+      { tag: 'domain/ai', count: 40 },
+    ]
+    tagTypesRows.current = [{ tagKey: 'project', notePath: 'tags/project.md' }]
+    const view = await render(<Dialog tag="project" onClose={() => {}} />)
+
+    await expect.element(view.getByText('165 notes use #type/project.')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Use #type/project' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'project',
+      [{ name: 'Due', key: 'due', type: 'date' }],
+      7,
+      { template: null, icon: null, parents: [] },
+    )
+    expect(moveNoteCarryingSession).toHaveBeenCalledWith(
+      'tags/project.md',
+      'tags/type/project.md',
+      7,
     )
   })
 
@@ -385,9 +497,12 @@ describe('TagConfigDialog', () => {
     }
     const view = await render(<Dialog tag="invoice" onClose={() => {}} />)
 
-    const [numberStart, statusStart] = view.getByRole('combobox', { name: 'Starting value' }).all()
-    await expect.element(numberStart!).toHaveTextContent('Next number')
-    await statusStart!.click()
+    await view.getByRole('button', { name: 'Number', exact: true }).click()
+    await expect
+      .element(view.getByRole('combobox', { name: 'Starting value' }))
+      .toHaveTextContent('Next number')
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
+    await view.getByRole('combobox', { name: 'Starting value' }).click()
     await view.getByRole('option', { name: 'Fixed value' }).click()
     await view.getByRole('combobox', { name: 'Fixed starting value' }).click()
     await view.getByRole('option', { name: 'draft' }).click()
@@ -423,8 +538,7 @@ describe('TagConfigDialog', () => {
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await view.getByRole('button', { name: 'Add property' }).click()
-    const names = view.getByRole('textbox', { name: 'Property name' })
-    await names.nth(1).fill('Author')
+    await view.getByRole('textbox', { name: 'Property name' }).fill('Author')
 
     await expect.element(view.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(saveTagType).not.toHaveBeenCalled()

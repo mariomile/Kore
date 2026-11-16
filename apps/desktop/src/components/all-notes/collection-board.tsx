@@ -166,7 +166,7 @@ export function boardColumns(
       columns.push({
         label,
         commit: label,
-        color: selectOptionDotClass(label),
+        color: selectOptionDotClass(label, property),
         entries: sortByRank(group),
       })
     }
@@ -216,7 +216,7 @@ export function boardColumns(
     columns.push({
       label,
       commit: group.commit,
-      color: selectOptionDotClass(label),
+      color: selectOptionDotClass(label, property),
       entries: sortByRank(group.entries),
     })
   }

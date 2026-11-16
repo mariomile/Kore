@@ -2,13 +2,27 @@ import {
   foldTag,
   startingValueKind,
   startingValueOf,
+  isOptionColor,
+  type OptionColor,
   type RollupAggregation,
   type StartingValueKind,
   type TagProperty,
   type TagPropertyType,
 } from '@kore/core'
 
-/** One schema row under edit; `options` stays comma-text until save. */
+/** One select/status option under edit. */
+export interface OptionDraft {
+  /** Stable row id for React keys and drag-and-drop (unique per property). */
+  id: number
+  name: string
+  /** The text this option loaded with (null for a new one): a changed name
+   * is a rename, and saving moves the notes' values to the new text. */
+  original: string | null
+  /** The picked palette color, or null for the hashed one. */
+  color: OptionColor | null
+}
+
+/** One schema row under edit. */
 export interface PropertyDraft {
   rowId: number
   name: string
@@ -17,7 +31,8 @@ export interface PropertyDraft {
    * key is a rename, which can migrate the notes' values on save. */
   originalKey: string | null
   type: TagPropertyType
-  options: string
+  /** Select/status choices in their display order. */
+  options: OptionDraft[]
   /** A relation's target tag ('' = any note). */
   target: string
   rollupRelation: string
@@ -74,7 +89,7 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     key: property.key,
     originalKey: property.key,
     type: property.type,
-    options: property.options?.join(', ') ?? '',
+    options: optionDraftsFrom(property),
     target: property.target ?? '',
     rollupRelation: property.rollup?.relation ?? '',
     rollupProperty: property.rollup?.property ?? '',
@@ -88,6 +103,64 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
         ? String(property.default)
         : '',
   }))
+}
+
+/** Option drafts for a stored property: its options in order, each with
+ * the color the definition picked (unknown color names read as none). */
+export function optionDraftsFrom(property: Pick<TagProperty, 'options' | 'colors'>): OptionDraft[] {
+  return (property.options ?? []).map((name, id) => {
+    const color = property.colors?.[name]
+    return { id, name, original: name, color: isOptionColor(color) ? color : null }
+  })
+}
+
+/**
+ * The draft patch for a new options list. A fixed starting value that named
+ * an option follows that option's rename, so renaming "Todo" to "To do"
+ * keeps it as the starting value instead of silently dropping it.
+ */
+export function optionsPatch(
+  draft: Pick<PropertyDraft, 'options' | 'startingKind' | 'startingFixed'>,
+  options: OptionDraft[],
+): Partial<PropertyDraft> {
+  if (draft.startingKind !== 'fixed') {
+    return { options }
+  }
+  const before = draft.options.find((option) => option.name.trim() === draft.startingFixed.trim())
+  const after = before === undefined ? undefined : options.find((option) => option.id === before.id)
+  return after === undefined || after.name.trim() === ''
+    ? { options }
+    : { options, startingFixed: after.name.trim() }
+}
+
+/** The option texts a draft will store: trimmed, blanks and repeats dropped. */
+export function draftOptionNames(draft: Pick<PropertyDraft, 'options'>): string[] {
+  const names: string[] = []
+  for (const option of draft.options) {
+    const name = option.name.trim()
+    if (name !== '' && !names.includes(name)) {
+      names.push(name)
+    }
+  }
+  return names
+}
+
+/**
+ * The option renames a save performs: loaded options whose text changed.
+ * They land on the notes together (`optionRenameMap`), so swapping two
+ * names swaps the values too.
+ */
+export function draftOptionRenames(
+  draft: Pick<PropertyDraft, 'options'>,
+): { from: string; to: string }[] {
+  const renames: { from: string; to: string }[] = []
+  for (const option of draft.options) {
+    const to = option.name.trim()
+    if (option.original !== null && to !== '' && to !== option.original) {
+      renames.push({ from: option.original, to })
+    }
+  }
+  return renames
 }
 
 /**
@@ -128,10 +201,7 @@ export function draftsForNewSchema(properties: readonly TagProperty[]): Property
 
 export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[] {
   return drafts.map((draft) => {
-    const options = draft.options
-      .split(',')
-      .map((option) => option.trim())
-      .filter((option) => option !== '')
+    const options = draftOptionNames(draft)
     const hasOptions =
       draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
     const hasTarget =
@@ -158,11 +228,19 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
           }
         : undefined
     const startingValue = draftStartingValue(draft, options)
+    const colors: Record<string, OptionColor> = {}
+    for (const option of draft.options) {
+      const name = option.name.trim()
+      if (option.color !== null && options.includes(name) && !(name in colors)) {
+        colors[name] = option.color
+      }
+    }
     return {
       name: draft.name.trim(),
       key: draft.key,
       type: draft.type,
       ...(hasOptions && options.length > 0 ? { options } : {}),
+      ...(hasOptions && Object.keys(colors).length > 0 ? { colors } : {}),
       ...(hasTarget ? { target: draft.target.trim() } : {}),
       ...(rollup === undefined ? {} : { rollup }),
       ...(reverse === undefined ? {} : { reverse }),

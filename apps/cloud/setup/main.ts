@@ -1,13 +1,20 @@
 import { spawn } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { setVaultLayout } from '@kore/core/graph/vault-layout'
 import bundle from '../dist/worker/worker.js?raw'
-import { Cloudflare, tokenPageUrl } from './cloudflare'
-import { DEFAULT_WORKER_NAME, provision } from './provision'
-import { KoreCloud, readVaultLayout, readVaultNotes, uploadNotes } from './upload'
+import {
+  KoreCloud,
+  activateKoreCloud,
+  connectorUrl,
+  tokenPageUrl,
+  uploadNotes,
+  waitForWorker,
+  type KoreCloudConfig,
+  type UploadReport,
+} from '@kore/core/cloud'
+import { readVaultLayout, readVaultNotes } from './upload'
 
 /**
  * `kore-cloud.mjs`, the script behind `kore cloud setup`: create Kore Cloud
@@ -18,12 +25,7 @@ import { KoreCloud, readVaultLayout, readVaultNotes, uploadNotes } from './uploa
  * the key and updates the Worker in place.
  */
 
-interface CloudConfig {
-  url: string
-  ownerKey: string
-  accountId: string
-  workerName: string
-}
+type CloudConfig = KoreCloudConfig
 
 function log(line: string): void {
   process.stderr.write(`${line}\n`)
@@ -93,16 +95,6 @@ async function promptHidden(question: string): Promise<string> {
   })
 }
 
-async function waitForWorker(cloud: KoreCloud): Promise<void> {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    if ((await cloud.info()) !== null) {
-      return
-    }
-    await new Promise((done) => setTimeout(done, 2000))
-  }
-  throw new Error('The Worker did not answer within a minute. Run setup again in a moment.')
-}
-
 async function setup(options: {
   vault: string
   config: string
@@ -122,37 +114,39 @@ async function setup(options: {
   }
   const layout = await readVaultLayout(options.vault)
   setVaultLayout(layout)
-  const saved = await readConfig(options.config)
-  const workerName = options.name ?? saved?.workerName ?? DEFAULT_WORKER_NAME
-  const keep =
-    saved !== null &&
-    saved.workerName === workerName &&
-    (options.account === undefined || options.account === saved.accountId)
-  const ownerKey = keep ? saved.ownerKey : randomBytes(32).toString('base64url')
-  const done = await provision(new Cloudflare(token), {
-    accountId: options.account ?? (keep ? saved.accountId : undefined),
-    workerName,
+  const done = await activateKoreCloud({
+    token,
+    fetch,
     bundle,
-    layout: JSON.stringify(layout),
-    ownerKey,
-    // A saved key for this Worker stays; otherwise the new one is installed.
-    replaceKey: !keep,
-    log,
+    layout,
+    saved: await readConfig(options.config),
+    accountId: options.account,
+    workerName: options.name,
+    readNotes: () => readVaultNotes(options.vault),
+    onConfig: async (config) => {
+      await writeConfig(options.config, config)
+      log(`Owner key saved in ${options.config}`)
+    },
+    onStep: log,
+    onUpload: (sent, total) => log(`Notes uploaded: ${sent} of ${total}`),
   })
-  const config: CloudConfig = { url: done.url, ownerKey, accountId: done.accountId, workerName }
-  await writeConfig(options.config, config)
-  log(`Owner key saved in ${options.config}`)
-  await upload(options.vault, config, done.created)
+  summarize(done.config, done.created, done.report)
 }
 
 /** Send the vault's notes Kore Cloud lacks, and print what happened. */
-async function upload(vault: string, config: CloudConfig, created: boolean): Promise<void> {
+async function upload(vault: string, config: CloudConfig): Promise<void> {
   const cloud = new KoreCloud(config.url, config.ownerKey)
-  log('Waiting for the Worker to answer...')
+  log('Waiting for Kore Cloud to answer')
   await waitForWorker(cloud)
   const notes = await readVaultNotes(vault)
   log(`Vault: ${notes.length} notes`)
-  const report = await uploadNotes(cloud, notes, log)
+  const report = await uploadNotes(cloud, notes, (sent, total) =>
+    log(`Notes uploaded: ${sent} of ${total}`),
+  )
+  summarize(config, false, report)
+}
+
+function summarize(config: CloudConfig, created: boolean, report: UploadReport): void {
   log('')
   log(`Kore Cloud is on: ${config.url}`)
   log(`  ${report.uploaded} notes uploaded, ${report.unchanged} already there`)
@@ -171,12 +165,12 @@ async function upload(vault: string, config: CloudConfig, created: boolean): Pro
     log(`  not uploaded: ${failure.path} (${failure.reason})`)
   }
   log('')
-  log(`Add it to Claude or ChatGPT as a custom connector: ${config.url}/mcp`)
+  log(`Add it to Claude or ChatGPT as a custom connector: ${connectorUrl(config)}`)
   log('When it asks, name the agent and approve it with this owner key (keep it to yourself):')
   log(`  ${config.ownerKey}`)
   log('`kore cloud key` prints it again.')
   process.stdout.write(
-    `${JSON.stringify({ url: config.url, mcp: `${config.url}/mcp`, created, ...report })}\n`,
+    `${JSON.stringify({ url: config.url, mcp: connectorUrl(config), created, ...report })}\n`,
   )
 }
 
@@ -217,7 +211,7 @@ async function main(argv: string[]): Promise<void> {
     }
     const vault = resolve(values.vault)
     setVaultLayout(await readVaultLayout(vault))
-    await upload(vault, saved, false)
+    await upload(vault, saved)
     return
   }
   if (command === 'setup') {

@@ -1,8 +1,9 @@
 # Plan 34 — Kore Cloud (the vault always on, in the user's own Cloudflare)
 
-> **Status (2026-11-11):** slices 1 (the Worker, `apps/cloud/`) and 2
-> (named agents, `kore cloud setup`) written and tested, locally against
-> `wrangler dev`; the first run on a real account and slices 3-4 not started. Italian plan for Mario:
+> **Status (2026-11-16):** slices 1 (the Worker, `apps/cloud/`), 2
+> (named agents, `kore cloud setup`) and 4 (the Settings button) written and
+> tested, locally against `wrangler dev` and a fake Cloudflare; the first run
+> on a real account and slice 3 (app sync) not started. Italian plan for Mario:
 > `/mnt/project-files/kore-cloud-spike/PIANO.md`; spike measurements:
 > `/mnt/project-files/kore-cloud-spike/RISULTATI.md` (project files).
 
@@ -90,7 +91,16 @@ in the user's account; Kore operates nothing.
    versions, conflict copies, private → delete), HTTP in a thin Rust command,
    the same split as git sync.
 4. **Settings → Kore Cloud**: activate, status, "Add to Claude", "Add to
-   ChatGPT", copy the URL and key for other agents.
+   ChatGPT", copy the URL and key for other agents. *Written:* Settings →
+   Agents → Always on → Kore Cloud. One button opens the token page, the
+   user pastes the token, and the app provisions, waits for the Worker and
+   uploads the vault (private and >1 MB notes stay local), with progress.
+   The logic moved to `packages/core/src/cloud/` (shared with the CLI); the
+   app keeps `{url, ownerKey, accountId, workerName, vaultRoot}` in the
+   keychain entry `kore-cloud`, never the token. When on: the connector URL,
+   copy key, upload new notes, connected agents with Disconnect, update the
+   service, forget on this Mac. The Worker bundle is a lazy chunk built by
+   `@kore/cloud`'s `build`.
 
 ## Open
 

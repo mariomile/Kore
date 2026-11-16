@@ -106,6 +106,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.3.0)
+      '@kore/cloud':
+        specifier: workspace:*
+        version: link:../cloud
       '@kore/core':
         specifier: workspace:*
         version: link:../../packages/core

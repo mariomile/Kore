@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./worker-bundle": "./dist/worker/worker.js"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "test": "vitest run",
-    "build:worker": "wrangler deploy --dry-run --minify --outdir dist/worker",
-    "build:setup": "pnpm build:worker && vite build --config setup/vite.config.ts"
+    "build:worker": "WRANGLER_SEND_METRICS=false wrangler deploy --dry-run --minify --outdir dist/worker",
+    "build:setup": "pnpm build:worker && vite build --config setup/vite.config.ts",
+    "build": "pnpm build:worker"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "1.2.4",

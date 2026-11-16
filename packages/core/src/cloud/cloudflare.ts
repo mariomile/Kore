@@ -39,6 +39,7 @@ interface Envelope<T> {
   result?: T
 }
 
+/** The transport: the global `fetch`, or the app's HTTP plugin (no CORS). */
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
 /** A Cloudflare API client bound to one token. */
@@ -54,9 +55,13 @@ export class Cloudflare {
   /** One API call; `body` is JSON unless it is FormData. */
   async call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { authorization: `Bearer ${this.#token}` }
-    let payload: FormData | string | undefined
+    let payload: ArrayBuffer | string | undefined
     if (body instanceof FormData) {
-      payload = body
+      // Encoded here rather than by the transport: the app's HTTP plugin
+      // sends bytes, and this keeps the multipart boundary in the header.
+      const encoded = new Request('https://encode.invalid/', { method: 'POST', body })
+      payload = await encoded.arrayBuffer()
+      headers['content-type'] = encoded.headers.get('content-type') ?? 'multipart/form-data'
     } else if (body !== undefined) {
       headers['content-type'] = 'application/json'
       payload = JSON.stringify(body)

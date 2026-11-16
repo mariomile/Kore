@@ -14,7 +14,15 @@ function fakeCloudflare(routes: Record<string, unknown>): { fetch: Fetch; calls:
   const fetcher: Fetch = async (input, init) => {
     const path = input.replace('https://api.cloudflare.com/client/v4', '')
     const method = init?.method ?? 'GET'
-    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : init?.body
+    const type = new Headers(init?.headers).get('content-type') ?? ''
+    const body =
+      typeof init?.body === 'string'
+        ? JSON.parse(init.body)
+        : type.startsWith('multipart/')
+          ? await new Response(init?.body as BodyInit, {
+              headers: { 'content-type': type },
+            }).formData()
+          : init?.body
     calls.push({ method, path, body })
     const key = `${method} ${path}`
     if (!(key in routes)) {

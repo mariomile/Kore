@@ -13,3 +13,18 @@ export * from './exports/platform'
 export * from './exports/ai-actions'
 export * from './exports/sync-markdown-indexing'
 export * from './cyber-brain'
+export {
+  activateKoreCloudForVault,
+  connectorUrl as koreCloudConnectorUrl,
+  forgetKoreCloud,
+  koreCloudAgents,
+  loadKoreCloud,
+  revokeKoreCloudAgent,
+  uploadVaultToKoreCloud,
+  type StoredKoreCloud,
+} from './cloud/app'
+export {
+  tokenPageUrl as koreCloudTokenPageUrl,
+  type KoreCloudAgent,
+  type UploadReport as KoreCloudUploadReport,
+} from './cloud'

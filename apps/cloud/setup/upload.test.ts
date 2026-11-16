@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { DEFAULT_VAULT_LAYOUT } from '@kore/core/graph/vault-layout'
 import { describe, expect, it } from 'vitest'
-import type { Fetch } from './cloudflare'
-import { KoreCloud, PUSH_BATCH, readVaultLayout, readVaultNotes, uploadNotes } from './upload'
+import { KoreCloud, PUSH_BATCH, uploadNotes, type Fetch } from '@kore/core/cloud'
+import { readVaultLayout, readVaultNotes } from './upload'
 
 interface Pushed {
   path: string

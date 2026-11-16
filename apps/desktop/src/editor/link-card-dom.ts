@@ -1,4 +1,4 @@
-import type { LinkPreview, LinkPreviewProvider, PostLinkPreview } from '@kore/core'
+import type { EmbedLayout, LinkPreview, LinkPreviewProvider, PostLinkPreview } from '@kore/core'
 
 /**
  * The DOM of one link preview card. Built by hand because it renders as a
@@ -95,8 +95,27 @@ export function hostOf(url: string): string {
   }
 }
 
-/** The arrow-out-of-box glyph the open button draws. */
-function openGlyph(): SVGSVGElement {
+/**
+ * The event a card's appearance button fires, bubbling to the editor, where
+ * `LinkLayoutMenu` opens the Inline link / Compact / Card / Large menu.
+ */
+export const LINK_LAYOUT_EVENT = 'kore-link-layout'
+
+export interface LinkLayoutRequest {
+  readonly url: string
+  /** The page's title when known: what an inline link is named after. */
+  readonly title: string | null
+  readonly layout: EmbedLayout
+}
+
+/** Ask the editor for the appearance menu, anchored on `button`. */
+export function requestLinkLayout(button: HTMLElement, request: LinkLayoutRequest): void {
+  button.dispatchEvent(
+    new CustomEvent<LinkLayoutRequest>(LINK_LAYOUT_EVENT, { bubbles: true, detail: request }),
+  )
+}
+
+function strokeGlyph(paths: readonly string[]): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('viewBox', '0 0 24 24')
   svg.setAttribute('aria-hidden', 'true')
@@ -105,11 +124,7 @@ function openGlyph(): SVGSVGElement {
   svg.setAttribute('stroke-width', '1.75')
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
-  for (const d of [
-    'M14 4h6v6',
-    'M20 4l-9 9',
-    'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4',
-  ]) {
+  for (const d of paths) {
     const path = document.createElementNS(SVG_NS, 'path')
     path.setAttribute('d', d)
     svg.append(path)
@@ -117,13 +132,41 @@ function openGlyph(): SVGSVGElement {
   return svg
 }
 
+/** A footer button: a 28px glyph with a 44px hit area (see link-cards.css). */
+function footerButton(label: string, glyph: SVGSVGElement): HTMLButtonElement {
+  const button = element('button', 'kore-link-card-button')
+  button.type = 'button'
+  button.setAttribute('aria-label', label)
+  button.title = label
+  button.append(glyph)
+  return button
+}
+
+/** The arrow-out-of-box glyph the open button draws. */
+function openGlyph(): SVGSVGElement {
+  return strokeGlyph([
+    'M14 4h6v6',
+    'M20 4l-9 9',
+    'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4',
+  ])
+}
+
+/** Two stacked cards: the appearance glyph. */
+function layoutGlyph(): SVGSVGElement {
+  return strokeGlyph(['M4 5h16v8H4z', 'M4 17h16', 'M4 20h10'])
+}
+
 /**
  * The footer line: the site's mark and name (and its host when the name is
- * something else), whatever else it knows, then the open button. The button
- * is the only way to open the link with a thumb: a plain press on the card
- * puts the caret on its source instead.
+ * something else), whatever else it knows, then the appearance and open
+ * buttons. Open is the only way to open the link with a thumb: a plain press
+ * on the card puts the caret on its source instead.
  */
-function siteLine(preview: LinkPreview, extras: readonly string[]): HTMLElement {
+function siteLine(
+  preview: LinkPreview,
+  extras: readonly string[],
+  layout: EmbedLayout,
+): HTMLElement {
   const line = element('div', 'kore-link-card-site')
   if (preview.provider !== null) {
     line.append(brandMark(preview.provider))
@@ -133,17 +176,23 @@ function siteLine(preview: LinkPreview, extras: readonly string[]): HTMLElement 
   const host = hostOf(preview.url)
   const name = preview.siteName.toLowerCase() === host ? [host] : [preview.siteName, host]
   line.append(element('span', '', [...name, ...extras].join(' · ')))
-  const open = element('button', 'kore-link-card-open')
-  open.type = 'button'
+  const appearance = footerButton('Link appearance', layoutGlyph())
+  appearance.dataset.linkCardLayout = ''
+  appearance.addEventListener('click', (event) => {
+    event.preventDefault()
+    requestLinkLayout(appearance, {
+      url: preview.url,
+      title: preview.kind === 'page' ? preview.title : null,
+      layout,
+    })
+  })
+  const open = footerButton(`Open ${host}`, openGlyph())
   open.dataset.linkCardOpen = ''
-  open.setAttribute('aria-label', `Open ${host}`)
-  open.title = `Open ${host}`
-  open.append(openGlyph())
-  line.append(open)
+  line.append(appearance, open)
   return line
 }
 
-function postCard(card: HTMLElement, preview: PostLinkPreview): void {
+function postCard(card: HTMLElement, preview: PostLinkPreview, layout: EmbedLayout): void {
   const header = element('div', 'kore-link-card-author')
   if (preview.avatarUrl !== null) {
     header.append(image('kore-link-card-avatar', preview.avatarUrl))
@@ -170,20 +219,24 @@ function postCard(card: HTMLElement, preview: PostLinkPreview): void {
   if (preview.replies !== null) counts.push(countLabel(preview.replies, 'reply', 'replies'))
   if (preview.reposts !== null) counts.push(countLabel(preview.reposts, 'repost', 'reposts'))
   if (preview.likes !== null) counts.push(countLabel(preview.likes, 'like', 'likes'))
-  card.append(siteLine(preview, counts))
+  card.append(siteLine(preview, counts, layout))
 }
 
-/** One card for one preview. The caller owns events and placement. */
-export function linkCardElement(preview: LinkPreview): HTMLElement {
+/**
+ * One card for one preview, in one of the three card layouts. The caller owns
+ * events and placement; the appearance button fires {@link LINK_LAYOUT_EVENT}.
+ */
+export function linkCardElement(preview: LinkPreview, layout: EmbedLayout = 'card'): HTMLElement {
   const card = element('div', 'kore-link-card')
   card.contentEditable = 'false'
   card.dataset.kind = preview.kind
+  card.dataset.layout = layout
   if (preview.provider !== null) {
     card.dataset.provider = preview.provider
   }
   card.title = preview.url
   if (preview.kind === 'post') {
-    postCard(card, preview)
+    postCard(card, preview, layout)
     return card
   }
   const body = element('div', 'kore-link-card-body')
@@ -191,7 +244,7 @@ export function linkCardElement(preview: LinkPreview): HTMLElement {
   if (preview.description !== null && preview.description !== preview.title) {
     body.append(element('div', 'kore-link-card-description', preview.description))
   }
-  body.append(siteLine(preview, []))
+  body.append(siteLine(preview, [], layout))
   card.append(body)
   if (preview.imageUrl !== null) {
     card.append(image('kore-link-card-thumb', preview.imageUrl))

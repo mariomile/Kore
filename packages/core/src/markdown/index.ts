@@ -42,6 +42,9 @@ export {
 } from './callout'
 export {
   formatEmbedBlock,
+  formatUrlEmbedBody,
+  EMBED_LAYOUTS,
+  type EmbedLayout,
   parseEmbedBlocks,
   parseEmbedFenceBody,
   type EmbedBlock,

@@ -114,6 +114,11 @@ function cardWidget(options: LinkCardOptions, preview: LinkPreview, paragraphPos
         return
       }
       event.preventDefault()
+      // The appearance button acts on click (link-card-dom); here it only
+      // keeps the caret where it is.
+      if (event.target instanceof Element && event.target.closest('[data-link-card-layout]')) {
+        return
+      }
       const onOpenButton =
         event.target instanceof Element && event.target.closest('[data-link-card-open]') !== null
       if (onOpenButton || event.metaKey || event.ctrlKey) {

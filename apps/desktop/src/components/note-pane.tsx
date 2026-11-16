@@ -70,6 +70,7 @@ import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbedFence } from '@/components/notes/embed-fence'
+import { LinkLayoutMenu } from '@/editor/link-layout-menu'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
 import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
@@ -631,6 +632,7 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <LinkLayoutMenu />
         <NoteTitleIcon
           header={document.header}
           resolveImageUrl={resolveImageUrl}

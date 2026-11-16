@@ -32,7 +32,7 @@ export function useEmbedSlashItems(
         detail: 'Preview a URL',
         onSelect: () => {
           getEditor()?.insertMarkdown(
-            `${formatEmbedBlock({ kind: 'url', url: URL_PLACEHOLDER, linkKind: 'link' })}\n`,
+            `${formatEmbedBlock({ kind: 'url', url: URL_PLACEHOLDER, linkKind: 'link', layout: 'card' })}\n`,
           )
         },
       },

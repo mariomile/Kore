@@ -3,6 +3,7 @@ import {
   embedPlayer,
   linkKindInfo,
   loadLinkPreview,
+  type EmbedLayout,
   type LinkKind,
   type LinkPreview,
   type UrlEmbed,
@@ -20,7 +21,7 @@ import {
 } from '@/components/icons'
 import type { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { linkCardElement } from '@/editor/link-card-dom'
+import { linkCardElement, requestLinkLayout } from '@/editor/link-card-dom'
 import { openExternalUrl } from '@/editor/open-external-link'
 
 interface EmbeddedLinkCardProps {
@@ -36,6 +37,25 @@ const KIND_GLYPH: Record<LinkKind, Icon> = {
   document: Note,
   social: Chat,
   link: Globe,
+}
+
+/** Two stacked cards: the same appearance glyph the rich card draws. */
+function LayoutGlyph(): ReactElement {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 5h16v8H4z" />
+      <path d="M4 17h16" />
+      <path d="M4 20h10" />
+    </svg>
+  )
 }
 
 /** `https://github.com/mariomile/Kore` → `github.com/mariomile/Kore`. */
@@ -88,14 +108,20 @@ function useRichPreview(url: string | null): LinkPreview | null {
  * open button opens the page; a press elsewhere is left to the fence, which
  * puts the caret on the URL.
  */
-function RichLinkCard({ preview }: { preview: LinkPreview }): ReactElement {
+function RichLinkCard({
+  preview,
+  layout,
+}: {
+  preview: LinkPreview
+  layout: EmbedLayout
+}): ReactElement {
   const hostRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const host = hostRef.current
     if (host === null) {
       return
     }
-    const card = linkCardElement(preview)
+    const card = linkCardElement(preview, layout)
     const open = (event: MouseEvent) => {
       if (event.target instanceof Element && event.target.closest('[data-link-card-open]')) {
         event.preventDefault()
@@ -108,7 +134,7 @@ function RichLinkCard({ preview }: { preview: LinkPreview }): ReactElement {
       card.removeEventListener('click', open)
       host.replaceChildren()
     }
-  }, [preview])
+  }, [preview, layout])
   return <div ref={hostRef} data-testid="rich-link-card" />
 }
 
@@ -129,7 +155,7 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
   const preview = useRichPreview(block.linkKind !== 'image' && player === null ? block.url : null)
 
   if (preview !== null) {
-    return <RichLinkCard preview={preview} />
+    return <RichLinkCard preview={preview} layout={block.layout} />
   }
   const eyebrow = player?.provider ?? (block.linkKind === 'link' ? null : info.label)
 
@@ -198,6 +224,20 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
           Show
         </Button>
       ) : null}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Link appearance"
+        onClick={(event) =>
+          requestLinkLayout(event.currentTarget, {
+            url: block.url,
+            title: null,
+            layout: block.layout,
+          })
+        }
+      >
+        <LayoutGlyph />
+      </Button>
       <Button
         variant="ghost"
         size="icon-sm"

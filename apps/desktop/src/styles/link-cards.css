@@ -101,10 +101,11 @@
   white-space: nowrap;
 }
 .kore-editor .kore-link-card-site > span {
+  margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.kore-editor .kore-link-card-open {
+.kore-editor .kore-link-card-button {
   position: relative;
   display: inline-flex;
   width: 1.75rem;
@@ -112,22 +113,23 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  margin: -0.35rem -0.4rem -0.35rem auto;
+  margin: -0.35rem 0;
   border-radius: var(--radius-md, 6px);
   color: var(--text-secondary);
   cursor: pointer;
 }
-.kore-editor .kore-link-card-open::before {
-  /* A 44px hit area around the 28px glyph, for a thumb. */
+.kore-editor .kore-link-card-button::before {
+  /* A 44px hit area around the 28px glyph, for a thumb; two buttons side by
+     side share the overlap, so neither steals the other's centre. */
   position: absolute;
   inset: -0.5rem;
   content: '';
 }
-.kore-editor .kore-link-card-open:hover {
+.kore-editor .kore-link-card-button:hover {
   background-color: var(--surface);
   color: var(--text);
 }
-.kore-editor .kore-link-card-open svg {
+.kore-editor .kore-link-card-button svg {
   width: 1rem;
   height: 1rem;
 }
@@ -198,4 +200,77 @@
 
 .kore-editor .kore-link-card img[hidden] {
   display: none;
+}
+
+/* Appearance: the compact row and the large card (the default is above).
+   Compact is one line: mark, title, host, then the buttons; the site line
+   dissolves into the row so its parts can sit around the title. */
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-body {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site {
+  display: contents;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-icon {
+  order: 0;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-title {
+  order: 1;
+  min-width: 0;
+  flex: 0 1 auto;
+  -webkit-line-clamp: 1;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site > span {
+  order: 2;
+  min-width: 3rem;
+  color: var(--text-muted);
+  font-size: 0.82em;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-button {
+  order: 3;
+}
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-description,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-thumb,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-text,
+.kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-media {
+  display: none;
+}
+.kore-editor .kore-link-card[data-kind='post'][data-layout='compact'] {
+  padding: 0.6rem 0.8rem;
+}
+
+/* Large: the image across the top at any width, the words bigger. */
+.kore-editor .kore-link-card[data-kind='page'][data-layout='large'] {
+  flex-direction: column-reverse;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-thumb {
+  width: 100%;
+  max-height: 22rem;
+  aspect-ratio: 1.91 / 1;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-body {
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem 0.95rem;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-title {
+  font-size: 1.12em;
+}
+.kore-editor .kore-link-card[data-layout='large'] .kore-link-card-description {
+  -webkit-line-clamp: 3;
+}
+
+/* On a phone-wide pane the compact row keeps the title whole: the host
+   gives way, since the favicon already names the site. */
+@media (max-width: 40rem) {
+  .kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-title {
+    flex: 1 1 auto;
+  }
+  .kore-editor .kore-link-card[data-layout='compact'] .kore-link-card-site > span {
+    display: none;
+  }
 }

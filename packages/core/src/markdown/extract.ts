@@ -391,6 +391,39 @@ function deriveTitle(frontmatter: Frontmatter, headings: Heading[], path: string
  */
 const FRONTMATTER_WIKI_RE = /\[\[([^[\]|\r\n]+)(\|[^[\]\r\n]*)?\]\]/g
 
+/** A top-level YAML key at the start of a line: `company:`, `"Due date":`. */
+const FRONTMATTER_KEY_RE = /^(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\s#'"\-:][^:\r\n]*?))\s*:(?:\s|$)/
+
+/**
+ * The top-level frontmatter key a header position belongs to: the key on its
+ * own line (`company: "[[Acme]]"`), or the nearest key above it when the
+ * position sits in an indented or `- ` list item (`expertise:` then
+ * `  - "[[Product Discovery]]"`). Undefined when no key owns the position
+ * (the opening fence, a stray line). This is the relation's name: what turns
+ * a frontmatter link into a named edge of the graph.
+ */
+export function frontmatterKeyAt(header: string, index: number): string | undefined {
+  const lines = header.slice(0, index).split('\n')
+  // The last line holds the position itself; anything after it is irrelevant.
+  lines[lines.length - 1] = header.slice(index - (lines.at(-1)?.length ?? 0)).split('\n')[0] ?? ''
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = (lines[i] ?? '').replace(/\r$/, '')
+    if (line === '---') {
+      return undefined
+    }
+    const match = FRONTMATTER_KEY_RE.exec(line)
+    if (match !== null) {
+      const key = (match[1] ?? match[2] ?? match[3] ?? '').trim()
+      return key === '' ? undefined : key
+    }
+    // Only continuation lines (indented, or list items) inherit the key above.
+    if (line !== '' && !/^[\s-]/.test(line)) {
+      return undefined
+    }
+  }
+  return undefined
+}
+
 /** Parse one note's full source into the stable {@link ParsedNote} contract. */
 export function parseNote(input: { path: string; source: string }): ParsedNote {
   const { path, source } = input
@@ -502,15 +535,18 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   // retitle splice treat them exactly like body links.
   if (bodyOffset > 0) {
     const headerLinks: WikiLink[] = []
-    for (const match of source.slice(0, bodyOffset).matchAll(FRONTMATTER_WIKI_RE)) {
+    const header = source.slice(0, bodyOffset)
+    for (const match of header.matchAll(FRONTMATTER_WIKI_RE)) {
       const target = (match[1] ?? '').trim()
       if (target === '') {
         continue
       }
       const alias = match[2]?.slice(1)
+      const relation = frontmatterKeyAt(header, match.index)
       headerLinks.push({
         target,
         ...(alias === undefined ? {} : { alias }),
+        ...(relation === undefined ? {} : { relation }),
         from: match.index,
         to: match.index + match[0].length,
       })

@@ -98,6 +98,9 @@ enum Command {
     Backlinks {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
+        /// Only notes linking under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
     },
     /// List the most recently updated notes, newest first
     Recent {
@@ -152,6 +155,9 @@ enum Command {
     Links {
         /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
+        /// Only links made under this frontmatter key (e.g. company, author)
+        #[arg(long, value_name = "KEY")]
+        relation: Option<String>,
     },
     /// Create a note under notes/ with a title-derived filename
     New {
@@ -472,7 +478,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             *task,
             to.as_deref(),
         ),
-        Command::Backlinks { note } => commands::backlinks::run(&graph, cli.json, note),
+        Command::Backlinks { note, relation } => {
+            commands::backlinks::run(&graph, cli.json, note, relation.as_deref())
+        }
         Command::Recent { limit } => commands::recent::run(&graph, cli.json, *limit),
         Command::Collection {
             tag,
@@ -490,7 +498,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::list::run(&graph, cli.json, tag.as_deref(), kind.as_deref(), *limit)
         }
         Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
-        Command::Links { note } => commands::links::run(&graph, cli.json, note),
+        Command::Links { note, relation } => {
+            commands::links::run(&graph, cli.json, note, relation.as_deref())
+        }
         Command::Grep {
             text,
             ignore_case,

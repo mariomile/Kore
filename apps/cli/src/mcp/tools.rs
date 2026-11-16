@@ -218,19 +218,33 @@ pub(super) fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "backlinks",
-            description: "List the notes that link to a note.",
+            description: "List the notes that link to a note. Each one names its relations (the frontmatter keys it links under, e.g. a person whose `company:` is this note) and gives up to 3 mentions: the paragraph, list item or frontmatter line each link sits in, to quote as the source. Pass relation to keep only notes linking under that key.",
             effect: Effect::Read,
-            properties: || json!({ "note": note_schema() }),
+            properties: || json!({
+                "note": note_schema(),
+                "relation": { "type": "string", "description": "Only notes linking under this frontmatter key, case-insensitive (e.g. company, author, up)" }
+            }),
             required: &["note"],
-            build: |args| Ok(Invocation::new("backlinks").positionals(&[required_string(args, "note")?])),
+            build: |args| {
+                Ok(Invocation::new("backlinks")
+                    .option("relation", string_arg(args, "relation")?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
         },
         Tool {
             name: "links",
-            description: "List the wiki links a note makes, each resolved to its target note when it exists.",
+            description: "List the wiki links a note makes, each resolved to its target note when it exists and naming its relations: the frontmatter keys it is the value of (company, author, up…); a link with no relations is a mention in the body. Pass relation to keep only links under that key.",
             effect: Effect::Read,
-            properties: || json!({ "note": note_schema() }),
+            properties: || json!({
+                "note": note_schema(),
+                "relation": { "type": "string", "description": "Only links made under this frontmatter key, case-insensitive (e.g. company, author, up)" }
+            }),
             required: &["note"],
-            build: |args| Ok(Invocation::new("links").positionals(&[required_string(args, "note")?])),
+            build: |args| {
+                Ok(Invocation::new("links")
+                    .option("relation", string_arg(args, "relation")?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
         },
         Tool {
             name: "note_properties",
@@ -356,7 +370,7 @@ pub(super) fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "explain_note",
-            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
+            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it, each with its named relations and the backlinks' context. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
             effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],

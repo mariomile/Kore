@@ -158,6 +158,11 @@ export interface WikiLink extends Span {
   target: string
   /** Display alias after `|`, if present. */
   alias?: string | undefined
+  /**
+   * The frontmatter key the link is the value of (`company: "[[Acme]]"` is a
+   * `company` relation). Undefined for body links: a mention, not a relation.
+   */
+  relation?: string | undefined
 }
 
 /** A standard markdown link or autolink `[text](href)`. */
@@ -266,8 +271,9 @@ export interface ParsedTask extends TaskMarker {
  * 9 — `tasks[].section`: the nearest top-level heading above the task.
  * 10 — `memberTags`: the tags that make the note a member (frontmatter
  * `tags:` and a tag-only first or last paragraph), apart from mentions.
- * 11 — `tasks[].tags`: the tags on a task's own marker line. */
-export const PARSED_NOTE_VERSION = 11
+ * 11 — `tasks[].tags`: the tags on a task's own marker line.
+ * 12 — `wikiLinks[].relation`: the frontmatter key a header link belongs to. */
+export const PARSED_NOTE_VERSION = 12
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

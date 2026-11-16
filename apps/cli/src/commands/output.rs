@@ -133,6 +133,27 @@ pub struct BacklinkJson {
     pub title: String,
     /// How many links this note carries to the target.
     pub count: i64,
+    /// The named relations among those links (`company`, `author`): the
+    /// frontmatter keys whose value links the target. Empty when every link
+    /// is a mention in the body.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub relations: Vec<String>,
+    /// Where each link sits, with the words around it, so an agent can quote
+    /// its source. At most [`BACKLINK_MENTIONS_MAX`] per note, document order.
+    pub mentions: Vec<LinkMentionJson>,
+}
+
+/// The cap on [`BacklinkJson::mentions`]; `count` still says how many exist.
+pub const BACKLINK_MENTIONS_MAX: usize = 3;
+
+/// One link occurrence: its relation (if it is a frontmatter value) and the
+/// paragraph, list item or frontmatter line it sits in.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkMentionJson {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relation: Option<String>,
+    pub context: String,
 }
 
 /// `recent`: the most recently updated notes, newest first.
@@ -359,6 +380,10 @@ pub struct LinkJson {
     /// The resolved note's path, or null when no note answers to the target.
     pub path: Option<String>,
     pub title: Option<String>,
+    /// The frontmatter keys this note links the target under (`company`,
+    /// `expertise`). Empty when the target is only mentioned in the body.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub relations: Vec<String>,
 }
 
 /// `grep`: every line containing the text, in path then line order.

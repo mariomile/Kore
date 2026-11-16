@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasAuthoredTitle, isTagName, parseNote } from './extract'
+import { frontmatterKeyAt, hasAuthoredTitle, isTagName, parseNote } from './extract'
 
 function parse(source: string, path = 'notes/test.md') {
   return parseNote({ path, source })
@@ -40,6 +40,38 @@ describe('parseNote — wiki links', () => {
     // File-absolute spans: the splice-based retitle rewrites the YAML value
     // exactly like a body link.
     expect(source.slice(relation.from, relation.to)).toBe('[[James Clear]]')
+  })
+
+  it('names each frontmatter link after the key it is the value of', () => {
+    const source = [
+      '---',
+      'company: "[[Acme]]"',
+      'expertise:',
+      '  - "[[Product Discovery]]"',
+      '  - "[[Product Strategy]]"',
+      '"Due date": "[[2026-11-20]]"',
+      'up: [[persons.base]]',
+      'nested:',
+      '  child: "[[Deep]]"',
+      '---',
+      'Body [[Other]].',
+    ].join('\n')
+    const note = parse(source)
+    expect(note.wikiLinks.map((w) => [w.target, w.relation])).toEqual([
+      ['Acme', 'company'],
+      ['Product Discovery', 'expertise'],
+      ['Product Strategy', 'expertise'],
+      ['2026-11-20', 'Due date'],
+      ['persons.base', 'up'],
+      ['Deep', 'nested'],
+      ['Other', undefined],
+    ])
+  })
+
+  it('reads the owning key at any header position', () => {
+    const header = '---\na: x\nlist:\n  - [[One]]\n---\n'
+    expect(frontmatterKeyAt(header, header.indexOf('[[One]]'))).toBe('list')
+    expect(frontmatterKeyAt(header, 1)).toBeUndefined()
   })
 
   it('ignores malformed frontmatter link shapes and notes without frontmatter', () => {

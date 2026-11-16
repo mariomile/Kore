@@ -1119,6 +1119,78 @@ fn backlinks_lists_linking_notes_and_excludes_private_sources() {
 }
 
 #[test]
+fn backlinks_and_links_name_relations_and_quote_their_context() {
+    let fixture = graph();
+    fixture.write_note("notes/acme.md", "# Acme\nbody\n");
+    fixture.write_note(
+        "notes/ada.md",
+        "---\ncompany: \"[[Acme]]\"\n---\n# Ada\n\nAda left [[Acme]] in May.\n",
+    );
+    fixture.write_note(
+        "daily/2026-11-15.md",
+        "# 2026-11-15\n\n- Call with [[Acme]] about pricing\n- other\n",
+    );
+    fixture.build_index();
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]]\"", Some("company"));
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]] in May", None);
+    fixture.insert_link_at("daily/2026-11-15.md", "Acme", "[[Acme]]", None);
+
+    let value = json(&kore(&fixture, &["backlinks", "Acme", "--json"]));
+    let backlinks = value["backlinks"].as_array().unwrap();
+    assert_eq!(backlinks.len(), 2, "{value}");
+    let ada = backlinks
+        .iter()
+        .find(|b| b["path"] == "notes/ada.md")
+        .unwrap();
+    assert_eq!(ada["count"], 2);
+    assert_eq!(ada["relations"], serde_json::json!(["company"]));
+    assert_eq!(ada["mentions"][0]["relation"], "company");
+    assert_eq!(ada["mentions"][0]["context"], "company: \"[[Acme]]\"");
+    assert_eq!(ada["mentions"][1]["context"], "Ada left [[Acme]] in May.");
+    assert!(ada["mentions"][1].get("relation").is_none());
+    let daily = backlinks
+        .iter()
+        .find(|b| b["path"] == "daily/2026-11-15.md")
+        .unwrap();
+    assert!(
+        daily.get("relations").is_none(),
+        "a mention has no relations: {daily}"
+    );
+    assert_eq!(
+        daily["mentions"][0]["context"],
+        "- Call with [[Acme]] about pricing"
+    );
+
+    // --relation keeps only the notes linking under that key (any case).
+    let filtered = json(&kore(
+        &fixture,
+        &["backlinks", "Acme", "--relation", "Company", "--json"],
+    ));
+    let filtered = filtered["backlinks"].as_array().unwrap();
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0]["path"], "notes/ada.md");
+    assert_eq!(filtered[0]["count"], 1);
+
+    let links = json(&kore(&fixture, &["links", "notes/ada.md", "--json"]));
+    assert_eq!(links["links"][0]["path"], "notes/acme.md");
+    assert_eq!(
+        links["links"][0]["relations"],
+        serde_json::json!(["company"])
+    );
+    let none = json(&kore(
+        &fixture,
+        &["links", "notes/ada.md", "--relation", "author", "--json"],
+    ));
+    assert_eq!(none["links"].as_array().unwrap().len(), 0);
+
+    let human = stdout(&kore(&fixture, &["backlinks", "Acme"]));
+    assert!(
+        human.contains("notes/ada.md\tAda\t(company)\t(2 links)"),
+        "{human}"
+    );
+}
+
+#[test]
 fn backlinks_refuses_a_private_target_and_needs_the_index() {
     let fixture = graph();
     let no_index = kore(&fixture, &["backlinks", "Anything"]);

@@ -156,8 +156,8 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       for (const link of note.links) {
         run(
           db,
-          `INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, pos_from, pos_to)
-           VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO links(source_path, kind, target_raw, target_key, target_path_key, alias, relation, pos_from, pos_to)
+           VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             note.path,
             link.kind,
@@ -165,6 +165,7 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
             link.targetKey,
             link.targetPathKey,
             link.alias,
+            link.relation,
             link.posFrom,
             link.posTo,
           ],

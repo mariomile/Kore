@@ -11,6 +11,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   orphans, unlinked mentions, relation problems (#495).
 - Fix: aliased path wiki links open the right note; sync no longer hangs on a
   dead fetch (#496).
+- iPhone: full-bleed app icon and pulsing Kore mark at launch (#490).
 - Links: pick inline, compact, card or large per link, saved in the Markdown
   (#487).
 - Connect an app rows show the app logos (#483).

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { requestCaptureDrain } from '@/providers/capture-provider'
 import { useGraph } from '@/providers/graph-provider'
+import { refreshFieldCaret } from '@/mobile/use-keyboard'
 
 interface MobileCaptureDrawerProps {
   open: boolean
@@ -47,6 +48,10 @@ export function MobileCaptureDrawer({
   const [destination, setDestination] = useState<Destination>('daily')
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // The field is focused while the sheet is still sliding up, and iOS draws
+  // its caret where the field was at that moment; the caret stays hidden
+  // until the sheet has landed, then is re-anchored on the text.
+  const [settled, setSettled] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -54,6 +59,10 @@ export function MobileCaptureDrawer({
     const id = setTimeout(() => inputRef.current?.focus(), 30)
     return () => clearTimeout(id)
   }, [open])
+
+  useEffect(() => {
+    if (settled) refreshFieldCaret(inputRef.current)
+  }, [settled])
 
   const line = foldQuickCaptureText(text)
 
@@ -106,6 +115,7 @@ export function MobileCaptureDrawer({
         if (!next) setError(null)
         onOpenChange(next)
       }}
+      onOpenChangeComplete={setSettled}
     >
       <DrawerContent aria-label="New">
         <DrawerTitle className="sr-only">New</DrawerTitle>
@@ -136,7 +146,10 @@ export function MobileCaptureDrawer({
                   : 'Add to today’s daily'
             }
             aria-label="Capture"
-            className="w-full resize-none bg-transparent text-[17px] leading-snug outline-none placeholder:text-text-muted"
+            className={cn(
+              'w-full resize-none bg-transparent text-[17px] leading-snug outline-none placeholder:text-text-muted',
+              !settled && 'caret-transparent',
+            )}
           />
           {error !== null ? <p className="pb-2 text-[13px] text-destructive">{error}</p> : null}
           <div className="flex items-center gap-1.5">

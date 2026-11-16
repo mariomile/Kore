@@ -222,12 +222,16 @@ async function createRelationRow(
   // Best-effort: a type that cannot be read still gets its note, just
   // without starting values, which can be filled by hand.
   let stamps: Record<string, unknown> = {}
+  let home: string | undefined
   try {
-    stamps = await startingValuesFor(targetTag, await getTagType(targetTag))
+    const type = await getTagType(targetTag)
+    home = type?.folder
+    stamps = await startingValuesFor(targetTag, type)
   } catch {
     stamps = {}
   }
-  const path = await createTypedNoteWithTitle(title, targetTag, stamps, generation)
+  // A type with a home folder (`folder:`) gets its new note there.
+  const path = await createTypedNoteWithTitle(title, targetTag, stamps, generation, undefined, home)
   return await insertTextFor(path, title)
 }
 

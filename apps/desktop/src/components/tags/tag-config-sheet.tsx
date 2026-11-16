@@ -19,6 +19,7 @@ import { useRouter } from '@/routing/router'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagIconPicker } from './tag-icon-picker'
+import { TagFolderField } from './tag-folder-field'
 import { TagParentsField } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFieldPage } from './tag-field-page'
@@ -345,6 +346,13 @@ function TypePage({
               </SelectContent>
             </Select>
           </label>
+          <TagFolderField
+            folder={config.folder}
+            folders={config.folders}
+            onChange={config.setFolder}
+            labelClassName="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary"
+            triggerClassName="min-w-0 flex-1"
+          />
         </div>
       )}
 

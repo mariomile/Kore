@@ -35,6 +35,9 @@ export {
   type TagProperty,
   type TagPropertyType,
   type TagType,
+  parseTypeFolder,
+  TAG_FOLDER_KEY,
+  TYPE_FOLDER_TITLE_SEGMENT,
   type RollupAggregation,
   type RollupConfig,
   type ReverseConfig,
@@ -129,3 +132,4 @@ export {
   writeDefaultVaultObjects,
   type DefaultVaultObject,
 } from './default-objects'
+export { typeHomeFolder, isFolderNoteHome, typedNoteFolder } from './type-folder'

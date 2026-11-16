@@ -595,7 +595,7 @@ pub(super) fn tools() -> Vec<Tool> {
             properties: || json!({
                 "title": { "type": "string" },
                 "body": { "type": "string", "description": "Markdown placed under the title" },
-                "tags": { "type": "array", "items": { "type": "string" } },
+                "tags": { "type": "array", "items": { "type": "string" }, "description": "A tag whose type has a home folder places the note there" },
                 "properties": { "type": "object", "description": "Frontmatter values by key; lists as arrays" }
             }),
             required: &["title"],

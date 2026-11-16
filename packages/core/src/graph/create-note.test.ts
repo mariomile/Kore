@@ -198,6 +198,29 @@ describe('createTypedNoteWithTitle', () => {
   })
 })
 
+describe('createTypedNoteWithTitle in a type home', () => {
+  it('creates the note in the type folder', async () => {
+    bindBridge()
+    await expect(
+      createTypedNoteWithTitle('Ada', 'person', {}, 1, undefined, 'CRM/People'),
+    ).resolves.toBe('CRM/People/ada.md')
+  })
+
+  it('gives each note its own folder under a {title} home, suffixing both on collision', async () => {
+    bindBridge({ occupied: ['Active/Projects/kore-cloud/kore-cloud.md'] })
+    await expect(
+      createTypedNoteWithTitle(
+        'Kore Cloud',
+        'project',
+        {},
+        1,
+        undefined,
+        'Active/Projects/{title}',
+      ),
+    ).resolves.toBe('Active/Projects/kore-cloud-2/kore-cloud-2.md')
+  })
+})
+
 describe('newTypedNoteSource', () => {
   it('places a body block under the H1 and the type in the frontmatter', () => {
     const source = newTypedNoteSource('Dune', 'book', {}, 'A #book I loved.')

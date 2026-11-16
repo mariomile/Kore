@@ -332,6 +332,13 @@ export interface TagType {
    * falls back to its live layout. Never inherited: a child's tabs are its own.
    */
   views?: readonly SavedCollectionView[]
+  /**
+   * The type's home folder (`folder:` on the definition note), graph-relative.
+   * New notes of the type are born there; existing notes never move. A trailing `/{title}` segment gives each note its own
+   * folder (`Active/Projects/{title}` → `Active/Projects/Kore/Kore.md`), the
+   * folder-note layout. Absent when the type has no home.
+   */
+  folder?: string
 }
 
 /**
@@ -419,13 +426,46 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
   const icon = tagIconValue(frontmatter['icon'])
   const parents = parseTagExtends(frontmatter['extends'])
   const views = parseTagViews(frontmatter[TAG_VIEWS_KEY])
+  const folder = parseTypeFolder(frontmatter[TAG_FOLDER_KEY])
   return {
     properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
     ...(views.length === 0 ? {} : { views }),
+    ...(folder === undefined ? {} : { folder }),
   }
+}
+
+/** The frontmatter key a definition names its home folder under. */
+export const TAG_FOLDER_KEY = 'folder'
+
+/** The `{title}` placeholder: one folder per note, the note named like it. */
+export const TYPE_FOLDER_TITLE_SEGMENT = '{title}'
+
+/**
+ * Read a `folder:` value: a graph-relative folder, slashes trimmed, with an
+ * optional final `{title}` segment. Anything unsafe (`..`, backslashes,
+ * absolute paths, a `{title}` that is not the last segment) reads as none.
+ */
+export function parseTypeFolder(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim().replaceAll(/^\/+|\/+$/g, '')
+  if (trimmed === '' || trimmed.includes('\\')) {
+    return undefined
+  }
+  const segments = trimmed.split('/')
+  const bad = segments.some(
+    (segment, index) =>
+      segment === '' ||
+      segment === '.' ||
+      segment === '..' ||
+      (segment.includes('{') &&
+        !(segment === TYPE_FOLDER_TITLE_SEGMENT && index === segments.length - 1)),
+  )
+  return bad ? undefined : trimmed
 }
 
 /** The frontmatter key a definition names its parent tags under. */
@@ -490,7 +530,8 @@ export function encodeTagTypeJson(type: TagType): string {
     type.template === undefined &&
     type.icon === undefined &&
     parents.length === 0 &&
-    views.length === 0
+    views.length === 0 &&
+    type.folder === undefined
   ) {
     return JSON.stringify(type.properties)
   }
@@ -500,6 +541,7 @@ export function encodeTagTypeJson(type: TagType): string {
     ...(type.icon === undefined ? {} : { icon: type.icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
     ...(views.length === 0 ? {} : { views }),
+    ...(type.folder === undefined ? {} : { folder: type.folder }),
   })
 }
 
@@ -515,6 +557,7 @@ export function decodeTagTypeJson(column: string): TagType {
       icon: z.string().min(1).optional(),
       extends: z.array(z.string()).optional(),
       views: z.unknown().optional(),
+      folder: z.string().optional(),
     })
     .parse(parsed)
   const template =
@@ -522,12 +565,14 @@ export function decodeTagTypeJson(column: string): TagType {
   const icon = tagIconValue(object.icon)
   const parents = parseTagExtends(object.extends)
   const views = parseTagViews(object.views)
+  const folder = parseTypeFolder(object.folder)
   return {
     properties: object.properties,
     ...(template === undefined ? {} : { template }),
     ...(icon === undefined ? {} : { icon }),
     ...(parents.length === 0 ? {} : { extends: parents }),
     ...(views.length === 0 ? {} : { views }),
+    ...(folder === undefined ? {} : { folder }),
   }
 }
 

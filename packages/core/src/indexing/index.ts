@@ -34,7 +34,12 @@ export {
   type MovedHandler,
 } from './live'
 export { hashContent } from './hash'
-export { availableTemplatePath, slugPathForTitle, templateSlugPathForTitle } from './note-paths'
+export {
+  availableTemplatePath,
+  birthPathForTitle,
+  slugPathForTitle,
+  templateSlugPathForTitle,
+} from './note-paths'
 export { listTemplates, type TemplateEntry } from './template-list'
 export {
   buildIndexedNote,

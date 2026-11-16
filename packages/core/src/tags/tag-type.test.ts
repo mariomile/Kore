@@ -6,6 +6,7 @@ import {
   isPropertyKey,
   isTagDefinitionNote,
   parseTagTypeFrontmatter,
+  parseTypeFolder,
   propertyKeyForName,
   relationDisplay,
   relationTarget,
@@ -471,5 +472,39 @@ describe('extends (Plan 33 B2)', () => {
       extends: ['contact'],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})
+
+describe('type home folder (folder:)', () => {
+  it('reads a graph-relative folder, trimming slashes', () => {
+    expect(parseTypeFolder('CRM/People/')).toBe('CRM/People')
+    expect(parseTypeFolder(' /Active/Projects/{title} ')).toBe('Active/Projects/{title}')
+  })
+
+  it('reads anything unsafe or misplaced as no folder', () => {
+    for (const value of [
+      '',
+      '../x',
+      'a/../b',
+      String.raw`a\b`,
+      '{title}/x',
+      'a/{name}',
+      'a//b',
+      3,
+      null,
+    ]) {
+      expect(parseTypeFolder(value)).toBeUndefined()
+    }
+  })
+
+  it('rides the definition and the stored JSON', () => {
+    const type = parseTagTypeFrontmatter(
+      frontmatter({ kore: 'tag', folder: 'Active/Projects/{title}', properties: [] }),
+    )
+    expect(type?.folder).toBe('Active/Projects/{title}')
+    expect(decodeTagTypeJson(encodeTagTypeJson({ properties: [], folder: 'CRM/People' }))).toEqual({
+      properties: [],
+      folder: 'CRM/People',
+    })
   })
 })

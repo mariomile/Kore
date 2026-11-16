@@ -24,6 +24,7 @@ const definition = vi.hoisted(() => ({
     needsConversion: false,
     properties: [],
     template: null,
+    folder: null,
     icon: null,
     parents: [],
   } as TagDefinitionState,
@@ -76,6 +77,7 @@ beforeEach(() => {
     needsConversion: false,
     properties: [],
     template: null,
+    folder: null,
     icon: null,
     parents: [],
   }
@@ -97,6 +99,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -120,10 +123,41 @@ describe('TagConfigDialog', () => {
         { name: 'Read on', key: 'read-on', type: 'text' },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('shows the type folder and saves a change to it', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      folder: 'Active/Projects/{title}',
+      icon: null,
+      parents: [],
+    }
+    const view = await render(<Dialog tag="project" onClose={vi.fn()} />)
+
+    await expect
+      .element(view.getByRole('combobox', { name: 'Folder for new notes' }))
+      .toHaveTextContent('Active/Projects')
+    await expect
+      .element(view.getByText('Active/Projects/<Name>/<Name>.md', { exact: true }))
+      .toBeInTheDocument()
+    // One folder for all of them instead of one per note.
+    await view.getByRole('checkbox', { name: 'A folder for each note' }).click()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith('project', [], 7, {
+      template: null,
+      folder: 'Active/Projects',
+      icon: null,
+      parents: [],
+    })
   })
 
   it('picks a tag to build on and saves it as the definition’s parents', async () => {
@@ -134,6 +168,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: ['person'],
     }
@@ -147,6 +182,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('client', [], 7, {
       template: null,
+      folder: null,
       icon: null,
       parents: ['contact'],
     })
@@ -160,6 +196,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -185,7 +222,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'relation', target: 'person' }],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -196,6 +233,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Topic', key: 'topic', type: 'relations' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -217,6 +255,7 @@ describe('TagConfigDialog', () => {
       needsConversion: true,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -233,6 +272,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -261,7 +301,7 @@ describe('TagConfigDialog', () => {
       'book',
       [{ name: 'Author', key: 'writer', type: 'text' }],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -278,6 +318,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -330,7 +371,7 @@ describe('TagConfigDialog', () => {
         { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -341,6 +382,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -360,6 +402,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -389,7 +432,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -409,6 +452,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -437,7 +481,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     // Only the note on the old text is rewritten.
     expect(commitNoteFrontmatter).toHaveBeenCalledTimes(1)
@@ -456,6 +500,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Due', key: 'due', type: 'date' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -473,7 +518,7 @@ describe('TagConfigDialog', () => {
       'project',
       [{ name: 'Due', key: 'due', type: 'date' }],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
     expect(moveNoteCarryingSession).toHaveBeenCalledWith(
       'tags/project.md',
@@ -492,6 +537,7 @@ describe('TagConfigDialog', () => {
         { name: 'Status', key: 'status', type: 'select', options: ['draft', 'sent'] },
       ],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -521,7 +567,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       7,
-      { template: null, icon: null, parents: [] },
+      { template: null, folder: null, icon: null, parents: [] },
     )
   })
 
@@ -532,6 +578,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -551,6 +598,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -566,7 +614,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'text' }],
       7,
-      { template: null, icon: '📚', parents: [] },
+      { template: null, folder: null, icon: '📚', parents: [] },
     )
   })
 
@@ -577,6 +625,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: '📚',
       parents: [],
     }
@@ -593,6 +642,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     })
@@ -605,6 +655,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [],
       template: null,
+      folder: null,
       icon: null,
       parents: [],
     }
@@ -619,6 +670,7 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
       template: null,
+      folder: null,
       icon: 'icon:folder',
       parents: [],
     })

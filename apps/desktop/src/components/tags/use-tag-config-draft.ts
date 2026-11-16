@@ -20,6 +20,7 @@ import {
   type PendingRename,
 } from '@/lib/tags/schema-renames'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
+import { useVaultFolders } from '@/hooks/use-vault-folders'
 import { useGraph } from '@/providers/graph-provider'
 import {
   draftsForNewSchema,
@@ -66,6 +67,11 @@ export interface TagConfigDraft {
   setIcon: (icon: string | null) => void
   template: string | null
   setTemplate: (template: string | null) => void
+  /** The type's home folder (`folder:`): where its new notes are born. */
+  folder: string | null
+  setFolder: (folder: string | null) => void
+  /** Every vault folder the Folder field offers, depth-first. */
+  folders: string[]
   templates: TemplateEntry[]
   parents: string[]
   setParents: (parents: string[]) => void
@@ -115,6 +121,8 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
   const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
   const [template, setTemplate] = useState<string | null>(null)
   const [templates, setTemplates] = useState<TemplateEntry[]>([])
+  const [folder, setFolder] = useState<string | null>(null)
+  const folders = useVaultFolders()
   const [icon, setIcon] = useState<string | null>(null)
   // The tags this one builds on (Plan 33 B2) and the ones it may pick.
   const [parents, setParents] = useState<string[]>([])
@@ -147,6 +155,7 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
       setDrafts(rows)
       setNextRowId(rows.length)
       setTemplate(definition.template)
+      setFolder(definition.folder)
       setTemplates(available)
       setIcon(definition.icon)
       setParents(definition.parents)
@@ -242,6 +251,7 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     try {
       await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, {
         template,
+        folder,
         icon,
         parents,
       })
@@ -294,7 +304,7 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     }
     setSaving(true)
     try {
-      const extras = { template, icon, parents }
+      const extras = { template, folder, icon, parents }
       if (exists) {
         // Save the edits where they live, then carry the whole note (body,
         // views, comments) to the new path, refusing an occupied one.
@@ -337,6 +347,9 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     template,
     setTemplate,
     templates,
+    folder,
+    setFolder,
+    folders,
     parents,
     setParents,
     parentCandidates,

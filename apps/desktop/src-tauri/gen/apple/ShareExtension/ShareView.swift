@@ -290,6 +290,9 @@ private struct ThoughtField: View {
             Image(systemName: "pencil")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(KoreColor.muted)
+                // The symbol draws 1.7pt inside its own bounds; pull it back so
+                // its stroke, not its box, meets the 32pt edge.
+                .offset(x: -1.7)
                 .frame(width: 32, height: UIFont.preferredFont(forTextStyle: .body).lineHeight, alignment: .leading)
             TextField("Add a thought\u{2026}", text: $text, axis: .vertical)
                 .lineLimit(1...4)

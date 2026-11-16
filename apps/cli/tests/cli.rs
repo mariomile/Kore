@@ -1191,6 +1191,85 @@ fn backlinks_and_links_name_relations_and_quote_their_context() {
 }
 
 #[test]
+fn neighborhood_walks_two_hops_with_relations_and_skips_private_notes() {
+    let fixture = graph();
+    fixture.write_note("notes/acme.md", "# Acme\nsee [[Roadmap]]\n");
+    fixture.write_note("notes/roadmap.md", "# Roadmap\nbody\n");
+    fixture.write_note("notes/ada.md", "---\ncompany: \"[[Acme]]\"\n---\n# Ada\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\n[[Acme]]\n",
+    );
+    fixture.build_index();
+    fixture.insert_link_at("notes/ada.md", "Acme", "[[Acme]]", Some("company"));
+    fixture.insert_link_at("notes/acme.md", "Roadmap", "[[Roadmap]]", None);
+    fixture.insert_link_at("notes/secret.md", "Acme", "[[Acme]]", None);
+
+    let one = json(&kore(&fixture, &["neighborhood", "Ada", "--json"]));
+    let notes = one["notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 1, "{one}");
+    assert_eq!(notes[0]["path"], "notes/acme.md");
+    assert_eq!(notes[0]["via"][0]["relation"], "company");
+
+    let two = json(&kore(
+        &fixture,
+        &["neighborhood", "Ada", "--depth", "2", "--json"],
+    ));
+    let paths: Vec<&str> = two["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|note| note["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["notes/acme.md", "notes/roadmap.md"], "{two}");
+
+    let from_acme = json(&kore(&fixture, &["neighborhood", "Acme", "--json"]));
+    assert!(!from_acme.to_string().contains("secret"), "{from_acme}");
+
+    let bad = kore(&fixture, &["neighborhood", "Ada", "--depth", "3"]);
+    assert_eq!(bad.status.code(), Some(2));
+}
+
+#[test]
+fn coverage_reports_found_and_missing_words() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/pricing.md",
+        "# Pricing\nAcme pricing plan for 2026\n",
+    );
+    fixture.write_note("notes/acme.md", "# Acme\nCustomer since May\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nzanzibar treaty\n",
+    );
+    fixture.build_index();
+
+    let value = json(&kore(
+        &fixture,
+        &["coverage", "Che pricing ha Acme?", "--json"],
+    ));
+    assert_eq!(value["verdict"], "covered", "{value}");
+    assert_eq!(value["notes"][0]["path"], "notes/pricing.md");
+    assert_eq!(
+        value["notes"][0]["matched"],
+        serde_json::json!(["pricing", "acme"])
+    );
+    assert_eq!(value["missing"], serde_json::json!([]));
+
+    let partial = json(&kore(&fixture, &["coverage", "Acme zanzibar", "--json"]));
+    assert_eq!(partial["verdict"], "partial", "{partial}");
+    assert_eq!(
+        partial["missing"],
+        serde_json::json!(["zanzibar"]),
+        "private notes never count"
+    );
+
+    let none = json(&kore(&fixture, &["coverage", "zanzibar", "--json"]));
+    assert_eq!(none["verdict"], "none");
+    assert_eq!(none["notes"].as_array().unwrap().len(), 0);
+}
+
+#[test]
 fn backlinks_refuses_a_private_target_and_needs_the_index() {
     let fixture = graph();
     let no_index = kore(&fixture, &["backlinks", "Anything"]);

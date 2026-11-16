@@ -369,6 +369,49 @@ pub(super) fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "check_coverage",
+            description: "Before answering a question from the vault, check what the vault holds on it: each content word with how many notes contain it, the words no note contains (missing), the best-matching notes with the words they hold, their tags, dates and the relations around them, and a verdict: covered, partial or none. When the verdict is partial or none, say what the vault does not cover instead of guessing. Matches words, not meaning: also try search for paraphrases.",
+            effect: Effect::Read,
+            properties: || json!({
+                "question": { "type": "string", "description": "The question or topic, in plain words" },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 50, "description": "Maximum notes (default 10)" }
+            }),
+            required: &["question"],
+            build: |args| {
+                Ok(Invocation::new("coverage")
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "question")?]))
+            },
+        },
+        Tool {
+            name: "note_neighborhood",
+            description: "The notes around a note in one call, up to two links away, following links in both directions: each with its depth, tags and the edges (with their relation, e.g. company, author) that tie it in. Named relations rank first. Use it to gather context before answering about a person, project or company. Daily notes appear as neighbors but are not expanded. truncated is true when more notes matched than limit.",
+            effect: Effect::Read,
+            properties: || json!({
+                "note": note_schema(),
+                "depth": { "type": "integer", "minimum": 1, "maximum": 2, "description": "1 = direct neighbors (default), 2 = also their neighbors" },
+                "relation": { "type": "string", "description": "Walk only edges under this frontmatter key (e.g. company, project)" },
+                "tag": { "type": "string", "description": "Return only notes carrying this tag or a child of it (e.g. type/person)" },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 200, "description": "Maximum notes (default 40)" }
+            }),
+            required: &["note"],
+            build: |args| {
+                let depth = match args.get("depth") {
+                    None | Some(Value::Null) => None,
+                    Some(value) => match value.as_u64() {
+                        Some(depth @ 1..=2) => Some(depth.to_string()),
+                        _ => return Err("`depth` must be 1 or 2".to_string()),
+                    },
+                };
+                Ok(Invocation::new("neighborhood")
+                    .option("depth", depth)
+                    .option("relation", string_arg(args, "relation")?)
+                    .option("tag", string_arg(args, "tag")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "note")?]))
+            },
+        },
+        Tool {
             name: "explain_note",
             description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it, each with its named relations and the backlinks' context. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
             effect: Effect::Read,

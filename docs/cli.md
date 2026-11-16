@@ -20,6 +20,8 @@ kore properties <note>     # a note's frontmatter properties, typed
 kore links <note>          # the wiki links a note makes, resolved, with relations
 kore explain <note>        # properties, tags, outline, links and backlinks in one call
 kore route <from> <to>     # the shortest chain of links between two notes
+kore neighborhood <note>   # the notes around a note, up to 2 links away, ranked
+kore coverage <question>   # what the vault holds on a question before answering it
 kore grep <text>           # every line containing an exact text (no index needed)
 kore skills [name]         # the vault's agent skills (agents/skills/), or one in full
 kore active                # the note open in the app and the note tabs beside it
@@ -677,6 +679,71 @@ even when that would be shorter. No route is exit `3` in text mode and
 }
 ```
 
+### `kore neighborhood <note> [--depth 1|2] [--relation KEY] [--tag TAG] [--limit N] [--json]`
+
+The notes around one note in one call: what an agent gathers before a
+meeting or an answer (the person, their company, its projects, the
+transcripts) instead of chaining `explain`. Links are followed in both
+directions; each returned note has its `depth` (1 or 2), `tags`, and `via`:
+the edges tying it to the center or to a depth-1 note, each with its
+`relation` when it is a frontmatter value. `--depth 2` expands through
+ordinary notes only: daily notes and hubs (notes with more than 50 links,
+like a `persons.base` every person points `up:` to) are returned but not
+expanded. Named relations rank first, then the number of edges, then
+ordinary notes before dailies. `--relation KEY` walks only edges under that
+key; `--tag TAG` returns only notes carrying the tag or a child of it
+(walking still goes through any note). `--limit` (default 40, at most 200)
+caps the list and sets `truncated`. Private notes never appear. Requires
+the index (exit `4`).
+
+```jsonc
+// kore neighborhood Ada --depth 2 --json
+{
+  "path": "notes/ada.md", "title": "Ada", "depth": 2, "stale": false, "truncated": false,
+  "notes": [
+    { "path": "notes/acme.md", "title": "Acme", "depth": 1, "tags": ["type/company"],
+      "via": [{ "from": "notes/ada.md", "to": "notes/acme.md", "relation": "company" }] },
+    { "path": "notes/roadmap.md", "title": "Roadmap", "depth": 2, "tags": [],
+      "via": [{ "from": "notes/acme.md", "to": "notes/roadmap.md" }] }
+  ]
+}
+```
+
+### `kore coverage <question> [--limit N] [--json]`
+
+What the vault holds on a question, *before* an agent answers it, so the
+agent can say what the vault does not cover instead of guessing. Local and
+deterministic (no model): the question's content words (stopwords in
+English and Italian and one- or two-letter words dropped, numbers kept) are
+each counted against the full-text index (`terms`; a word no public note
+contains is in `missing`); runs of up to four words that are a note's title
+or alias are `entities`; the returned `notes` are those entities first,
+then the notes holding the most words, then by search rank, each with the
+words it holds (`matched`), its tags and date. `types` and `relations`
+count the tags and named relations around those notes; `earliest`/`latest`
+span their dates. `verdict` is `covered` (no word missing, and the question
+names a note or the best note holds at least half the words), `partial`
+(some words missing, or no note holds enough of them) or `none`. It matches
+words, not meaning (`mode: "lexical"`): a paraphrase is a job for `search`.
+`--limit` defaults to 10, at most 50. Requires the index (exit `4`).
+
+```jsonc
+// kore coverage "Che pricing ha Acme?" --json
+{
+  "question": "Che pricing ha Acme?", "verdict": "covered", "mode": "lexical", "stale": false,
+  "terms": [{ "term": "pricing", "notes": 3 }, { "term": "acme", "notes": 12 }],
+  "missing": [],
+  "entities": [{ "path": "notes/acme.md", "title": "Acme" }],
+  "notes": [
+    { "path": "notes/acme.md", "title": "Acme", "date": "2026-11-02", "matched": ["acme"], "tags": ["type/company"] },
+    { "path": "notes/pricing.md", "title": "Pricing", "date": "2026-10-20", "matched": ["pricing", "acme"], "tags": [] }
+  ],
+  "types": [{ "name": "type/company", "count": 1 }],
+  "relations": [{ "name": "company", "count": 9 }],
+  "earliest": "2026-10-20", "latest": "2026-11-02"
+}
+```
+
 ### `kore grep <text> [-i] [--limit N] [--json]`
 
 Every line, in every note on disk, that contains the text literally, with
@@ -894,6 +961,7 @@ fails (not found, private, no index) comes back as a tool result with
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
+| `note_neighborhood`, `check_coverage` | `neighborhood`, `coverage` |
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 | `remember` | `capture` (to today's daily, or `--to <note>`) |

@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: View options on a type page filter, sort, group and pick fields,
+  saved in the view shared with the Mac (#475).
+- iPhone: Calendar on a type page with a date field, and a moodboard Grid with
+  image covers (#477).
 - iPhone: every type has its own page with Table, Kanban and Grid views shared
   with the Mac (#469).
 - Connect Claude, ChatGPT, Cursor and other apps to the vault in one click

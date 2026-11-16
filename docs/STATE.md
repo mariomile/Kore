@@ -1,5 +1,17 @@
 # Kore working state
 
+## View options and calendar on iPhone type pages, 2026-11-16
+
+- [x] iPhone: on a type page the View options menu filters (values in the
+  option colors, before/after, more/less and contains conditions), sorts,
+  groups and picks the fields; filter, sort and group stay in the saved view
+  shared with the Mac; a grouped table has a header for each group (#475).
+- [x] iPhone: a type page with a date field gets a Calendar (month with dots,
+  the day's notes below, New already dated, the same date field as the Mac);
+  the Grid becomes a moodboard with the note's first image as its cover
+  (#477).
+- Not verified on a real iPhone.
+
 ## Type pages on iPhone, one-click app connections, 2026-11-16
 
 - [x] iPhone: every type has its own page with a Craft-style Table (# and

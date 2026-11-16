@@ -565,6 +565,9 @@ html:root {
 [data-testid='slash-menu'] [value^='Callout:']::before {
   content: '!';
 }
+[data-testid='slash-menu'] [value^='Page sub page']::before {
+  content: '❐';
+}
 [data-testid='slash-menu'] [value^='Type: #']::before {
   content: '#';
 }

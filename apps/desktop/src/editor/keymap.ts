@@ -1,6 +1,7 @@
 import { EDITOR_KEY_BINDINGS } from '@meowdown/core'
 import { ZOOM_IN_BINDING, ZOOM_OUT_BINDING } from './block-zoom-plugin'
 import { MOVE_BRANCH_BINDING } from './move-branch-opener'
+import { PAGE_BINDING } from './page-block-commands'
 
 /**
  * The central keymap registry (Plan 05 step 9). Every shortcut the app binds —
@@ -75,6 +76,7 @@ const KORE_EDITOR_BINDINGS: Record<string, string> = {
   [ZOOM_IN_BINDING]: 'Zoom into the block, section or list item (or ⌘-click a bullet)',
   [ZOOM_OUT_BINDING]: 'Zoom out one level (or Escape, or Back)',
   [MOVE_BRANCH_BINDING]: 'Move the block, section or list item to another note',
+  [PAGE_BINDING]: 'Turn the block into a page, or a page back into a block',
 }
 
 export const EDITOR_BINDING_DESCRIPTIONS: Record<string, string> = registerKeymap('editor', {

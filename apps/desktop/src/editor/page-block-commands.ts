@@ -130,3 +130,28 @@ export function unmarkPage(tr: Transaction, pos: number): Transaction {
   const tail = lineIdTail(head, pos + 1)
   return tail !== null && isPageBlockId(tail.id) ? tr.delete(tail.from, tail.to) : tr
 }
+
+/** The editor-scope key that turns the caret's block into a page (see `KORE_EDITOR_BINDINGS`). */
+export const PAGE_BINDING = 'Mod-Alt-p'
+
+/**
+ * Turn the caret's block into a page, or a page back into a list item (the
+ * Mac shortcut and the `/` menu's Page row). The block is the innermost list
+ * item around the caret, else its text line. Returns why it could not, or
+ * null.
+ */
+export function togglePageAtCaret(editor: Editor<EditorExtension>): string | null {
+  const { $from } = editor.state.selection
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth)
+    if (node.type.name !== 'list') continue
+    const pos = $from.before(depth)
+    if (pageBlockOf(node, pos) !== null) {
+      editor.view.dispatch(unmarkPage(editor.state.tr, pos))
+      return null
+    }
+    return turnIntoPage(editor, pos)
+  }
+  if (!$from.parent.isTextblock || $from.depth === 0) return 'This block cannot be a page.'
+  return turnIntoPage(editor, $from.before())
+}

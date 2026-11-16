@@ -178,4 +178,17 @@ describe('PageBlocks', () => {
     await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
     await expect.poll(() => handle.getMarkdown()).toBe('Trip notes\n\n- after\n')
   })
+
+  it('turns the caret block into a page with ⌥⌘P', async () => {
+    const handle = await renderNote('- Groceries\n  - Milk\n- After\n')
+    handle.focus()
+    handle.setSelection({ type: 'text', anchor: 4, head: 4 })
+    const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Meta' : 'Control'
+    await userEvent.keyboard(`{${mod}>}{Alt>}p{/Alt}{/${mod}}`)
+    await expect.poll(() => handle.getMarkdown()).toMatch(/^- Groceries \^page-[\da-z]{6}\n {2}- Milk\n/)
+    await expect.poll(() => cards.elements().length).toBe(1)
+    // The caret leaves the card for the next line a reader can see, where the
+    // `/` menu's row (the same toggle) would make that line a page.
+    await expect.poll(() => window.getSelection()?.anchorNode?.textContent ?? '').toBe('After')
+  })
 })

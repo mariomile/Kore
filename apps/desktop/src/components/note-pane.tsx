@@ -64,6 +64,7 @@ import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
+import { usePageSlashItems } from '@/editor/use-page-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
@@ -287,14 +288,16 @@ export function NotePaneComponent({
   const collectionSlashItems = useCollectionSlashItems(getEditor)
   const calloutSlashItems = useCalloutSlashItems(getEditor)
   const embedSlashItems = useEmbedSlashItems(getEditor)
+  const pageSlashItems = usePageSlashItems(getEditor)
   const onSlashMenuSearch = useCallback(
     async (query: string) => [
+      ...(await pageSlashItems(query)),
       ...(await collectionSlashItems(query)),
       ...(await calloutSlashItems(query)),
       ...(await embedSlashItems(query)),
       ...(await templateSlashItems(query)),
     ],
-    [collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
+    [pageSlashItems, collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
   )
   // The embeds under the body: the typed ones while this session's seed is
   // unchanged, otherwise the snapshot's (a new session or an external

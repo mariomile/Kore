@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { resourceUrl, errorMessage, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
+import { togglePageAtCaret } from './page-block-commands'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
   AcceptPendingReplacementOptions,
@@ -196,6 +197,11 @@ export interface NoteEditorHandle {
   undo(): void
   /** Redo the latest undone editor transaction. */
   redo(): void
+  /**
+   * Turn the caret's block into a page, or a page back into a block (the
+   * `/` menu's Page row). Returns why it could not, or null.
+   */
+  togglePage?(): string | null
   /**
    * Move the caret to the heading a link fragment names (text or slug), or to
    * the line a `^id` fragment names, and scroll it into view; false when the
@@ -456,6 +462,10 @@ export function NoteEditor({
       findPrevious: () => innerRef.current?.findPrevious(),
       undo: () => innerRef.current?.editor?.commands.undo(),
       redo: () => innerRef.current?.editor?.commands.redo(),
+      togglePage: () => {
+        const editor = innerRef.current?.editor
+        return editor === undefined || editor === null ? null : togglePageAtCaret(editor)
+      },
       revealHeading: (fragment) => revealHeading(innerRef.current, fragment),
     }),
     [],

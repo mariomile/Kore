@@ -22,6 +22,7 @@ pub mod index;
 pub mod info;
 pub mod library;
 pub mod links;
+pub mod lint;
 pub mod list;
 pub mod neighborhood;
 pub mod new;

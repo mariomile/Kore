@@ -23,7 +23,10 @@ export function DateLinkLabels({ dateFormat }: { dateFormat: DateFormat }): null
         defineMarkView({
           name: 'mdWikilink',
           constructor: (mark) => {
-            const attrs = mark.attrs as { target?: string; display?: string | null }
+            const attrs = mark.attrs as {
+              target?: string
+              display?: string | null
+            }
             const target = attrs.target ?? ''
             const dom = document.createElement('span')
             dom.className = 'md-wikilink-view md-atom-view'
@@ -35,12 +38,14 @@ export function DateLinkLabels({ dateFormat }: { dateFormat: DateFormat }): null
             const label = document.createElement('span')
             label.className = 'md-wikilink-view-label'
             label.contentEditable = 'false'
+            const display = attrs.display ?? ''
+            const isDate = display === '' && isIsoDate(target)
+            // Only the compact date stays on one line; any other link wraps
+            // like text, or a long title would push the page wider than the
+            // phone.
+            if (isDate) label.dataset['dateLink'] = ''
             label.textContent =
-              attrs.display !== undefined && attrs.display !== null && attrs.display !== ''
-                ? attrs.display
-                : isIsoDate(target)
-                  ? formatShortDate(target, dateFormat)
-                  : target
+              display !== '' ? display : isDate ? formatShortDate(target, dateFormat) : target
             preview.appendChild(label)
             const contentDOM = document.createElement('span')
             contentDOM.className = 'md-wikilink-view-content md-atom-view-content'

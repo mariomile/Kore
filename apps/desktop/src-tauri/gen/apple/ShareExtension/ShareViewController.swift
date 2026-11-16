@@ -3,8 +3,8 @@ import UIKit
 
 /// The extension's principal class (`NSExtensionPrincipalClass` — the
 /// `@objc` name pins what the Info.plist references). Storyboard-less: it
-/// hosts the SwiftUI `ShareView`, and the save flow starts as soon as the
-/// sheet appears.
+/// hosts the SwiftUI `ShareView`, which reads the shared item as the sheet
+/// appears and saves on the user's one tap.
 @objc(ShareViewController)
 final class ShareViewController: UIViewController {
     private let state = ShareState()

@@ -1,5 +1,45 @@
 # Kore working state
 
+## iPhone share sheet, type dialog, UIScene, layout out of settings, 2026-11-16
+
+- [x] iPhone share sheet: when you share a link or an X post, you pick where
+  it goes (today's note under Links, an existing note found by search, or a
+  new note in a folder) and how it's drawn (Link, Compact, Card, Large, Text
+  quote, or the post/video player); you can add a thought, the sheet remembers
+  your last choices, and saving is instant and offline, with the app writing
+  the link the next time it opens (#498).
+- [x] Redesigned type configuration dialog, with value colors and ordering
+  (#501).
+- [x] Open tabs and panel layout move out of the settings file, so navigating
+  no longer rewrites settings; open tabs reset once after updating (#502).
+- [x] The iPhone app adopts the UIScene lifecycle, so builds made with Xcode
+  27 launch; the Record audio quick action keeps working while the app is open
+  (#503).
+- [x] iPhone: long wiki links now wrap instead of staying on one line, so
+  notes no longer scroll sideways (#506).
+- Not verified on a real iPhone; #503 needs a TestFlight check on iOS 26
+  hardware.
+
+## Graph lint, link and sync fixes, iPhone icon, 2026-11-16
+
+- [x] Agents: `kore lint [--check broken,orphans,unlinked,relations] [--limit
+  N] [--json]` / MCP graph_lint report graph health: broken wiki links grouped
+  by target, orphan notes (dailies and tag pages skipped), unlinked mentions
+  of a note's title, and relation problems (missing inverse such as supersedes
+  without superseded_by, wrong target type). Report only, never edits; private
+  notes excluded (#495).
+- [x] Fix: tapping an aliased path link such as `[[Folder/Note|Label]]` opens
+  the real note instead of creating an empty one (Mac and iPhone, hover
+  preview too); sync gets network timeouts (30 s connect, 120 s silence) so a
+  fetch that dies mid-way no longer leaves "Syncing" stuck (#496).
+- [x] iPhone: full-bleed app icon, and the Kore mark pulses on the launch
+  screen (#490).
+- [x] Editor, Mac and iPhone: date links read as compact dates
+  (`[[2026-11-20]]` shows `Nov 20`, Markdown unchanged, a `|label` wins); ⌥⌘P
+  and a / Page command turn the caret's block into a page; the page card
+  thumbnail sits on the bullet column (#488).
+- Not verified on a real iPhone.
+
 ## Link styles, app logos, graph relations and agent tools, 2026-11-16
 
 - [x] Links: choose how each link looks (inline link, compact, card or large)

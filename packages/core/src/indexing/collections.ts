@@ -298,12 +298,31 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
  */
 export async function listNotesWithProperty(
   key: string,
+  options: { tag?: string } = {},
 ): Promise<{ notePath: string; value: CollectionValue }[]> {
-  const rows = await db
-    .selectFrom('noteProperties')
-    .where('key', '=', key)
-    .select(['notePath', 'value', 'valueType', 'valueNumber'])
-    .orderBy('notePath')
+  let query = db.selectFrom('noteProperties').where('noteProperties.key', '=', key)
+  if (options.tag !== undefined) {
+    // Only the tag's own members: another type can use the same key with
+    // its own meaning, and an option rename must not reach it.
+    const tagKey = foldTag(options.tag)
+    query = query.where(({ exists, selectFrom }) =>
+      exists(
+        selectFrom('tags')
+          .select('tags.notePath')
+          .whereRef('tags.notePath', '=', 'noteProperties.notePath')
+          .where('tags.tagKey', '=', tagKey)
+          .where('tags.member', '=', 1),
+      ),
+    )
+  }
+  const rows = await query
+    .select([
+      'noteProperties.notePath',
+      'noteProperties.value',
+      'noteProperties.valueType',
+      'noteProperties.valueNumber',
+    ])
+    .orderBy('noteProperties.notePath')
     .execute()
   return rows.map((row) => ({
     notePath: row.notePath,

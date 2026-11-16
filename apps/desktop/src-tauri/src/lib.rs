@@ -54,6 +54,7 @@ mod skill;
 #[cfg(target_os = "macos")]
 mod wake;
 mod windows;
+mod workspace_layout;
 
 // The watcher, embedding runtime, and in-app PTY are desktop capabilities
 // (Plan 19): mobile swaps in stand-ins with the identical command surface,
@@ -401,6 +402,8 @@ pub fn run() {
             recents::forget_recent,
             settings::settings_load,
             settings::settings_save,
+            workspace_layout::workspace_layout_load,
+            workspace_layout::workspace_layout_save,
             library::library_roots,
             library::library_list,
             library::library_read,
@@ -456,6 +459,7 @@ pub fn run() {
             capture::capture_inbox_remove,
             capture::capture_inbox_reject,
             capture::capture_shared_inbox_relay,
+            capture::share_targets_write,
             capture::capture_screenshot_promote,
             capture::capture_link_preview,
             capture_fetch::capture_meta_fetch,

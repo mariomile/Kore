@@ -1,4 +1,5 @@
 import {
+  birthPathForTitle,
   errorMessage,
   getBacklinks,
   getLinkSources,
@@ -93,9 +94,14 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
   const runMove = async (
     title: string,
     gen: number,
-    options?: { rewriteInboundPathLinks?: boolean },
+    options?: { rewriteInboundPathLinks?: boolean; birth?: boolean },
   ): Promise<void> => {
-    const target = await slugPathForTitle(currentPath, title)
+    // A birth may land in the note's type folder (`folder:` on the type);
+    // a retitle only re-derives the name where the note already lives.
+    const target =
+      options?.birth === true
+        ? await birthPathForTitle(currentPath, title, latestSource)
+        : await slugPathForTitle(currentPath, title)
     if (target === currentPath) {
       return
     }
@@ -152,7 +158,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
         // the file sheds its placeholder name for the title's slug.
         const operation = startOperation(`Naming "${rename.to}"`)
         try {
-          await runMove(rename.to, gen)
+          await runMove(rename.to, gen, { birth: true })
           operation.done()
         } catch (cause) {
           console.error('note file move failed:', cause)

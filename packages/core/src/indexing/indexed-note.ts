@@ -146,8 +146,11 @@ import {
  * 34 - `links.relation` (migration 0028): the frontmatter key a link is the
  * value of, so `company: "[[Acme]]"` is a named `company` edge and not a bare
  * mention. Existing rows hold NULL until the rebuild fills them.
+ * 35 - a type's `folder:` (its home, where its new notes are born) rides the
+ * stored tag type JSON. Definitions indexed before it lack the key until the
+ * rebuild re-reads them.
  */
-export const PROJECTION_VERSION = 34
+export const PROJECTION_VERSION = 35
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

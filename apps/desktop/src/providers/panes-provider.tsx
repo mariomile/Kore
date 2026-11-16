@@ -28,13 +28,13 @@ import {
   type PaneLocation,
   type PanePlacement,
 } from '@/providers/pane-layout'
-import { useSettings } from '@/providers/settings-provider'
+import { useUpdateWorkspaceLayout, useWorkspaceLayout } from '@/providers/workspace-layout-provider'
 import type { Route } from '@/routing/route'
 import { createRouterStore, type RouterStore } from '@/routing/router-store'
 
 /**
  * The workspace's columns of panes (split panes design, 2026-09-14, part 2).
- * The *layout* is the persisted per-graph `openTabs` entry; the live stores
+ * The *layout* is the graph's persisted workspace layout; the live stores
  * behind each pane (router history, focused daily day) are created here and
  * outlive re-renders, and the active pane is ephemeral. Tab contents are the
  * `OpenTabsProvider`'s business; this provider owns pane entries and moves a
@@ -98,9 +98,6 @@ export interface PanesValue {
 const PanesContext = createContext<PanesValue | null>(null)
 const PaneIdContext = createContext<string | null>(null)
 
-/** Shared empty list, so "this graph has no layout yet" keeps a stable identity. */
-const NO_COLUMNS: readonly OpenColumn[] = []
-
 interface PanesProviderProps {
   /** The first pane's launch route; defaults to today. */
   initialRoute?: Route | undefined
@@ -131,10 +128,10 @@ function paneInColumn(
 }
 
 export function PanesProvider({ initialRoute, children }: PanesProviderProps): ReactElement {
-  const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
   const root = graph?.root ?? null
-  const stored = root === null ? NO_COLUMNS : (settings.openTabs[root] ?? NO_COLUMNS)
+  const stored = useWorkspaceLayout(root)
+  const updateLayout = useUpdateWorkspaceLayout()
 
   // Read inside memos and callbacks instead of depended on: `stored` is
   // rewritten on every tab write in any pane, and depending on it would give
@@ -194,7 +191,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   }
 
   // Connect the live panes' routers to note moves, and drop the handles whose
-  // pane entry disappeared from settings. The cleanup unsubscribes everything
+  // pane entry disappeared from the layout. The cleanup unsubscribes everything
   // this run connected; the next run reconnects from scratch.
   useEffect(() => {
     const live = new Set(panes.map((pane) => pane.id))
@@ -221,12 +218,11 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   }, [panes])
 
   const writeLayout = useCallback(
-    (mutate: (columns: OpenColumn[]) => OpenColumn[]) => {
+    (mutate: (columns: readonly OpenColumn[]) => readonly OpenColumn[]) => {
       if (root === null) {
         return
       }
-      updateSettingsWith((current) => {
-        const graphColumns = current.openTabs[root] ?? []
+      updateLayout(root, (graphColumns) => {
         // Nothing persisted yet: the live layout is the base, so a split
         // writes the whole document rather than one lone pane.
         const base =
@@ -237,10 +233,10 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
               }))
             : graphColumns
         const next = mutate(base)
-        return next === base ? {} : { openTabs: { ...current.openTabs, [root]: next } }
+        return next === base ? graphColumns : next
       })
     },
-    [root, updateSettingsWith, columns],
+    [root, updateLayout, columns],
   )
 
   const setActivePane = useCallback((id: string) => {

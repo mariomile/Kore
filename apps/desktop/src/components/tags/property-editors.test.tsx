@@ -244,8 +244,38 @@ describe('PropertyValueEditor', () => {
     await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
     // The type lands in the new note's Type field in the one create, never
     // as a hidden body `#company` line that typing in the body could erase.
-    expect(createTypedNoteWithTitle).toHaveBeenCalledWith('Trade Republic', 'company', {}, 1)
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Trade Republic',
+      'company',
+      {},
+      1,
+      undefined,
+      undefined,
+    )
     expect(createNoteWithTitle).not.toHaveBeenCalled()
+  })
+
+  it('creates the related note in the target type folder when it has one', async () => {
+    relationSuggestions.current = []
+    vaultTags.current = ['Company']
+    getTagType.mockResolvedValue({ properties: [], folder: 'CRM/Companies' })
+    createTypedNoteWithTitle.mockResolvedValue('CRM/Companies/trade-republic.md')
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Trade Republic' })
+    const property: TagProperty = { name: 'Company', key: 'company', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Company' }).click()
+    await userEvent.keyboard('Trade Republic')
+    await view.getByRole('option', { name: 'Create “Trade Republic” in #company' }).click()
+    await vi.waitFor(() => expect(onCommit).toHaveBeenCalledWith('[[Trade Republic]]'))
+    expect(createTypedNoteWithTitle).toHaveBeenCalledWith(
+      'Trade Republic',
+      'company',
+      {},
+      1,
+      undefined,
+      'CRM/Companies',
+    )
   })
 
   it('creates a plain note from an untargeted relation when no collection matches', async () => {

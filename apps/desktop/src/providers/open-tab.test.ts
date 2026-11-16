@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { settingsSchema, untitledNotePath, type OpenTab } from '@kore/core'
+import { untitledNotePath, workspaceLayoutSchema, type OpenTab } from '@kore/core'
 import { routesEqual } from '@/routing/route'
 import { openTabForRoute, routeForOpenTab, tabKey } from './open-tab'
 
@@ -7,10 +7,10 @@ describe('openTabForRoute', () => {
   it('preserves Inbox through stored tabs and distinguishes it from All', () => {
     const route = { kind: 'allNotes', filter: { kind: 'inbox' } } as const
     const tab = openTabForRoute(route)
-    const settings = settingsSchema.parse({
-      openTabs: { '/g': [{ id: 'main', panes: [{ id: 'main', tabs: [tab], activeKey: null }] }] },
+    const layout = workspaceLayoutSchema.parse({
+      '/g': [{ id: 'main', panes: [{ id: 'main', tabs: [tab], activeKey: null }] }],
     })
-    const restored = settings.openTabs['/g']![0]!.panes[0]!.tabs[0]!
+    const restored = layout['/g']![0]!.panes[0]!.tabs[0]!
     expect(routeForOpenTab(restored)).toEqual(route)
     expect(routesEqual(route, { kind: 'allNotes', filter: { kind: 'all' } })).toBe(false)
   })

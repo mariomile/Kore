@@ -72,7 +72,7 @@ export function CardPropertyChips({ type, entry }: CardPropertyChipsProps): Reac
       title: `${property.name}: ${text}`,
       badge:
         property.type === 'select' || property.type === 'status'
-          ? selectOptionBadgeClass(reading.text)
+          ? selectOptionBadgeClass(reading.text, property)
           : null,
       checked: false,
     })

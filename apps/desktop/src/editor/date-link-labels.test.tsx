@@ -37,6 +37,14 @@ describe('DateLinkLabels', () => {
     expect(handle.getMarkdown()).toBe(NOTE)
   })
 
+  it('keeps only the compact date on one line, so a long title wraps', async () => {
+    await renderNote()
+    const wrap = [...document.querySelectorAll('.md-wikilink-view-label')].map(
+      (label) => getComputedStyle(label).whiteSpace,
+    )
+    expect(wrap.map((value) => value === 'nowrap')).toEqual([true, true, false, false])
+  })
+
   it('follows the date format setting', async () => {
     await renderNote('iso')
     expect(labels()[0]).toBe('2026-11-20')

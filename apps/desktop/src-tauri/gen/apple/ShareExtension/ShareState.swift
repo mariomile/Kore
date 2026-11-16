@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import UniformTypeIdentifiers
 
@@ -12,31 +13,60 @@ enum SharedCapture {
 }
 
 enum ShareStatus {
-    case saving
+    /// Reading the shared item (a blink: no network is involved).
+    case loading
+    /// Waiting on the user's choices; Save is one tap away.
+    case ready
     case saved
     case failed
 }
 
-/// The extension's one flow: extract the shared item, spool an envelope into
-/// the App Group inbox, report. Entirely offline — saving never waits on the
-/// network, which is the point of the envelope model (the main app relays,
-/// drains, and enriches later; see `docs/porting/upstream-mobile/share-extension.md`).
+/// The share sheet's one flow: extract the shared item, let the user pick
+/// how and where (pre-filled from the last share, so a repeat is one tap),
+/// spool an envelope into the App Group inbox, report. Entirely offline:
+/// saving never waits on the network, which is the point of the envelope
+/// model (the main app relays, drains, and enriches later; see
+/// `docs/porting/upstream-mobile/share-extension.md`).
 final class ShareState: ObservableObject {
-    @Published var status = ShareStatus.saving
+    @Published var status = ShareStatus.loading
+    @Published private(set) var capture: SharedCapture?
+    @Published var look = ShareLook.card
+    @Published var destination = ShareDestination.daily
+    @Published var thought = ""
 
     var extensionContext: NSExtensionContext?
 
-    /// Single-flight: SwiftUI can fire `onAppear` more than once, and a
-    /// second pass would mint a fresh envelope id — a duplicate capture.
-    /// (The drain would dedup an identical re-share anyway, but the spool
-    /// should never carry one in the first place.)
+    /// The note list the app last published, read once per share.
+    private(set) lazy var targets = ShareTargets.load()
+    private let preferences = SharePreferences()
+
+    /// Single-flight guards: SwiftUI can fire `onAppear` more than once, and a
+    /// second save would mint a fresh envelope id, a duplicate capture.
     private var started = false
+    private var saving = false
 
     /// How long the "Saved" confirmation stays up before the sheet dismisses
-    /// itself — long enough to read, short enough to keep the flow two-tap.
-    private static let dismissDelay: TimeInterval = 0.9
+    /// itself: long enough to read, short enough to keep the flow two-tap.
+    private static let dismissDelay: TimeInterval = 0.7
 
-    func save() {
+    /// What the shared link is (nil for plain text).
+    var kind: ShareContentKind? {
+        guard case let .link(url, _, _, _) = capture else {
+            return nil
+        }
+        return ShareContentKind.of(url: url)
+    }
+
+    /// The page's title, the default name of a new note.
+    var pageTitle: String {
+        guard case let .link(url, title, _, _) = capture else {
+            return ""
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? (URL(string: url)?.host ?? url) : trimmed
+    }
+
+    func load() {
         guard !started else {
             return
         }
@@ -45,21 +75,35 @@ final class ShareState: ObservableObject {
             return update(.failed)
         }
         Self.extract(from: context) { [weak self] capture in
-            guard let self else {
-                return
+            DispatchQueue.main.async {
+                guard let self else {
+                    return
+                }
+                guard let capture else {
+                    return self.update(.failed)
+                }
+                self.capture = capture
+                if let kind = self.kind {
+                    self.look = self.preferences.look(for: kind)
+                    self.destination = self.preferences.destination(
+                        pageTitle: self.pageTitle, targets: self.targets)
+                }
+                self.status = .ready
             }
-            guard let capture else {
-                return self.update(.failed)
-            }
-            self.spool(capture)
         }
     }
 
-    func dismiss() {
-        extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+    /// Pick a new note in the remembered folder, named after the page.
+    func chooseNewNote() {
+        destination = .new(title: pageTitle, folder: preferences.folder(targets: targets))
     }
 
-    private func spool(_ capture: SharedCapture) {
+    func save() {
+        guard status == .ready, !saving, let capture else {
+            return
+        }
+        saving = true
+        let note = thought.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             switch capture {
             case let .link(url, title, selection, metaDescription):
@@ -67,10 +111,18 @@ final class ShareState: ObservableObject {
                     url: url,
                     title: title,
                     selection: selection,
-                    metaDescription: metaDescription
+                    metaDescription: metaDescription,
+                    note: note.isEmpty ? nil : note,
+                    look: look,
+                    destination: destination
                 )
+                if let kind {
+                    preferences.remember(look: look, for: kind)
+                }
+                preferences.remember(destination: destination)
             case let .text(text):
-                guard try CaptureInbox.spoolText(text, source: "ios-share") else {
+                let line = note.isEmpty ? text : "\(text) · \(note)"
+                guard try CaptureInbox.spoolText(line, source: "ios-share") else {
                     return update(.failed) // nothing printable to save
                 }
             }
@@ -79,13 +131,22 @@ final class ShareState: ObservableObject {
                 self?.dismiss()
             }
         } catch {
+            saving = false
             update(.failed)
         }
     }
 
+    func dismiss() {
+        extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+    }
+
     private func update(_ status: ShareStatus) {
-        DispatchQueue.main.async {
+        if Thread.isMainThread {
             self.status = status
+        } else {
+            DispatchQueue.main.async {
+                self.status = status
+            }
         }
     }
 

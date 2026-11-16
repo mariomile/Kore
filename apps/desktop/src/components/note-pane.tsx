@@ -49,6 +49,7 @@ import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
 import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
+import { PageBlocks } from '@/editor/page-blocks'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LineAuthorShading } from '@/editor/line-author-shading'
@@ -636,7 +637,9 @@ export function NotePaneComponent({
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
-        {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
+        {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
+        {/* Every surface: a sub page reads as a card, a tap zooms into it. */}
+        <PageBlocks />
         {/* Touch only: closing the keyboard blurs the editor, and an open
             [[ / slash menu must not outlive it (pointer users dismiss it by
             clicking outside). */}

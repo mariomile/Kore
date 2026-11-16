@@ -77,6 +77,14 @@ export {
   type SourceBacklink,
 } from './move-branch'
 export {
+  PAGE_ID_PREFIX,
+  isPageBlockId,
+  linePageId,
+  newPageBlockId,
+  pagePreview,
+  pageTitle,
+} from './sub-page'
+export {
   extractHeadingSection,
   formatNoteTransclusion,
   parseNoteTransclusions,

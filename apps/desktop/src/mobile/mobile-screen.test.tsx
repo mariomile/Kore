@@ -116,6 +116,7 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerContent: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerBody: ({ children }: { children?: import('react').ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children?: import('react').ReactNode }) => <h2>{children}</h2>,
+  DrawerDescription: ({ children }: { children?: import('react').ReactNode }) => <p>{children}</p>,
   DrawerTrigger: ({ children }: { children?: import('react').ReactNode }) => <>{children}</>,
 }))
 
@@ -810,8 +811,6 @@ describe('MobileShell', () => {
           canMoveUp: true,
           canMoveDown: true,
           canAttachFiles: false,
-          blockKind: 'text',
-          canUndo: false,
         },
         commands: {
           cycleBulletOrderedList: vi.fn(),
@@ -821,8 +820,6 @@ describe('MobileShell', () => {
           moveUp: vi.fn(),
           moveDown: vi.fn(),
           insertTrigger: vi.fn(),
-          setBlockKind: vi.fn(),
-          undo: vi.fn(),
           dismissKeyboard: vi.fn(),
           attachFiles: vi.fn(),
           scrollCaretIntoView: vi.fn(),

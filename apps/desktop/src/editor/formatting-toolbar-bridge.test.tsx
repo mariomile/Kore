@@ -80,8 +80,6 @@ describe('FormattingToolbarBridge', () => {
       canMoveUp: true,
       canMoveDown: false,
       canAttachFiles: false,
-      blockKind: 'bullet',
-      canUndo: expect.any(Boolean),
     })
   })
 

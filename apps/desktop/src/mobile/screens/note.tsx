@@ -104,7 +104,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
           // so the pane carries the vertical breathing room itself.
           className="pt-4"
           gutterClassName={MOBILE_CONTENT_GUTTER}
-          editorClassName="min-h-[60dvh]"
+          editorClassName="min-h-[30dvh]"
         />
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink opens the Daily surface at

@@ -67,7 +67,12 @@ export function DayCarousel({
        (ProseMirror's caret reveal) cannot offset the transform-positioned
        belt. Inline so pre-iOS-16 falls back to the class's `hidden`, healed
        by the scroll guard in useDayCarousel. */
-    <div className="min-h-0 flex-1 overflow-hidden" style={{ overflow: 'clip' }} ref={emblaRef}>
+    <div
+      data-day-carousel=""
+      className="min-h-0 flex-1 overflow-hidden"
+      style={{ overflow: 'clip' }}
+      ref={emblaRef}
+    >
       <div className="flex h-full">
         {Array.from({ length: dayWindow.count }, (_, index) => {
           const day = dateAtIndex(dayWindow, index)

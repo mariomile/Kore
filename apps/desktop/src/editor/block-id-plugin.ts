@@ -9,7 +9,9 @@ import {
 } from '@prosekit/pm/state'
 import { Mapping } from '@prosekit/pm/transform'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
-import { targetSpan } from './block-zoom-target'
+import { targetAt, targetSpan } from './block-zoom-target'
+import { setZoom } from './block-zoom-state'
+import { closedPageAround } from './page-block-plugin'
 import { clearZoom, zoomTarget } from './block-zoom-plugin'
 
 /**
@@ -289,13 +291,22 @@ export function revealBlockId(view: EditorView, id: string): boolean {
   const caret = Math.min(hit.caret, state.doc.content.size)
   const tr = state.tr
   const zoom = zoomTarget(state)
+  let zoomAfter = zoom
   if (zoom !== null) {
     const span = targetSpan(state.doc, zoom)
     if (span === null || hit.from < span.from || hit.to > span.to) {
       // Leave the zoom in this same transaction, so the caret lands on the
       // line instead of being clamped back into the zoomed block.
       clearZoom(tr)
+      zoomAfter = null
     }
+  }
+  // A line inside a sub page (or the page's own line) opens that page, so
+  // the caret and the flash land on text a reader can see.
+  const page = closedPageAround(state.doc, zoomAfter, hit.from)
+  const pageZoom = page === null ? null : targetAt(state.doc, state.doc.resolve(page.pos + 1))
+  if (pageZoom !== null) {
+    setZoom(tr, pageZoom)
   }
   tr.setSelection(TextSelection.near(state.doc.resolve(caret))).setMeta(blockIdKey, {
     flash: { from: hit.from, to: hit.to },

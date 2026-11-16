@@ -33,6 +33,9 @@ import { copyLinkToBlock } from './copy-block-link'
 import { canMoveBranch } from './move-branch-picker'
 import { openMoveBranch } from './move-branch-opener'
 import { whenEditorMounted } from './when-editor-mounted'
+import { copySliceWithoutLineIds, turnIntoPage, unmarkPage } from './page-block-commands'
+import { pageBlockOf } from './page-block-plugin'
+import { startOperation } from '@/lib/operations'
 
 const HANDLE_CLICK_PX = 5
 
@@ -204,8 +207,21 @@ interface BlockActionMenuItemsProps {
 }
 
 function duplicateRange(editor: TypedEditor, state: BlockActionState): void {
-  const slice = editor.state.doc.slice(state.from, state.to)
-  editor.view.dispatch(editor.state.tr.replaceRange(state.to, state.to, slice).scrollIntoView())
+  const { doc, schema } = editor.state
+  const slice = doc.slice(state.from, state.to)
+  // Whole blocks copy without their line ids (a page gets a fresh one), so a
+  // duplicate never steals a link; a partial slice copies as it is.
+  const tr =
+    slice.openStart === 0 && slice.openEnd === 0
+      ? editor.state.tr.insert(state.to, copySliceWithoutLineIds(slice, schema, doc))
+      : editor.state.tr.replaceRange(state.to, state.to, slice)
+  editor.view.dispatch(tr.scrollIntoView())
+}
+
+/** Whether the block the menu acts on is a sub page. */
+function isPageAt(editor: TypedEditor, state: BlockActionState): boolean {
+  const node = editor.state.doc.nodeAt(state.from)
+  return state.count === 1 && node !== null && pageBlockOf(node, state.from) !== null
 }
 
 function deleteRange(editor: TypedEditor, state: BlockActionState): void {
@@ -224,6 +240,15 @@ function BlockActionMenuItems({
     onRan()
     editor.focus()
   }
+  const isPage = isPageAt(editor, state)
+  // Any other kind takes a page back to an ordinary block: the marker goes,
+  // the children stay where they are (the iPhone's Turn into does the same).
+  const turn = (command: () => void): void => {
+    run(() => {
+      if (isPage) editor.view.dispatch(unmarkPage(editor.state.tr, state.from))
+      command()
+    })
+  }
   return (
     <>
       {aiEnabled && state.hasText ? (
@@ -240,40 +265,50 @@ function BlockActionMenuItems({
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>Turn into</DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="w-44">
-          <DropdownMenuItem onClick={() => run(() => editor.commands.turnIntoText())}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.turnIntoText())}>
             Text
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 1 }))}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.setHeading({ level: 1 }))}>
             Heading 1
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 2 }))}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.setHeading({ level: 2 }))}>
             Heading 2
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 3 }))}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.setHeading({ level: 3 }))}>
             Heading 3
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => run(() => editor.commands.wrapInList({ kind: 'bullet' }))}
+            onClick={() => turn(() => editor.commands.wrapInList({ kind: 'bullet' }))}
           >
             Bullet list
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => run(() => editor.commands.wrapInList({ kind: 'ordered' }))}
+            onClick={() => turn(() => editor.commands.wrapInList({ kind: 'ordered' }))}
           >
             Ordered list
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.wrapInCircleTask())}>
-            Task list
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.wrapInSquareTask())}>
+            {/* One task style everywhere (round box, `- [ ]`), as on the iPhone. */}
+            To-do
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.wrapInSquareTask())}>
-            Checkbox list
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.setBlockquote())}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.setBlockquote())}>
             Quote
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run(() => editor.commands.setCodeBlock())}>
+          <DropdownMenuItem onClick={() => turn(() => editor.commands.setCodeBlock())}>
             Code
           </DropdownMenuItem>
+          {state.count === 1 && !isPage ? (
+            <DropdownMenuItem
+              onClick={() =>
+                run(() => {
+                  const why = turnIntoPage(editor, state.from)
+                  if (why !== null) startOperation('Turning into a page').fail(why)
+                })
+              }
+            >
+              Page
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       {state.canCycleList ? (
@@ -316,7 +351,7 @@ function BlockActionMenuItems({
       {state.count === 1 && canZoom(editor.state) ? (
         <DropdownMenuItem onClick={() => run(() => zoomIntoBlockAt(editor.view, state.from))}>
           <Locate aria-hidden />
-          Zoom in
+          {isPage ? 'Open page' : 'Zoom in'}
         </DropdownMenuItem>
       ) : null}
       {state.count === 1 && canLinkToBlock(editor.view) ? (

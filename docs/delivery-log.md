@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: every type has its own page with Table, Kanban and Grid views shared
+  with the Mac (#469).
+- Connect Claude, ChatGPT, Cursor and other apps to the vault in one click
+  (#468).
 - Open a vault straight from GitHub, on the Mac start screen and in the iPhone
   onboarding (#464).
 - iPhone: the quick capture caret sits on the text line (#470).

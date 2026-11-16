@@ -703,9 +703,9 @@ class RecordingPlugin: Plugin {
     finalize(recorder, native: .remote)
   }
 
-  /// The home-screen quick action arrives on the app delegate, or, now that
-  /// the app runs on the UIScene lifecycle (required by the iOS 27 SDK), on
-  /// tao's scene delegate (`TaoSceneDelegate`). tao implements neither
+  /// The home-screen quick action arrives on the app delegate, or, if the
+  /// app runs on the UIScene lifecycle (needed once builds move to the iOS 27
+  /// SDK; off for now), on tao's scene delegate (`TaoSceneDelegate`). tao implements neither
   /// `application:performActionForShortcutItem:completionHandler:` nor
   /// `windowScene:performActionForShortcutItem:completionHandler:`, so add
   /// both; a class that already implements one keeps its own (the quick

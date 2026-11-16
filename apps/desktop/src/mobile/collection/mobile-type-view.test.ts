@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CollectionEntry, TagProperty } from '@kore/core'
 import {
+  availableTypeViews,
   mobileColumnWidth,
   mobileTypeView,
   rowsMatchingTitle,
@@ -18,8 +19,8 @@ describe('mobileTypeView', () => {
     expect(mobileTypeView('table')).toBe('table')
   })
 
-  it('reads a calendar view as the table until the phone has one', () => {
-    expect(mobileTypeView('calendar')).toBe('table')
+  it('opens the Mac’s calendar as the phone’s calendar', () => {
+    expect(mobileTypeView('calendar')).toBe('calendar')
   })
 
   it('writes the gallery back as the grid both devices share', () => {
@@ -47,5 +48,20 @@ describe('mobileColumnWidth', () => {
     const checkbox: TagProperty = { name: 'Done', key: 'done', type: 'checkbox' }
     const text: TagProperty = { name: 'Notes', key: 'notes', type: 'text' }
     expect(mobileColumnWidth(checkbox)).toBeLessThan(mobileColumnWidth(text))
+  })
+})
+
+describe('availableTypeViews', () => {
+  it('offers the board and calendar only when the type can show them', () => {
+    expect(availableTypeViews({ boardAvailable: true, calendarAvailable: true })).toEqual([
+      'table',
+      'board',
+      'calendar',
+      'gallery',
+    ])
+    expect(availableTypeViews({ boardAvailable: false, calendarAvailable: false })).toEqual([
+      'table',
+      'gallery',
+    ])
   })
 })

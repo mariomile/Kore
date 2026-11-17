@@ -436,9 +436,8 @@ impl ort::environment::ThreadManager for BackgroundThreads {
 /// Put a freshly spawned pool thread at utility QoS for its whole life.
 ///
 /// Unlike [`BackgroundQos`] this neither checks nor restores the prior class:
-/// the thread belongs to the pool, and a new thread may report `unspecified`
-/// (which `BackgroundQos` treats as "leave alone") while still running at the
-/// default class.
+/// the thread belongs to the pool for its whole life, and a fresh thread's
+/// reported class is not a reason to leave it alone.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn demote_pool_thread() {
     let set = unsafe { pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0) };
@@ -551,8 +550,9 @@ async fn load_model(app: &AppHandle, state: &State<'_, EmbedState>) -> AppResult
     let app_for_progress = app.clone();
     let loaded: Result<TextEmbedding, String> =
         match tauri::async_runtime::spawn_blocking(move || {
-            // Before the runtime is configured: ONNX Runtime's pool threads
-            // are created under this call and inherit the class.
+            // Model load at background QoS. The pool threads don't inherit
+            // it (Apple threads start at their own class): each demotes
+            // itself, see `BackgroundThreads`.
             let _qos = BackgroundQos::engage();
             configure_onnx_runtime(&app_for_progress)?;
             download_model_files(&app_for_progress, &cache_dir)?;

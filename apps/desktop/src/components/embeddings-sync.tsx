@@ -11,6 +11,16 @@ import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 
 /**
+ * Quiet period after the last applied change before live follow-up embeds.
+ * Every autosave lands here about a second after a typing pause; embedding on
+ * each one put a burst of model inference right on top of the next keystrokes.
+ * Waiting for a real pause costs nothing (semantic results for a note being
+ * written can trail by a few seconds) and coalesces a writing session into
+ * one embed per note.
+ */
+export const FOLLOW_QUIET_MS = 5_000
+
+/**
  * Keeps embeddings in sync with the graph (Plan 09). Renders nothing; mounted
  * once per workspace. Three jobs:
  *
@@ -39,16 +49,6 @@ import { useSettings } from '@/providers/settings-provider'
  * unloaded model, while idle unload/reload does not trigger another backfill.
  * Disabling the setting or changing graphs cancels work at batch boundaries.
  */
-/**
- * Quiet period after the last applied change before live follow-up embeds.
- * Every autosave lands here about a second after a typing pause; embedding on
- * each one put a burst of model inference right on top of the next keystrokes.
- * Waiting for a real pause costs nothing (semantic results for a note being
- * written can trail by a few seconds) and coalesces a writing session into
- * one embed per note.
- */
-export const FOLLOW_QUIET_MS = 5_000
-
 export function EmbeddingsSync({
   followQuietMs = FOLLOW_QUIET_MS,
 }: {
@@ -105,74 +105,63 @@ export function EmbeddingsSync({
     }
     let active = true
     const pendingFollow = new Map<string, { kind: 'upsert' | 'remove'; retried: boolean }>()
-    let followScheduled = false
+    /** A drain is queued and has not started; its snapshot will include later changes. */
+    let drainQueued = false
     let quietTimer: ReturnType<typeof setTimeout> | undefined
 
-    let scheduleFollow: () => void = () => {}
-
-    // One snapshot per drain, never a loop: changes that land while it runs
-    // (the user typing again) wait for their own quiet period instead of
-    // being embedded straight away on top of the keystrokes.
-    const drainFollow = async (): Promise<void> => {
-      try {
-        if (quietTimer !== undefined) {
-          return // newer changes restarted the quiet period; its timer drains
-        }
-        const jobs = [...pendingFollow]
-        pendingFollow.clear()
-        for (const [path, job] of jobs) {
-          if (!active) {
-            return
-          }
-          try {
-            if (job.kind === 'remove') {
-              await embedRemove(path, generation)
-            } else {
-              await embedNote({ path, generation, modelId, isStale: () => !active })
-            }
-          } catch (cause) {
-            if (!active || pendingFollow.has(path)) {
-              continue
-            }
-            // Retry once in the next drain, without overwriting a newer
-            // change (in particular, a deletion arriving during an upsert).
-            if (!job.retried) {
-              pendingFollow.set(path, { ...job, retried: true })
-            } else {
-              console.error(`embedding sync failed for ${path}:`, cause)
-            }
-          }
-        }
-      } finally {
-        followScheduled = false
-        if (active && pendingFollow.size > 0) {
-          scheduleFollow()
-        }
-      }
-    }
-
-    const enqueueDrain = (): void => {
-      if (followScheduled) {
-        return
-      }
-      followScheduled = true
-      queue.current = queue.current.then(drainFollow).catch((cause) => {
-        // A rejection here must not poison the queue (later change items
-        // chain off this promise) nor masquerade as a per-change failure.
-        console.error('embedding sync failed:', cause)
-      })
-    }
-
-    // Trailing debounce: each new change restarts the quiet period, so a
-    // run of autosaves while typing turns into one drain after the pause.
-    scheduleFollow = (): void => {
+    // Trailing debounce: each change restarts the quiet period, so a run of
+    // autosaves while typing turns into one drain after the pause.
+    const scheduleFollow = (): void => {
       clearTimeout(quietTimer)
       quietTimer = setTimeout(() => {
         quietTimer = undefined
-        if (active) {
-          enqueueDrain()
+        if (active && !drainQueued) {
+          drainQueued = true
+          queue.current = queue.current.then(drainFollow).catch((cause) => {
+            // A rejection here must not poison the queue (later change items
+            // chain off this promise) nor masquerade as a per-change failure.
+            console.error('embedding sync failed:', cause)
+          })
         }
       }, followQuietMs)
+    }
+
+    // One snapshot per drain, never a loop: changes that land while it waits
+    // behind the backfill or runs (the user typing again) keep their own
+    // quiet period instead of being embedded on top of the keystrokes.
+    const drainFollow = async (): Promise<void> => {
+      drainQueued = false
+      if (quietTimer !== undefined) {
+        return // newer changes restarted the quiet period; its timer drains
+      }
+      const jobs = [...pendingFollow]
+      pendingFollow.clear()
+      for (const [path, job] of jobs) {
+        if (!active) {
+          return
+        }
+        try {
+          if (job.kind === 'remove') {
+            await embedRemove(path, generation)
+          } else {
+            await embedNote({ path, generation, modelId, isStale: () => !active })
+          }
+        } catch (cause) {
+          if (!active || pendingFollow.has(path)) {
+            continue
+          }
+          // Retry once in the next drain, without overwriting a newer change
+          // (in particular, a deletion arriving during an upsert).
+          if (!job.retried) {
+            pendingFollow.set(path, { ...job, retried: true })
+          } else {
+            console.error(`embedding sync failed for ${path}:`, cause)
+          }
+        }
+      }
+      if (active && pendingFollow.size > 0 && quietTimer === undefined) {
+        scheduleFollow() // retries, with no newer change already scheduling one
+      }
     }
 
     queue.current = queue.current

@@ -59,7 +59,8 @@ import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
-import { revealBlockId } from '@/editor/block-id-plugin'
+import { findBlockId, revealBlockId } from '@/editor/block-id-plugin'
+import { canZoom } from '@/editor/block-zoom-state'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
 import { markLaunch } from '@/lib/launch-timing'
 
@@ -76,7 +77,22 @@ function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
   if (fragment.startsWith('^')) {
     // A block reference (`[[Note#^id]]`, Plan 33 C3) names a line, not a heading.
     const view = handle?.editor?.view
-    return view !== undefined && revealBlockId(view, fragment.slice(1))
+    if (view === undefined) return false
+    const id = fragment.slice(1)
+    if (canZoom(view.state) || findBlockId(view.state.doc, id) === null) {
+      return revealBlockId(view, id)
+    }
+    // A note's own plugins (the zoom a sub page opens in) mount a moment
+    // after its editor: a page revealed as the note's screen arrives would
+    // lose its zoom. Wait for them, a second at most.
+    let frames = 60
+    const reveal = (): void => {
+      if (view.isDestroyed) return
+      if (canZoom(view.state) || frames-- <= 0) revealBlockId(view, id)
+      else requestAnimationFrame(reveal)
+    }
+    requestAnimationFrame(reveal)
+    return true
   }
   if (handle?.revealHeading(fragment) !== true) {
     return false

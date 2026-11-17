@@ -20,7 +20,7 @@ const handles = new Map<string, NoteEditorHandle>()
  * (the navigation failed or went elsewhere) expires, so opening the note
  * later from the sidebar never jumps to a stale heading.
  */
-const pendingReveals = new Map<string, { heading: string; at: number }>()
+const pendingReveals = new Map<string, { heading: string; at: number; noteScreen?: boolean }>()
 const PENDING_REVEAL_TTL_MS = 5000
 
 /**
@@ -28,10 +28,10 @@ const PENDING_REVEAL_TTL_MS = 5000
  * caret at the note start) and the pane's layout both settle first, so the
  * scroll lands on the heading instead of being undone.
  */
-function scheduleReveal(path: string, heading: string): void {
+function scheduleReveal(path: string, heading: string, target?: NoteEditorHandle): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      handles.get(path)?.revealHeading?.(heading)
+      ;(target ?? handles.get(path))?.revealHeading?.(heading)
     })
   })
 }
@@ -50,14 +50,34 @@ export function revealNoteHeading(path: string, heading: string): void {
   pendingReveals.set(path, { heading, at: Date.now() })
 }
 
-/** Make `handle` the editor for `path` (the pane's ref callback, on mount). */
-export function registerNoteEditorHandle(path: string, handle: NoteEditorHandle): void {
+/**
+ * Reveal `heading` once the note's own screen mounts an editor for `path`,
+ * even while another editor already shows the note: the phone's daily
+ * carousel opens a sub page on the note's screen, over the day that holds it.
+ */
+export function revealNoteHeadingOnNoteScreen(path: string, heading: string): void {
+  pendingReveals.set(path, { heading, at: Date.now(), noteScreen: true })
+}
+
+/**
+ * Make `handle` the editor for `path` (the pane's ref callback, on mount).
+ * `onNoteScreen` is false for an editor that is not the note's own screen
+ * (a day of the phone's carousel), which leaves a reveal meant for that
+ * screen to it.
+ */
+export function registerNoteEditorHandle(
+  path: string,
+  handle: NoteEditorHandle,
+  onNoteScreen = true,
+): void {
   handles.set(path, handle)
   const pending = pendingReveals.get(path)
-  if (pending !== undefined) {
+  if (pending !== undefined && (onNoteScreen || pending.noteScreen !== true)) {
     pendingReveals.delete(path)
     if (Date.now() - pending.at <= PENDING_REVEAL_TTL_MS) {
-      scheduleReveal(path, pending.heading)
+      // A reveal meant for the note's screen goes to that screen's editor
+      // even if the day showing the note registers again meanwhile.
+      scheduleReveal(path, pending.heading, pending.noteScreen === true ? handle : undefined)
     }
   }
 }

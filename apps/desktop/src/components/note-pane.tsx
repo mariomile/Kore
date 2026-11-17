@@ -39,6 +39,7 @@ import { useEditorAiMenu } from '@/editor/ai-menu/use-editor-ai-menu'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
 import {
   registerNoteEditorHandle,
+  revealNoteHeadingOnNoteScreen,
   unregisterNoteEditorHandle,
 } from '@/editor/editor-handle-registry'
 import { markModeFromSyntax } from '@/editor/mark-mode'
@@ -160,6 +161,11 @@ export interface NotePaneProps {
    * did, so the editor consumes the key.
    */
   onExitBoundary?: (date: string, direction: 'up' | 'down') => boolean
+  /**
+   * A tapped sub page opens on the note's own screen instead of zooming in
+   * place (the phone's daily carousel, whose day chrome a zoom would keep).
+   */
+  openPagesOnNoteScreen?: boolean
 }
 
 function NoteLoadingSkeleton(): ReactElement {
@@ -205,6 +211,7 @@ export function NotePaneComponent({
   dailyDate,
   registerHandle,
   onExitBoundary,
+  openPagesOnNoteScreen = false,
 }: NotePaneProps): ReactElement {
   const { graph } = useGraph()
   const { settings } = useSettings()
@@ -270,6 +277,17 @@ export function NotePaneComponent({
     (movedTo: string) => navigate({ kind: 'note', path: movedTo }),
     [navigate],
   )
+  // On the phone's daily carousel a page zoomed in place would stay under
+  // the date, the week strip and the day's backlinks, with no Back: it never
+  // reads as opened. Push the note's own screen with the page open instead,
+  // as a followed `[[Note#^page-…]]` link does; Back returns to the day.
+  const openPageOnItsScreen = openPagesOnNoteScreen
+    ? (id: string): boolean => {
+        revealNoteHeadingOnNoteScreen(path, `^${id}`)
+        navigate({ kind: 'note', path })
+        return true
+      }
+    : undefined
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -283,7 +301,10 @@ export function NotePaneComponent({
   )
   // The registry entry this pane made, so unmount removes exactly it (a
   // remount of the same path may already have re-registered).
-  const registeredHandle = useRef<{ path: string; handle: NoteEditorHandle } | null>(null)
+  const registeredHandle = useRef<{
+    path: string
+    handle: NoteEditorHandle
+  } | null>(null)
   // The `/` menu's template rows insert into this pane's own editor, read
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
@@ -654,7 +675,9 @@ export function NotePaneComponent({
             has. */}
         {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
         {/* Every surface: a sub page reads as a card, a tap zooms into it. */}
-        <PageBlocks />
+        <PageBlocks
+          {...(openPageOnItsScreen !== undefined ? { onOpenPage: openPageOnItsScreen } : {})}
+        />
         {/* Touch only: closing the keyboard blurs the editor, and an open
             [[ / slash menu must not outlive it (pointer users dismiss it by
             clicking outside). */}

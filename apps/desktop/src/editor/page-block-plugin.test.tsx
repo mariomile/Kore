@@ -35,7 +35,11 @@ function clickGrip(element: Element): void {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
 }
 
-async function renderNote(content = NOTE, blockHandle = false): Promise<NoteEditorHandle> {
+async function renderNote(
+  content = NOTE,
+  blockHandle = false,
+  onOpenPage?: (id: string) => boolean,
+): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null
   await render(
     <NoteEditor
@@ -46,7 +50,7 @@ async function renderNote(content = NOTE, blockHandle = false): Promise<NoteEdit
       }}
     >
       <BlockZoom />
-      <PageBlocks />
+      <PageBlocks {...(onOpenPage !== undefined ? { onOpenPage } : {})} />
     </NoteEditor>,
   )
   await expect.element(pmRoot.getByText(content.split('\n')[0]!.slice(2, 8))).toBeVisible()
@@ -103,6 +107,22 @@ describe('PageBlocks', () => {
       (line) => line.textContent === 'Passport',
     )
     expect(passport?.offsetParent).toBeNull()
+    expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  // The phone's daily opens a tapped page on the note's own screen: the card
+  // hands the page's id over and the day itself stays as it is.
+  it('hands a tapped page to the surface that opens it elsewhere', async () => {
+    const opened: string[] = []
+    const handle = await renderNote(NOTE, false, (id) => {
+      opened.push(id)
+      return true
+    })
+    await expect.poll(() => cards.elements().length).toBe(2)
+    ;(cards.elements()[0] as HTMLElement).click()
+    expect(opened).toEqual(['page-a1b2c3'])
+    expect(pmRoot.element().classList.contains('kore-zoomed')).toBe(false)
+    await expect.element(pmRoot.getByText('Groceries')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
   })
 

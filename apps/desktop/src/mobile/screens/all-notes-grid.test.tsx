@@ -277,6 +277,23 @@ describe('MobileAllNotes sort', () => {
     expect(titlesInOrder()).toEqual(['Zebra', 'Banana', 'apple', 'Cherry'])
   })
 
+  it('keeps the sorted feed while a typed search is still loading', async () => {
+    settingsState.allNotesSort = 'title-asc'
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    // The ranked query never settles, so the previous (sorted) rows stay up.
+    searchWithFilters.mockImplementation(() => new Promise<FilteredSearchHit[]>(() => {}))
+    await page.getByRole('searchbox', { name: 'Search notes' }).fill('fruit')
+    await expect
+      .poll(() =>
+        searchWithFilters.mock.calls.some(
+          ([parsed]) => (parsed as { text: string }).text === 'fruit',
+        ),
+      )
+      .toBe(true)
+    expect(titlesInOrder()).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+  })
+
   it('writes the sheet’s choice to the shared setting', async () => {
     await renderScreen()
     await page.getByRole('button', { name: /^Sort:/ }).click()

@@ -118,30 +118,33 @@ export function MobileAllNotes({
     queryFn: () => listNoteTags(),
     enabled,
   })
+  // The no-text feed (plain or badge-filtered) follows the persisted sort,
+  // the Mac list's; typed text keeps relevance ranking. The order is applied
+  // inside the query so each cached result (including the placeholder held
+  // while the next query runs) carries the order of the query that made it.
+  // The index already returns the default order (pinned, then newest), so
+  // only another sort pays for a client-side pass.
+  const sort = settings.allNotesSort
   const {
     data: hits,
     isError,
     refetch,
   } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
-    queryFn: () => searchWithFilters(parsed, searchPlanFor(parsed)),
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed, sort],
+    queryFn: async () => {
+      const plan = searchPlanFor(parsed)
+      const found = await searchWithFilters(parsed, plan)
+      return plan.pinnedFirst === true && sort !== 'updated-desc'
+        ? sortNoteList(found, sort)
+        : found
+    },
     enabled,
     // Typing re-keys the query as the deferred value settles; holding the
     // previous rows avoids a blank flash between keystrokes.
     placeholderData: keepPreviousData,
   })
 
-  // The no-text feed (plain or badge-filtered) follows the persisted sort,
-  // the Mac list's; typed text keeps relevance ranking. The index already
-  // returns the default order (pinned, then newest), so only another sort
-  // pays for a client-side pass.
-  const sort = settings.allNotesSort
-  const recallFeed = searchPlanFor(parsed).pinnedFirst === true
-  const rows = useMemo(() => {
-    const ordered =
-      hits !== undefined && recallFeed && sort !== 'updated-desc' ? sortNoteList(hits, sort) : hits
-    return (ordered ?? []).map(rowForHit)
-  }, [hits, recallFeed, sort])
+  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
   const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
   const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'

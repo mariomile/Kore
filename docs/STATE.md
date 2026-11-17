@@ -1,5 +1,12 @@
 # Kore working state
 
+## Embedding stays in the background on Mac, 2026-11-17
+
+- [x] Fix: semantic search no longer takes over the Mac; embedding runs on at
+  most 4 low-priority threads (the bound was never applied before), and live
+  updates wait for a 5-second pause in typing instead of firing after every
+  autosave. Second half of the Mac typing-lag fix after #527 (#530).
+
 ## Embeddings kept across a full rebuild, 2026-11-17
 
 - [x] Fix (shipped inside 0.123.2, with #524): updating Kore no longer re-runs

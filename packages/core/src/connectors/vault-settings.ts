@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { toAppError } from '../errors'
+import { KoreError, toAppError } from '../errors'
 import { call } from '../ipc/invoke'
 import {
   connectorSettingsSchema,
@@ -188,16 +188,32 @@ export function adoptDeviceConnectors(
   return next === vault ? null : next
 }
 
-/** Read the vault settings file; a vault without one reads as empty. */
+/**
+ * Read the vault settings file; a vault without one reads as empty. A file
+ * that is there but is not a JSON object (a merge conflict, a truncated
+ * write, a bad hand edit) throws a `parse` error rather than reading as
+ * empty, so nothing writes over what it could not read.
+ */
 export async function readVaultSettings(generation: number): Promise<VaultSettings> {
+  let text: string
   try {
-    return parseVaultSettings(await call('vault_settings_read', { generation }, z.string()))
+    text = await call('vault_settings_read', { generation }, z.string())
   } catch (cause) {
     if (toAppError(cause).kind === 'notFound') {
       return {}
     }
     throw cause
   }
+  let raw: unknown
+  try {
+    raw = JSON.parse(text)
+  } catch {
+    raw = null
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new KoreError('parse', `${VAULT_SETTINGS_FILE} is not valid JSON; fix or delete it`)
+  }
+  return vaultSettingsSchema.parse(raw)
 }
 
 /** Write the vault settings file (atomically, at a path Rust fixes). */

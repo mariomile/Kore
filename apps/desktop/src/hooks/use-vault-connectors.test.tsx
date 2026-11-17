@@ -153,4 +153,29 @@ describe('useVaultConnectors', () => {
     expect(merged.granola.syncEvery).toBe('launch')
     await expect.element(page.getByLabelText('Granola')).toHaveTextContent('|launch|')
   })
+
+  it('leaves a broken vault file alone instead of adopting over it', async () => {
+    device.connectors = deviceWith({ folder: 'Meetings' })
+    file = '{ "integrations": <<<<<<< HEAD'
+
+    await render(<Probe />)
+
+    await expect.element(page.getByLabelText('Granola')).toHaveTextContent('Meetings|')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(writes).toEqual([])
+  })
+
+  it('keeps the shared fields when a refresh cannot read the file', async () => {
+    device.connectors = deviceWith({ folder: 'Mine' })
+    file = JSON.stringify({ integrations: { granola: { folder: 'Shared' } } })
+    let api: ReturnType<typeof useVaultConnectors> | null = null
+
+    await render(<Probe act={(current) => (api = current)} />)
+    await expect.element(page.getByLabelText('Granola')).toHaveTextContent('Shared|')
+
+    file = '{ truncated'
+    const merged = await (api as unknown as ReturnType<typeof useVaultConnectors>).refresh()
+
+    expect(merged.granola.folder).toBe('Shared')
+  })
 })

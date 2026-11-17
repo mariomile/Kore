@@ -48,6 +48,11 @@ export function useVaultConnectors(generation: number): VaultConnectors {
   useLayoutEffect(() => {
     deviceRef.current = settings.connectors
   })
+  // The last vault state shown, for a refresh whose read fails.
+  const vaultRef = useRef<VaultSettings | null>(null)
+  useLayoutEffect(() => {
+    vaultRef.current = vault
+  })
   const loaded = useRef<Promise<void>>(Promise.resolve())
   // Writes queue up, so two quick edits land in the order they were made.
   const writes = useRef<Promise<void>>(Promise.resolve())
@@ -72,12 +77,26 @@ export function useVaultConnectors(generation: number): VaultConnectors {
       if (cancelled) {
         return
       }
-      const adopted = adoptDeviceConnectors(deviceRef.current, read)
-      setVault(adopted ?? read)
-      if (adopted !== null) {
-        await writeVaultSettings(adopted, generation).catch((cause: unknown) => {
+      if (adoptDeviceConnectors(deviceRef.current, read) === null) {
+        setVault(read)
+        return
+      }
+      // Adopt against the file as it is now, so a connector another device
+      // adopted in the meantime is kept rather than written over.
+      try {
+        const latest = await readVaultSettings(generation)
+        const adopted = adoptDeviceConnectors(deviceRef.current, latest)
+        if (adopted !== null) {
+          await writeVaultSettings(adopted, generation)
+        }
+        if (!cancelled) {
+          setVault(adopted ?? latest)
+        }
+      } catch (cause) {
+        if (!cancelled) {
           startOperation('Saving integration settings').fail(errorMessage(cause))
-        })
+          setVault(read)
+        }
       }
     })()
     return () => {
@@ -94,8 +113,11 @@ export function useVaultConnectors(generation: number): VaultConnectors {
       setVault(read)
       return mergeVaultConnectors(deviceRef.current, read)
     } catch {
-      // Keep what we have; the next refresh tries again.
-      return deviceRef.current
+      // Keep the vault state we last read, so a passing IO error never syncs
+      // with this device's folder instead of the shared one; the next refresh
+      // tries again.
+      const last = vaultRef.current
+      return last === null ? deviceRef.current : mergeVaultConnectors(deviceRef.current, last)
     }
   }, [generation, setVault])
 

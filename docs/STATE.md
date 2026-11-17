@@ -1,5 +1,20 @@
 # Kore working state
 
+## Integrations page in Settings, 2026-11-17
+
+- [x] Settings gets an Integrations page: a tile overview with the real Granola
+  and Readwise icons; per connection a sync frequency (5/15/30/60 min, on
+  launch, manual), folder and file name with a live preview, tags, content
+  switches, and a link in the daily note under a chosen heading. Granola notes
+  get richer frontmatter with optional My notes and Transcript; unaliased path
+  wikilinks show the note name. Mac and iPhone; look approved by Mario (#528).
+
+## Folder tree not refetched on save, 2026-11-17
+
+- [x] Fix: saving a note no longer refetches the whole vault's folder tree; the
+  tree refreshes only when a note is added, removed or retitled. Part of the
+  Mac typing-lag work after #527 and #530 (#532).
+
 ## Sub pages from the daily on iPhone, 2026-11-17
 
 - [x] Fix: on iPhone, tapping a sub page on the daily opens it full screen and

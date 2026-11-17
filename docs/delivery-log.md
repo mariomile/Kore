@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix: an update's full index rebuild no longer re-embeds the whole vault
+  (heavy CPU and typing lag on Mac, #527).
 - Fix: a date cited mid-sentence in a task no longer becomes its due date, so
   no more fake overdue tasks (#524).
 - Fix: iPhone Syncing no longer sticks on "Saving your changes" (stale file

@@ -1,5 +1,12 @@
 # Kore working state
 
+## Embeddings kept across a full rebuild, 2026-11-17
+
+- [x] Fix (shipped inside 0.123.2, with #524): updating Kore no longer re-runs
+  semantic search over the whole vault; a full index rebuild keeps embeddings
+  and re-embeds only notes that changed. Fixes heavy CPU and typing lag on Mac
+  after 0.123.x, seen by Mario on 2026-11-17 (#527).
+
 ## Task due dates only at the item's edges, 2026-11-17
 
 - [x] Fix: a task's due date is only a [[YYYY-MM-DD]] link that ends the item

@@ -275,8 +275,8 @@ describe('ContextSidebar', () => {
 
   it('offers the other panels where a page has nothing to describe', async () => {
     const view = await render(<ContextSidebar target={null} showDetails routeKind="graphMap" />)
-    await expect.element(view.getByText('Nothing to describe on this page.')).toBeVisible()
-    await view.getByRole('button', { name: 'Calendar' }).click()
+    await expect.element(view.getByText('Open beside this page')).toBeVisible()
+    await view.getByRole('button', { name: /^Calendar/ }).click()
     await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
     await view.unmount()
   })

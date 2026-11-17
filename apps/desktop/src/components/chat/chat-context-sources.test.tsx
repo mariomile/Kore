@@ -27,7 +27,7 @@ it('starts as one collapsed pill and lists the notes on demand', async () => {
   await expect.element(alpha).toHaveAttribute('title', 'A recalled fact')
   await expect.element(view.getByText('A recalled fact')).not.toBeInTheDocument()
   await expect.element(view.getByText('notes', { exact: true })).toBeVisible()
-  await expect.element(view.getByText('Mentioned')).toBeVisible()
+  await expect.element(view.getByText('Mentioned', { exact: true })).toBeVisible()
 
   await alpha.click()
   expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ openInSplit: false }))

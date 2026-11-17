@@ -39,6 +39,7 @@ import { DailyEventsSection } from './daily-events-section'
 import { DayCalendar } from './day-calendar'
 import { NoteContextSidebar } from './note-context-sidebar'
 import { NotePeek } from './note-peek'
+import { SidebarSection } from './sidebar-section'
 import { usePeekPath } from '@/lib/selection/peek-store'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { DEFAULT_CONTEXT_PANEL as DEFAULT_PANEL, type ContextPanel } from './context-panel'
@@ -165,10 +166,19 @@ function panelsBeside(routeKind: Route['kind'] | undefined): ContextPanelSpec[] 
   return OPTIONAL_PANELS.filter((spec) => !(spec.id === 'chat' && routeKind === 'chat'))
 }
 
+/** One line on what each optional panel is for, shown where Details offers them. */
+const PANEL_HINTS: Partial<Record<ContextPanel, string>> = {
+  chat: 'Ask about your notes',
+  calendar: 'Today and your events',
+  browser: 'Read the web beside your work',
+  terminal: 'Run commands in the vault',
+}
+
 /**
  * Details on a route with nothing of its own to describe (Graph, Tasks,
- * Memory, the browser…): the rail stays available everywhere, so instead of
- * a blank card it offers the panels that work beside any route.
+ * Memory, the browser…). The rail stays available everywhere, so instead of
+ * a blank card it lists the panels that work beside any route, in the same
+ * section-and-rows shape as the note's own Details.
  */
 function DetailsEmpty({
   routeKind,
@@ -178,23 +188,35 @@ function DetailsEmpty({
   openPanel: (id: ContextPanel) => void
 }): ReactElement {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="text-xs text-text-muted">Nothing to describe on this page.</p>
-      <div className="flex flex-wrap justify-center gap-1.5">
-        {panelsBeside(routeKind).map(({ id, label, Glyph }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              openPanel(id)
-            }}
-            className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-hover/60 px-3 text-xs text-text-secondary transition-colors duration-100 hover:bg-surface-hover hover:text-text"
-          >
-            <Glyph aria-hidden className="size-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
+    <div className="py-2">
+      <SidebarSection storageKey="open-beside" title="Open beside this page">
+        <ul className="flex flex-col">
+          {panelsBeside(routeKind).map(({ id, label, Glyph }) => (
+            <li key={id}>
+              <button
+                type="button"
+                onClick={() => {
+                  openPanel(id)
+                }}
+                className="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-100 hover:bg-surface-hover"
+              >
+                <span
+                  aria-hidden
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface text-text-secondary shadow-[inset_0_0_0_1px_var(--border)]"
+                >
+                  <Glyph className="size-3.5" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm leading-5 text-text">{label}</span>
+                  <span className="truncate text-xs leading-4 text-text-muted">
+                    {PANEL_HINTS[id]}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </SidebarSection>
     </div>
   )
 }

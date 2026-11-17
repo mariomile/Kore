@@ -544,6 +544,7 @@ export {
   buildFolderTree,
   getFolderTree,
   findFolder,
+  folderTreeAffectedBy,
   folderDisplayName,
   hasOwnFolders,
   type FolderTreeFolder,

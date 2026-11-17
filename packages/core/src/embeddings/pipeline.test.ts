@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
+import { projectionStamp } from '../indexing/indexed-note'
 import { backfillEmbeddings, embedNote } from './pipeline'
 
 afterEach(() => {
@@ -442,30 +443,46 @@ describe('embedNote', () => {
   })
 })
 
+/** Bridge fake for the backfill's orphan prune; `stamp` answers the projection-stamp read. */
+function fakeBackfillBridge(stamp: string) {
+  const commands: string[] = []
+  setBridge({
+    invoke: async (command, args) => {
+      if (command === 'db_query') {
+        const { sql } = args as { sql: string }
+        if (sql.includes('"index_meta"')) {
+          return [{ value: stamp }]
+        }
+        if (sql.includes('"embedding_chunks"') && sql.includes('not in')) {
+          commands.push('orphan-query')
+          return [{ note_path: 'notes/gone.md' }, { note_path: 'notes/also-gone.md' }]
+        }
+        return [] // no indexed notes left to walk
+      }
+      if (command === 'embed_remove') {
+        commands.push(`remove:${(args as { path: string }).path}`)
+        return null
+      }
+      commands.push(command)
+      return null
+    },
+    listen: async () => () => {},
+  })
+  return commands
+}
+
 describe('backfillEmbeddings', () => {
+  it('leaves every embedding alone while a rebuild has the projection unstamped', async () => {
+    // Mid-rebuild `notes` is empty or partial: every kept chunk looks orphaned.
+    const commands = fakeBackfillBridge('')
+    expect(await backfillEmbeddings({ generation: 3, modelId: MODEL })).toBe('completed')
+    expect(commands).toEqual([])
+  })
+
   it('prunes embedding rows of notes that left the index, before walking the notes', async () => {
     // A full rebuild keeps the embedding tables so unchanged notes hash-skip;
     // a note deleted while the app was closed must still lose its vectors.
-    const commands: string[] = []
-    setBridge({
-      invoke: async (command, args) => {
-        if (command === 'db_query') {
-          const { sql } = args as { sql: string }
-          if (sql.includes('"embedding_chunks"') && sql.includes('not in')) {
-            commands.push('orphan-query')
-            return [{ note_path: 'notes/gone.md' }, { note_path: 'notes/also-gone.md' }]
-          }
-          return [] // no indexed notes left to walk
-        }
-        if (command === 'embed_remove') {
-          commands.push(`remove:${(args as { path: string }).path}`)
-          return null
-        }
-        commands.push(command)
-        return null
-      },
-      listen: async () => () => {},
-    })
+    const commands = fakeBackfillBridge(projectionStamp())
     expect(await backfillEmbeddings({ generation: 3, modelId: MODEL })).toBe('completed')
     expect(commands).toEqual(['orphan-query', 'remove:notes/gone.md', 'remove:notes/also-gone.md'])
   })

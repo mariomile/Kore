@@ -2,6 +2,7 @@ import { readNoteLocal } from '../graph/commands'
 import { isTemplatePath } from '../graph/paths'
 import { gatherAssetDescriptionBodies } from '../indexing/asset-description-text'
 import { db } from '../indexing/db'
+import { isProjectionCurrent } from '../indexing/queries'
 import { parseNote } from '../markdown'
 import { chunkAssetDescriptions, chunkNote } from './chunk'
 import {
@@ -209,8 +210,15 @@ export async function backfillEmbeddings(options: {
  * vault), which means a note deleted while the app was closed leaves its
  * chunks behind. Retrieval joins `notes`, so they were never visible; this
  * just keeps the tables from growing. Cheap: one query, usually empty.
+ *
+ * Only against a finished projection: while a rebuild runs, `notes` is empty
+ * or partial and every kept chunk would look orphaned. A rebuild unstamps the
+ * projection before its wipe, so the stamp check covers that whole window.
  */
 async function pruneOrphanedEmbeddings(generation: number, isStale: () => boolean): Promise<void> {
+  if (!(await isProjectionCurrent())) {
+    return
+  }
   const orphans = await db
     .selectFrom('embeddingChunks')
     .where('notePath', 'not in', db.selectFrom('notes').select('path'))

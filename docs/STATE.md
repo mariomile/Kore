@@ -1,5 +1,12 @@
 # Kore working state
 
+## AI chat redesign, 2026-11-17
+
+- [x] The chat's context collapses to an "N notes" pill with mini page
+  previews; recall skips greetings and duplicate copies from the archive; the
+  right rail is available on every route (Details shows the chat's notes on
+  the chat route); text fields have no focus border (#544).
+
 ## Faster typing in long notes, 2026-11-17
 
 - [x] Typing in long notes is faster: the editor no longer re-renders the

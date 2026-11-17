@@ -149,8 +149,11 @@ import {
  * 35 - a type's `folder:` (its home, where its new notes are born) rides the
  * stored tag type JSON. Definitions indexed before it lack the key until the
  * rebuild re-reads them.
+ * 36 - a task's due date is only a date link that ends or opens the item; a
+ * date mid-sentence (a source citation) no longer schedules it, so existing
+ * `tasks.due_date` rows must be rederived.
  */
-export const PROJECTION_VERSION = 35
+export const PROJECTION_VERSION = 36
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -268,7 +271,7 @@ export const indexedTaskSchema = z.object({
   /** The marker line verbatim — the surgical write-back's staleness guard. */
   raw: z.string(),
   checked: z.boolean(),
-  /** Explicit due date (first `[[YYYY-MM-DD]]` in the item), or null — drives Overdue. */
+  /** Explicit due date (the `[[YYYY-MM-DD]]` ending or opening the item), or null — drives Overdue. */
   dueDate: z.string().nullable(),
   /** Local `HH:MM` on {@link dueDate} from `@HH:MM` after the date link, or null. */
   dueTime: z.string().nullable(),

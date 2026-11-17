@@ -16,6 +16,7 @@
  */
 
 import { parseNote } from '../markdown'
+import { dueDateLinkInContent } from '../markdown/task-due'
 
 /** A parsed repeat rule: every N days/weeks/months/years. */
 export interface TaskRepeat {
@@ -83,11 +84,9 @@ export function formatTaskRepeat(repeat: TaskRepeat): string | null {
   return `@repeat(${spec})`
 }
 
-const DATE_LINK_RE = /\[\[(\d{4}-\d{2}-\d{2})\]\]/
-
-/** The first `[[YYYY-MM-DD]]` link in a task's content, or null. */
+/** The due date of a task's content (its date link in due-stamp position), or null. */
 export function taskContentDueDate(content: string): string | null {
-  return DATE_LINK_RE.exec(content)?.[1] ?? null
+  return dueDateLinkInContent(content)?.date ?? null
 }
 
 function isoToUtc(iso: string): Date {
@@ -153,10 +152,10 @@ export function nextOccurrenceDate(base: string, repeat: TaskRepeat, today: stri
  * The repeat token itself rides along unchanged, so the new task recurs too.
  */
 export function nextOccurrenceContent(content: string, repeat: TaskRepeat, today: string): string {
-  const due = taskContentDueDate(content)
-  const next = nextOccurrenceDate(due ?? today, repeat, today)
-  if (due !== null) {
-    return content.replace(DATE_LINK_RE, `[[${next}]]`)
+  const due = dueDateLinkInContent(content)
+  const next = nextOccurrenceDate(due?.date ?? today, repeat, today)
+  if (due !== undefined) {
+    return `${content.slice(0, due.from)}[[${next}]]${content.slice(due.to)}`
   }
   return `${content.trimEnd()} [[${next}]]`
 }

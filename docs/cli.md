@@ -262,8 +262,8 @@ CLI surface, before their address leaks.
 Lists the graph's tasks (round `+ [ ]` checkboxes) from the index's tasks
 projection — open ones by default, `--all` includes completed. Rows come back
 grouped by source note in file order, each with the note's title and the
-task's due date (the first calendar-valid `[[YYYY-MM-DD]]` link inside the
-item). Like `search`, this requires the index (exit `4` when missing) and
+task's due date (the calendar-valid `[[YYYY-MM-DD]]` link that ends or opens
+the item; a date link mid-sentence is only a link). Like `search`, this requires the index (exit `4` when missing) and
 re-checks each source note's own frontmatter, so a note flagged private after
 the last index run never surfaces. A stale index warns on stderr and sets
 `"stale": true`.

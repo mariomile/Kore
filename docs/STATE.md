@@ -1,5 +1,15 @@
 # Kore working state
 
+## Launch crash fix and Syncing watchdog, 2026-11-17
+
+- [x] Fix (shipped inside 0.122.0): the iPhone TestFlight build no longer
+  crashes on launch; the UIScene manifest added in 0.120 (#503) is removed,
+  since CI builds with the iOS 26.5 SDK, which does not require it (#514).
+- [x] Fix: a stuck local step no longer holds Syncing on forever (5-minute
+  watchdog, never overlapping the stalled command), and the Sync footer on
+  iPhone shows the current step (#516).
+- Not verified on a real iPhone; Mario still saw Syncing stuck before #516.
+
 ## Light clone on iPhone, 2026-11-16
 
 - [x] Opening a vault from GitHub on the iPhone downloads only the last 50

@@ -326,7 +326,10 @@ pub async fn git_fetch(
     state: State<'_, GraphState>,
 ) -> AppResult<RemoteDelta> {
     let root = crate::fs::root_for_generation(&state, generation)?;
-    run_blocking(move || remote::fetch(&root, token)).await
+    let started = std::time::Instant::now();
+    let outcome = run_blocking(move || remote::fetch(&root, token)).await;
+    log_step("fetch", started, outcome.is_ok());
+    outcome
 }
 
 /// Merge the fetched remote branch; conflicts are committed into the notes as
@@ -337,7 +340,9 @@ pub async fn git_merge_remote(
     state: State<'_, GraphState>,
 ) -> AppResult<MergeOutcome> {
     let root = crate::fs::root_for_generation(&state, generation)?;
+    let started = std::time::Instant::now();
     let outcome = run_blocking(move || merge::merge_remote(&root)).await;
+    log_step("merge", started, outcome.is_ok());
     // Invalidate on both arms: a failed merge can still have moved the tree
     // partway through checkout, and a stale catalog would pin the old view.
     let root = crate::fs::root_for_generation(&state, generation)?;
@@ -402,5 +407,19 @@ pub async fn git_push(
     state: State<'_, GraphState>,
 ) -> AppResult<PushOutcome> {
     let root = crate::fs::root_for_generation(&state, generation)?;
-    run_blocking(move || remote::push(&root, token)).await
+    let started = std::time::Instant::now();
+    let outcome = run_blocking(move || remote::push(&root, token)).await;
+    log_step("push", started, outcome.is_ok());
+    outcome
+}
+
+/// One line per sync step in the diagnostic log, so a phone stuck on
+/// `Syncing` shows which step took the time.
+fn log_step(step: &'static str, started: std::time::Instant, ok: bool) {
+    tracing::info!(
+        step,
+        ok,
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        "git sync step"
+    );
 }

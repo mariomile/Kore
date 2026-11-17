@@ -49,6 +49,20 @@ export type SyncStatus =
   | { state: 'offline'; message: string }
   | { state: 'error'; errorKind: SyncErrorKind; message: string }
 
+/**
+ * What an in-flight cycle is doing, for diagnostics ("Downloading changes
+ * since 08:41"): `preparing` = credential and agent commits, `saving` = the
+ * local commit, `downloading` = fetch, `merging` = applying other devices'
+ * changes, `uploading` = push.
+ */
+export type SyncStep = 'preparing' | 'saving' | 'downloading' | 'merging' | 'uploading'
+
+/** The step a `syncing` cycle is on, and the epoch ms it started. */
+export interface SyncProgress {
+  step: SyncStep
+  since: number
+}
+
 /** Narrows to the `error` arm — the one state that needs user attention. */
 export function isSyncError(status: SyncStatus): status is Extract<SyncStatus, { state: 'error' }> {
   return status.state === 'error'
@@ -70,6 +84,19 @@ export interface SyncEngineOptions {
    * called again after `stop()`.
    */
   onStatus?: (status: SyncStatus) => void
+  /**
+   * Observes each step an in-flight cycle starts. Diagnostic only: the
+   * product state stays {@link SyncStatus}. Never called after `stop()`.
+   */
+  onStep?: (step: SyncStep) => void
+  /**
+   * Ceiling on one local step (credential, commit, merge). A step past it
+   * ends the cycle as an `error` instead of holding `Syncing` forever; the
+   * next trigger retries. Network steps carry their own transport timeouts
+   * (libgit2's connect/IO timeouts) and are not capped here: a slow but
+   * moving download must be allowed to finish.
+   */
+  localStepTimeoutMs?: number
   /** Surfaced when the size guardrail withholds files from backup. */
   onLargeFilesSkipped?: (files: SkippedFile[]) => void
   /**
@@ -117,6 +144,15 @@ export interface SyncEngine {
 
 const DEFAULT_IDLE_MS = 30_000
 const DEFAULT_MAX_WAIT_MS = 5 * 60_000
+const DEFAULT_LOCAL_STEP_TIMEOUT_MS = 5 * 60_000
+
+const STEP_WORDS: Record<SyncStep, string> = {
+  preparing: 'getting ready',
+  saving: 'saving changes',
+  downloading: 'downloading changes',
+  merging: 'applying changes from other devices',
+  uploading: 'uploading changes',
+}
 
 /**
  * Push attempts per cycle. Each retry fetches + merges first, so two devices
@@ -127,6 +163,13 @@ const MAX_PUSH_ATTEMPTS = 3
 
 /** A push the remote refused for a non-divergence reason (e.g. push protection). */
 class PushRejectedError extends Error {}
+
+/** A local step that never settled — the cycle gives up so `Syncing` cannot stick. */
+class StepStalledError extends Error {
+  constructor(step: SyncStep) {
+    super(`Sync got stuck ${STEP_WORDS[step]} and will try again`)
+  }
+}
 
 /** Internal control flow: the owner suspended cycles while one command was in flight. */
 class CycleSuppressedError extends Error {}
@@ -141,6 +184,7 @@ class CycleSuppressedError extends Error {}
 export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   const idleMs = options.idleMs ?? DEFAULT_IDLE_MS
   const maxWaitMs = options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS
+  const localStepTimeoutMs = options.localStepTimeoutMs ?? DEFAULT_LOCAL_STEP_TIMEOUT_MS
 
   const abort = new AbortController()
   const signal = abort.signal
@@ -150,6 +194,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   let running: Promise<void> | null = null
   /** Follow-up requested while a cycle was in flight (strongest mode wins). */
   let rerunMode: 'push' | 'full' | null = null
+  /** A timed-out command still running natively; set until it settles. */
+  let lingering: Promise<void> | null = null
 
   function emit(status: SyncStatus): void {
     if (signal.aborted) {
@@ -175,6 +221,38 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       throw new CycleSuppressedError()
     }
     return result
+  }
+
+  /** Announce the step a cycle is starting (diagnostics). */
+  function enter(step: SyncStep): void {
+    if (!signal.aborted) {
+      options.onStep?.(step)
+    }
+  }
+
+  /**
+   * Race a local command against {@link localStepTimeoutMs}. The command
+   * itself cannot be recalled; the cycle just stops waiting for it.
+   */
+  function bounded<T>(step: SyncStep, promise: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const stalled = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        // The command keeps running natively. No other Git work may start on
+        // the repository until it settles; then one full cycle catches up.
+        const pending: Promise<void> = promise.then(
+          () => {},
+          () => {},
+        )
+        lingering = pending.finally(() => {
+          lingering = null
+          void run('full')
+        })
+        reject(new StepStalledError(step))
+      }, localStepTimeoutMs)
+    })
+    void promise.catch(() => {}) // a late rejection after the timeout is not unhandled
+    return Promise.race([promise, stalled]).finally(() => clearTimeout(timer))
   }
 
   /** Start one merge notification now, without making later Git commands wait. */
@@ -240,6 +318,11 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     if (signal.aborted || options.canStartCycle?.() === false) {
       return
     }
+    if (lingering !== null) {
+      // A stalled command still owns the repository. Its settling triggers
+      // the catch-up cycle, so this trigger is already covered.
+      return
+    }
     if (running !== null) {
       // Queue one follow-up, keeping the strongest mode requested: a syncNow
       // landing mid-cycle must still get its fetch+merge, not be downgraded
@@ -295,9 +378,14 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     mode: 'push' | 'full',
     remoteChanges: (changes: ChangedFile[]) => void,
   ): Promise<void> {
-    const token = options.localOnly === true ? null : await step(options.getToken())
-    const agentCommitted = await step(commitAgentWrites(options.generation))
-    const allCommit = await step(gitCommitAll('Update notes', options.generation))
+    enter('preparing')
+    const token =
+      options.localOnly === true ? null : await step(bounded('preparing', options.getToken()))
+    const agentCommitted = await step(bounded('preparing', commitAgentWrites(options.generation)))
+    enter('saving')
+    const allCommit = await step(
+      bounded('saving', gitCommitAll('Update notes', options.generation)),
+    )
     const commit = agentCommitted ? { ...allCommit, committed: true } : allCommit
     if (commit.skippedLargeFiles.length > 0) {
       options.onLargeFilesSkipped?.(commit.skippedLargeFiles)
@@ -315,6 +403,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       }
     } else {
       // Launch/focus: pick up other devices' changes even with nothing to push.
+      enter('downloading')
       const delta = await step(gitFetch(token, options.generation))
       const merged = await merge(remoteChanges)
       const localOnly = commit.committed || delta.ahead > 0
@@ -323,6 +412,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       }
     }
     for (let attempt = 0; attempt < MAX_PUSH_ATTEMPTS; attempt++) {
+      enter('uploading')
       const push = await step(gitPush(token, options.generation))
       if (push.pushed) {
         return
@@ -332,6 +422,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       }
       // The normal two-device race: another device pushed first. Converge and
       // retry — a conflicted merge still commits (markers in the note).
+      enter('downloading')
       await step(gitFetch(token, options.generation))
       await merge(remoteChanges)
     }
@@ -342,7 +433,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
 
   /** Merge fetched changes and start any changed-file notification. */
   async function merge(remoteChanges: (changes: ChangedFile[]) => void): Promise<{ kind: string }> {
-    return await step(gitMergeRemote(options.generation), (outcome) => {
+    enter('merging')
+    return await step(bounded('merging', gitMergeRemote(options.generation)), (outcome) => {
       // The command may already have rewritten files before suspension. Fan
       // those changes out before the boundary gate stops subsequent Git work.
       if (outcome.changedFiles.length > 0) {

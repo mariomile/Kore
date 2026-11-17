@@ -128,6 +128,21 @@ describe('PageBlocks', () => {
     expect(handle.getMarkdown()).toBe(NOTE)
   })
 
+  it('ends a zoom here when a page inside it opens elsewhere, so its Back step goes', async () => {
+    const opened: string[] = []
+    const handle = await renderNote(NOTE, false, (id) => {
+      opened.push(id)
+      return true
+    })
+    await expect.poll(() => cards.elements().length).toBe(2)
+    expect(handle.revealHeading?.('^page-a1b2c3')).toBe(true)
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    const packing = (cards.elements() as HTMLElement[]).find((card) => card.offsetParent !== null)
+    packing!.click()
+    expect(opened).toEqual(['page-d4e5f6'])
+    expect(pmRoot.element().classList.contains('kore-zoomed')).toBe(false)
+  })
+
   it('keeps the caret out of a collapsed page', async () => {
     const handle = await renderNote()
     await expect.poll(() => cards.elements().length).toBe(2)

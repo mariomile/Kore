@@ -13,7 +13,7 @@ import { linePageId, pagePreview, pageTitle } from '@kore/core'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { blockSelectionKey, withBlockSelection } from './block-selection-plugin'
 import { zoomIntoBlockAt } from './block-zoom-plugin'
-import { zoomTarget } from './block-zoom-state'
+import { clearZoom, zoomTarget } from './block-zoom-state'
 import { targetSpan, type ZoomTarget } from './block-zoom-target'
 
 /**
@@ -299,7 +299,13 @@ function build(state: EditorState, options: PageBlockOptions): DecorationSet {
         // elsewhere by then, and two pasted copies can share an id.
         (view, getPos) =>
           cardElement(title, preview, rows, () => {
-            if (options.openPage?.(page.id) === true) return
+            if (options.openPage?.(page.id) === true) {
+              // The page opens on a screen over this editor: a zoom left
+              // here would keep its Back step, and Back on that screen would
+              // zoom this hidden editor out instead of leaving the page.
+              if (zoomTarget(view.state) !== null) view.dispatch(clearZoom(view.state.tr))
+              return
+            }
             const at = getPos()
             if (at === undefined) return
             zoomIntoBlockAt(view, at - 1)

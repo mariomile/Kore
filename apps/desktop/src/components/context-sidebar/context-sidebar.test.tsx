@@ -38,6 +38,9 @@ vi.mock('@/components/context-sidebar/day-calendar', () => ({
 vi.mock('@/components/context-sidebar/daily-events-section', () => ({
   DailyEventsSection: () => null,
 }))
+vi.mock('@/components/chat/chat-context-overview', () => ({
+  ChatContextOverview: () => <div data-testid="chat-context" />,
+}))
 vi.mock('@/lib/use-today', () => ({
   useToday: () => '2026-08-19',
 }))
@@ -258,6 +261,23 @@ describe('ContextSidebar', () => {
     const view = await render(<ContextSidebar target={null} showDetails={false} />)
     // Nothing to show: the rail draws no band and no empty card.
     expect(view.container.querySelector('[role="tablist"]')).toBeNull()
+    await view.unmount()
+  })
+
+  it('describes the conversation on the chat route and never mirrors it as a Chat panel', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails routeKind="chat" />)
+    await expect.element(view.getByTestId('chat-context')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Open a panel' }).click()
+    await expect.element(view.getByRole('menuitem', { name: 'Calendar' })).toBeInTheDocument()
+    expect(view.getByRole('menuitem', { name: 'Chat' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('offers the other panels where a page has nothing to describe', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails routeKind="graphMap" />)
+    await expect.element(view.getByText('Nothing to describe on this page.')).toBeVisible()
+    await view.getByRole('button', { name: 'Calendar' }).click()
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
     await view.unmount()
   })
 })

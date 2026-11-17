@@ -51,7 +51,6 @@ const RECALL_STOPWORDS = new Set([
   'buonanotte',
   'grazie',
   'prego',
-  'thanks',
   'thank',
   'thx',
   'okay',
@@ -360,7 +359,7 @@ function isArchivedPath(path: string): boolean {
 export function dedupeRecallHits<T extends RecallHit>(hits: readonly T[]): T[] {
   const kept = new Map<string, T>()
   for (const hit of hits) {
-    const key = `${hit.title.trim().toLowerCase()}\u0000${(hit.snippet ?? hit.preview).trim()}`
+    const key = `${hit.title.trim().toLowerCase()}\u{0}${(hit.snippet ?? hit.preview).trim()}`
     const existing = kept.get(key)
     if (existing === undefined) {
       kept.set(key, hit)

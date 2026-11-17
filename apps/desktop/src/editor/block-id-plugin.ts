@@ -13,6 +13,7 @@ import { targetAt, targetSpan } from './block-zoom-target'
 import { setZoom } from './block-zoom-state'
 import { closedPageAround } from './page-block-plugin'
 import { clearZoom, zoomTarget } from './block-zoom-plugin'
+import { memoByNode } from './node-memo'
 
 /**
  * Obsidian block ids in the live editor (Plan 33 C3). A followed
@@ -44,7 +45,8 @@ interface HiddenMarker {
   readonly idOnly: boolean
 }
 
-function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
+/** {@link hiddenMarker} relative to the node's own position, memoized per node. */
+const nodeMarker = memoByNode((node): HiddenMarker | null => {
   const last = node.lastChild
   if (!node.isTextblock || node.type.spec.code === true || last?.isText !== true) {
     return null
@@ -55,12 +57,19 @@ function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
   if (tail === null) {
     return null
   }
-  const to = pos + 1 + node.content.size
+  const to = 1 + node.content.size
   return {
     from: to - (text.length - tail.start),
     to,
     idOnly: tail.idOnly && node.childCount === 1,
   }
+})
+
+function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
+  const marker = nodeMarker(node)
+  return marker === null
+    ? null
+    : { from: pos + marker.from, to: pos + marker.to, idOnly: marker.idOnly }
 }
 
 /** The hidden marker of the caret's textblock, when the caret's line has one. */

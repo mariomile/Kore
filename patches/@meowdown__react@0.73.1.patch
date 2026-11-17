@@ -84,7 +84,7 @@ index c2b882b2f29a0fcd0b87127eb964172cb741d807..5e9f38f03e4d9ffa9d74d20435bf8633
 +export { type CodeBlockRenderOptions, type CodeBlockRenderer, type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type LightboxCloseOptions, type LightboxController, type LightboxFrameItem, type LightboxFrameProps, type LightboxImageItem, type LightboxImageProps, type LightboxItem, type LightboxRootProps, type LightboxVideoItem, type LightboxVideoProps, type LinkPreview, type LinkPreviewResolver, type MarkdownViewProps, type PendingReplacementResolveHandler, type ReactNodeViewComponent, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, type XPostResolver, type YouTubeVideoResolver, useEditor, useExtension, useKeymap };
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7dd0d67e39 100644
+index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c55e75b64d90f28ab4dc1bc998b087dece32c03b 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -7,8 +7,9 @@ import { Selection, TextSelection } from "@prosekit/pm/state";
@@ -208,7 +208,15 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  	}), defineCodeBlockPreviewPlugin());
  }
  
-@@ -1195,7 +1237,7 @@ function SelectionMenuPopup({ onSelectionMenuSearch, context, onClose }) {
+@@ -1070,6 +1112,7 @@ function SelectionMenu({ onSelectionMenuSearch, context, onOpen, onClose, afford
+ 			const anchorable = !empty && isTextSelection(view.state.selection) && !getPendingReplacement(view.state) && getSearchStatus(view.state).active === 0;
+ 			setSelection((previous) => {
+ 				if (previous?.from === from && previous?.to === to && previous?.anchorable === anchorable) return previous;
++				if (!anchorable && previous?.anchorable === false) return previous;
+ 				return {
+ 					from,
+ 					to,
+@@ -1195,7 +1238,7 @@ function SelectionMenuPopup({ onSelectionMenuSearch, context, onClose }) {
  			if (item) selectItem(item);
  		}
  	}
@@ -217,7 +225,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  		autoFocus: true,
  		className: selection_menu_module_default.Input,
  		value: query,
-@@ -1354,7 +1396,7 @@ function SlashMenu({ timeFormat = "12", onSlashMenuSearch, onFilePaste, onFileSa
+@@ -1354,7 +1397,7 @@ function SlashMenu({ timeFormat = "12", onSlashMenuSearch, onFilePaste, onFileSa
  				className: autocomplete_menu_module_default.Popup,
  				"data-testid": "slash-menu",
  				children: [
@@ -226,7 +234,38 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  						/* @__PURE__ */ jsx(SlashMenuItem, {
  							label: "Text",
  							keywords: ["paragraph", "plain"],
-@@ -1563,7 +1605,7 @@ function TableHandle() {
+@@ -1532,8 +1575,29 @@ function ColumnAlignMenuItem({ align, columnAlign, onSelect }) {
+ 		children: [/* @__PURE__ */ jsx("span", { children: COLUMN_ALIGN_LABELS[align] }), active && /* @__PURE__ */ jsx(CheckIcon, {})]
+ 	});
+ }
++/**
++* Kore patch: the derived table state is a fresh object on every editor
++* update, so the handle re-rendered (and React re-read the whole editor's
++* selection) on every keystroke, table or not. Keep the previous object while
++* nothing it carries changed.
++*/
++const stableTableHandleStates = /* @__PURE__ */ new WeakMap();
++function tableHandleStateKey(state) {
++	return [state.columnAlign ?? "", ...Object.values(state).map((value) => typeof value === "object" && value !== null && "canExec" in value ? value.canExec ? 1 : 0 : "")].join(",");
++}
++function getStableTableHandleState(editor) {
++	const next = getTableHandleState(editor);
++	const key = tableHandleStateKey(next);
++	const previous = stableTableHandleStates.get(editor);
++	if (previous !== void 0 && previous.key === key) return previous.state;
++	stableTableHandleStates.set(editor, {
++		key,
++		state: next
++	});
++	return next;
++}
+ function TableHandle() {
+-	const state = useEditorDerivedValue(getTableHandleState);
++	const state = useEditorDerivedValue(getStableTableHandleState);
+ 	return /* @__PURE__ */ jsxs(TableHandleRoot, { children: [
+ 		/* @__PURE__ */ jsx(TableHandleDragPreview, {}),
+ 		/* @__PURE__ */ jsx(TableHandleDropIndicator, {}),
+@@ -1563,7 +1627,7 @@ function TableHandle() {
  								onSelect: state.addTableColumnAfter.command,
  								children: /* @__PURE__ */ jsx("span", { children: "Insert Right" })
  							}),
@@ -235,7 +274,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  								/* @__PURE__ */ jsx(ColumnAlignMenuItem, {
  									align: "left",
  									columnAlign: state.columnAlign,
-@@ -1848,7 +1890,7 @@ function findHeadingPosition(doc, fragment) {
+@@ -1848,7 +1912,7 @@ function findHeadingPosition(doc, fragment) {
  	});
  	return match;
  }
@@ -244,7 +283,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  	const suppressDocChangeRef = useRef(false);
  	const handleDocChange = useMemo(() => {
  		if (!onDocChange) return;
-@@ -1917,9 +1959,11 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
+@@ -1917,9 +1981,11 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
  		editorClassName,
  		wikilinkEnabled
  	]);
@@ -257,7 +296,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  		const editor = createEditor({ extension });
  		if (initialMarkdown) editor.setContent(markdownToDoc(initialMarkdown, {
  			nodes: editor.nodes,
-@@ -1984,8 +2028,8 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
+@@ -1984,8 +2050,8 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
  			const [markdown, selection] = getState();
  			replaceState(markdown, selection, false, true);
  		}
@@ -268,7 +307,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  		}
  		function setSelection(selection) {
  			setState(void 0, selection);
-@@ -2109,7 +2153,7 @@ const CARET_GLIDE_OFF = { "--meowdown-caret-glide": "0ms" };
+@@ -2109,7 +2175,7 @@ const CARET_GLIDE_OFF = { "--meowdown-caret-glide": "0ms" };
  *
  * Callbacks and resolvers should be stable; pass them via `useCallback`.
  */
@@ -277,7 +316,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  	const childRef = useRef(null);
  	useImperativeHandle(handleRef, () => {
  		function getMarkdown() {
-@@ -2118,8 +2162,8 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+@@ -2118,8 +2184,8 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
  		function setMarkdown(markdown) {
  			childRef.current?.setMarkdown(markdown);
  		}
@@ -288,7 +327,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  		}
  		function getState() {
  			return childRef.current?.getState() ?? ["", {
-@@ -2210,6 +2254,7 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+@@ -2210,6 +2276,7 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
  			markMode: mode,
  			initialMarkdown,
  			onDocChange,
@@ -296,7 +335,7 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7d
  			onSlashMenuSearch,
  			onTagSearch,
  			onWikilinkSearch,
-@@ -2395,7 +2440,7 @@ function PostEmbed(props) {
+@@ -2395,7 +2462,7 @@ function PostEmbed(props) {
  		"data-testid": `${kind}-embed`,
  		"data-post-embed": kind,
  		children: kind === "x-post" ? createElement("meowdown-embed-x", {

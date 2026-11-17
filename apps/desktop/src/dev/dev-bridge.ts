@@ -108,6 +108,8 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   }
   let workspaceLayoutDocument: Record<string, unknown> = {}
   const assets = new Map<string, string>()
+  // The vault-root `.kore.json` (shared integration settings), in memory.
+  let vaultSettings: string | null = null
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
   const secrets = new Map<string, string>([[aiKeySecretName(demoProvider.id), APP_REVIEW_STUB_KEY]])
@@ -190,6 +192,14 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'quit_confirm':
       case 'toggle_devtools':
       case 'workspace_state_write':
+        return null
+      case 'vault_settings_read':
+        if (vaultSettings === null) {
+          throw new KoreError('notFound', 'no .kore.json in this vault')
+        }
+        return vaultSettings
+      case 'vault_settings_write':
+        vaultSettings = z.object({ contents: z.string() }).parse(args).contents
         return null
       case 'capture_inbox_list':
       // A plain browser has no home folder to browse: the Library shelf hides.

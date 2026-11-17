@@ -375,6 +375,8 @@ pub fn run() {
             fs::transcript_cache_read,
             fs::transcript_cache_write,
             fs::workspace_state_write,
+            fs::vault_settings_read,
+            fs::vault_settings_write,
             fs::asset_open,
             fs::asset_reveal,
             fs::export_write,

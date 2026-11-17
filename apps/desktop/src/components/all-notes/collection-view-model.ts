@@ -1,4 +1,4 @@
-import type { CollectionPageView, SavedCollectionView } from '@kore/core'
+import type { CollectionPageView, SavedCollectionView, TimelineZoom } from '@kore/core'
 
 /** Sentinel id for the unpersisted tab a collection shows before any view is added. */
 export const LIVE_COLLECTION_VIEW_ID = '__live'
@@ -33,8 +33,22 @@ export function collectionViewLabel(view: CollectionPageView): string {
       return 'Calendar'
     case 'grid':
       return 'Grid'
+    case 'timeline':
+      return 'Timeline'
     default:
       return 'Table'
+  }
+}
+
+/** The zoom control's label for a timeline zoom. */
+export function timelineZoomLabel(zoom: TimelineZoom): string {
+  switch (zoom) {
+    case 'week':
+      return 'Week'
+    case 'quarter':
+      return 'Quarter'
+    default:
+      return 'Month'
   }
 }
 

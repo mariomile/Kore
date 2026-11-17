@@ -242,6 +242,7 @@ export function seedLargeGraphFiles(
   ])
   files['tags/project.md'] = tagDefinition('project', [
     { name: 'Status', key: 'status', type: 'status', options: STATUSES },
+    { name: 'Start', key: 'start', type: 'date' },
     { name: 'Due', key: 'due', type: 'date' },
     { name: 'Priority', key: 'priority', type: 'select', options: PRIORITIES },
   ])
@@ -306,6 +307,7 @@ export function seedLargeGraphFiles(
       `id: ${ulid(idCounter++)}`,
       `status: ${pick(random, STATUSES)}`,
       'tags: [project]',
+      `start: ${isoDay(-(index % 90) + 7 + (index % 30))}`,
       `due: ${isoDay(-(index % 90))}`,
       `priority: ${pick(random, PRIORITIES)}`,
       '---',

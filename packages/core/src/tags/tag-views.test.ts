@@ -71,6 +71,22 @@ describe('type views', () => {
     expect(parseTagViews(tagViewsToYaml([BOARD]))).toEqual([BOARD])
   })
 
+  it("keeps a timeline's fields and zoom, and only on a timeline", () => {
+    const timeline = {
+      ...BOARD,
+      id: 't',
+      view: 'timeline' as const,
+      start: 'kickoff',
+      end: 'due',
+      zoom: 'week' as const,
+    }
+    expect(parseTagViews(tagViewsToYaml([timeline]))).toEqual([timeline])
+    expect(tagViewsToYaml([{ ...BOARD, start: 'kickoff', zoom: 'week' }])[0]).not.toHaveProperty(
+      'start',
+    )
+    expect(tagViewsToYaml([{ ...timeline, zoom: 'month' }])[0]).not.toHaveProperty('zoom')
+  })
+
   it('leaves a type without views exactly as before', () => {
     expect(encodeTagTypeJson({ properties: [] })).toBe('[]')
     expect(decodeTagTypeJson('[]')).toEqual({ properties: [] })

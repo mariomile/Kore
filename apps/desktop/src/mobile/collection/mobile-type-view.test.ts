@@ -52,11 +52,12 @@ describe('mobileColumnWidth', () => {
 })
 
 describe('availableTypeViews', () => {
-  it('offers the board and calendar only when the type can show them', () => {
+  it('offers the board, calendar and timeline only when the type can show them', () => {
     expect(availableTypeViews({ boardAvailable: true, calendarAvailable: true })).toEqual([
       'table',
       'board',
       'calendar',
+      'timeline',
       'gallery',
     ])
     expect(availableTypeViews({ boardAvailable: false, calendarAvailable: false })).toEqual([

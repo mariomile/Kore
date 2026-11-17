@@ -41,7 +41,40 @@ views:
     order: [file.name, role]
 `
 
+const PROJECTS = `
+filters:
+  and:
+    - file.hasTag("type/project")
+views:
+  - type: timeline
+    name: Timeline
+    groupBy:
+      property: status
+      direction: ASC
+    start: note.start
+    end: note.end
+    priority: note.priority
+    zoom: month
+`
+
 describe('convertBaseToTypeViews', () => {
+  it("keeps a timeline plugin's view as a timeline with its date fields and grouping", () => {
+    const plan = convertBaseToTypeViews('Active/Projects.base', parseBaseFile(PROJECTS))
+    expect(plan.kind).toBe('converted')
+    if (plan.kind !== 'converted') {
+      return
+    }
+    expect(plan.views[0]).toMatchObject({
+      view: 'timeline',
+      tableGroup: 'status',
+      start: 'start',
+      end: 'end',
+      zoom: 'month',
+    })
+    expect(plan.columns.map((column) => column.key)).toEqual(['status', 'start', 'end'])
+    expect(plan.notes).toEqual([])
+  })
+
   it('turns a one-tag base into the type views it shows, and says what stays behind', () => {
     const plan = convertBaseToTypeViews('System/views/persons.base', parseBaseFile(PERSONS))
     expect(plan.kind).toBe('converted')

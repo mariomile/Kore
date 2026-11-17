@@ -85,11 +85,6 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         .catch(() => undefined)
     }
   }, [])
-  // Daily routes get the day's contextual panel and note routes the note's;
-  // search/settings get none (AppShell omits the region when context is absent).
-  // In the daily stream the route stays put while focus moves between days, so
-  // the panel follows the focused day and snaps back on navigation.
-  const contextTarget = useDailyContextTarget()
   const trafficLightBand = useMacosTrafficLightInset()
 
   return (
@@ -110,11 +105,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       {/* Settings floats over the workspace as a modal, so the frame stays
           mounted beneath it showing where the user came from. */}
       <BeneathSettings>
-        <WorkspaceFrame
-          graph={graph}
-          commandContext={commandContext}
-          contextTarget={contextTarget}
-        />
+        <WorkspaceFrame graph={graph} commandContext={commandContext} />
       </BeneathSettings>
       <SettingsModal />
 
@@ -135,20 +126,22 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 interface WorkspaceFrameProps {
   graph: GraphInfo
   commandContext: CommandContext
-  contextTarget: ReturnType<typeof useDailyContextTarget>
 }
 
 /**
  * The two-rail workspace around the note pane. Settings is a modal over this
  * frame, not a tab inside it.
  */
-function WorkspaceFrame({
-  graph,
-  commandContext,
-  contextTarget,
-}: WorkspaceFrameProps): ReactElement {
+function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed, contextPanels, setContextRailAvailable } = useSidebar()
   const { route } = useRouter()
+  // Daily routes get the day's contextual panel and note routes the note's;
+  // search gets none (AppShell omits the region when context is absent). In
+  // the daily stream the route stays put while focus moves between days, so
+  // the panel follows the focused day and snaps back on navigation. Read
+  // here, beneath the Settings modal's pin, so opening Settings leaves the
+  // rail as it was.
+  const contextTarget = useDailyContextTarget()
   // The rail exists on a route only when it has something to show: Details
   // for a note, a day or a peeking list, or a panel the "+" opened. Graph and
   // Tasks otherwise get the full width, and the toggle that would reveal an

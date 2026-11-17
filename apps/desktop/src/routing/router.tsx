@@ -205,10 +205,13 @@ interface RouterBeneathProps {
 export function RouterBeneath({ covers, fallback, children }: RouterBeneathProps): ReactElement {
   const live = useRouter()
   const covered = covers(live.route)
-  const [captured, setCaptured] = useState<RouterValue | null>(covered ? null : live)
+  // A window that launched into a covering route pins `fallback` once, so
+  // the Settings navigations after it reach nothing beneath either.
+  const [captured, setCaptured] = useState<RouterValue>(() =>
+    covered ? { ...live, route: fallback } : live,
+  )
   if (!covered && captured !== live) {
     setCaptured(live)
   }
-  const launched = useMemo<RouterValue>(() => ({ ...live, route: fallback }), [live, fallback])
-  return <RouterContext value={covered ? (captured ?? launched) : live}>{children}</RouterContext>
+  return <RouterContext value={covered ? captured : live}>{children}</RouterContext>
 }

@@ -14,8 +14,12 @@ const { BeneathSettings, SettingsModal } = await import('./settings-modal')
 
 /** What the workspace beneath the modal believes the route is. */
 function RouteProbe(): ReactElement {
-  const { route } = useRouter()
-  return <output aria-label="Beneath">{route.kind}</output>
+  const { route, arrivalSeq } = useRouter()
+  return (
+    <output aria-label="Beneath" data-arrival={arrivalSeq}>
+      {route.kind}
+    </output>
+  )
 }
 
 function Harness({ store }: { store: ReturnType<typeof createRouterStore> }): ReactElement {
@@ -61,7 +65,19 @@ describe('SettingsModal', () => {
     const store = createRouterStore({ kind: 'settings' })
     await render(<Harness store={store} />)
 
-    await expect.element(page.getByLabelText('Beneath')).toHaveTextContent('today')
+    const beneath = page.getByLabelText('Beneath')
+    await expect.element(beneath).toHaveTextContent('today')
+    const arrival = beneath.element().getAttribute('data-arrival')
+
+    store.navigate({ kind: 'settings', group: 'integrations' })
+    await expect
+      .poll(() => store.getSnapshot().route)
+      .toEqual({
+        kind: 'settings',
+        group: 'integrations',
+      })
+    expect(beneath.element().getAttribute('data-arrival')).toBe(arrival)
+
     await userEvent.keyboard('{Escape}')
     await expect.poll(() => store.getSnapshot().route.kind).toBe('today')
   })

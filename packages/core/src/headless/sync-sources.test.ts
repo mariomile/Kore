@@ -62,13 +62,13 @@ describe('resolveSourceRuns', () => {
   it('names the problem when nothing can run', () => {
     expect(resolveSourceRuns(request({ only: 'notion' }), {}, NOW)).toEqual({
       kind: 'usage',
-      usage: 'unknown source "notion"; known: readwise, granola',
+      usage: 'unknown source "notion"; known: granola, readwise',
     })
     expect(
       resolveSourceRuns(request({ only: 'granola' }), { KORE_READWISE_TOKEN: 'rw' }, NOW),
     ).toMatchObject({
       kind: 'usage',
-      usage: expect.stringContaining('KORE_READWISE_TOKEN and/or KORE_GRANOLA_TOKEN'),
+      usage: expect.stringContaining('KORE_GRANOLA_TOKEN and/or KORE_READWISE_TOKEN'),
     })
   })
 })

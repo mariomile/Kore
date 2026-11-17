@@ -301,8 +301,23 @@ export function wikilinkLabel(target: string): string | null {
   }
   const pipe = target.indexOf('|')
   if (pipe === -1) {
-    return null
+    const short = pathLinkLabel(target)
+    return short === target.trim() ? null : short
   }
   const alias = target.slice(pipe + 1).trim()
   return alias === '' ? null : alias
+}
+
+/**
+ * What an unaliased link to a path shows: the note's name, not the folders
+ * it sits in (`Input/Granola/Standup, 2026-11-16.md` reads "Standup,
+ * 2026-11-16"). A heading suffix stays. Any other target is returned as is.
+ */
+export function pathLinkLabel(target: string): string {
+  const trimmed = target.trim()
+  const hash = trimmed.indexOf('#')
+  const path = hash === -1 ? trimmed : trimmed.slice(0, hash)
+  const suffix = hash === -1 ? '' : trimmed.slice(hash)
+  const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+  return name === '' ? trimmed : `${name}${suffix}`
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, type ComponentType, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { settingsGroupOf, settingsRoute } from '@/routing/route'
+import { settingsGroupOf, settingsRoute, type SettingsRouteGroup } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { AgentsScreen } from './agents/agents-screen'
 import { AboutSection } from './settings/about-section'
@@ -13,22 +13,26 @@ import { AllNotesSection } from './settings/all-notes-section'
 import { AppearanceSection } from './settings/appearance-section'
 import { AudioMemosSection } from './settings/audio-memos-section'
 import { BrowserSection } from './settings/browser-section'
-import { ConnectorsSection } from './settings/connectors-section'
+import { ConnectorSection } from './settings/connector-section'
 import { DateTimeSection } from './settings/date-time-section'
 import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
+import { IntegrationsPage } from './settings/integrations-page'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { PastedResourcesSection } from './settings/pasted-resources-section'
 import { ObsidianImportSection } from './settings/obsidian-import-section'
 import { SearchSection } from './settings/search-section'
-import type { SettingsSectionId } from './settings/sections'
+import type { SettingsSectionEntry, SettingsSectionId } from './settings/sections'
 import { SettingsNavigator } from './settings/settings-navigator'
 import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
 import { VaultCompatSection } from './settings/vault-compat-section'
-import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
+import {
+  useVisibleSettingsGroups,
+  type VisibleSettingsGroup,
+} from './settings/use-visible-settings-sections'
 
 const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   appearance: AppearanceSection,
@@ -48,12 +52,23 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   'agent-workspace': AgentsScreen,
   agents: AgentsSection,
   sync: SyncSection,
-  connectors: ConnectorsSection,
-  integrations: IntegrationsSection,
+  granola: () => <ConnectorSection id="granola" />,
+  readwise: () => <ConnectorSection id="readwise" />,
+  apple: IntegrationsSection,
   'vault-compat': VaultCompatSection,
   'obsidian-import': ObsidianImportSection,
   about: AboutSection,
   destructive: DestructiveSection,
+}
+
+/**
+ * Groups drawn as a page of their own rather than a stack of section cards:
+ * Integrations is an overview of tiles that opens one source at a time.
+ */
+const GROUP_PAGES: Partial<
+  Record<SettingsRouteGroup, ComponentType<{ sections: readonly SettingsSectionEntry[] }>>
+> = {
+  integrations: IntegrationsPage,
 }
 
 /**
@@ -121,15 +136,26 @@ export function SettingsScreen(): ReactElement {
                 {activeGroup.title}
               </h2>
             </header>
-            <div>
-              {activeGroup.sections.map((section) => {
-                const Section = SECTION_COMPONENTS[section.id]
-                return <Section key={section.id} />
-              })}
-            </div>
+            <GroupBody key={activeGroup.id} group={activeGroup} />
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+/** A group's content: its own page when it has one, else its section cards. */
+function GroupBody({ group }: { group: VisibleSettingsGroup }): ReactElement {
+  const Page = GROUP_PAGES[group.id]
+  if (Page !== undefined) {
+    return <Page sections={group.sections} />
+  }
+  return (
+    <div>
+      {group.sections.map((section) => {
+        const Section = SECTION_COMPONENTS[section.id]
+        return <Section key={section.id} />
+      })}
     </div>
   )
 }

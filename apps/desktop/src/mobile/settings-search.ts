@@ -8,7 +8,7 @@ const SETTINGS_SEARCH_TERMS = {
   prompts: 'ai prompts custom prompt add prompt',
   audio: 'audio memo transcription auto format model',
   backup: 'sync backup github',
-  connectors: 'connectors readwise granola highlights meetings import sync',
+  connectors: 'integrations connectors readwise granola highlights meetings import sync daily',
   about: 'about notes version privacy policy',
 } as const
 

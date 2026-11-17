@@ -1,5 +1,7 @@
 import { DAILY_DIR, NOTES_DIR, TAGS_DIR, TEMPLATES_DIR } from '../graph/paths'
 import { db } from './db'
+import type { FileChange } from './file-changes'
+import { inClauseChunks } from './query-utils'
 
 /**
  * The vault's folders as a read-only tree of indexed notes — the sidebar's
@@ -117,4 +119,53 @@ export function findFolder(tree: FolderTreeFolder, path: string): FolderTreeFold
 export async function getFolderTree(): Promise<FolderTreeFolder> {
   const rows = await db.selectFrom('notes').select(['notes.path', 'notes.title']).execute()
   return buildFolderTree(rows)
+}
+
+/**
+ * Whether an applied batch can change `tree`: a removal, a note the tree
+ * doesn't hold yet, or a held note whose indexed title moved. The common
+ * case, a save that edits a note's body, changes none of them, and skipping
+ * the refetch then spares re-reading every note's path and title (thousands
+ * of rows) right after each autosave, while the user is typing.
+ */
+export async function folderTreeAffectedBy(
+  tree: FolderTreeFolder,
+  changes: readonly FileChange[],
+): Promise<boolean> {
+  if (changes.some((change) => change.kind !== 'upsert')) {
+    return true
+  }
+  const held = new Map<string, string>()
+  for (const change of changes) {
+    const title = findNoteTitle(tree, change.path)
+    if (title === null) {
+      return true
+    }
+    held.set(change.path, title)
+  }
+  if (held.size === 0) {
+    return false
+  }
+  let seen = 0
+  for (const paths of inClauseChunks([...held.keys()])) {
+    const rows = await db
+      .selectFrom('notes')
+      .where('path', 'in', paths)
+      .select(['path', 'title'])
+      .execute()
+    for (const row of rows) {
+      if (held.get(row.path) !== row.title) {
+        return true
+      }
+      seen += 1
+    }
+  }
+  return seen !== held.size // a held note lost its row
+}
+
+/** The title `tree` holds for the note at `path`, or null when it holds none. */
+function findNoteTitle(tree: FolderTreeFolder, path: string): string | null {
+  const slash = path.lastIndexOf('/')
+  const folder = findFolder(tree, slash === -1 ? '' : path.slice(0, slash))
+  return folder?.notes.find((note) => note.path === path)?.title ?? null
 }

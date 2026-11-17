@@ -1,5 +1,35 @@
 # Kore working state
 
+## Integrations page in Settings, 2026-11-17
+
+- [x] Settings gets an Integrations page: a tile overview with the real Granola
+  and Readwise icons; per connection a sync frequency (5/15/30/60 min, on
+  launch, manual), folder and file name with a live preview, tags, content
+  switches, and a link in the daily note under a chosen heading. Granola notes
+  get richer frontmatter with optional My notes and Transcript; unaliased path
+  wikilinks show the note name. Mac and iPhone; look approved by Mario (#528).
+
+## Folder tree not refetched on save, 2026-11-17
+
+- [x] Fix: saving a note no longer refetches the whole vault's folder tree; the
+  tree refreshes only when a note is added, removed or retitled. Part of the
+  Mac typing-lag work after #527 and #530 (#532).
+
+## Sub pages from the daily on iPhone, 2026-11-17
+
+- [x] Fix: on iPhone, tapping a sub page on the daily opens it full screen and
+  one Back returns to the day. Turn into Text inside an open page no longer
+  freezes the app (the unwrap loop spun forever against the zoom). A day
+  re-registering no longer takes over the note screen's editor handle (#534).
+- Not verified on a real iPhone yet.
+
+## Embedding stays in the background on Mac, 2026-11-17
+
+- [x] Fix: semantic search no longer takes over the Mac; embedding runs on at
+  most 4 low-priority threads (the bound was never applied before), and live
+  updates wait for a 5-second pause in typing instead of firing after every
+  autosave. Second half of the Mac typing-lag fix after #527 (#530).
+
 ## Embeddings kept across a full rebuild, 2026-11-17
 
 - [x] Fix (shipped inside 0.123.2, with #524): updating Kore no longer re-runs

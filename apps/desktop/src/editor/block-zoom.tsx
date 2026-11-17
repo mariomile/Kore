@@ -5,6 +5,8 @@ import { useExtension, useKeymap } from '@meowdown/react'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { useOptionalRouter } from '@/routing/router'
 import { blockZoomKeymap, createBlockZoomPlugin, zoomOut } from './block-zoom-plugin'
+import { zoomFloor } from './block-zoom-state'
+import { sameTarget } from './block-zoom-target'
 
 /**
  * Zoom into a block (Plan 33, C1): ⌘⇧. on any block, ⌘-click on a bullet, or
@@ -29,9 +31,12 @@ export function BlockZoom(): ReactElement | null {
         definePlugin(
           createBlockZoomPlugin({
             onZoomChange: (view, target) => {
+              // At the zoom the screen opened on (a page opened as its own
+              // screen), Back leaves the screen in one step.
+              const atFloor = target === null || sameTarget(target, zoomFloor(view.state))
               latest.current?.(
                 owner,
-                target === null ? null : () => zoomOut(view.state, view.dispatch, view),
+                atFloor ? null : () => zoomOut(view.state, view.dispatch, view),
               )
             },
             tapToZoom: isTouchEditorSurface(),

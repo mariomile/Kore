@@ -426,6 +426,8 @@ export {
   type AiPromptMode,
   type ConnectorSettings,
   type ConnectorsSettings,
+  type ConnectorSyncEvery,
+  CONNECTOR_SYNC_EVERY,
 } from '../settings/schema'
 export {
   loadWorkspaceLayout,
@@ -527,6 +529,7 @@ export {
   type Connector,
   type ConnectorId,
 } from '../connectors/registry'
+export type { ConnectorOption } from '../connectors/types'
 export {
   normalizeConnectorFolder,
   syncConnector,
@@ -542,4 +545,11 @@ export {
   normalizeConnectorPattern,
   parseConnectorTags,
   renderNotePlacement,
+  connectorPathPreview,
+  normalizeDailyHeading,
 } from '../connectors/pattern'
+export {
+  connectorRunSettings,
+  isConnectorSyncDue,
+  type ConnectorRunSettings,
+} from '../connectors/schedule'

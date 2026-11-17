@@ -1532,13 +1532,18 @@ fn remove_chunks_drops_rows_and_vectors_for_one_note_only() {
 }
 
 #[test]
-fn clear_index_wipes_embeddings_too() {
+fn clear_index_keeps_embeddings_for_the_backfill_to_reuse() {
+    // A projection bump rebuilds the index; re-embedding the whole vault on
+    // top of it pinned several cores for tens of minutes on a real vault.
     let conn = migrated();
     index_note(&conn, "notes/a.md");
     apply_chunks(&conn, "notes/a.md", &[chunk("a1", Some(vec384(0.1)))]).unwrap();
     clear_index(&conn).unwrap();
-    assert_eq!(chunk_rows(&conn), vec![]);
-    assert_eq!(vector_count(&conn), 0);
+    assert_eq!(
+        chunk_rows(&conn),
+        vec![("notes/a.md".to_string(), "a1".to_string())]
+    );
+    assert_eq!(vector_count(&conn), 1);
 }
 
 #[test]

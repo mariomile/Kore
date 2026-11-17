@@ -342,10 +342,8 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
     },
 
     clear: () => {
-      db.exec(
-        `DELETE FROM notes; DELETE FROM search_fts;
-         DELETE FROM embedding_vectors; DELETE FROM embedding_chunks;`,
-      )
+      // Embeddings survive, as in Rust's `clear_index`: the backfill reuses them.
+      db.exec('DELETE FROM notes; DELETE FROM search_fts;')
     },
 
     setMeta: (key, value) => {

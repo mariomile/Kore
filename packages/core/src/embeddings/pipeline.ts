@@ -2,6 +2,7 @@ import { readNoteLocal } from '../graph/commands'
 import { isTemplatePath } from '../graph/paths'
 import { gatherAssetDescriptionBodies } from '../indexing/asset-description-text'
 import { db } from '../indexing/db'
+import { isProjectionCurrent } from '../indexing/queries'
 import { parseNote } from '../markdown'
 import { chunkAssetDescriptions, chunkNote } from './chunk'
 import {
@@ -177,6 +178,7 @@ export async function backfillEmbeddings(options: {
   isStale?: () => boolean
 }): Promise<'completed' | 'aborted'> {
   const { generation, modelId, onProgress, isStale = () => false } = options
+  await pruneOrphanedEmbeddings(generation, isStale)
   const rows = await db
     .selectFrom('notes')
     .where('kind', '!=', 'template')
@@ -200,6 +202,35 @@ export async function backfillEmbeddings(options: {
     onProgress?.(done, rows.length)
   }
   return 'completed'
+}
+
+/**
+ * Drop embedding rows whose note no longer has an index row. A full rebuild
+ * keeps the embedding tables (so it never re-runs the model over an unchanged
+ * vault), which means a note deleted while the app was closed leaves its
+ * chunks behind. Retrieval joins `notes`, so they were never visible; this
+ * just keeps the tables from growing. Cheap: one query, usually empty.
+ *
+ * Only against a finished projection: while a rebuild runs, `notes` is empty
+ * or partial and every kept chunk would look orphaned. A rebuild unstamps the
+ * projection before its wipe, so the stamp check covers that whole window.
+ */
+async function pruneOrphanedEmbeddings(generation: number, isStale: () => boolean): Promise<void> {
+  if (!(await isProjectionCurrent())) {
+    return
+  }
+  const orphans = await db
+    .selectFrom('embeddingChunks')
+    .where('notePath', 'not in', db.selectFrom('notes').select('path'))
+    .select('notePath')
+    .distinct()
+    .execute()
+  for (const orphan of orphans) {
+    if (isStale()) {
+      return
+    }
+    await embedRemove(orphan.notePath, generation)
+  }
 }
 
 /** One stored chunk row's identity, for comparing against what we would write. */

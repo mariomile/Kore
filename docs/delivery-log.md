@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix: iPhone TestFlight build no longer crashes on launch (UIScene manifest
+  removed, #514).
+- Fix: Syncing can no longer stay on forever; the iPhone Sync footer shows the
+  current step (#516).
 - iPhone: vaults opened from GitHub clone only the last 50 commits (#509).
 - Type home folder: new notes of a type are born in its Folder, on every
   surface (#508).

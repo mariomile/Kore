@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatStreamEvent } from './stream-chat'
 import {
+  conversationContextNotes,
   appendEvent,
   buildHistory,
   NO_REPLY_NOTICE,
@@ -459,5 +460,45 @@ describe('appendEvent agent steps', () => {
       step,
       outcome: { error: 'Stopped.', summary: null },
     })
+  })
+})
+
+describe('conversationContextNotes', () => {
+  const turn = (notes: { path: string; source: 'mention' | 'recall' }[]) => ({
+    id: Math.random().toString(),
+    userText: 'q',
+    attachments: [],
+    parts: [
+      { kind: 'text' as const, text: 'a' },
+      {
+        kind: 'context' as const,
+        notes: notes.map((n) => ({ ...n, title: n.path, excerpt: '' })),
+      },
+    ],
+    responseMessages: [],
+    status: 'done' as const,
+  })
+
+  it('lists each note once, in first-use order, a mention outranking recall', () => {
+    const notes = conversationContextNotes([
+      turn([
+        { path: 'a.md', source: 'recall' },
+        { path: 'b.md', source: 'recall' },
+      ]),
+      turn([
+        { path: 'a.md', source: 'mention' },
+        { path: 'c.md', source: 'recall' },
+      ]),
+      turn([{ path: 'a.md', source: 'recall' }]),
+    ])
+    expect(notes.map((n) => [n.path, n.source])).toEqual([
+      ['a.md', 'mention'],
+      ['b.md', 'recall'],
+      ['c.md', 'recall'],
+    ])
+  })
+
+  it('is empty for a conversation without context', () => {
+    expect(conversationContextNotes([])).toEqual([])
   })
 })

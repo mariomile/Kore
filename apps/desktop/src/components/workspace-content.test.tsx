@@ -221,33 +221,25 @@ describe('WorkspaceContent', () => {
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
   })
 
-  it('gives the width back on a route with nothing for the context rail', async () => {
+  it('keeps the context rail available on every route, chat and Graph included', async () => {
     workspaceState.target = null
-    routerState.route = { kind: 'graphMap' }
-    const view = await render(<WorkspaceContent graph={GRAPH} />)
-    expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
-    expect(view.getByRole('button', { name: 'Toggle context panel' }).query()).toBeNull()
-
-    // A panel the "+" opened keeps the rail, Details or not.
-    workspaceState.openedPanels = ['calendar']
-    await view.rerender(<WorkspaceContent graph={GRAPH} />)
-    await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
-
-    // All notes peeks its selected row, so it keeps the rail too.
-    workspaceState.openedPanels = []
-    routerState.route = { kind: 'allNotes', filter: { kind: 'all' } }
-    await view.rerender(<WorkspaceContent graph={GRAPH} />)
-    await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+    for (const route of [
+      { kind: 'graphMap' },
+      { kind: 'chat' },
+      { kind: 'tasks' },
+      { kind: 'allNotes', filter: { kind: 'all' } },
+    ] as const) {
+      routerState.route = route
+      const view = await render(<WorkspaceContent graph={GRAPH} />)
+      await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+      await view.unmount()
+    }
   })
 
-  it('tells the context toggle whether the rail is there, and that it is gone on unmount', async () => {
+  it('tells the context toggle the rail is there, and that it is gone on unmount', async () => {
     workspaceState.target = null
     routerState.route = { kind: 'graphMap' }
     const view = await render(<WorkspaceContent graph={GRAPH} />)
-    expect(setContextRailAvailable).toHaveBeenLastCalledWith(false)
-
-    routerState.route = { kind: 'allNotes', filter: { kind: 'all' } }
-    await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(setContextRailAvailable).toHaveBeenLastCalledWith(true)
 
     await view.unmount()

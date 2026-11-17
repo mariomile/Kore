@@ -308,6 +308,7 @@ export {
   appendEvent,
   buildHistory,
   isToolPending,
+  conversationContextNotes,
   NO_REPLY_NOTICE,
   settleNoteEdit,
   STEER_INTERRUPTED,
@@ -315,6 +316,7 @@ export {
   type AssistantPart,
   type ChatAttachment,
   type ChatTurn,
+  type ContextNote,
 } from '../ai/chat/transcript'
 export {
   deleteChatConversation,

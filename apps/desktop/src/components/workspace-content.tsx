@@ -3,7 +3,6 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import { subscribeBrowserNavigated, type GraphInfo } from '@kore/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
-import { routeHasDetails } from '@/components/context-sidebar/sidebar-route'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { RemoteAccessRunner } from '@/components/remote-access-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
@@ -133,26 +132,23 @@ interface WorkspaceFrameProps {
  * frame, not a tab inside it.
  */
 function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactElement {
-  const { collapsed, contextCollapsed, contextPanels, setContextRailAvailable } = useSidebar()
+  const { collapsed, contextCollapsed, setContextRailAvailable } = useSidebar()
   const { route } = useRouter()
-  // Daily routes get the day's contextual panel and note routes the note's;
-  // search gets none (AppShell omits the region when context is absent). In
-  // the daily stream the route stays put while focus moves between days, so
-  // the panel follows the focused day and snaps back on navigation. Read
+  // Daily routes get the day's contextual panel and note routes the note's.
+  // In the daily stream the route stays put while focus moves between days,
+  // so the panel follows the focused day and snaps back on navigation. Read
   // here, beneath the Settings modal's pin, so opening Settings leaves the
   // rail as it was.
   const contextTarget = useDailyContextTarget()
-  // The rail exists on a route only when it has something to show: Details
-  // for a note, a day or a peeking list, or a panel the "+" opened. Graph and
-  // Tasks otherwise get the full width, and the toggle that would reveal an
-  // empty card goes with the rail.
-  const showDetails = routeHasDetails(route, contextTarget)
-  const contextRailAvailable = showDetails || contextPanels.opened.length > 0
+  // The rail is available on every route (Mario, 2026-11-17: "la right
+  // sidebar deve essere sempre disponibile"). Details describes the note,
+  // the day, the peeked row or the chat's context, and offers the other
+  // panels where a page has nothing of its own to describe.
   useEffect(() => {
-    setContextRailAvailable(contextRailAvailable)
+    setContextRailAvailable(true)
     // A graph switch unmounts the frame, rail and all.
     return () => setContextRailAvailable(false)
-  }, [contextRailAvailable, setContextRailAvailable])
+  }, [setContextRailAvailable])
   const panes = usePanes()
   const { columns } = panes
   // A chat tab names its conversation, its route does not: dropping one into
@@ -227,9 +223,7 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
                       pane={pane}
                       commandContext={commandContext}
                       showSidebarToggle={columnIndex === 0 && rowIndex === 0}
-                      showContextToggle={
-                        contextRailAvailable && columnIndex === columns.length - 1 && rowIndex === 0
-                      }
+                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
                     />
                   </Fragment>
                 ))}
@@ -239,14 +233,14 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
         </PaneDragContext>
       </DndContext>
 
-      {contextCollapsed || !contextRailAvailable ? undefined : (
+      {contextCollapsed ? undefined : (
         <aside
           id="context-sidebar"
           aria-label="Context"
           className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
         >
           <SidebarResizeHandle panel="context" />
-          <ContextSidebar target={contextTarget} showDetails={showDetails} />
+          <ContextSidebar target={contextTarget} showDetails routeKind={route.kind} />
         </aside>
       )}
     </div>

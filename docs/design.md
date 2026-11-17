@@ -24,9 +24,8 @@ contract browsers implement.
 - **Hairlines, not boxes.** Separation is a 1px `--border` (7% ink) or a step
   in surface tone (`--surface-sunken`), never a shadow on a resting element.
   Shadows are for things that float.
-- **State is tone, not color.** Hover, active, selected, and text-field focus
-  are all steps in the ink ramp (`--surface-hover` → `--surface-active`,
-  `--border` → `--border-focus`). Color is reserved for the accent rule above
+- **State is tone, not color.** Hover, active, and selected are all steps in
+  the ink ramp (`--surface-hover` → `--surface-active`). Color is reserved for the accent rule above
   and for the status inks (`--danger`, `--warning`, `--success`).
 - **Every pair passes.** Each text token on each surface of its theme meets
   its floor (4.5:1 for `--text` and `--text-secondary`, 3:1 for
@@ -49,7 +48,7 @@ Use the semantic aliases; reach for a ramp step (`--indigo-500`,
 | Hover wash / selected row | `--surface-hover`, `--surface-active` | `bg-surface-hover`, `bg-surface-active` |
 | Copy | `--text`, `--text-secondary`, `--text-muted` | `text-text`, `text-text-secondary`, `text-text-muted` |
 | Dividers / input outline | `--border`, `--border-strong` | `border-border`, `border-border-strong` (shadcn: `border-input`) |
-| Focused text field | `--border-focus` | `border-border-focus` |
+| Drop target highlight | `--border-focus` | `border-border-focus` |
 | Keyboard focus on controls | `--focus-ring` | global rule, see States |
 | Accent as ink (links, rings, checks) | `--accent`, `--accent-hover`, `--accent-soft`, `--accent-soft-text` | `text-accent`, `bg-accent-soft`, `text-accent-soft-text` |
 | Accent as fill (a solid block with a label) | `--accent-fill`, `--accent-fill-hover`, label `--text-on-brand` | `bg-primary` / `bg-accent-fill`, `text-primary-foreground` |
@@ -188,12 +187,12 @@ find inputs, the note editor:
 No outline, no ring, no glow, on any input event. Browsers match
 `:focus-visible` on a text field the moment it is focused by any means, so
 a ring on inputs is a highlight that lights every time you click to type —
-the noise this rule exists to remove. The focus indicator is the caret plus
-the field's border stepping from `--border-strong` to `--border-focus`
-(40% of the theme's ink, neutral by construction, warm on Paper and Ink).
-Composite fields (`InputGroup`, the chat composer) step the wrapper's border
-with `focus-within`. Borderless fields inside a frame (the ⌘K palette, the
-find pill, quick capture) show only the caret; the frame is the state.
+the noise this rule exists to remove. The focus indicator is the caret
+alone: a field keeps its resting border when focused, and composite fields
+(`InputGroup`, the chat composer) never step their wrapper's border with
+`focus-within` (Mario, 2026-11-17: "non ci devono essere questi focus sui
+composer o altri elementi"). Borderless fields inside a frame (the ⌘K
+palette, the find pill, quick capture) behave the same way.
 
 This departs from macOS, which rings text fields in the accent. Kore is an
 editor: the caret is always the focus, and the editor itself never draws a

@@ -37,6 +37,34 @@ const RECALL_SCAN_MAX_CHARS = 1_000
  * one OR group each.
  */
 const RECALL_STOPWORDS = new Set([
+  // Greetings, thanks and acknowledgements: a message made of these is
+  // small talk, and recalling notes for it only buries the reply.
+  'hei',
+  'hey',
+  'ehi',
+  'ciao',
+  'salve',
+  'hello',
+  'hiya',
+  'buongiorno',
+  'buonasera',
+  'buonanotte',
+  'grazie',
+  'prego',
+  'thank',
+  'thx',
+  'okay',
+  'perfetto',
+  'perfect',
+  'great',
+  'bene',
+  'benissimo',
+  'ottimo',
+  'cool',
+  'yes',
+  'nope',
+  'yep',
+  'yeah',
   // Italian
   'che',
   'chi',
@@ -308,10 +336,39 @@ export async function recallForMessage(
         return true
       }
     })
-    return safe.slice(0, RECALL_MAX_HITS)
+    return dedupeRecallHits(safe).slice(0, RECALL_MAX_HITS)
   } catch {
     return []
   }
+}
+
+/** True when any folder on `path` is an archive (`System/archive/…`, `Archive/…`). */
+function isArchivedPath(path: string): boolean {
+  return path
+    .split('/')
+    .slice(0, -1)
+    .some((segment) => /^(?:_|\.)?archived?$/i.test(segment))
+}
+
+/**
+ * Collapse copies of the same note: vaults keep archived duplicates (a
+ * skill both live and under `archive/`), and three cards of one page waste
+ * the whole budget. Hits are the same note when title and passage match;
+ * the live copy wins over an archived one, otherwise rank order holds.
+ */
+export function dedupeRecallHits<T extends RecallHit>(hits: readonly T[]): T[] {
+  const kept = new Map<string, T>()
+  for (const hit of hits) {
+    const key = `${hit.title.trim().toLowerCase()}\u{0}${(hit.snippet ?? hit.preview).trim()}`
+    const existing = kept.get(key)
+    if (existing === undefined) {
+      kept.set(key, hit)
+    } else if (isArchivedPath(existing.path) && !isArchivedPath(hit.path)) {
+      // Keep the rank slot, swap in the live copy.
+      kept.set(key, hit)
+    }
+  }
+  return [...kept.values()]
 }
 
 /**

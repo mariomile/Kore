@@ -45,8 +45,8 @@ interface ChatInputProps {
   /**
    * Whether the textarea takes focus on mount. True on the chat route —
    * you navigated there to type. False in the context rail, where the panel
-   * is auxiliary: stealing focus would light the composer's focus border and
-   * pull the caret out of the note you were editing.
+   * is auxiliary: stealing focus would pull the caret out of the note you
+   * were editing.
    */
   autoFocus?: boolean
 }
@@ -158,7 +158,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     // utility row below, matching their broader conversation scope.
     <div ref={composerRef} className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[1.25rem] border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
+        <div className="rounded-[1.25rem] border border-border bg-popover shadow-md">
           {steeringHint ? (
             <p className="px-4 pt-3.5 text-xs text-text-muted">
               Steering — Enter sends to the current reply · ⌘↩ queues it for after

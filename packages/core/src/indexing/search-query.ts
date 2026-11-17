@@ -141,6 +141,9 @@ export function buildExcludedFtsMatch(
   return `title : (${any}) OR body : (${any})`
 }
 
+/** Shortest recall term that still widens to a word-prefix match. */
+export const RECALL_PREFIX_MIN_CHARS = 4
+
 /**
  * Build the *recall* `MATCH` expression: the same per-term word-prefix groups
  * as {@link buildFtsMatch}, joined with `OR` instead of `AND`. Chat recall
@@ -156,7 +159,13 @@ export function buildRecallFtsMatch(terms: string[]): string | null {
   return tokenizable
     .map((term) => {
       const literal = quoteFtsLiteral(term)
-      return `(title : ${literal}* OR body : ${literal}*)`
+      // A three-letter stem prefixes far too much of a vault (`hei` →
+      // `height`, `ciao` is fine): short terms match whole words only.
+      // Unspaced scripts index a whole run as one token, so a short CJK
+      // term only ever matches as a prefix and keeps it.
+      const prefix =
+        [...term].length >= RECALL_PREFIX_MIN_CHARS || containsUnsegmentedScript(term) ? '*' : ''
+      return `(title : ${literal}${prefix} OR body : ${literal}${prefix})`
     })
     .join(' OR ')
 }

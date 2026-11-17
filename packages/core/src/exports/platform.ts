@@ -260,6 +260,12 @@ export { libraryFileTitle } from '../library/title'
 export { createWorkspaceStatePublisher, workspaceNotes } from '../graph/workspace-state'
 export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
+  NOTE_SKELETON_ROWS,
+  noteSkeleton,
+  type NoteSkeletonKind,
+  type NoteSkeletonRow,
+} from '../markdown/note-skeleton'
+export {
   loadAttachmentIndex,
   noteAttachmentAdded,
   resolveAttachmentSource,

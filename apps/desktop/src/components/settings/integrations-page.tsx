@@ -32,6 +32,19 @@ function connectorTile(view: ConnectorView): IntegrationTile {
   }
 }
 
+function appleTile(title: string, contacts: boolean, calendar: boolean): IntegrationTile {
+  const on = [calendar ? 'Calendar' : null, contacts ? 'Contacts' : null].filter(
+    (part) => part !== null,
+  )
+  return {
+    id: 'apple',
+    title,
+    description: APPLE_DESCRIPTION,
+    connected: on.length > 0,
+    state: on.length === 0 ? 'Off' : `${on.join(' & ')} on`,
+  }
+}
+
 /**
  * The Integrations page: an overview of every source as a tile with its mark
  * and state, and one source's settings when its tile is chosen, the way the
@@ -64,15 +77,7 @@ export function IntegrationsPage({
 
   const tiles = sections.flatMap((section): IntegrationTile[] => {
     if (section.id === 'apple') {
-      return [
-        {
-          id: 'apple',
-          title: section.title,
-          description: APPLE_DESCRIPTION,
-          connected: settings.contactsEnabled,
-          state: settings.contactsEnabled ? 'Contacts on' : 'Off',
-        },
-      ]
+      return [appleTile(section.title, settings.contactsEnabled, settings.calendarEnabled)]
     }
     const view = connectors.items.find((item) => item.connector.id === section.id)
     return view === undefined ? [] : [connectorTile(view)]

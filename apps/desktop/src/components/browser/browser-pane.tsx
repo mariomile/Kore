@@ -298,7 +298,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
             // Abandoned edits snap back to the page's real URL.
             setAddress(browserSessionUrl() ?? home)
           }}
-          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted focus-visible:border-border-focus"
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted"
           placeholder="Search or enter address"
         />
         <button

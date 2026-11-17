@@ -328,9 +328,9 @@ body {
 /* Text entry — inputs, textareas, contenteditable editors, the cmdk input:
    no outline and no ring, ever. `:focus-visible` matches a focused text field
    on every click, not just keyboard entry, so a ring here is a highlight that
-   lights up whenever you type. The caret plus the field's border stepping to
-   `--border-focus` (set by the ui/ primitives) is the whole treatment;
-   borderless fields inside a frame (palette, find bar) show the caret alone.
+   lights up whenever you type. The caret is the whole treatment: fields keep
+   their resting border on focus too (no step to `--border-focus`), so the
+   composer and every other field stay calm while you type.
 
    Menu and list rows are focus-managed by their parent and already carry the
    row highlight (`focus:bg-surface-hover`), the idiom Apple's HIG prescribes

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RecallHit } from '../../indexing'
 import {
   RECALL_MAX_HITS,
+  dedupeRecallHits,
   recallContextBlock,
   recallForMessage,
   recallTermsFromMessage,
@@ -106,6 +107,36 @@ describe('recallForMessage', () => {
     })
     expect(recalled).toEqual([])
     expect(called).toBe(false)
+  })
+
+  it('treats a greeting as small talk: no terms, no search', async () => {
+    expect(recallTermsFromMessage('hei')).toEqual([])
+    expect(recallTermsFromMessage('Ciao!')).toEqual([])
+    expect(recallTermsFromMessage('hey, thanks')).toEqual([])
+    expect(recallTermsFromMessage('ciao, il pricing di Kore?')).toEqual(['pricing', 'Kore'])
+  })
+
+  it('collapses archived copies of the same note, keeping the live one', async () => {
+    const recalled = await recallForMessage('json canvas skill', [], {
+      searchFn: async () => [
+        hit({ path: 'System/archive/skills/json-canvas/SKILL.md', title: 'JSON Canvas Skill' }),
+        hit({ path: 'System/skills/json-canvas/references/EXAMPLES.md', title: 'Examples' }),
+        hit({ path: 'System/skills/json-canvas/SKILL.md', title: 'JSON Canvas Skill' }),
+      ],
+      readNoteFn: async () => '# x',
+    })
+    expect(recalled.map((h) => h.path)).toEqual([
+      'System/skills/json-canvas/SKILL.md',
+      'System/skills/json-canvas/references/EXAMPLES.md',
+    ])
+  })
+
+  it('keeps same-titled notes whose passages differ', () => {
+    const hits = [
+      hit({ path: 'a/Ideas.md', title: 'Ideas', snippet: 'one' }),
+      hit({ path: 'b/Ideas.md', title: 'Ideas', snippet: 'two' }),
+    ]
+    expect(dedupeRecallHits(hits)).toHaveLength(2)
   })
 
   it('degrades to no recall when the search fails — a send is never blocked', async () => {

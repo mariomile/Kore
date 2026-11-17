@@ -95,10 +95,10 @@ export function MobileChatComposer({
       className="absolute inset-x-0 z-10 px-3 pb-2"
       style={{ bottom: 'var(--mobile-tab-bar-height, 0px)' }}
     >
-      <div className="rounded-2xl border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
+      <div className="rounded-2xl border border-border bg-popover shadow-md">
         {turns.length === 0 && !steering && graph !== null ? (
           // What the question runs over, before the first one is asked (once
-          // a conversation runs, each reply lists its own "Context used").
+          // a conversation runs, each reply carries its own "Used N notes" pill).
           // A label, not a control: there is one scope today, the vault.
           <div className="px-2.5 pt-2.5">
             <div

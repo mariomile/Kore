@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildBodyFtsMatch,
   buildFtsMatch,
+  buildRecallFtsMatch,
   containsUnsegmentedScript,
   titleRecallNeedles,
 } from './search-query'
@@ -106,5 +107,13 @@ describe('titleRecallNeedles', () => {
 
   it('returns no needles for a blank query', () => {
     expect(titleRecallNeedles('   ')).toEqual([])
+  })
+})
+
+describe('buildRecallFtsMatch', () => {
+  it('ORs per-term groups, prefix-matching only terms of four or more characters', () => {
+    expect(buildRecallFtsMatch(['hei', 'pricing'])).toBe(
+      '(title : "hei" OR body : "hei") OR (title : "pricing"* OR body : "pricing"*)',
+    )
   })
 })

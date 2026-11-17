@@ -9,6 +9,7 @@ import {
   Terminal,
   type Icon,
 } from '@/components/icons'
+import { ChatContextOverview } from '@/components/chat/chat-context-overview'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
 import {
@@ -41,6 +42,7 @@ import { NotePeek } from './note-peek'
 import { usePeekPath } from '@/lib/selection/peek-store'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { DEFAULT_CONTEXT_PANEL as DEFAULT_PANEL, type ContextPanel } from './context-panel'
+import type { Route } from '@/routing/route'
 import type { ContextSidebarTarget } from './sidebar-route'
 
 /** What a panel's body gets to describe: the route's note, and the day. */
@@ -51,6 +53,10 @@ interface PanelContext {
   /** The day the Calendar panel anchors on. */
   calendarDate: string
   today: string
+  /** The route the rail sits beside, when the host knows it. */
+  routeKind: Route['kind'] | undefined
+  /** Opens another panel — the empty Details card offers them. */
+  openPanel: (id: ContextPanel) => void
 }
 
 interface ContextPanelSpec {
@@ -77,16 +83,20 @@ const PANELS: ContextPanelSpec[] = [
     label: 'Details',
     Glyph: Info,
     ownsScrolling: false,
-    render: ({ target, peekPath }) =>
+    render: ({ target, peekPath, routeKind, openPanel }) =>
       target === null ? (
-        peekPath === null ? (
-          // Only a list that peeks gets here (routes with nothing to describe
-          // drop the Details tab), so the hint names the gesture that fills it.
+        peekPath !== null ? (
+          <NotePeek path={peekPath} />
+        ) : routeKind === 'chat' ? (
+          // The chat route describes its conversation: the notes it read.
+          <ChatContextOverview />
+        ) : routeKind === undefined || routeKind === 'allNotes' ? (
+          // A list that peeks: the hint names the gesture that fills it.
           <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
             Select a note to preview it here.
           </div>
         ) : (
-          <NotePeek path={peekPath} />
+          <DetailsEmpty routeKind={routeKind} openPanel={openPanel} />
         )
       ) : target.kind === 'daily' ? (
         <DailyContextSidebar date={target.date} />
@@ -147,16 +157,59 @@ const PANELS: ContextPanelSpec[] = [
 /** The panels the "+" menu offers — everything the rail does not start with. */
 const OPTIONAL_PANELS = PANELS.filter((spec) => spec.id !== DEFAULT_PANEL)
 
+/**
+ * The panels worth offering beside `routeKind`: the chat route already is
+ * the conversation, so a Chat panel beside it would only mirror it.
+ */
+function panelsBeside(routeKind: Route['kind'] | undefined): ContextPanelSpec[] {
+  return OPTIONAL_PANELS.filter((spec) => !(spec.id === 'chat' && routeKind === 'chat'))
+}
+
+/**
+ * Details on a route with nothing of its own to describe (Graph, Tasks,
+ * Memory, the browser…): the rail stays available everywhere, so instead of
+ * a blank card it offers the panels that work beside any route.
+ */
+function DetailsEmpty({
+  routeKind,
+  openPanel,
+}: {
+  routeKind: Route['kind']
+  openPanel: (id: ContextPanel) => void
+}): ReactElement {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+      <p className="text-xs text-text-muted">Nothing to describe on this page.</p>
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {panelsBeside(routeKind).map(({ id, label, Glyph }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              openPanel(id)
+            }}
+            className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-hover/60 px-3 text-xs text-text-secondary transition-colors duration-100 hover:bg-surface-hover hover:text-text"
+          >
+            <Glyph aria-hidden className="size-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface ContextSidebarProps {
   /** What the Details panel describes — null on routes without a note. */
   target: ContextSidebarTarget | null
   /**
-   * Whether the route has anything for Details to describe: a note, a day, or
-   * a list that peeks ({@link import('./sidebar-route').routeHasDetails}).
-   * Without one the Details tab leaves the band, and the shell drops the rail
-   * altogether unless the "+" opened another panel.
+   * Whether the band carries the Details tab. The workspace always passes
+   * true (the rail is available on every route, and Details says what fits
+   * the route); false leaves only the panels the "+" opened.
    */
   showDetails: boolean
+  /** The route beside the rail; decides what an empty Details card says. */
+  routeKind?: Route['kind'] | undefined
 }
 
 /**
@@ -168,7 +221,11 @@ interface ContextSidebarProps {
  * close it, and only Details cannot be closed. Both the open set and the
  * choice are per-window session state ({@link useSidebar}), not persisted.
  */
-export function ContextSidebar({ target, showDetails }: ContextSidebarProps): ReactElement | null {
+export function ContextSidebar({
+  target,
+  showDetails,
+  routeKind,
+}: ContextSidebarProps): ReactElement | null {
   const { contextPanels, openContextPanel, closeContextPanel } = useSidebar()
   const today = useToday()
   const peekPath = usePeekPath()
@@ -177,8 +234,11 @@ export function ContextSidebar({ target, showDetails }: ContextSidebarProps): Re
   const calendarDate = target?.kind === 'daily' ? target.date : today
   // Segments keep `PANELS` order however the panels were opened, so the band
   // never reshuffles itself around the glyph you are aiming at.
+  const offered = panelsBeside(routeKind)
   const segments = PANELS.filter((spec) =>
-    spec.id === DEFAULT_PANEL ? showDetails : contextPanels.opened.includes(spec.id),
+    spec.id === DEFAULT_PANEL
+      ? showDetails
+      : contextPanels.opened.includes(spec.id) && offered.includes(spec),
   )
   // The stored choice can name a panel this route does not show (Details on
   // Graph); the band then leads with its first tab.
@@ -236,7 +296,7 @@ export function ContextSidebar({ target, showDetails }: ContextSidebarProps): Re
             ))}
           </div>
 
-          <ContextPanelsPlusMenu onOpen={showPanel} />
+          <ContextPanelsPlusMenu panels={offered} onOpen={showPanel} />
         </div>
       </div>
 
@@ -256,7 +316,14 @@ export function ContextSidebar({ target, showDetails }: ContextSidebarProps): Re
               active.ownsScrolling ? 'flex flex-col' : 'overflow-y-auto',
             )}
           >
-            {active.render({ target, peekPath, calendarDate, today })}
+            {active.render({
+              target,
+              peekPath,
+              calendarDate,
+              today,
+              routeKind,
+              openPanel: showPanel,
+            })}
           </div>
         </div>
       </div>
@@ -334,6 +401,7 @@ function PanelTab({
 }
 
 interface ContextPanelsPlusMenuProps {
+  panels: readonly ContextPanelSpec[]
   onOpen: (id: ContextPanel) => void
 }
 
@@ -342,7 +410,7 @@ interface ContextPanelsPlusMenuProps {
  * gives it a tab and brings it up; picking one that already has a tab just
  * shows it, since the tab itself is what closes it again.
  */
-function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactElement {
+function ContextPanelsPlusMenu({ panels, onOpen }: ContextPanelsPlusMenuProps): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -361,7 +429,7 @@ function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactEle
         }
       />
       <DropdownMenuContent align="start" sideOffset={6} className="min-w-44">
-        {OPTIONAL_PANELS.map(({ id, label, Glyph }) => (
+        {panels.map(({ id, label, Glyph }) => (
           <DropdownMenuItem
             key={id}
             onClick={() => {

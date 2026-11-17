@@ -72,6 +72,32 @@ export interface ChatTurn {
   status: 'streaming' | 'done'
 }
 
+/** One note a turn carried as context (a `[[mention]]` or automatic recall). */
+export type ContextNote = Extract<AssistantPart, { kind: 'context' }>['notes'][number]
+
+/**
+ * Every note a conversation carried as context, once each, in first-use
+ * order. A note the user mentioned in any turn counts as mentioned: an
+ * explicit reference outranks the recall that may have surfaced it too.
+ */
+export function conversationContextNotes(turns: readonly ChatTurn[]): ContextNote[] {
+  const byPath = new Map<string, ContextNote>()
+  for (const turn of turns) {
+    for (const part of turn.parts) {
+      if (part.kind !== 'context') {
+        continue
+      }
+      for (const note of part.notes) {
+        const seen = byPath.get(note.path)
+        if (seen === undefined || (seen.source === 'recall' && note.source === 'mention')) {
+          byPath.set(note.path, note)
+        }
+      }
+    }
+  }
+  return [...byPath.values()]
+}
+
 /** Whether a tool part is still awaiting its outcome. */
 export function isToolPending(part: Extract<AssistantPart, { kind: 'tool' }>): boolean {
   return part.result === null && part.error === null

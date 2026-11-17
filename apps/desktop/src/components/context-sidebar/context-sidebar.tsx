@@ -202,7 +202,7 @@ function DetailsEmpty({
               >
                 <span
                   aria-hidden
-                  className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface text-text-secondary shadow-[inset_0_0_0_1px_var(--border)]"
+                  className="flex h-8 w-[26px] shrink-0 items-center justify-center rounded-md bg-surface text-text-secondary shadow-[inset_0_0_0_1px_var(--border)]"
                 >
                   <Glyph className="size-3.5" />
                 </span>

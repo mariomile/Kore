@@ -2,6 +2,9 @@ import { expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 
 const navigate = vi.fn()
+vi.mock('@/hooks/use-note-skeleton', () => ({
+  useNoteSkeleton: () => [{ kind: 'heading', depth: 0, width: 0.6 }],
+}))
 vi.mock('@/hooks/use-note-link-navigation', () => ({ useNoteLinkNavigation: () => navigate }))
 
 const { ChatContextSources } = await import('./chat-context-sources')

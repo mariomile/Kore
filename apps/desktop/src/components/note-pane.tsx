@@ -377,7 +377,7 @@ export function NotePaneComponent({
           registeredHandle.current = null
         }
       } else {
-        registerNoteEditorHandle(path, handle)
+        registerNoteEditorHandle(path, handle, !openPagesOnNoteScreen)
         registeredHandle.current = { path, handle }
       }
       if (dailyDate !== undefined) {
@@ -394,7 +394,16 @@ export function NotePaneComponent({
         onAutoFocused?.()
       }
     },
-    [bindEditor, path, dailyDate, registerHandle, autoFocus, autoFocusSelection, onAutoFocused],
+    [
+      bindEditor,
+      path,
+      dailyDate,
+      registerHandle,
+      autoFocus,
+      autoFocusSelection,
+      onAutoFocused,
+      openPagesOnNoteScreen,
+    ],
   )
 
   const aiMenu = useEditorAiMenu({

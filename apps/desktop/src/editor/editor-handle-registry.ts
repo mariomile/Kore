@@ -14,6 +14,14 @@ import type { NoteEditorHandle } from '@/editor/note-editor'
 const handles = new Map<string, NoteEditorHandle>()
 
 /**
+ * Editors that show a note without being its screen (a day of the phone's
+ * carousel), kept apart so the note's own screen stays the handle for the
+ * path while it is open, and the day takes over again when it closes.
+ */
+const backgroundHandles = new Map<string, NoteEditorHandle>()
+const screenHandles = new WeakSet<NoteEditorHandle>()
+
+/**
  * Headings a followed link (`[[Plan#Next steps]]`) asked for in a note whose
  * editor is not mounted yet. The pane registers its handle once the note has
  * loaded, and that registration reveals the heading. An entry nobody claims
@@ -71,7 +79,14 @@ export function registerNoteEditorHandle(
   handle: NoteEditorHandle,
   onNoteScreen = true,
 ): void {
-  handles.set(path, handle)
+  if (onNoteScreen) {
+    screenHandles.add(handle)
+    handles.set(path, handle)
+  } else {
+    backgroundHandles.set(path, handle)
+    const current = handles.get(path)
+    if (current === undefined || !screenHandles.has(current)) handles.set(path, handle)
+  }
   const pending = pendingReveals.get(path)
   if (pending !== undefined && (onNoteScreen || pending.noteScreen !== true)) {
     pendingReveals.delete(path)
@@ -89,8 +104,11 @@ export function registerNoteEditorHandle(
  * unmount racing a remount never drops the live handle.
  */
 export function unregisterNoteEditorHandle(path: string, handle: NoteEditorHandle): void {
+  if (backgroundHandles.get(path) === handle) backgroundHandles.delete(path)
   if (handles.get(path) === handle) {
-    handles.delete(path)
+    const background = backgroundHandles.get(path)
+    if (background === undefined) handles.delete(path)
+    else handles.set(path, background)
   }
 }
 

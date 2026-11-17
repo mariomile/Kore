@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NoteEditorHandle } from './note-editor'
 import {
+  noteEditorHandleFor,
   registerNoteEditorHandle,
   revealNoteHeadingOnNoteScreen,
   unregisterNoteEditorHandle,
@@ -39,5 +40,18 @@ describe('revealNoteHeadingOnNoteScreen', () => {
     await flushFrames()
     expect(day.revealHeading).not.toHaveBeenCalled()
     expect(screen.revealHeading).toHaveBeenCalledWith('^page-a1b2c3', { asScreen: true })
+  })
+
+  it("keeps the note's screen as the path's editor while a day re-registers, then hands back", () => {
+    const day = fakeHandle()
+    const screen = fakeHandle()
+    registerNoteEditorHandle('daily/2026-11-18.md', day, false)
+    registerNoteEditorHandle('daily/2026-11-18.md', screen)
+    registerNoteEditorHandle('daily/2026-11-18.md', day, false)
+    expect(noteEditorHandleFor('daily/2026-11-18.md')).toBe(screen)
+    unregisterNoteEditorHandle('daily/2026-11-18.md', screen)
+    expect(noteEditorHandleFor('daily/2026-11-18.md')).toBe(day)
+    unregisterNoteEditorHandle('daily/2026-11-18.md', day)
+    expect(noteEditorHandleFor('daily/2026-11-18.md')).toBeNull()
   })
 })

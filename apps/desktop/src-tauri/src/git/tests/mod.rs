@@ -145,6 +145,38 @@ fn commit_excludes_runtime_dir_but_keeps_proposals_and_skips_when_clean() {
 }
 
 #[test]
+fn commit_refreshes_stale_file_stats_so_the_next_commit_skips_hashing() {
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    write(root, "notes/a.md", "# A\n");
+    assert!(
+        commit_all(root, "Update notes", MAX_FILE_BYTES)
+            .unwrap()
+            .committed
+    );
+
+    // Same contents, new mtime: what an app update or a restore does to
+    // every file in a phone's vault.
+    let touched = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(2_000_000_000);
+    fs::File::options()
+        .write(true)
+        .open(root.join("notes/a.md"))
+        .unwrap()
+        .set_modified(touched)
+        .unwrap();
+
+    let outcome = commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    assert!(!outcome.committed, "unchanged contents must not commit");
+
+    // The index now carries the file's current mtime, so libgit2 trusts the
+    // stat data next time instead of re-hashing the file.
+    let repo = Repository::open(root).unwrap();
+    let index = repo.index().unwrap();
+    let entry = index.get_path(Path::new("notes/a.md"), 0).unwrap();
+    assert_eq!(entry.mtime.seconds(), 2_000_000_000);
+}
+
+#[test]
 fn commit_describes_single_note_changes() {
     let fixture = fixture();
     let root = &fixture.graph_a;

@@ -1,5 +1,12 @@
 # Kore working state
 
+## Settings as a modal on Mac, 2026-11-17
+
+- [x] Settings on Mac opens as a large centered modal over the blurred
+  workspace; the note underneath stays in place, and Escape, a click outside
+  or Close return to it. Cmd+, and deep links work as before; iPhone is
+  unchanged. Look approved by Mario (#541).
+
 ## No Due today card on the iPhone daily, 2026-11-17
 
 - [x] Fix (iPhone): the "Due today" card above today's daily is removed, so

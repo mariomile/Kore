@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Mac: Settings opens as a centered modal over the blurred workspace (#541).
 - Fix (iPhone): no more "Due today" card with other notes' tasks above
   today's daily (#540).
 - Settings: Integrations page for Granola and Readwise (frequency, folder

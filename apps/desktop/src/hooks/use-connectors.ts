@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  CONNECTOR_SYNC_EVERY,
   CONNECTORS,
   connectConnector,
+  connectorById,
   disconnectConnector,
   errorMessage,
   hasBridge,
   isConnectorConnected,
   normalizeConnectorFolder,
   normalizeConnectorPattern,
+  normalizeDailyHeading,
   parseConnectorTags,
   type Connector,
   type ConnectorId,
@@ -44,33 +47,51 @@ export interface UseConnectorsResult {
   setFolder(id: ConnectorId, folder: string): string | null
   /** Save the file name pattern; returns an error message for an unusable one. */
   setPattern(id: ConnectorId, pattern: string): string | null
-  /** Save the tags new notes carry (comma-separated); empty restores the default. */
-  setTags(id: ConnectorId, tags: string): void
+  /** Save the tags new notes carry (comma-separated); empty restores the default. Never rejects. */
+  setTags(id: ConnectorId, tags: string): null
   /** When automatic syncs run. */
   setSyncEvery(id: ConnectorId, every: ConnectorSyncEvery): void
   /** Turn one of the connector's content switches on or off. */
   setOption(id: ConnectorId, key: string, on: boolean): void
   /** Turn the daily-note links on or off. */
   setDailyLink(id: ConnectorId, on: boolean): void
-  /** Save the daily-note heading; empty restores the default. */
-  setDailyHeading(id: ConnectorId, heading: string): void
+  /** Save the daily-note heading; empty restores the default. Never rejects. */
+  setDailyHeading(id: ConnectorId, heading: string): null
   /** Sync this connector now, whatever its frequency. */
   syncNow(id: ConnectorId): void
 }
 
-/** The frequency choices, in the order the settings pickers list them. */
-export const SYNC_EVERY_OPTIONS: readonly { value: ConnectorSyncEvery; label: string }[] = [
-  { value: 5, label: 'Every 5 minutes' },
-  { value: 15, label: 'Every 15 minutes' },
-  { value: 30, label: 'Every 30 minutes' },
-  { value: 60, label: 'Every hour' },
-  { value: 'launch', label: 'When Kore opens' },
-  { value: 'manual', label: 'Only when I ask' },
-]
+const SYNC_EVERY_LABELS: Record<ConnectorSyncEvery, string> = {
+  5: 'Every 5 minutes',
+  15: 'Every 15 minutes',
+  30: 'Every 30 minutes',
+  60: 'Every hour',
+  launch: 'When Kore opens',
+  manual: 'Only when I ask',
+}
+
+/**
+ * The frequency choices as the pickers list them. `key` is the value as a
+ * string, what a `<select>` or a Select item carries.
+ */
+export const SYNC_EVERY_OPTIONS: readonly {
+  value: ConnectorSyncEvery
+  key: string
+  label: string
+}[] = CONNECTOR_SYNC_EVERY.map((value) => ({
+  value,
+  key: String(value),
+  label: SYNC_EVERY_LABELS[value],
+}))
 
 /** The label of a frequency choice. */
 export function syncEveryLabel(every: ConnectorSyncEvery): string {
-  return SYNC_EVERY_OPTIONS.find((option) => option.value === every)?.label ?? String(every)
+  return SYNC_EVERY_LABELS[every]
+}
+
+/** The frequency a picker's `key` stands for, or `undefined` for a stray one. */
+export function syncEveryFromKey(key: string): ConnectorSyncEvery | undefined {
+  return SYNC_EVERY_OPTIONS.find((option) => option.key === key)?.value
 }
 
 /**
@@ -152,8 +173,7 @@ export function useConnectors(): UseConnectorsResult {
     (id: ConnectorId, folder: string): string | null => {
       try {
         const normalized = normalizeConnectorFolder(folder)
-        const connector = CONNECTORS.find((candidate) => candidate.id === id)
-        patch(id, { folder: normalized === connector?.defaultFolder ? null : normalized })
+        patch(id, { folder: normalized === connectorById(id).defaultFolder ? null : normalized })
         return null
       } catch (cause) {
         return errorMessage(cause)
@@ -164,10 +184,7 @@ export function useConnectors(): UseConnectorsResult {
 
   const setPattern = useCallback(
     (id: ConnectorId, pattern: string): string | null => {
-      const connector = CONNECTORS.find((candidate) => candidate.id === id)
-      if (connector === undefined) {
-        return null
-      }
+      const connector = connectorById(id)
       try {
         const normalized = normalizeConnectorPattern(pattern, connector)
         patch(id, { pattern: normalized === connector.defaultPattern ? null : normalized })
@@ -180,9 +197,10 @@ export function useConnectors(): UseConnectorsResult {
   )
 
   const setTags = useCallback(
-    (id: ConnectorId, tags: string): void => {
+    (id: ConnectorId, tags: string): null => {
       const parsed = parseConnectorTags(tags)
       patch(id, { tags: parsed.length === 0 ? null : parsed })
+      return null
     },
     [patch],
   )
@@ -208,11 +226,8 @@ export function useConnectors(): UseConnectorsResult {
       patch(id, { options: { ...settings.connectors[id].options, [key]: on } }),
     setDailyLink: (id, dailyLink) => patch(id, { dailyLink }),
     setDailyHeading: (id, heading) => {
-      const trimmed = heading.trim().replace(/^#+\s*/, '')
-      const connector = CONNECTORS.find((candidate) => candidate.id === id)
-      patch(id, {
-        dailyHeading: trimmed === '' || trimmed === connector?.dailyHeading ? null : trimmed,
-      })
+      patch(id, { dailyHeading: normalizeDailyHeading(heading, connectorById(id)) })
+      return null
     },
     syncNow,
   }

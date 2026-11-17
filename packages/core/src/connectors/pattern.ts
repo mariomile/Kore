@@ -92,3 +92,12 @@ export function connectorPathPreview(
   const cleanFolder = folder.trim().replaceAll(/^\/+|\/+$/g, '')
   return [cleanFolder, dir, `${stem}.md`].filter((part) => part !== '').join('/')
 }
+
+/**
+ * The daily-note heading as typed in settings, stored form: leading `#`s
+ * dropped, and `null` (the connector's default) when empty or the default.
+ */
+export function normalizeDailyHeading(text: string, connector: Connector): string | null {
+  const heading = text.trim().replace(/^#+\s*/, '')
+  return heading === '' || heading === connector.dailyHeading ? null : heading
+}

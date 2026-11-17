@@ -421,6 +421,7 @@ export {
   type ConnectorSettings,
   type ConnectorsSettings,
   type ConnectorSyncEvery,
+  CONNECTOR_SYNC_EVERY,
 } from '../settings/schema'
 export {
   loadWorkspaceLayout,
@@ -539,4 +540,10 @@ export {
   parseConnectorTags,
   renderNotePlacement,
   connectorPathPreview,
+  normalizeDailyHeading,
 } from '../connectors/pattern'
+export {
+  connectorRunSettings,
+  isConnectorSyncDue,
+  type ConnectorRunSettings,
+} from '../connectors/schedule'

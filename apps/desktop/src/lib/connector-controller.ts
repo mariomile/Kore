@@ -1,9 +1,11 @@
 import {
   CONNECTORS,
+  connectorRunSettings,
   connectorSecretName,
   errorMessage,
   getSecret,
   hasBridge,
+  isConnectorSyncDue,
   syncConnector,
   toAppError,
   type Connector,
@@ -48,24 +50,6 @@ export interface ConnectorControllerOptions {
   getSettings: () => ConnectorsSettings
   /** Persist a completed run's cursor. */
   onSynced: (id: ConnectorId, syncedAt: string) => void
-}
-
-/**
- * Whether an automatic pass should sync this source, by the user's choice:
- * every N minutes, once per launch (`launch`), or never on its own (`manual`).
- */
-function isDue(entry: ConnectorSettings, now: number, sessionStart: number): boolean {
-  if (entry.syncEvery === 'manual') {
-    return false
-  }
-  if (entry.lastSyncedAt === null) {
-    return true
-  }
-  const last = Date.parse(entry.lastSyncedAt)
-  if (entry.syncEvery === 'launch') {
-    return last < sessionStart
-  }
-  return now - last >= entry.syncEvery * 60 * 1000
 }
 
 /**
@@ -117,13 +101,7 @@ export function createConnectorController(
       const result = await syncConnector({
         connector,
         token: token.trim(),
-        folder: entry.folder ?? connector.defaultFolder,
-        pattern: entry.pattern,
-        tags: entry.tags,
-        options: entry.options,
-        dailyHeading: entry.dailyLink ? (entry.dailyHeading ?? connector.dailyHeading) : null,
-        since: entry.lastSyncedAt === null ? null : new Date(entry.lastSyncedAt),
-        floor: entry.importFrom === null ? null : new Date(entry.importFrom),
+        ...connectorRunSettings(connector, entry),
         generation: options.generation,
         fetchFn: providerFetch,
         isStale,
@@ -161,7 +139,10 @@ export function createConnectorController(
         if (isStale()) {
           return
         }
-        if (!entry.enabled || (!force.has(connector.id) && !isDue(entry, now, sessionStart))) {
+        if (
+          !entry.enabled ||
+          (!force.has(connector.id) && !isConnectorSyncDue(entry, now, sessionStart))
+        ) {
           continue
         }
         await syncOne(connector, entry, isStale)

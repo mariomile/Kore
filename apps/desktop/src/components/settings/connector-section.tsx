@@ -1,5 +1,5 @@
-import { useId, useState, type ReactElement, type ReactNode } from 'react'
-import { connectorPathPreview, errorMessage, type ConnectorId } from '@kore/core'
+import { useId, type ReactElement, type ReactNode } from 'react'
+import type { ConnectorId } from '@kore/core'
 import { ExternalLink, Refresh } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { useConnectForm, useConnectorFields } from '@/hooks/use-connector-form'
 import {
   connectorStatusText,
   SYNC_EVERY_OPTIONS,
@@ -65,45 +66,23 @@ function ConnectForm({
   actions: UseConnectorsResult
 }): ReactElement {
   const { connector } = view
-  const [token, setToken] = useState('')
-  const [importHistory, setImportHistory] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function connect(): Promise<void> {
-    setBusy(true)
-    setError(null)
-    try {
-      await actions.connect(connector.id, token, importHistory)
-      setToken('')
-    } catch (cause) {
-      setError(errorMessage(cause))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const form = useConnectForm(connector, actions)
 
   return (
-    <form
-      className="px-4 py-3.5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        void connect()
-      }}
-    >
+    <form className="px-4 py-3.5" onSubmit={form.onSubmit}>
       <p className="text-sm text-text-secondary">{connector.description}</p>
       <div className="mt-3 flex items-center gap-2">
         <Input
           type="password"
-          value={token}
-          onChange={(event) => setToken(event.target.value)}
+          value={form.token}
+          onChange={(event) => form.setToken(event.target.value)}
           placeholder={connector.tokenLabel}
           aria-label={`${connector.label} ${connector.tokenLabel}`}
           autoComplete="off"
           className="min-w-0 flex-1 font-mono text-xs"
         />
-        <Button type="submit" size="sm" disabled={busy || token.trim() === ''}>
-          {busy ? 'Checking…' : 'Connect'}
+        <Button type="submit" size="sm" disabled={!form.canSubmit}>
+          {form.busy ? 'Checking…' : 'Connect'}
         </Button>
         <Button
           type="button"
@@ -117,14 +96,14 @@ function ConnectForm({
       </div>
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-text-secondary">
         <Checkbox
-          checked={importHistory}
-          onCheckedChange={(next) => setImportHistory(next === true)}
+          checked={form.importHistory}
+          onCheckedChange={(next) => form.setImportHistory(next === true)}
         />
         Also import items from before today (leave off if another app already wrote them here)
       </label>
-      {error !== null ? (
+      {form.error !== null ? (
         <div className="mt-3">
-          <InlineAlert tone="warning">{error}</InlineAlert>
+          <InlineAlert tone="warning">{form.error}</InlineAlert>
         </div>
       ) : null}
     </form>
@@ -140,15 +119,9 @@ function ConnectedRows({
 }): ReactElement {
   const { connector, settings } = view
   const { settings: appSettings } = useSettings()
-  const [problem, setProblem] = useState<string | null>(null)
-  const [folderDraft, setFolderDraft] = useState<string | null>(null)
-  const [patternDraft, setPatternDraft] = useState<string | null>(null)
+  const fields = useConnectorFields(view, actions)
   const switchId = useId()
-  const folder = settings.folder ?? connector.defaultFolder
-  const pattern = settings.pattern ?? connector.defaultPattern
-  const heading = settings.dailyHeading ?? connector.dailyHeading
-  const preview = connectorPathPreview(connector, folderDraft ?? folder, patternDraft ?? pattern)
-  const fields = connector.patternFields.map((field) => `{${field}}`).join(' ')
+  const patternFields = connector.patternFields.map((field) => `{${field}}`).join(' ')
 
   return (
     <>
@@ -182,15 +155,11 @@ function ConnectedRows({
 
       <Row label="Frequency" description="How often new items are fetched while Kore is open.">
         <Select
-          value={String(settings.syncEvery)}
-          items={SYNC_EVERY_OPTIONS.map((option) => ({
-            value: String(option.value),
-            label: option.label,
-          }))}
+          value={fields.frequency}
+          items={SYNC_EVERY_OPTIONS.map((option) => ({ value: option.key, label: option.label }))}
           onValueChange={(value) => {
-            const choice = SYNC_EVERY_OPTIONS.find((option) => String(option.value) === value)
-            if (choice !== undefined) {
-              actions.setSyncEvery(connector.id, choice.value)
+            if (value !== null) {
+              fields.setFrequency(value)
             }
           }}
         >
@@ -199,7 +168,7 @@ function ConnectedRows({
           </SelectTrigger>
           <SelectContent>
             {SYNC_EVERY_OPTIONS.map((option) => (
-              <SelectItem key={String(option.value)} value={String(option.value)}>
+              <SelectItem key={option.key} value={option.key}>
                 {option.label}
               </SelectItem>
             ))}
@@ -211,28 +180,28 @@ function ConnectedRows({
         <InlineRow label="Folder" description="Where new notes go. Empty means the vault root.">
           <CommitInput
             aria-label="Folder"
-            value={folder}
+            value={fields.folder}
             placeholder="Vault root"
             onCommit={(value) => actions.setFolder(connector.id, value)}
-            onProblem={setProblem}
-            onDraft={setFolderDraft}
+            onProblem={fields.setProblem}
+            onDraft={fields.setFolderDraft}
             className={CONTROL_CLASS}
           />
         </InlineRow>
-        <InlineRow label="File name" description={`Fields: ${fields}`} className="mt-3">
+        <InlineRow label="File name" description={`Fields: ${patternFields}`} className="mt-3">
           <CommitInput
             aria-label="File name"
-            value={pattern}
+            value={fields.pattern}
             placeholder={connector.defaultPattern}
             onCommit={(value) => actions.setPattern(connector.id, value)}
-            onProblem={setProblem}
-            onDraft={setPatternDraft}
+            onProblem={fields.setProblem}
+            onDraft={fields.setPatternDraft}
             className={cn(CONTROL_CLASS, 'font-mono text-xs md:text-xs')}
           />
         </InlineRow>
         <div className="mt-3 flex items-center justify-between gap-4 rounded-md bg-surface-sunken px-2.5 py-1.5 text-[11px]">
-          <span className="min-w-0 truncate font-mono text-text-secondary" title={preview}>
-            {preview}
+          <span className="min-w-0 truncate font-mono text-text-secondary" title={fields.preview}>
+            {fields.preview}
           </span>
           <span className="shrink-0 text-text-muted">A / makes a subfolder</span>
         </div>
@@ -241,12 +210,9 @@ function ConnectedRows({
       <Row label="Tags" description="Added to every new note, comma-separated.">
         <CommitInput
           aria-label="Tags"
-          value={(settings.tags ?? connector.defaultTags).join(', ')}
+          value={fields.tags}
           placeholder={connector.defaultTags.join(', ')}
-          onCommit={(value) => {
-            actions.setTags(connector.id, value)
-            return null
-          }}
+          onCommit={(value) => actions.setTags(connector.id, value)}
           className={CONTROL_CLASS}
         />
       </Row>
@@ -264,7 +230,7 @@ function ConnectedRows({
       <div>
         <SettingsSwitchField
           legend="Link in daily note"
-          description={`Each new note gets a line under “${heading}” in that day’s note.`}
+          description={`Each new note gets a line under “${fields.heading}” in that day’s note.`}
           checked={settings.dailyLink}
           onCheckedChange={(on) => actions.setDailyLink(connector.id, on)}
         />
@@ -273,12 +239,9 @@ function ConnectedRows({
             <InlineRow label="Heading" description="Created at the end of the note if missing.">
               <CommitInput
                 aria-label="Daily note heading"
-                value={heading}
+                value={fields.heading}
                 placeholder={connector.dailyHeading}
-                onCommit={(value) => {
-                  actions.setDailyHeading(connector.id, value)
-                  return null
-                }}
+                onCommit={(value) => actions.setDailyHeading(connector.id, value)}
                 className={CONTROL_CLASS}
               />
             </InlineRow>
@@ -301,9 +264,9 @@ function ConnectedRows({
         </Button>
       </div>
 
-      {problem !== null ? (
+      {fields.problem !== null ? (
         <div className="px-4 py-3">
-          <InlineAlert tone="warning">{problem}</InlineAlert>
+          <InlineAlert tone="warning">{fields.problem}</InlineAlert>
         </div>
       ) : null}
     </>

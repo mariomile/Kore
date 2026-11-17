@@ -15,14 +15,10 @@ import { z } from 'zod'
  * `dailyHeading` (`null`: the connector's default). `options` holds the
  * connector's content switches (`connectors/types` `ConnectorOption`).
  */
-export const connectorSyncEverySchema = z.union([
-  z.literal(5),
-  z.literal(15),
-  z.literal(30),
-  z.literal(60),
-  z.literal('launch'),
-  z.literal('manual'),
-])
+/** Every frequency choice, in the order the settings pickers list them. */
+export const CONNECTOR_SYNC_EVERY = [5, 15, 30, 60, 'launch', 'manual'] as const
+
+export const connectorSyncEverySchema = z.literal(CONNECTOR_SYNC_EVERY)
 
 /** When a connector syncs on its own. */
 export type ConnectorSyncEvery = z.infer<typeof connectorSyncEverySchema>

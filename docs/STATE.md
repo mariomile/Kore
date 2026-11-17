@@ -1,5 +1,11 @@
 # Kore working state
 
+## Timeline view for types, 2026-11-17
+
+- [x] Collections get a Timeline view: notes are bars from start to end date,
+  zoom by week, month or quarter; drag a bar on Mac to move its dates, tap on
+  iPhone opens the note (#546).
+
 ## Integration settings shared through the vault, 2026-11-17
 
 - [x] Integration settings (folder, file name, tags, content, frequency, daily

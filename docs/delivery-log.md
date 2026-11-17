@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Collections: Timeline view for types, with week/month/quarter zoom and
+  draggable bars on Mac (#546).
 - CLI: kore sources reads the vault's shared integration settings (#547).
 - Integrations: settings live in the vault's .kore.json, shared by Mac and
   iPhone; credentials stay on each device (#545).

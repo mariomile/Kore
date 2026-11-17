@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: Notes tab sorting (Last updated / Title, direction), shared with
+  the Mac's setting; faster title sort on Mac (#515).
 - Fix: iPhone TestFlight build no longer crashes on launch (UIScene manifest
   removed, #514).
 - Fix: Syncing can no longer stay on forever; the iPhone Sync footer shows the

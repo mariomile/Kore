@@ -177,6 +177,18 @@ jobs:
             echo 'KORE_NOTE_EOF'
           } >> "$GITHUB_ENV"
 
+      # What's in this build: the hand-written release-notes/<version>.md, or
+      # the CHANGELOG section. It heads the GitHub release body, which
+      # tauri-action also copies into latest.json as the updater's notes.
+      - name: Compose release notes
+        working-directory: apps/desktop
+        run: |
+          {
+            echo 'RELEASE_NOTES<<KORE_NOTES_EOF'
+            node scripts/release-notes.mjs print || true
+            echo 'KORE_NOTES_EOF'
+          } >> "$GITHUB_ENV"
+
       # Two mutually exclusive publish steps: with the updater keypair in the
       # repo secrets the release carries signed updater artifacts and
       # latest.json (auto-update works); without it the release degrades to a
@@ -193,6 +205,8 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'Kore v__VERSION__'
           releaseBody: |
+            ${{ env.RELEASE_NOTES }}
+
             ${{ env.RELEASE_INSTALL_NOTE }}
 
             **Updates:** the app checks this repository's latest release and
@@ -213,6 +227,8 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'Kore v__VERSION__'
           releaseBody: |
+            ${{ env.RELEASE_NOTES }}
+
             ${{ env.RELEASE_INSTALL_NOTE }}
 
             _This release was built without the updater keypair, so it will

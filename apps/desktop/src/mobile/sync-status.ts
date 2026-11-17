@@ -21,6 +21,8 @@ function clockTime(epochMs: number): string {
  * no commits, branches, or merges, just what the user's notes are doing.
  */
 export interface MobileSyncStatus {
+  /** Which state this is — picks the indicator's glyph. */
+  kind: 'synced' | 'syncing' | 'review' | 'error' | 'offline'
   /** What the user reads: `Synced`, `Syncing`, `Needs review`, … */
   label: string
   /**
@@ -57,6 +59,7 @@ export function mobileSyncStatus(
     // never finished.
     const progress = backup.progress
     return {
+      kind: 'syncing',
       label: 'Syncing',
       tone: 'active',
       detail:
@@ -67,6 +70,7 @@ export function mobileSyncStatus(
   }
   if (conflictCount > 0) {
     return {
+      kind: 'review',
       label: 'Needs review',
       tone: 'attention',
       detail:
@@ -76,10 +80,15 @@ export function mobileSyncStatus(
     }
   }
   if (status.state === 'error') {
-    return { label: 'Needs attention', tone: 'attention', detail: status.message }
+    return {
+      kind: 'error',
+      label: 'Needs attention',
+      tone: 'attention',
+      detail: status.message,
+    }
   }
   if (status.state === 'offline') {
-    return { label: 'Offline', tone: 'attention', detail: status.message }
+    return { kind: 'offline', label: 'Offline', tone: 'attention', detail: status.message }
   }
-  return { label: 'Synced', tone: 'ok', detail: null }
+  return { kind: 'synced', label: 'Synced', tone: 'ok', detail: null }
 }

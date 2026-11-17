@@ -13,7 +13,7 @@ import { linePageId, pagePreview, pageTitle } from '@kore/core'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { blockSelectionKey, withBlockSelection } from './block-selection-plugin'
 import { zoomIntoBlockAt } from './block-zoom-plugin'
-import { zoomTarget } from './block-zoom-state'
+import { clearZoom, zoomTarget } from './block-zoom-state'
 import { targetSpan, type ZoomTarget } from './block-zoom-target'
 
 /**
@@ -266,7 +266,17 @@ function skeletonElement(rows: readonly SkeletonRow[]): HTMLElement {
   return sheet
 }
 
-function build(state: EditorState): DecorationSet {
+/** How a surface opens a page instead of zooming into it in place. */
+export interface PageBlockOptions {
+  /**
+   * Open the page `id` names somewhere else (the phone's daily pushes the
+   * note's own screen with the page open). True when it did; false falls
+   * back to the zoom in place.
+   */
+  readonly openPage?: (id: string) => boolean
+}
+
+function build(state: EditorState, options: PageBlockOptions): DecorationSet {
   const pages = pageBlocks(state.doc)
   if (pages.length === 0) return DecorationSet.empty
   const zoom = zoomTarget(state)
@@ -289,6 +299,20 @@ function build(state: EditorState): DecorationSet {
         // elsewhere by then, and two pasted copies can share an id.
         (view, getPos) =>
           cardElement(title, preview, rows, () => {
+            if (options.openPage?.(page.id) === true) {
+              // The page opens on a screen over this editor: a zoom left
+              // here would keep its Back step, and Back on that screen would
+              // zoom this hidden editor out instead of leaving the page.
+              // The caret moves just past the page it was in, as a zoom out
+              // leaves it, so it never sits in what is now a card.
+              const zoom = zoomTarget(view.state)
+              const span = zoom === null ? null : targetSpan(view.state.doc, zoom)
+              if (span !== null) {
+                const after = Selection.near(view.state.doc.resolve(span.to), 1)
+                view.dispatch(clearZoom(view.state.tr).setSelection(after))
+              }
+              return
+            }
             const at = getPos()
             if (at === undefined) return
             zoomIntoBlockAt(view, at - 1)
@@ -310,14 +334,14 @@ function build(state: EditorState): DecorationSet {
 
 const pageBlockKey = new PluginKey<DecorationSet>('kore-page-blocks')
 
-export function createPageBlockPlugin(): Plugin<DecorationSet> {
+export function createPageBlockPlugin(options: PageBlockOptions = {}): Plugin<DecorationSet> {
   return new Plugin<DecorationSet>({
     key: pageBlockKey,
     state: {
-      init: (_, state) => build(state),
+      init: (_, state) => build(state, options),
       apply(tr, value, old, next) {
         if (!tr.docChanged && zoomTarget(old) === zoomTarget(next)) return value
-        return build(next)
+        return build(next, options)
       },
     },
     // A collapsed page is one card: the caret never lands in its hidden text.
@@ -417,7 +441,10 @@ export function createPageKeyPlugin(): Plugin {
         // handles around a node selection.
         if (blockSelectionKey.getState(view.state) !== undefined) {
           view.dispatch(
-            withBlockSelection(view.state.tr, { type: 'set', anchors: [card.from + 2] }),
+            withBlockSelection(view.state.tr, {
+              type: 'set',
+              anchors: [card.from + 2],
+            }),
           )
           return true
         }

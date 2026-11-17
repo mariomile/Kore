@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Priority, type EditorExtension } from '@meowdown/core'
 import { useEditor, useExtension, useKeymap } from '@meowdown/react'
 import { definePlugin } from '@prosekit/core'
@@ -11,10 +11,27 @@ import { createPageBlockPlugin, createPageKeyPlugin } from './page-block-plugin'
  * at normal priority, after the zoom whose state they read; the Backspace /
  * Delete guard runs high, before the list keymap could join text into a
  * hidden page. ⌥⌘P turns the caret's block into a page.
+ *
+ * `onOpenPage` lets the surface open a tapped page somewhere else than in
+ * place (`PageBlockOptions.openPage`).
  */
-export function PageBlocks(): null {
+export function PageBlocks({
+  onOpenPage,
+}: { readonly onOpenPage?: (id: string) => boolean } = {}): null {
   const editor = useEditor<EditorExtension>()
-  useExtension(useMemo(() => definePlugin(createPageBlockPlugin()), []))
+  const openRef = useRef(onOpenPage)
+  openRef.current = onOpenPage
+  useExtension(
+    useMemo(
+      () =>
+        definePlugin(
+          createPageBlockPlugin({
+            openPage: (id) => openRef.current?.(id) ?? false,
+          }),
+        ),
+      [],
+    ),
+  )
   useExtension(
     useMemo(() => definePlugin(createPageKeyPlugin()), []),
     { priority: Priority.high },

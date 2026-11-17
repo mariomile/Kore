@@ -7,6 +7,7 @@ import { BlockSwipeGestures } from './block-swipe'
 import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
 import { currentBlockSelection } from './block-selection-store'
 import { PageBlocks } from './page-blocks'
+import { BlockZoom } from './block-zoom'
 
 /**
  * The swipe wired to the live editor: right selects a block (Craft), left
@@ -67,9 +68,10 @@ function swipe(
   target.dispatchEvent(touchEventOn(target, 'touchend', startX + deltaX, startY + deltaY))
 }
 
-async function renderList(onChange: (markdown: string) => void, content = BASE_LIST) {
+async function renderList(onChange: (markdown: string) => void, content = BASE_LIST, zoom = false) {
   const view = await render(
     <NoteEditor initialContent={content} onChange={onChange}>
+      {zoom ? <BlockZoom /> : null}
       <BlockSwipeGestures />
       <PageBlocks />
     </NoteEditor>,
@@ -258,6 +260,53 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
       await vi.waitFor(() => {
         expect(onChange.mock.calls.at(-1)?.[0]).toBe('- Trip\n  - flight\n- after\n')
       })
+      currentBlockSelection()?.commands.clear()
+    })
+
+    /** Open the page through its card, as a tap does, and wait for the zoom. */
+    async function openPage(onChange: (markdown: string) => void, content: string) {
+      const rendered = await renderList(onChange, content, true)
+      const card = await vi.waitFor(() => {
+        const found = document.querySelector<HTMLElement>('.kore-page-card')
+        expect(found).not.toBeNull()
+        return found!
+      })
+      card.click()
+      await vi.waitFor(() => {
+        expect(document.querySelector('.kore-zoomed .kore-zoom-title')).not.toBeNull()
+      })
+      return rendered
+    }
+
+    // The phone froze here: inside an open page the zoom refuses to unwrap
+    // its own item, while the unwrap loop kept being told it could run.
+    it('turns an open page into text without freezing, stepping out to show it', async () => {
+      const onChange = vi.fn<(markdown: string) => void>()
+      const { view, editable } = await openPage(onChange, PAGE)
+      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('Trip').element())
+      await vi.waitFor(() => {
+        expect(currentBlockSelection()?.state.isPage).toBe(true)
+      })
+      currentBlockSelection()?.commands.setKind('text')
+      await vi.waitFor(() => {
+        expect(onChange.mock.calls.at(-1)?.[0]).toBe('Trip\n\n- flight\n- after\n')
+      })
+      expect(document.querySelector('.kore-zoomed')).toBeNull()
+      currentBlockSelection()?.commands.clear()
+    })
+
+    it('turns a line inside an open page into text that stays in the page', async () => {
+      const onChange = vi.fn<(markdown: string) => void>()
+      const { view, editable } = await openPage(onChange, PAGE)
+      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('flight').element())
+      await vi.waitFor(() => {
+        expect(currentBlockSelection()?.state.kind).toBe('bullet')
+      })
+      currentBlockSelection()?.commands.setKind('text')
+      await vi.waitFor(() => {
+        expect(onChange.mock.calls.at(-1)?.[0]).toBe('- Trip ^page-a1b2c3\n\n  flight\n\n- after\n')
+      })
+      expect(document.querySelector('.kore-zoomed .kore-zoom-title')).not.toBeNull()
       currentBlockSelection()?.commands.clear()
     })
 

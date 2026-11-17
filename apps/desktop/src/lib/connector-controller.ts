@@ -33,8 +33,8 @@ export interface ConnectorSyncSnapshot {
 export interface ConnectorController {
   /** Attach the triggers (interval, focus, resume) and run the launch pass. */
   start(): void
-  /** Sync every enabled connector now, ignoring the automatic interval. */
-  syncNow(): void
+  /** Sync one enabled connector now, ignoring its frequency. */
+  syncNow(id: ConnectorId): void
   subscribe(listener: () => void): () => void
   getSnapshot(): ConnectorSyncSnapshot
   /** Tear down triggers and abort an in-flight pass at its next gate. */
@@ -81,7 +81,8 @@ export function createConnectorController(
 ): ConnectorController {
   let snapshot: ConnectorSyncSnapshot = { running: null, statuses: {} }
   const listeners = new Set<() => void>()
-  let forceNext = false
+  /** Connectors asked for by hand, synced on the next pass whatever their frequency. */
+  const forced = new Set<ConnectorId>()
   const sessionStart = Date.now()
   /** Last failure toasted per connector — retries must not re-toast it. */
   const surfaced = new Map<ConnectorId, string>()
@@ -151,8 +152,8 @@ export function createConnectorController(
       if (!hasBridge()) {
         return // browser dev: no graph to write into
       }
-      const force = forceNext
-      forceNext = false
+      const force = new Set(forced)
+      forced.clear()
       const settings = options.getSettings()
       const now = Date.now()
       for (const connector of CONNECTORS) {
@@ -160,7 +161,7 @@ export function createConnectorController(
         if (isStale()) {
           return
         }
-        if (!entry.enabled || (!force && !isDue(entry, now, sessionStart))) {
+        if (!entry.enabled || (!force.has(connector.id) && !isDue(entry, now, sessionStart))) {
           continue
         }
         await syncOne(connector, entry, isStale)
@@ -190,8 +191,8 @@ export function createConnectorController(
 
   return {
     start,
-    syncNow() {
-      forceNext = true
+    syncNow(id) {
+      forced.add(id)
       loop.schedule()
     },
     subscribe(listener) {

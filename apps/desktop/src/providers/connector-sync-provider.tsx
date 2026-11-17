@@ -10,7 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { ConnectorsSettings, GraphInfo } from '@kore/core'
+import type { ConnectorId, ConnectorsSettings, GraphInfo } from '@kore/core'
 import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import {
   createConnectorController,
@@ -21,8 +21,8 @@ import { useSettings } from '@/providers/settings-provider'
 
 interface ConnectorSyncContextValue {
   readonly snapshot: ConnectorSyncSnapshot
-  /** Sync every enabled connector now. A no-op outside the main window. */
-  readonly syncNow: () => void
+  /** Sync one enabled connector now. A no-op outside the main window. */
+  readonly syncNow: (id: ConnectorId) => void
 }
 
 const IDLE: ConnectorSyncSnapshot = { running: null, statuses: {} }
@@ -88,7 +88,7 @@ export function ConnectorSyncProvider({
     controller?.subscribe ?? noopSubscribe,
     controller?.getSnapshot ?? (() => IDLE),
   )
-  const syncNow = useCallback(() => controller?.syncNow(), [controller])
+  const syncNow = useCallback((id: ConnectorId) => controller?.syncNow(id), [controller])
   const value = useMemo(() => ({ snapshot, syncNow }), [snapshot, syncNow])
 
   return <ConnectorSyncContext value={value}>{children}</ConnectorSyncContext>

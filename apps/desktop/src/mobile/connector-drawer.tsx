@@ -90,7 +90,19 @@ function ConnectorSheet({
     }
   }
 
-  if (view.connected !== true) {
+  if (view.connected === null) {
+    // The keychain read is pending: no form to submit over a stored key.
+    return (
+      <>
+        <DrawerTitle>{connector.label}</DrawerTitle>
+        <DrawerBody>
+          <p className="px-4 text-sm text-text-muted">{connector.description}</p>
+        </DrawerBody>
+      </>
+    )
+  }
+
+  if (view.connected === false) {
     return (
       <>
         <DrawerTitle>{connector.label}</DrawerTitle>
@@ -181,7 +193,7 @@ function ConnectorSheet({
               label={view.running ? 'Syncing…' : 'Sync now'}
               pending={view.running}
               disabled={!settings.enabled}
-              onPress={actions.syncNow}
+              onPress={() => actions.syncNow(connector.id)}
             />
           </SettingsGroup>
 

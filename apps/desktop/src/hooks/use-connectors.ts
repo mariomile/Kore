@@ -54,7 +54,8 @@ export interface UseConnectorsResult {
   setDailyLink(id: ConnectorId, on: boolean): void
   /** Save the daily-note heading; empty restores the default. */
   setDailyHeading(id: ConnectorId, heading: string): void
-  syncNow(): void
+  /** Sync this connector now, whatever its frequency. */
+  syncNow(id: ConnectorId): void
 }
 
 /** The frequency choices, in the order the settings pickers list them. */
@@ -83,11 +84,12 @@ export function useConnectors(): UseConnectorsResult {
   const [connected, setConnected] = useState<Partial<Record<ConnectorId, boolean>>>({})
   // A sync requested together with a settings change runs once that change
   // is committed, so the loop sees the connector as enabled.
-  const syncRequested = useRef(false)
+  const syncRequested = useRef<ConnectorId | null>(null)
   useEffect(() => {
-    if (syncRequested.current) {
-      syncRequested.current = false
-      syncNow()
+    const requested = syncRequested.current
+    if (requested !== null) {
+      syncRequested.current = null
+      syncNow(requested)
     }
   })
 
@@ -132,7 +134,7 @@ export function useConnectors(): UseConnectorsResult {
         lastSyncedAt: null,
         importFrom: importHistory ? null : new Date().toISOString(),
       })
-      syncRequested.current = true
+      syncRequested.current = id
     },
     [patch, whenSettingsLoaded],
   )

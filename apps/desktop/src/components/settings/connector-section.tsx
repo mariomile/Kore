@@ -46,8 +46,12 @@ export function ConnectorSection({ id }: { id: ConnectorId }): ReactElement | nu
     <SettingsSection id={id}>
       {view.connected === true ? (
         <ConnectedRows view={view} actions={actions} />
-      ) : (
+      ) : view.connected === false ? (
         <ConnectForm view={view} actions={actions} />
+      ) : (
+        // The keychain read is pending: no form a user could submit over a
+        // stored key, and no flash of "not connected".
+        <p className="px-4 py-3.5 text-sm text-text-secondary">{view.connector.description}</p>
       )}
     </SettingsSection>
   )
@@ -163,7 +167,7 @@ function ConnectedRows({
             variant="outline"
             size="sm"
             disabled={!settings.enabled || view.running}
-            onClick={actions.syncNow}
+            onClick={() => actions.syncNow(connector.id)}
           >
             <Refresh aria-hidden className={view.running ? 'animate-spin' : undefined} />
             Sync now

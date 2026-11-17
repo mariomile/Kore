@@ -34,7 +34,7 @@ describe('ConnectorSection', () => {
     await view.getByLabelText('Readwise Access token').fill(' rw-token ')
     await view.getByRole('button', { name: 'Connect', exact: true }).click()
 
-    await vi.waitFor(() => expect(syncNow).toHaveBeenCalled())
+    await vi.waitFor(() => expect(syncNow).toHaveBeenCalledWith('readwise'))
     expect(connectConnector).toHaveBeenCalledWith('readwise', ' rw-token ', expect.any(Function))
     expect(updated.at(-1)?.connectors?.readwise).toMatchObject({
       enabled: true,

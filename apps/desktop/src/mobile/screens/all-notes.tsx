@@ -1,16 +1,19 @@
-import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
+import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LayoutGrid, List, Note, SearchOff } from '@/components/icons'
+import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
   parseHighlights,
   searchWithFilters,
+  sortNoteList,
+  type AllNotesSort,
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -26,6 +29,7 @@ import { NoteRowList } from '@/mobile/note-row-list'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
+import { AllNotesSortDrawer, allNotesSortSummary } from '@/mobile/all-notes-sort-drawer'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
@@ -127,7 +131,18 @@ export function MobileAllNotes({
     placeholderData: keepPreviousData,
   })
 
-  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
+  // The no-text feed (plain or badge-filtered) follows the persisted sort,
+  // the Mac list's; typed text keeps relevance ranking. The index already
+  // returns the default order (pinned, then newest), so only another sort
+  // pays for a client-side pass.
+  const sort = settings.allNotesSort
+  const recallFeed = searchPlanFor(parsed).pinnedFirst === true
+  const rows = useMemo(() => {
+    const ordered =
+      hits !== undefined && recallFeed && sort !== 'updated-desc' ? sortNoteList(hits, sort) : hits
+    return (ordered ?? []).map(rowForHit)
+  }, [hits, recallFeed, sort])
+  const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
   const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
   const setView = (next: AllNotesLayout): void => {
@@ -178,6 +193,13 @@ export function MobileAllNotes({
             onFocus={searchHeaderFocus.onFocus}
             onBlur={searchHeaderFocus.onBlur}
           />
+          <SortButton
+            sort={sort}
+            onPress={() => {
+              hapticImpactLight()
+              setSorting(true)
+            }}
+          />
           <AllNotesLayoutToggle view={view} onChange={setView} />
         </div>
         {pending !== null ? (
@@ -226,7 +248,37 @@ export function MobileAllNotes({
           onDeleted={removeDeletedRow}
         />
       )}
+      <AllNotesSortDrawer
+        open={sorting}
+        onOpenChange={setSorting}
+        sort={sort}
+        onSortChange={(next) => updateSettings({ allNotesSort: next })}
+      />
     </div>
+  )
+}
+
+/**
+ * Opens the sort sheet. Tinted while the list is in a non-default order, so
+ * an alphabetical list never reads as "recent first" at a glance.
+ */
+function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void }): ReactElement {
+  const custom = sort !== 'updated-desc'
+  return (
+    <button
+      type="button"
+      aria-label={`Sort: ${allNotesSortSummary(sort)}`}
+      aria-haspopup="dialog"
+      onClick={onPress}
+      className={cn(
+        'flex size-12 shrink-0 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none',
+        custom
+          ? 'bg-accent-soft text-accent-soft-text'
+          : 'bg-surface-hover text-text-muted active:bg-surface-active',
+      )}
+    >
+      <SortVertical aria-hidden className="size-4" />
+    </button>
   )
 }
 

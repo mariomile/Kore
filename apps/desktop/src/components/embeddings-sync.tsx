@@ -110,32 +110,36 @@ export function EmbeddingsSync({
 
     let scheduleFollow: () => void = () => {}
 
+    // One snapshot per drain, never a loop: changes that land while it runs
+    // (the user typing again) wait for their own quiet period instead of
+    // being embedded straight away on top of the keystrokes.
     const drainFollow = async (): Promise<void> => {
       try {
-        while (active && pendingFollow.size > 0) {
-          const jobs = [...pendingFollow]
-          pendingFollow.clear()
-          for (const [path, job] of jobs) {
-            if (!active) {
-              return
+        if (quietTimer !== undefined) {
+          return // newer changes restarted the quiet period; its timer drains
+        }
+        const jobs = [...pendingFollow]
+        pendingFollow.clear()
+        for (const [path, job] of jobs) {
+          if (!active) {
+            return
+          }
+          try {
+            if (job.kind === 'remove') {
+              await embedRemove(path, generation)
+            } else {
+              await embedNote({ path, generation, modelId, isStale: () => !active })
             }
-            try {
-              if (job.kind === 'remove') {
-                await embedRemove(path, generation)
-              } else {
-                await embedNote({ path, generation, modelId, isStale: () => !active })
-              }
-            } catch (cause) {
-              if (!active || pendingFollow.has(path)) {
-                continue
-              }
-              // Retry once after the other paths, without overwriting a newer
-              // change (in particular, a deletion arriving during an upsert).
-              if (!job.retried) {
-                pendingFollow.set(path, { ...job, retried: true })
-              } else {
-                console.error(`embedding sync failed for ${path}:`, cause)
-              }
+          } catch (cause) {
+            if (!active || pendingFollow.has(path)) {
+              continue
+            }
+            // Retry once in the next drain, without overwriting a newer
+            // change (in particular, a deletion arriving during an upsert).
+            if (!job.retried) {
+              pendingFollow.set(path, { ...job, retried: true })
+            } else {
+              console.error(`embedding sync failed for ${path}:`, cause)
             }
           }
         }

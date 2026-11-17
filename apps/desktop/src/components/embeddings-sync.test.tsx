@@ -102,6 +102,28 @@ describe('EmbeddingsSync', () => {
     expect(core.embedNote).toHaveBeenCalledTimes(1)
   })
 
+  it('leaves changes that land during a drain for their own quiet period', async () => {
+    let releaseFirst = (): void => {}
+    core.embedNote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirst = () => resolve({ written: 0 })
+        }),
+    )
+    await render(<EmbeddingsSync followQuietMs={150} />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+
+    onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
+    onApplied?.([{ kind: 'upsert', path: 'notes/b.md' }], 7) // typing resumed
+    releaseFirst()
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect(core.embedNote).toHaveBeenCalledTimes(1) // b is not embedded on the spot
+
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(2))
+    expect(core.embedNote).toHaveBeenLastCalledWith(expect.objectContaining({ path: 'notes/b.md' }))
+  })
+
   it('ignores a delayed emit from a superseded index session', async () => {
     await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())

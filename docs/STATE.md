@@ -5,6 +5,9 @@
 - [x] Integration settings (folder, file name, tags, content, frequency, daily
   link) now live in the vault's `.kore.json`, so Mac and iPhone share them.
   Whether a device syncs, and its credentials, stay on the device (#545).
+- [x] `kore sources` (CLI and always-on host) reads the same settings from
+  `.kore.json`; the per-source `KORE_` variables still override, and tokens
+  stay in the environment (#547).
 
 ## AI chat redesign, 2026-11-17
 

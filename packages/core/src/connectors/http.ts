@@ -14,6 +14,16 @@ function retryAfterMs(response: Response): number | null {
   return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : null
 }
 
+/** A source answered with an HTTP failure status other than 401/403/429. */
+export class HttpStatusError extends KoreError {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super('network', message)
+    this.status = status
+  }
+}
+
 /** Resolve after `ms` milliseconds. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -45,7 +55,7 @@ export async function getJson<Schema extends z.ZodType>(
     throw new KoreError('auth', `${what}: the access token was rejected`)
   }
   if (!response.ok) {
-    throw new KoreError('network', `${what}: request failed (${response.status})`)
+    throw new HttpStatusError(response.status, `${what}: request failed (${response.status})`)
   }
   let body: unknown
   try {

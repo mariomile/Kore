@@ -16,7 +16,7 @@ function sectionIsVisible(
   hasAppleIntegrations: boolean,
   showAdvanced: boolean,
 ): boolean {
-  if (id === 'integrations') {
+  if (id === 'apple') {
     return hasAppleIntegrations
   }
   if (id === 'agents') {

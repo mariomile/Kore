@@ -37,6 +37,22 @@ export interface ConnectorNote {
    * Omitted: never.
    */
   adopts?(existing: string): boolean
+  /**
+   * The day this item belongs to and, when the source knows it, the local
+   * time (`HH:MM`): where the daily-note link lands when the user turns
+   * that on. Omitted: the day of the sync, no time.
+   */
+  readonly day?: { readonly date: string; readonly time: string | null }
+  /** The display title the daily-note link carries. */
+  readonly title: string
+}
+
+/** One on/off choice about what a connector writes (Granola's transcript …). */
+export interface ConnectorOption {
+  /** Key in {@link ConnectorFetchInput.options} and the persisted settings. */
+  readonly key: string
+  readonly label: string
+  readonly description: string
 }
 
 /** What a connector receives for one fetch. */
@@ -45,6 +61,8 @@ export interface ConnectorFetchInput {
   readonly token: string
   /** Tags every new note carries, as the engine resolved them (the user's, else the default). */
   readonly tags: readonly string[]
+  /** The user's {@link Connector.options} choices; a missing key is off. */
+  readonly options: Readonly<Record<string, boolean>>
   /** Only items changed after this instant are needed; `null` fetches everything. */
   readonly since: Date | null
   /** The HTTP transport (the Tauri HTTP plugin in the app, a fake in tests). */
@@ -80,8 +98,14 @@ export interface Connector {
   readonly defaultPattern: string
   /** Fields a pattern may use, in the order the settings hint lists them. */
   readonly patternFields: readonly string[]
+  /** A typical item's fields, for the settings preview of where notes land. */
+  readonly exampleFields: Readonly<Record<string, string>>
   /** Tags new notes carry unless the user chooses others. */
   readonly defaultTags: readonly string[]
+  /** What the user may switch on or off about a note's content. */
+  readonly options: readonly ConnectorOption[]
+  /** Default heading for the daily-note links (`Meetings`). */
+  readonly dailyHeading: string
   /** Where the user creates the credential this connector needs. */
   readonly tokenUrl: string
   /** Label for the credential field. */

@@ -15,7 +15,14 @@ import { isIsoDate } from '@/lib/dates'
  * in `components/settings/sections.ts` — the screen treats an unknown id as
  * General.
  */
-export type SettingsRouteGroup = 'general' | 'notes' | 'ai' | 'agents' | 'data' | 'app'
+export type SettingsRouteGroup =
+  | 'general'
+  | 'notes'
+  | 'ai'
+  | 'agents'
+  | 'integrations'
+  | 'data'
+  | 'app'
 
 export type Route =
   | { kind: 'today' }

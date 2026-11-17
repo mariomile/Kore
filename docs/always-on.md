@@ -76,9 +76,10 @@ commits are authored `Kore host <kore-host@localhost>` with subjects like
 ## Readwise and Granola on the host
 
 Set `KORE_READWISE_TOKEN` and/or `KORE_GRANOLA_TOKEN` in the host's
-environment, plus the folder, file name pattern and tags you want
-(`KORE_<SOURCE>_FOLDER`, `_PATTERN`, `_TAGS`; see `kore sources` in
-[cli.md](cli.md)), then run `kore sync --sources` from a timer, for example every
+environment. Where notes land comes from the vault's `.kore.json`, the
+settings the apps share, so the host files them where the Mac and iPhone do;
+`KORE_<SOURCE>_FOLDER`, `_PATTERN` and `_TAGS` override a field (see
+`kore sources` in [cli.md](cli.md)). Then run `kore sync --sources` from a timer, for example every
 15 minutes:
 
 ```cron

@@ -303,7 +303,14 @@ function build(state: EditorState, options: PageBlockOptions): DecorationSet {
               // The page opens on a screen over this editor: a zoom left
               // here would keep its Back step, and Back on that screen would
               // zoom this hidden editor out instead of leaving the page.
-              if (zoomTarget(view.state) !== null) view.dispatch(clearZoom(view.state.tr))
+              // The caret moves just past the page it was in, as a zoom out
+              // leaves it, so it never sits in what is now a card.
+              const zoom = zoomTarget(view.state)
+              const span = zoom === null ? null : targetSpan(view.state.doc, zoom)
+              if (span !== null) {
+                const after = Selection.near(view.state.doc.resolve(span.to), 1)
+                view.dispatch(clearZoom(view.state.tr).setSelection(after))
+              }
               return
             }
             const at = getPos()

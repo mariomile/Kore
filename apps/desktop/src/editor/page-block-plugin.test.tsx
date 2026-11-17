@@ -141,6 +141,10 @@ describe('PageBlocks', () => {
     packing!.click()
     expect(opened).toEqual(['page-d4e5f6'])
     expect(pmRoot.element().classList.contains('kore-zoomed')).toBe(false)
+    // The caret left the page with the zoom: past the "Trip to Lisbon" card
+    // and the empty page after it, never in hidden text.
+    handle.focus()
+    await expect.poll(() => window.getSelection()?.anchorNode?.textContent ?? '').toBe('After')
   })
 
   it('keeps the caret out of a collapsed page', async () => {

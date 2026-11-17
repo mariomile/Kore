@@ -1,5 +1,12 @@
 # Kore working state
 
+## iPhone Syncing fix, 2026-11-17
+
+- [x] Fix: on iPhone, Syncing no longer sticks on "Saving your changes"; the
+  commit refreshes libgit2's stale file stats instead of re-hashing the whole
+  vault every cycle (#521).
+- Not verified on a real iPhone yet.
+
 ## iPhone Notes sorting, 2026-11-17
 
 - [x] The iPhone Notes tab gets a sort button: a sheet picks Last updated or

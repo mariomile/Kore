@@ -85,6 +85,8 @@ export {
   type SyncEngineOptions,
   type SyncErrorKind,
   type SyncStatus,
+  type SyncProgress,
+  type SyncStep,
 } from '../sync'
 export {
   frontmatterSchema,

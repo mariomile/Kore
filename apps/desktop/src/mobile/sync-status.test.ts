@@ -7,12 +7,15 @@ import { mobileSyncStatus } from './sync-status'
  * the conflicted-note count become the words mobile shows — never git terms.
  */
 
-function connected(status: Extract<BackupState, { phase: 'connected' }>['status']): BackupState {
+type Connected = Extract<BackupState, { phase: 'connected' }>
+
+function connected(status: Connected['status'], progress?: Connected['progress']): BackupState {
   return {
     phase: 'connected',
     remoteUrl: 'https://github.com/alex/notes.git',
     repo: { owner: 'alex', name: 'notes' },
     status,
+    ...(progress === undefined ? {} : { progress }),
   }
 }
 
@@ -31,6 +34,17 @@ describe('mobileSyncStatus', () => {
     const status = mobileSyncStatus(connected({ state: 'syncing' }), 2)
     expect(status?.label).toBe('Syncing')
     expect(status?.tone).toBe('active')
+  })
+
+  it('names the step a cycle is on and since when, so a stuck sync is diagnosable', () => {
+    const since = new Date(2026, 10, 17, 8, 41).getTime()
+    const status = mobileSyncStatus(
+      connected({ state: 'syncing' }, { step: 'downloading', since }),
+      0,
+    )
+    const clock = new Date(since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    expect(status?.label).toBe('Syncing')
+    expect(status?.detail).toBe(`Downloading changes since ${clock}.`)
   })
 
   it('headlines Needs review while any note carries conflict markers', () => {

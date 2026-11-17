@@ -451,11 +451,16 @@ pub fn move_note(
 /// Wipe every derived table (for a full rebuild driven by TS). Deleting `notes`
 /// cascades to every child table; `search_fts` (a virtual table, no FK) is
 /// cleared explicitly. `index_meta` is intentionally preserved across a rebuild.
+///
+/// The embedding tables are preserved too. Their rows are keyed by note path,
+/// chunk content hash and model, none of which a projection bump changes, so
+/// the backfill after a rebuild hash-skips them instead of re-running the model
+/// over the whole vault (thousands of notes at several cores for tens of
+/// minutes, which made the app unusable after an update). Rows for notes that
+/// are gone are pruned by the backfill; a changed chunk or model re-embeds by
+/// hash as usual.
 pub fn clear_index(conn: &Connection) -> StoreResult<()> {
-    conn.execute_batch(
-        "DELETE FROM notes; DELETE FROM search_fts;
-         DELETE FROM embedding_vectors; DELETE FROM embedding_chunks;",
-    )?;
+    conn.execute_batch("DELETE FROM notes; DELETE FROM search_fts;")?;
     Ok(())
 }
 

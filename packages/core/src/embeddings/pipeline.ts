@@ -177,6 +177,7 @@ export async function backfillEmbeddings(options: {
   isStale?: () => boolean
 }): Promise<'completed' | 'aborted'> {
   const { generation, modelId, onProgress, isStale = () => false } = options
+  await pruneOrphanedEmbeddings(generation, isStale)
   const rows = await db
     .selectFrom('notes')
     .where('kind', '!=', 'template')
@@ -200,6 +201,28 @@ export async function backfillEmbeddings(options: {
     onProgress?.(done, rows.length)
   }
   return 'completed'
+}
+
+/**
+ * Drop embedding rows whose note no longer has an index row. A full rebuild
+ * keeps the embedding tables (so it never re-runs the model over an unchanged
+ * vault), which means a note deleted while the app was closed leaves its
+ * chunks behind. Retrieval joins `notes`, so they were never visible; this
+ * just keeps the tables from growing. Cheap: one query, usually empty.
+ */
+async function pruneOrphanedEmbeddings(generation: number, isStale: () => boolean): Promise<void> {
+  const orphans = await db
+    .selectFrom('embeddingChunks')
+    .where('notePath', 'not in', db.selectFrom('notes').select('path'))
+    .select('notePath')
+    .distinct()
+    .execute()
+  for (const orphan of orphans) {
+    if (isStale()) {
+      return
+    }
+    await embedRemove(orphan.notePath, generation)
+  }
 }
 
 /** One stored chunk row's identity, for comparing against what we would write. */

@@ -86,11 +86,12 @@ const PANELS: ContextPanelSpec[] = [
     ownsScrolling: false,
     render: ({ target, peekPath, routeKind, openPanel }) =>
       target === null ? (
-        peekPath !== null ? (
-          <NotePeek path={peekPath} />
-        ) : routeKind === 'chat' ? (
-          // The chat route describes its conversation: the notes it read.
+        routeKind === 'chat' ? (
+          // The chat route describes its conversation: the notes it read. A
+          // row still peeked in some list must not hide it.
           <ChatContextOverview />
+        ) : peekPath !== null ? (
+          <NotePeek path={peekPath} />
         ) : routeKind === undefined || routeKind === 'allNotes' ? (
           // A list that peeks: the hint names the gesture that fills it.
           <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">

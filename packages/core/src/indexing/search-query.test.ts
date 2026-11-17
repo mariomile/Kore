@@ -116,4 +116,8 @@ describe('buildRecallFtsMatch', () => {
       '(title : "hei" OR body : "hei") OR (title : "pricing"* OR body : "pricing"*)',
     )
   })
+
+  it('keeps the prefix on short terms in unspaced scripts, which index as one token', () => {
+    expect(buildRecallFtsMatch(['東京駅'])).toBe('(title : "東京駅"* OR body : "東京駅"*)')
+  })
 })

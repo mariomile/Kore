@@ -161,7 +161,10 @@ export function buildRecallFtsMatch(terms: string[]): string | null {
       const literal = quoteFtsLiteral(term)
       // A three-letter stem prefixes far too much of a vault (`hei` →
       // `height`, `ciao` is fine): short terms match whole words only.
-      const prefix = [...term].length >= RECALL_PREFIX_MIN_CHARS ? '*' : ''
+      // Unspaced scripts index a whole run as one token, so a short CJK
+      // term only ever matches as a prefix and keeps it.
+      const prefix =
+        [...term].length >= RECALL_PREFIX_MIN_CHARS || containsUnsegmentedScript(term) ? '*' : ''
       return `(title : ${literal}${prefix} OR body : ${literal}${prefix})`
     })
     .join(' OR ')

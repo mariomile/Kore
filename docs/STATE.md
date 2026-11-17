@@ -1,5 +1,13 @@
 # Kore working state
 
+## Sub pages from the daily on iPhone, 2026-11-17
+
+- [x] Fix: on iPhone, tapping a sub page on the daily opens it full screen and
+  one Back returns to the day. Turn into Text inside an open page no longer
+  freezes the app (the unwrap loop spun forever against the zoom). A day
+  re-registering no longer takes over the note screen's editor handle (#534).
+- Not verified on a real iPhone yet.
+
 ## Embedding stays in the background on Mac, 2026-11-17
 
 - [x] Fix: semantic search no longer takes over the Mac; embedding runs on at

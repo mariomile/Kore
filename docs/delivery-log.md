@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix (iPhone): sub pages on the daily open full screen; Turn into Text in
+  an open page no longer freezes the app (#534).
 - Fix: embedding runs on at most 4 low-priority threads and waits for a
   pause in typing, so it no longer slows the Mac (#530).
 - Fix: an update's full index rebuild no longer re-embeds the whole vault

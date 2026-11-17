@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix: a date cited mid-sentence in a task no longer becomes its due date, so
+  no more fake overdue tasks (#524).
 - Fix: iPhone Syncing no longer sticks on "Saving your changes" (stale file
   stats refreshed instead of re-hashing the vault, #521).
 - iPhone: Notes tab sorting (Last updated / Title, direction), shared with

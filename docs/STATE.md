@@ -1,5 +1,14 @@
 # Kore working state
 
+## Task due dates only at the item's edges, 2026-11-17
+
+- [x] Fix: a task's due date is only a [[YYYY-MM-DD]] link that ends the item
+  (optionally followed by @HH:MM, @repeat, #tags, [[links]], ^id), opens it,
+  or carries @HH:MM; a date cited mid-sentence (e.g. "Fonte: [[2026-09-13]].")
+  stays a plain link. PROJECTION_VERSION 36 forces a one-time reindex. Fixes
+  fake overdue tasks from vault agents citing dailies; rule chosen by Mario
+  (#524).
+
 ## iPhone Syncing fix, 2026-11-17
 
 - [x] Fix: on iPhone, Syncing no longer sticks on "Saving your changes"; the

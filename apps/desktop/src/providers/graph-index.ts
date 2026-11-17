@@ -1,4 +1,11 @@
-import { openIndex, subscribeIndexChanges, syncIndex, watchStart, watchStop } from '@kore/core'
+import {
+  openIndex,
+  subscribeIndexChanges,
+  syncIndex,
+  watchStart,
+  watchStop,
+  type FileChange,
+} from '@kore/core'
 
 /**
  * The active graph's index lifecycle, factored out of `GraphProvider` so the
@@ -89,8 +96,10 @@ export interface GraphIndexOptions {
    * Called after index rows actually changed — once when the initial reconcile
    * commits, then per applied watcher batch. Drives query-cache invalidation
    * (Plan 07): firing on raw file events instead would refetch stale rows.
+   * Watcher batches pass their note changes so the invalidation can narrow;
+   * the reconcile passes none (refresh everything).
    */
-  onApplied?: () => void
+  onApplied?: (changes?: readonly FileChange[]) => void
   /**
    * Called when id-based healing relocates a note's rows (Plan 17): an
    * external rename observed by the reconcile or a watcher batch. The app

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { buildFolderTree, findFolder, hasOwnFolders } from './folder-tree'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setBridge } from '../ipc/bridge'
+import { buildFolderTree, findFolder, folderTreeAffectedBy, hasOwnFolders } from './folder-tree'
 
 describe('buildFolderTree', () => {
   it('nests notes under their folders, folders first, alphabetical with counts', () => {
@@ -48,5 +49,58 @@ describe('findFolder', () => {
     expect(findFolder(tree, 'CRM/People')?.noteCount).toBe(1)
     expect(findFolder(tree, '')).toBe(tree)
     expect(findFolder(tree, 'CRM/Companies')).toBeNull()
+  })
+})
+
+describe('folderTreeAffectedBy', () => {
+  afterEach(() => {
+    setBridge(null)
+  })
+
+  const tree = buildFolderTree([
+    { path: 'Projects/Kore.md', title: 'Kore' },
+    { path: 'inbox.md', title: 'Inbox' },
+  ])
+
+  /** Answers the title lookup with `rows`, counting the queries. */
+  function indexWithTitles(rows: Array<{ path: string; title: string }>): { queries: number } {
+    const seen = { queries: 0 }
+    setBridge({
+      invoke: async (command) => {
+        if (command === 'db_query') {
+          seen.queries += 1
+          return rows
+        }
+        return null
+      },
+      listen: async () => () => {},
+    })
+    return seen
+  }
+
+  it('leaves the tree alone for a body-only save', async () => {
+    indexWithTitles([{ path: 'Projects/Kore.md', title: 'Kore' }])
+    expect(await folderTreeAffectedBy(tree, [{ path: 'Projects/Kore.md', kind: 'upsert' }])).toBe(
+      false,
+    )
+  })
+
+  it('refreshes for a retitled note', async () => {
+    indexWithTitles([{ path: 'inbox.md', title: 'Inbox zero' }])
+    expect(await folderTreeAffectedBy(tree, [{ path: 'inbox.md', kind: 'upsert' }])).toBe(true)
+  })
+
+  it('refreshes for a new note or a removal without asking the index', async () => {
+    const seen = indexWithTitles([])
+    expect(await folderTreeAffectedBy(tree, [{ path: 'Projects/New.md', kind: 'upsert' }])).toBe(
+      true,
+    )
+    expect(await folderTreeAffectedBy(tree, [{ path: 'inbox.md', kind: 'remove' }])).toBe(true)
+    expect(seen.queries).toBe(0)
+  })
+
+  it('refreshes when a held note has lost its index row', async () => {
+    indexWithTitles([])
+    expect(await folderTreeAffectedBy(tree, [{ path: 'inbox.md', kind: 'upsert' }])).toBe(true)
   })
 })

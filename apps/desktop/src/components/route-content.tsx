@@ -190,10 +190,11 @@ function RouteView(): ReactElement {
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as the
-    // same full-page settings workspace.
+    // same settings screen.
     case 'settings':
-      // Settings owns the window: a local sidebar and independent content
-      // scroll, covering the workspace chrome rather than joining the strip.
+      // The main window draws Settings as a modal over the workspace
+      // (SettingsModal), and its panes never see these routes. A note
+      // window has no modal, so the screen fills it there.
       return <SettingsScreen />
   }
 }

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, type ComponentType, type ReactElement } from 'react'
+import { useEffect, type ComponentType, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { settingsGroupOf, settingsRoute, type SettingsRouteGroup } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { useCloseSettings } from '@/routing/use-close-settings'
 import { AgentsScreen } from './agents/agents-screen'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
@@ -72,27 +73,29 @@ const GROUP_PAGES: Partial<
 }
 
 /**
- * The settings screen is a full-page workspace: a stable local sidebar
- * selects one settings group at a time, and the page pane scrolls independently.
- * It is not a strip tab — opening it covers the workspace chrome, and Close
- * (or Escape) returns to the previous route. Every control still applies
- * instantly through the settings provider.
+ * The settings screen: a stable local sidebar selects one settings group at a
+ * time, and the page pane scrolls independently. On the Mac it fills the
+ * Settings modal sheet (`settings-modal.tsx`); it is not a strip tab, and Close (or Escape)
+ * returns to the previous route. Every control still applies instantly
+ * through the settings provider.
  */
-export function SettingsScreen(): ReactElement {
+export function SettingsScreen({
+  closeOnEscape = true,
+}: {
+  /** Off inside the modal, whose dialog already closes on Escape. */
+  closeOnEscape?: boolean
+}): ReactElement {
   const groups = useVisibleSettingsGroups()
-  const { back, canBack, navigate, route } = useRouter()
+  const { navigate, route } = useRouter()
   const requestedGroup = settingsGroupOf(route)
   const activeGroup = groups.find((group) => group.id === requestedGroup) ?? groups[0]
   const activeGroupId = activeGroup?.id ?? 'general'
-  const closeSettings = useCallback((): void => {
-    if (canBack) {
-      back()
-      return
-    }
-    navigate({ kind: 'today' })
-  }, [back, canBack, navigate])
+  const closeSettings = useCloseSettings()
 
   useEffect(() => {
+    if (!closeOnEscape) {
+      return
+    }
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key !== 'Escape' || event.defaultPrevented) {
         return
@@ -102,7 +105,7 @@ export function SettingsScreen(): ReactElement {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closeSettings])
+  }, [closeOnEscape, closeSettings])
 
   return (
     <div aria-label="Settings" className="flex h-full min-h-0 overflow-hidden bg-surface-app">

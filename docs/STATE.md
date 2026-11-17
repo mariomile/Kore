@@ -1,5 +1,11 @@
 # Kore working state
 
+## Folder tree not refetched on save, 2026-11-17
+
+- [x] Fix: saving a note no longer refetches the whole vault's folder tree; the
+  tree refreshes only when a note is added, removed or retitled. Part of the
+  Mac typing-lag work after #527 and #530 (#532).
+
 ## Sub pages from the daily on iPhone, 2026-11-17
 
 - [x] Fix: on iPhone, tapping a sub page on the daily opens it full screen and

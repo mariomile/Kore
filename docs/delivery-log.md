@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix: saving a note no longer refetches the vault's folder tree (#532).
 - Fix (iPhone): sub pages on the daily open full screen; Turn into Text in
   an open page no longer freezes the app (#534).
 - Fix: embedding runs on at most 4 low-priority threads and waits for a

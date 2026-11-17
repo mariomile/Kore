@@ -15,6 +15,7 @@ import { blockSelectionKey, withBlockSelection } from './block-selection-plugin'
 import { zoomIntoBlockAt } from './block-zoom-plugin'
 import { clearZoom, zoomTarget } from './block-zoom-state'
 import { targetSpan, type ZoomTarget } from './block-zoom-target'
+import { memoByNode } from './node-memo'
 
 /**
  * Sub pages drawn as cards (Craft's page blocks). A page is a list item whose
@@ -30,12 +31,17 @@ export interface PageBlock {
   readonly id: string
 }
 
-/** The page a list node is, or null. */
-export function pageBlockOf(node: ProseMirrorNode, pos: number): PageBlock | null {
+/** The page id a list node carries on its head line, or null (memoized per node). */
+const pageIdOf = memoByNode((node): string | null => {
   if (node.type.name !== 'list') return null
   const head = node.firstChild
   if (head === null || !head.isTextblock) return null
-  const id = linePageId(head.textContent)
+  return linePageId(head.textContent)
+})
+
+/** The page a list node is, or null. */
+export function pageBlockOf(node: ProseMirrorNode, pos: number): PageBlock | null {
+  const id = pageIdOf(node)
   return id === null ? null : { pos, node, id }
 }
 

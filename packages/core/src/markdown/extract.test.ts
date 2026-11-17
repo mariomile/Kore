@@ -436,6 +436,11 @@ describe('parseNote — tasks', () => {
     expect(note.tasks.map((task) => task.dueDate)).toEqual([null, '2026-07-01'])
   })
 
+  it('reads a trailing due date on a CRLF line', () => {
+    const note = parse('+ [ ] ship it [[2026-07-01]]\r\n+ [ ] next\r\n')
+    expect(note.tasks[0]!.dueDate).toBe('2026-07-01')
+  })
+
   it('ignores an impossible date as a due date', () => {
     const note = parse('+ [ ] not a real day [[2026-02-31]]\n')
     expect(note.tasks[0]!.dueDate).toBeNull()

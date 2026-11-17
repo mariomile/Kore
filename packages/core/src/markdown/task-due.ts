@@ -48,10 +48,11 @@ export function formatTaskDue(date: string, time: string | null): string {
  * What may follow a due-date link on its line: a time (even an impossible one,
  * which is then ignored as a time), then only the other task stamps
  * Kore writes or reads (`@repeat(...)`, `#tags`, `[[Project]]` links, a
- * `^block-id`). Anything else after the date means it is part of the sentence.
+ * `^block-id`), and a CRLF line's `\r`. Anything else after the date means it
+ * is part of the sentence.
  */
 const DUE_TAIL_RE =
-  /^(?:[ \t]*@\d{1,2}:\d{2})?(?:[ \t]+(?:@repeat\([^)\n]*\)|#[^\s#]+|\[\[[^\]\n]+\]\]|\^[A-Za-z0-9-]+))*[ \t]*$/
+  /^(?:[ \t]*@\d{1,2}:\d{2})?(?:[ \t]+(?:@repeat\([^)\n]*\)|#[^\s#]+|\[\[[^\]\n]+\]\]|\^[A-Za-z0-9-]+))*[ \t\r]*$/
 
 /**
  * What may precede a due-date link written first: the line start or the task's

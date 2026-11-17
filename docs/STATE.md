@@ -1,5 +1,12 @@
 # Kore working state
 
+## Faster typing in long notes, 2026-11-17
+
+- [x] Typing in long notes is faster: the editor no longer re-renders the
+  table handle and selection menu on every key, and the block-id, sub-page and
+  link-card plugins recompute only the blocks you touch. Last PR of the Mac
+  typing-lag work (#527, #530, #532, #537).
+
 ## Settings as a modal on Mac, 2026-11-17
 
 - [x] Settings on Mac opens as a large centered modal over the blurred

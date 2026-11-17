@@ -545,6 +545,49 @@ pub async fn workspace_state_write<R: tauri::Runtime>(
     .await
 }
 
+/// The vault-wide settings file at the graph root. Unlike `.kore/` it travels
+/// with the vault (git sync, iCloud), which is the point: the Mac and the
+/// iPhone read the same integration settings from it. Core owns its schema.
+const VAULT_SETTINGS_FILE: &str = ".kore.json";
+
+/// Read `.kore.json`; `notFound` when the vault has none yet.
+#[tauri::command]
+pub async fn vault_settings_read<R: tauri::Runtime>(
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<String> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        match fs::read_to_string(resolve(&root, VAULT_SETTINGS_FILE)?) {
+            Ok(contents) => Ok(contents),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Err(AppError::not_found(
+                format!("no {VAULT_SETTINGS_FILE} in this vault"),
+            )),
+            Err(err) => Err(err.into()),
+        }
+    })
+    .await
+}
+
+/// Write `.kore.json`. The path is fixed here and never comes from the
+/// caller; atomic, so a sync or another device never reads a torn file.
+#[tauri::command]
+pub async fn vault_settings_write<R: tauri::Runtime>(
+    contents: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let target = resolve(&root, VAULT_SETTINGS_FILE)?;
+        atomic_write_bytes(&root, &target, contents.as_bytes())?;
+        Ok(())
+    })
+    .await
+}
+
 /// Compute an attachment's current content identity without transferring its bytes to JS.
 #[tauri::command]
 pub async fn asset_content_identity<R: tauri::Runtime>(

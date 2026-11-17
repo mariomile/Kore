@@ -96,12 +96,16 @@ export function syncEveryFromKey(key: string): ConnectorSyncEvery | undefined {
 
 /**
  * Connector state and actions shared by the desktop settings section and the
- * mobile settings drawer. The credential lives in the keychain; everything
- * else is per-device settings.
+ * mobile settings drawer. The credential lives in the keychain; where notes
+ * land, their content, the frequency and the daily link live in the vault
+ * (`.kore.json`, shared by every device); whether this device syncs and its
+ * sync window are its own settings.
  */
 export function useConnectors(): UseConnectorsResult {
-  const { settings, updateSettingsWith, whenSettingsLoaded } = useSettings()
-  const { snapshot, syncNow } = useConnectorSync()
+  const { settings: deviceSettings, updateSettingsWith, whenSettingsLoaded } = useSettings()
+  const { snapshot, syncNow, connectors, updateConnector } = useConnectorSync()
+  // Outside the sync provider (tests, a bare harness) the device's own settings.
+  const settings = connectors ?? deviceSettings.connectors
   const [connected, setConnected] = useState<Partial<Record<ConnectorId, boolean>>>({})
   // A sync requested together with a settings change runs once that change
   // is committed, so the loop sees the connector as enabled.
@@ -136,13 +140,18 @@ export function useConnectors(): UseConnectorsResult {
     }
   }, [])
 
+  const inProvider = connectors != null
   const patch = useCallback(
     (id: ConnectorId, change: Partial<ConnectorSettings>) => {
+      if (inProvider) {
+        updateConnector(id, change)
+        return
+      }
       updateSettingsWith((current) => ({
         connectors: { ...current.connectors, [id]: { ...current.connectors[id], ...change } },
       }))
     },
-    [updateSettingsWith],
+    [inProvider, updateConnector, updateSettingsWith],
   )
 
   const connect = useCallback(
@@ -207,7 +216,7 @@ export function useConnectors(): UseConnectorsResult {
 
   const items = CONNECTORS.map((connector) => ({
     connector,
-    settings: settings.connectors[connector.id],
+    settings: settings[connector.id],
     connected: connected[connector.id] ?? null,
     running: snapshot.running === connector.id,
     status: snapshot.statuses[connector.id],
@@ -222,8 +231,7 @@ export function useConnectors(): UseConnectorsResult {
     setPattern,
     setTags,
     setSyncEvery: (id, syncEvery) => patch(id, { syncEvery }),
-    setOption: (id, key, on) =>
-      patch(id, { options: { ...settings.connectors[id].options, [key]: on } }),
+    setOption: (id, key, on) => patch(id, { options: { ...settings[id].options, [key]: on } }),
     setDailyLink: (id, dailyLink) => patch(id, { dailyLink }),
     setDailyHeading: (id, heading) => {
       patch(id, { dailyHeading: normalizeDailyHeading(heading, connectorById(id)) })

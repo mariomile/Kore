@@ -553,3 +553,18 @@ export {
   isConnectorSyncDue,
   type ConnectorRunSettings,
 } from '../connectors/schedule'
+export {
+  SHARED_CONNECTOR_KEYS,
+  VAULT_SETTINGS_FILE,
+  adoptDeviceConnectors,
+  mergeVaultConnectors,
+  parseVaultSettings,
+  readVaultSettings,
+  serializeVaultSettings,
+  sharedConnectorSettings,
+  splitConnectorChange,
+  withVaultConnector,
+  writeVaultSettings,
+  type SharedConnectorSettings,
+  type VaultSettings,
+} from '../connectors/vault-settings'

@@ -47,7 +47,7 @@ export interface ConnectorControllerOptions {
   /** The open graph's generation — every write pins to it. */
   generation: number
   /** The latest connector settings, read at the start of every pass. */
-  getSettings: () => ConnectorsSettings
+  getSettings: () => ConnectorsSettings | Promise<ConnectorsSettings>
   /** Persist a completed run's cursor. */
   onSynced: (id: ConnectorId, syncedAt: string) => void
 }
@@ -132,7 +132,7 @@ export function createConnectorController(
       }
       const force = new Set(forced)
       forced.clear()
-      const settings = options.getSettings()
+      const settings = await options.getSettings()
       const now = Date.now()
       for (const connector of CONNECTORS) {
         const entry = settings[connector.id]

@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Integrations: settings live in the vault's .kore.json, shared by Mac and
+  iPhone; credentials stay on each device (#545).
 - AI chat: context as an "N notes" pill with previews, quieter recall, right
   rail on every route (#544).
 - Faster typing in long notes: less editor re-rendering per key (#537).

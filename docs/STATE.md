@@ -1,5 +1,11 @@
 # Kore working state
 
+## Integration settings shared through the vault, 2026-11-17
+
+- [x] Integration settings (folder, file name, tags, content, frequency, daily
+  link) now live in the vault's `.kore.json`, so Mac and iPhone share them.
+  Whether a device syncs, and its credentials, stay on the device (#545).
+
 ## AI chat redesign, 2026-11-17
 
 - [x] The chat's context collapses to an "N notes" pill with mini page

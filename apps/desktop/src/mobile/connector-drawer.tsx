@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import { ChevronDown } from '@/components/icons'
 import { CommitInput } from '@/components/settings/commit-input'
+import { IntegrationLogo } from '@/components/settings/integration-card'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
@@ -68,7 +69,10 @@ function ConnectorSheet({
   const { connector } = view
   return (
     <>
-      <DrawerTitle>{connector.label}</DrawerTitle>
+      <DrawerTitle className="flex items-center gap-3">
+        <IntegrationLogo id={connector.id} size="sm" />
+        {connector.label}
+      </DrawerTitle>
       <DrawerBody>
         {view.connected === true ? (
           <ConnectedGroups view={view} actions={actions} />

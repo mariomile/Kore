@@ -9,7 +9,7 @@ import { openUrlSync } from '@/lib/open-url'
 import { isMacosDesktop } from '@/lib/platform'
 import { useSettings } from '@/providers/settings-provider'
 import { CalendarIntegrationField } from './calendar-integration-field'
-import { SettingsSection } from './section'
+import { IntegrationCard } from './integration-card'
 import { SettingsSwitchField } from './switch-field'
 
 /**
@@ -18,6 +18,9 @@ import { SettingsSwitchField } from './switch-field'
  * settings surface (mobile has its own settings drawer, which doesn't offer
  * the integration yet). An iOS settings surface would use `app-settings:`.
  */
+/** What the Apple card says it brings, here and on the Integrations overview. */
+export const APPLE_DESCRIPTION = 'Your Mac’s contacts and calendars, read where they live.'
+
 const CONTACTS_PRIVACY_PANE =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts'
 
@@ -87,7 +90,7 @@ export function IntegrationsSection(): ReactElement | null {
   }
 
   return (
-    <SettingsSection id="apple">
+    <IntegrationCard id="apple" description={APPLE_DESCRIPTION}>
       {contactsAvailable ? (
         <div>
           <SettingsSwitchField
@@ -139,6 +142,6 @@ export function IntegrationsSection(): ReactElement | null {
         </div>
       ) : null}
       <CalendarIntegrationField />
-    </SettingsSection>
+    </IntegrationCard>
   )
 }

@@ -25,7 +25,7 @@ import { openUrlSync } from '@/lib/open-url'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { CommitInput } from './commit-input'
-import { SettingsSection } from './section'
+import { ConnectedBadge, IntegrationCard } from './integration-card'
 import { SettingsSwitchField } from './switch-field'
 
 /** Width every trailing control shares, so their edges line up down the card. */
@@ -44,17 +44,19 @@ export function ConnectorSection({ id }: { id: ConnectorId }): ReactElement | nu
     return null
   }
   return (
-    <SettingsSection id={id}>
+    <IntegrationCard
+      id={id}
+      description={view.connector.description}
+      status={view.connected === true ? <ConnectedBadge /> : null}
+    >
+      {/* While the keychain read is pending there is no body: no form a user
+          could submit over a stored key, and no flash of "not connected". */}
       {view.connected === true ? (
         <ConnectedRows view={view} actions={actions} />
       ) : view.connected === false ? (
         <ConnectForm view={view} actions={actions} />
-      ) : (
-        // The keychain read is pending: no form a user could submit over a
-        // stored key, and no flash of "not connected".
-        <p className="px-4 py-3.5 text-sm text-text-secondary">{view.connector.description}</p>
-      )}
-    </SettingsSection>
+      ) : null}
+    </IntegrationCard>
   )
 }
 
@@ -70,8 +72,7 @@ function ConnectForm({
 
   return (
     <form className="px-4 py-3.5" onSubmit={form.onSubmit}>
-      <p className="text-sm text-text-secondary">{connector.description}</p>
-      <div className="mt-3 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <Input
           type="password"
           value={form.token}

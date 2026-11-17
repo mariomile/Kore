@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import type { ConnectorId } from '@kore/core'
 import { syncEveryLabel, useConnectors } from '@/hooks/use-connectors'
+import { IntegrationLogo } from '@/components/settings/integration-card'
 import { ConnectorDrawer } from '@/mobile/connector-drawer'
 import { SettingsGroup, SettingsNavRow } from '@/mobile/settings-list'
 
@@ -21,6 +22,7 @@ export function MobileConnectorsGroup(): ReactElement {
           <SettingsNavRow
             key={item.connector.id}
             label={item.connector.label}
+            leading={<IntegrationLogo id={item.connector.id} size="sm" />}
             value={
               item.connected !== true
                 ? 'Not connected'

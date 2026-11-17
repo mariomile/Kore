@@ -87,7 +87,7 @@ export function IntegrationsSection(): ReactElement | null {
   }
 
   return (
-    <SettingsSection id="integrations">
+    <SettingsSection id="apple">
       {contactsAvailable ? (
         <div>
           <SettingsSwitchField

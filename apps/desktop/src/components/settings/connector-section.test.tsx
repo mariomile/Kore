@@ -24,15 +24,15 @@ vi.mock('@kore/core', async (importOriginal) => ({
   connectConnector,
 }))
 
-const { ConnectorsSection } = await import('./connectors-section')
+const { ConnectorSection } = await import('./connector-section')
 
-describe('ConnectorsSection', () => {
+describe('ConnectorSection', () => {
   it('connects a source with a verified token and starts syncing from now on', async () => {
     updated.length = 0
-    const view = await render(<ConnectorsSection />)
+    const view = await render(<ConnectorSection id="readwise" />)
 
     await view.getByLabelText('Readwise Access token').fill(' rw-token ')
-    await view.getByRole('button', { name: 'Connect', exact: true }).first().click()
+    await view.getByRole('button', { name: 'Connect', exact: true }).click()
 
     await vi.waitFor(() => expect(syncNow).toHaveBeenCalled())
     expect(connectConnector).toHaveBeenCalledWith('readwise', ' rw-token ', expect.any(Function))
@@ -48,10 +48,10 @@ describe('ConnectorsSection', () => {
     connectConnector.mockRejectedValueOnce(
       new KoreError('auth', 'Readwise rejected the access token'),
     )
-    const view = await render(<ConnectorsSection />)
+    const view = await render(<ConnectorSection id="readwise" />)
 
     await view.getByLabelText('Readwise Access token').fill('wrong')
-    await view.getByRole('button', { name: 'Connect', exact: true }).first().click()
+    await view.getByRole('button', { name: 'Connect', exact: true }).click()
 
     await expect.element(view.getByText('Readwise rejected the access token')).toBeVisible()
     await view.unmount()

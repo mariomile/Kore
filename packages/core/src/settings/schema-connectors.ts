@@ -9,8 +9,24 @@ import { z } from 'zod'
  * oldest item worth importing — set to the connect time when the user skips
  * history; `null` imports everything. `pattern` is where a note lands
  * inside the folder (`connectors/pattern`) and `tags` what new notes carry;
- * `null` for either means the connector's default.
+ * `null` for either means the connector's default. `syncEvery` is when
+ * automatic runs happen: every N minutes, only at launch, or only on demand.
+ * `dailyLink` adds a link to each new note in that day's daily note, under
+ * `dailyHeading` (`null`: the connector's default). `options` holds the
+ * connector's content switches (`connectors/types` `ConnectorOption`).
  */
+export const connectorSyncEverySchema = z.union([
+  z.literal(5),
+  z.literal(15),
+  z.literal(30),
+  z.literal(60),
+  z.literal('launch'),
+  z.literal('manual'),
+])
+
+/** When a connector syncs on its own. */
+export type ConnectorSyncEvery = z.infer<typeof connectorSyncEverySchema>
+
 export const connectorSettingsSchema = z.object({
   enabled: z.boolean().catch(false),
   folder: z.string().nullable().catch(null),
@@ -18,6 +34,10 @@ export const connectorSettingsSchema = z.object({
   importFrom: z.iso.datetime().nullable().catch(null),
   pattern: z.string().nullable().catch(null),
   tags: z.array(z.string()).nullable().catch(null),
+  syncEvery: connectorSyncEverySchema.catch(15),
+  dailyLink: z.boolean().catch(false),
+  dailyHeading: z.string().nullable().catch(null),
+  options: z.record(z.string(), z.boolean()).catch({}),
 })
 
 /** One connector's persisted settings. */
@@ -30,6 +50,10 @@ const DEFAULT_CONNECTOR_SETTINGS: ConnectorSettings = {
   importFrom: null,
   pattern: null,
   tags: null,
+  syncEvery: 15,
+  dailyLink: false,
+  dailyHeading: null,
+  options: {},
 }
 
 const connectorEntrySchema = connectorSettingsSchema.catch(DEFAULT_CONNECTOR_SETTINGS)

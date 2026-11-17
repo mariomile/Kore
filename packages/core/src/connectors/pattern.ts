@@ -71,3 +71,24 @@ export function parseConnectorTags(text: string): string[] {
     .filter((tag) => tag !== '')
   return Array.from(new Set(tags))
 }
+
+/**
+ * Where a typical item would land with this folder and pattern, as a
+ * graph-relative path: the settings preview. An unusable pattern previews
+ * the connector's default.
+ */
+export function connectorPathPreview(
+  connector: Connector,
+  folder: string,
+  pattern: string,
+): string {
+  let usable = connector.defaultPattern
+  try {
+    usable = normalizeConnectorPattern(pattern, connector)
+  } catch {
+    // Keep the default: the field shows its own error.
+  }
+  const { dir, stem } = renderNotePlacement(usable, connector.exampleFields, connector.label)
+  const cleanFolder = folder.trim().replaceAll(/^\/+|\/+$/g, '')
+  return [cleanFolder, dir, `${stem}.md`].filter((part) => part !== '').join('/')
+}

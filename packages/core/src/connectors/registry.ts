@@ -9,7 +9,7 @@ export type { Connector, ConnectorId }
  * {@link Connector} here plus its id in {@link ConnectorId} and the settings
  * schema; sync, scheduling and the settings UI pick it up from this list.
  */
-export const CONNECTORS: readonly Connector[] = [readwiseConnector, granolaConnector]
+export const CONNECTORS: readonly Connector[] = [granolaConnector, readwiseConnector]
 
 /** Look up a connector by id. */
 export function connectorById(id: ConnectorId): Connector {

@@ -1,10 +1,10 @@
 import { useState, type ReactElement } from 'react'
 import type { ConnectorId } from '@kore/core'
-import { useConnectors } from '@/hooks/use-connectors'
+import { syncEveryLabel, useConnectors } from '@/hooks/use-connectors'
 import { ConnectorDrawer } from '@/mobile/connector-drawer'
 import { SettingsGroup, SettingsNavRow } from '@/mobile/settings-list'
 
-/** The mobile Settings group listing connectors (Readwise, Granola …). */
+/** The mobile Settings group listing integrations (Granola, Readwise …). */
 export function MobileConnectorsGroup(): ReactElement {
   const actions = useConnectors()
   const [selected, setSelected] = useState<ConnectorId | null>(null)
@@ -14,14 +14,20 @@ export function MobileConnectorsGroup(): ReactElement {
   return (
     <>
       <SettingsGroup
-        header="Connectors"
-        footer="New items arrive as notes when Kore opens and every 15 minutes. Notes you edit are never overwritten."
+        header="Integrations"
+        footer="Meetings and highlights arrive as plain notes in your vault."
       >
         {actions.items.map((item) => (
           <SettingsNavRow
             key={item.connector.id}
             label={item.connector.label}
-            value={item.connected !== true ? 'Not connected' : item.settings.enabled ? 'On' : 'Off'}
+            value={
+              item.connected !== true
+                ? 'Not connected'
+                : item.settings.enabled
+                  ? syncEveryLabel(item.settings.syncEvery)
+                  : 'Off'
+            }
             onPress={() => {
               setSelected(item.connector.id)
               setOpen(true)

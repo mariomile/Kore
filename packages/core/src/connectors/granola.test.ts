@@ -23,8 +23,10 @@ describe('renderGranolaNote', () => {
     expect(renderGranolaNote(meeting, granolaConnector.defaultTags)).toBe(
       [
         '---',
+        'title: "Weekly sync: roadmap"',
         'granola_id: not_abc',
         'date: 2026-10-08',
+        'time: 09:30',
         'attendees:',
         '  - Ada',
         '  - bob@example.com',
@@ -39,6 +41,26 @@ describe('renderGranolaNote', () => {
         '',
       ].join('\n'),
     )
+  })
+
+  it('adds my notes and the transcript when switched on', () => {
+    const source = renderGranolaNote(
+      {
+        ...meeting,
+        web_url: 'https://notes.granola.ai/d/abc',
+        private_notes_markdown: 'call Ada back',
+        transcript: [
+          { speaker: { source: 'microphone' }, text: 'Shall we ship?' },
+          { speaker: { source: 'speaker', name: 'Ada' }, text: 'Yes.' },
+          { speaker: { source: 'speaker', name: 'Ada' }, text: 'Today.' },
+        ],
+      },
+      [],
+      { privateNotes: true, transcript: true },
+    )
+    expect(source).toContain('granola_url: https://notes.granola.ai/d/abc')
+    expect(source).toContain('## My notes\n\ncall Ada back')
+    expect(source).toContain('## Transcript\n\n**Me:** Shall we ship?\n\n**Ada:** Yes. Today.\n')
   })
 
   it('skips a meeting whose summary is not ready', () => {
@@ -66,6 +88,7 @@ describe('granolaConnector.fetchNotes', () => {
     for await (const note of granolaConnector.fetchNotes({
       token: 'grn_key',
       tags: ['meeting'],
+      options: {},
       since: null,
       fetchFn,
       isStale: () => false,

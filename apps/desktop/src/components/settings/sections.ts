@@ -52,14 +52,23 @@ export const SETTINGS_GROUPS = [
     ],
   },
   {
+    // Everything that brings outside context into the vault, on a page of
+    // its own: one card per source (where notes land, what they hold, when
+    // they sync) and the Apple frameworks.
+    id: 'integrations',
+    title: 'Integrations',
+    sections: [
+      { id: 'granola', title: 'Granola' },
+      { id: 'readwise', title: 'Readwise' },
+      // Only shown where the OS frameworks exist — see use-visible-settings-sections.
+      { id: 'apple', title: 'Calendar & contacts' },
+    ],
+  },
+  {
     id: 'data',
     title: 'Sync & data',
     sections: [
       { id: 'sync', title: 'Sync' },
-      // Readwise, Granola …: sources that sync into the graph as notes.
-      { id: 'connectors', title: 'Connectors' },
-      // Only shown where the OS frameworks exist — see use-visible-settings-sections.
-      { id: 'integrations', title: 'Integrations' },
       // Only shown for vaults with Obsidian settings — see use-visible-settings-sections.
       { id: 'vault-compat', title: 'Obsidian compatibility' },
       // Same visibility rule: a dry run of converting the vault to Kore's layout.

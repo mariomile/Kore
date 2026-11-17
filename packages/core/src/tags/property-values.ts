@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { IndexedPropertyValueType } from './properties'
 import { relationDisplay, relationTarget, type RollupAggregation } from './tag-type'
+import { pathLinkLabel } from '../markdown/block-ids'
 
 const storedListSchema = z.array(z.unknown())
 
@@ -122,7 +123,7 @@ export function readWikiLinks(value: PropertyValue): RelationLink[] | null {
     if (target === null) {
       return null
     }
-    links.push({ target, label: relationDisplay(entry) ?? target })
+    links.push({ target, label: relationDisplay(entry) ?? pathLinkLabel(target) })
   }
   return links
 }

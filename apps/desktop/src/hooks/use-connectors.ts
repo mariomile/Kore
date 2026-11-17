@@ -12,6 +12,7 @@ import {
   type Connector,
   type ConnectorId,
   type ConnectorSettings,
+  type ConnectorSyncEvery,
 } from '@kore/core'
 import type { ConnectorRunStatus } from '@/lib/connector-controller'
 import { formatDateTime, type DateTimePrefs } from '@/lib/dates'
@@ -45,7 +46,30 @@ export interface UseConnectorsResult {
   setPattern(id: ConnectorId, pattern: string): string | null
   /** Save the tags new notes carry (comma-separated); empty restores the default. */
   setTags(id: ConnectorId, tags: string): void
+  /** When automatic syncs run. */
+  setSyncEvery(id: ConnectorId, every: ConnectorSyncEvery): void
+  /** Turn one of the connector's content switches on or off. */
+  setOption(id: ConnectorId, key: string, on: boolean): void
+  /** Turn the daily-note links on or off. */
+  setDailyLink(id: ConnectorId, on: boolean): void
+  /** Save the daily-note heading; empty restores the default. */
+  setDailyHeading(id: ConnectorId, heading: string): void
   syncNow(): void
+}
+
+/** The frequency choices, in the order the settings pickers list them. */
+export const SYNC_EVERY_OPTIONS: readonly { value: ConnectorSyncEvery; label: string }[] = [
+  { value: 5, label: 'Every 5 minutes' },
+  { value: 15, label: 'Every 15 minutes' },
+  { value: 30, label: 'Every 30 minutes' },
+  { value: 60, label: 'Every hour' },
+  { value: 'launch', label: 'When Kore opens' },
+  { value: 'manual', label: 'Only when I ask' },
+]
+
+/** The label of a frequency choice. */
+export function syncEveryLabel(every: ConnectorSyncEvery): string {
+  return SYNC_EVERY_OPTIONS.find((option) => option.value === every)?.label ?? String(every)
 }
 
 /**
@@ -177,6 +201,17 @@ export function useConnectors(): UseConnectorsResult {
     setFolder,
     setPattern,
     setTags,
+    setSyncEvery: (id, syncEvery) => patch(id, { syncEvery }),
+    setOption: (id, key, on) =>
+      patch(id, { options: { ...settings.connectors[id].options, [key]: on } }),
+    setDailyLink: (id, dailyLink) => patch(id, { dailyLink }),
+    setDailyHeading: (id, heading) => {
+      const trimmed = heading.trim().replace(/^#+\s*/, '')
+      const connector = CONNECTORS.find((candidate) => candidate.id === id)
+      patch(id, {
+        dailyHeading: trimmed === '' || trimmed === connector?.dailyHeading ? null : trimmed,
+      })
+    },
     syncNow,
   }
 }

@@ -475,8 +475,8 @@ describe('clearTaskDueDate', () => {
 
 describe('setTaskDueTime', () => {
   it('inserts @HH:MM after the due-date link', () => {
-    expect(setTaskDueTime('call [[2026-08-24]] dentist', '14:30')).toBe(
-      'call [[2026-08-24]] @14:30 dentist',
+    expect(setTaskDueTime('call dentist [[2026-08-24]] #health', '14:30')).toBe(
+      'call dentist [[2026-08-24]] @14:30 #health',
     )
   })
 

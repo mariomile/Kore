@@ -1,8 +1,7 @@
 import {
   clearTaskDueDate,
-  normalizeWikiTarget,
-  scanInlineWikiLinks,
   setTaskDueDate,
+  taskContentDueDate,
   taskContentPriority,
   withTaskContentPriority,
   type TaskPriority,
@@ -13,18 +12,12 @@ import {
  * holds the task's content as an editable markdown draft, and scheduling edits
  * the draft rather than writing through — so text and date changes land as one
  * write when the sheet commits. The date rule is the projection's: a task's due
- * date is the first calendar-valid `[[YYYY-MM-DD]]` link in its content.
+ * date is its `[[YYYY-MM-DD]]` link at the end (or start) of the item.
  */
 
-/** The draft's due date — the first calendar-valid `[[YYYY-MM-DD]]` link, or null. */
+/** The draft's due date, or null. */
 export function draftDueDate(content: string): string | null {
-  for (const link of scanInlineWikiLinks(content)) {
-    const { date } = normalizeWikiTarget(link.target)
-    if (date !== undefined) {
-      return date
-    }
-  }
-  return null
+  return taskContentDueDate(content)
 }
 
 /** The draft with its due-date link set to `isoDate`, or removed when null. */

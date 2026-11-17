@@ -8,9 +8,7 @@ import { sectionEnd, topLevelHeadings } from './heading-blocks'
 import { foldKey } from './keys'
 import { documentLineEnding, lineEndingAt, offsetBeforeLineEnding } from './line-endings'
 import type { Heading, TaskMarker, WikiLink } from './model'
-import { normalizeWikiTarget } from './resolve'
-import { scanInlineWikiLinks } from './scan'
-import { matchDueTimePrefix } from './task-due'
+import { dueDateLinkInContent, matchDueTimePrefix } from './task-due'
 import { parseTaskMarker } from './task-marker'
 
 export { appendBlock } from './append-section'
@@ -233,12 +231,6 @@ export function taskLineToBullet(source: string, task: TaskMarker): string {
   return source.slice(0, offset) + source.slice(contentStart)
 }
 
-function firstDueDateLink(content: string): { from: number; to: number } | undefined {
-  return scanInlineWikiLinks(content).find(
-    (link) => normalizeWikiTarget(link.target).date !== undefined,
-  )
-}
-
 /** End offset of a due-date link plus its optional `@HH:MM` suffix. */
 function dueStampEnd(content: string, dateLinkTo: number): number {
   const suffix = matchDueTimePrefix(content.slice(dateLinkTo))
@@ -252,14 +244,14 @@ function tidyTaskContent(content: string): string {
 /**
  * Schedule a task by setting its due date to `isoDate` (a `YYYY-MM-DD`), working
  * on the task's **content** — the markdown after the marker. A task's due date is
- * the first calendar-valid `[[YYYY-MM-DD]]` link inside it (the same rule the
+ * its date link in due-stamp position (`dueDateLinkInContent`, the same rule the
  * projection reads), so this replaces that link's target when one exists, else
- * appends `[[isoDate]]` to the content. An existing `@HH:MM` after the date is
+ * appends `[[isoDate]]` to the content; a date mentioned mid-sentence stays. An existing `@HH:MM` after the date is
  * left in place. Returned content is fed back through {@link editTaskLine}; the
  * caller supplies a valid ISO date (the calendar only yields real days).
  */
 export function setTaskDueDate(content: string, isoDate: string): string {
-  const existing = firstDueDateLink(content)
+  const existing = dueDateLinkInContent(content)
   if (existing !== undefined) {
     return content.slice(0, existing.from) + `[[${isoDate}]]` + content.slice(existing.to)
   }
@@ -268,13 +260,13 @@ export function setTaskDueDate(content: string, isoDate: string): string {
 }
 
 /**
- * Unschedule a task: drop its first calendar-valid `[[YYYY-MM-DD]]` due-date link
+ * Unschedule a task: drop its due-date link
  * and the `@HH:MM` suffix when present (collapsing the surrounding whitespace),
  * or return the content unchanged when it has no due date. The inverse of
  * {@link setTaskDueDate}.
  */
 export function clearTaskDueDate(content: string): string {
-  const existing = firstDueDateLink(content)
+  const existing = dueDateLinkInContent(content)
   if (existing === undefined) {
     return content
   }
@@ -288,7 +280,7 @@ export function clearTaskDueDate(content: string): string {
  * the content has no due date, or when `time` is not a real clock time.
  */
 export function setTaskDueTime(content: string, time: string | null): string {
-  const existing = firstDueDateLink(content)
+  const existing = dueDateLinkInContent(content)
   if (existing === undefined) {
     return content
   }

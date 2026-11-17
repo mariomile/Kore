@@ -516,9 +516,8 @@ export function parseQuickAdd(
     title += `${input.slice(cursor, span.start)} `
     cursor = span.end
   }
-  // Core reads the first date link in a task as its due date, so any other
-  // `[[YYYY-MM-DD]]` left in the text would outrank the one appended below and
-  // contradict the chip: keep it as plain text instead.
+  // A `[[YYYY-MM-DD]]` left at the start of the text would read as the due
+  // date and contradict the chip: keep typed date links as plain text.
   title = `${title}${input.slice(cursor)}`
     .replaceAll(/\[\[(\d{4}-\d{2}-\d{2})\]\]/g, '$1')
     .replaceAll(/\s+/g, ' ')

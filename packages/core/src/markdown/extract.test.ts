@@ -424,9 +424,16 @@ describe('parseNote — tasks', () => {
     expect(note.tasks).toEqual([])
   })
 
-  it('reads the first calendar [[YYYY-MM-DD]] link in the item as the due date', () => {
+  it('reads the date link that ends the item as the due date, not one mid-sentence', () => {
     const note = parse('+ [ ] ship it [[2026-07-01]] and review [[2026-08-01]]\n')
-    expect(note.tasks[0]!.dueDate).toBe('2026-07-01') // first date link wins
+    expect(note.tasks[0]!.dueDate).toBe('2026-08-01')
+  })
+
+  it('does not schedule a task from a cited daily link', () => {
+    const note = parse(
+      '- [ ] **13 set (daily, intent):** relaunch Captoo. Fonte: [[2026-09-13]].\n- [ ] [[2026-07-01]] call mom\n',
+    )
+    expect(note.tasks.map((task) => task.dueDate)).toEqual([null, '2026-07-01'])
   })
 
   it('ignores an impossible date as a due date', () => {

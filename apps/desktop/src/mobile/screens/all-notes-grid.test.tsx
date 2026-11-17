@@ -19,6 +19,12 @@ const listNoteTags = vi.hoisted(() => vi.fn())
 const firstImageAssets = vi.hoisted(() => vi.fn())
 const hapticImpactLight = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
+// Lets a test re-render the screen after mutating `settingsState`, the way
+// the real provider does after `updateSettings`.
+const settingsListeners = vi.hoisted(() => new Set<() => void>())
+function notifySettings(): void {
+  for (const listener of settingsListeners) listener()
+}
 const settingsState = vi.hoisted(
   (): { allNotesView: 'list' | 'grid'; allNotesSort: AllNotesSort } => ({
     allNotesView: 'list',
@@ -45,17 +51,32 @@ vi.mock('@/components/ui/drawer', () => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: {
-      dateFormat: 'mdy',
-      timeFormat: '12h',
-      allNotesView: settingsState.allNotesView,
-      allNotesSort: settingsState.allNotesSort,
+vi.mock('@/providers/settings-provider', async () => {
+  const { useSyncExternalStore } = await import('react')
+  let version = 0
+  const subscribe = (listener: () => void) => {
+    const bump = () => {
+      version += 1
+      listener()
+    }
+    settingsListeners.add(bump)
+    return () => settingsListeners.delete(bump)
+  }
+  return {
+    useSettings: () => {
+      useSyncExternalStore(subscribe, () => version)
+      return {
+        settings: {
+          dateFormat: 'mdy',
+          timeFormat: '12h',
+          allNotesView: settingsState.allNotesView,
+          allNotesSort: settingsState.allNotesSort,
+        },
+        updateSettings,
+      }
     },
-    updateSettings,
-  }),
-}))
+  }
+})
 
 const HEALTH_MTIME = new Date(2020, 0, 15, 12, 0).getTime()
 
@@ -292,6 +313,20 @@ describe('MobileAllNotes sort', () => {
       )
       .toBe(true)
     expect(titlesInOrder()).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+  })
+
+  it('reorders in memory on a sort change, without asking the index again', async () => {
+    updateSettings.mockImplementation((patch: { allNotesSort?: AllNotesSort }) => {
+      Object.assign(settingsState, patch)
+      notifySettings()
+    })
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    const calls = searchWithFilters.mock.calls.length
+    await page.getByRole('button', { name: /^Sort:/ }).click()
+    await page.getByRole('button', { name: 'Title' }).click()
+    await expect.poll(titlesInOrder).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+    expect(searchWithFilters.mock.calls.length).toBe(calls)
   })
 
   it('writes the sheet’s choice to the shared setting', async () => {

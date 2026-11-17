@@ -118,33 +118,35 @@ export function MobileAllNotes({
     queryFn: () => listNoteTags(),
     enabled,
   })
-  // The no-text feed (plain or badge-filtered) follows the persisted sort,
-  // the Mac list's; typed text keeps relevance ranking. The order is applied
-  // inside the query so each cached result (including the placeholder held
-  // while the next query runs) carries the order of the query that made it.
-  // The index already returns the default order (pinned, then newest), so
-  // only another sort pays for a client-side pass.
-  const sort = settings.allNotesSort
   const {
-    data: hits,
+    data: feed,
     isError,
     refetch,
   } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed, sort],
-    queryFn: async () => {
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
+    queryFn: async (): Promise<AllNotesFeed> => {
       const plan = searchPlanFor(parsed)
-      const found = await searchWithFilters(parsed, plan)
-      return plan.pinnedFirst === true && sort !== 'updated-desc'
-        ? sortNoteList(found, sort)
-        : found
+      return { hits: await searchWithFilters(parsed, plan), recall: plan.pinnedFirst === true }
     },
     enabled,
     // Typing re-keys the query as the deferred value settles; holding the
     // previous rows avoids a blank flash between keystrokes.
     placeholderData: keepPreviousData,
   })
+  const hits = feed?.hits
 
-  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
+  // The no-text feed (plain or badge-filtered) follows the persisted sort,
+  // the Mac list's; typed text keeps relevance ranking. Each result records
+  // which kind it is, so the placeholder held while the next query runs keeps
+  // its own order, and a sort change reorders in memory with no index call.
+  // The index already returns the default order (pinned, then newest), so
+  // only another sort pays for a client-side pass.
+  const sort = settings.allNotesSort
+  const rows = useMemo(() => {
+    const ordered =
+      feed?.recall === true && sort !== 'updated-desc' ? sortNoteList(feed.hits, sort) : hits
+    return (ordered ?? []).map(rowForHit)
+  }, [feed, hits, sort])
   const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
   const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
@@ -154,9 +156,9 @@ export function MobileAllNotes({
   }
 
   const removeDeletedRow = (path: string): void => {
-    queryClient.setQueriesData<FilteredSearchHit[]>(
+    queryClient.setQueriesData<AllNotesFeed>(
       { queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes'] },
-      (cachedHits) => cachedHits?.filter((hit) => hit.path !== path),
+      (cached) => cached && { ...cached, hits: cached.hits.filter((hit) => hit.path !== path) },
     )
     // Do not invalidate yet: the index can still contain the deleted row and
     // would briefly resurrect it. `deleteNote`'s local-write echo reindexes,
@@ -283,6 +285,12 @@ function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void
       <SortVertical aria-hidden className="size-4" />
     </button>
   )
+}
+
+/** One All-tab query result, tagged with whether it is the no-text recall feed. */
+interface AllNotesFeed {
+  hits: FilteredSearchHit[]
+  recall: boolean
 }
 
 /** The `#…` tag-matching mode's suggestion row (replaces the badge row). */

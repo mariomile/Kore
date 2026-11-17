@@ -3,11 +3,13 @@
 //! uses (`packages/core/src/connectors`), hosted under Node like `kore index`.
 //!
 //! The core owns the policy (`packages/core/src/headless/sync-sources.ts`):
-//! which sources exist, the `KORE_<SOURCE>_TOKEN` / `_FOLDER` / `_PATTERN` /
-//! `_TAGS` variables it reads from the environment this process passes on,
-//! and the defaults. This side owns what only it can: the flags, and each
-//! source's window in `.kore/sources.json` (per machine, never
-//! committed), which it serves to the core and saves from its reports.
+//! which sources exist, their settings from the vault's `.kore.json` (the
+//! file the apps share, served by the host), the `KORE_<SOURCE>_TOKEN` /
+//! `_FOLDER` / `_PATTERN` / `_TAGS` variables it reads from the environment
+//! this process passes on, and the defaults. This side owns what only it
+//! can: the flags, and each source's window in `.kore/sources.json` (per
+//! machine, never committed), which it serves to the core and saves from
+//! its reports.
 
 use std::collections::BTreeMap;
 use std::fs;

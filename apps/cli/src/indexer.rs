@@ -36,6 +36,9 @@ pub const INDEXER_SCRIPT: &str = "kore-indexer.mjs";
 /// The only index session a headless run opens; core echoes it on writes.
 const GENERATION: u64 = 1;
 
+/// The vault-wide settings file the apps share (`connectors/vault-settings`).
+const VAULT_SETTINGS_FILE: &str = ".kore.json";
+
 /// The core caps one `db_query_batch` like the desktop command does.
 const DB_QUERY_BATCH_MAX: usize = 32;
 
@@ -313,6 +316,9 @@ impl Host {
                 let scan = scan_reconcile(&self.writer, &files, now_ms)?;
                 Ok(serde_json::to_value(scan).map_err(|err| HostError::io(err.to_string()))?)
             }
+            // The vault's shared integration settings (`.kore.json` at the
+            // root, the file the apps write), for `kore sources`.
+            "vault_settings_read" => self.read_vault_settings(),
             "sources_config" => match &self.session {
                 Session::Sources { request, .. } => Ok(request.clone()),
                 Session::Index => Err(HostError::io("this session runs no sources")),
@@ -368,6 +374,28 @@ impl Host {
             kind: "traversal",
             message: err.to_string(),
         })
+    }
+
+    /// The vault-root `.kore.json`; `notFound` when the vault has none.
+    fn read_vault_settings(&self) -> Result<Value, HostError> {
+        let absolute = match crate::note_file::symlink_free_path(&self.root, VAULT_SETTINGS_FILE) {
+            Ok(Some(absolute)) => absolute,
+            Ok(None) => {
+                return Err(HostError {
+                    kind: "traversal",
+                    message: format!("refusing to follow a symlink: {VAULT_SETTINGS_FILE}"),
+                })
+            }
+            Err(err) => return Err(HostError::io(format!("{VAULT_SETTINGS_FILE}: {err}"))),
+        };
+        match std::fs::read_to_string(&absolute) {
+            Ok(text) => Ok(json!(text)),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Err(HostError {
+                kind: "notFound",
+                message: format!("no {VAULT_SETTINGS_FILE} in this vault"),
+            }),
+            Err(err) => Err(HostError::io(format!("{VAULT_SETTINGS_FILE}: {err}"))),
+        }
     }
 
     /// Read a graph-relative markdown file. Paths come from the core, which
@@ -530,6 +558,17 @@ mod tests {
             .handle("note_write", &json!({ "path": "../x.md", "contents": "" }))
             .unwrap_err();
         assert_eq!(escape.kind, "traversal");
+    }
+
+    #[test]
+    fn serves_the_vault_settings_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = Host::open(dir.path()).unwrap();
+        let missing = host.handle("vault_settings_read", &json!({})).unwrap_err();
+        assert_eq!(missing.kind, "notFound");
+        std::fs::write(dir.path().join(".kore.json"), "{\"integrations\":{}}\n").unwrap();
+        let read = host.handle("vault_settings_read", &json!({})).unwrap();
+        assert_eq!(read, json!("{\"integrations\":{}}\n"));
     }
 
     #[test]

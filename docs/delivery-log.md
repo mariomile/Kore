@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix: iPhone Syncing no longer sticks on "Saving your changes" (stale file
+  stats refreshed instead of re-hashing the vault, #521).
 - iPhone: Notes tab sorting (Last updated / Title, direction), shared with
   the Mac's setting; faster title sort on Mac (#515).
 - Fix: iPhone TestFlight build no longer crashes on launch (UIScene manifest

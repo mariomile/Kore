@@ -401,6 +401,55 @@ fn configure_onnx_runtime(app: &AppHandle) -> Result<(), String> {
     commit_environment(environment)
 }
 
+/// Spawns ONNX Runtime's global pool threads at background QoS.
+///
+/// Apple's `pthread_create` threads start at `QOS_CLASS_DEFAULT` rather than
+/// inheriting the creator's class, so demoting the thread that commits the
+/// environment is not enough: each worker demotes itself before it starts
+/// taking work. Embedding is never what the user is waiting on; typing is.
+#[derive(Default)]
+struct BackgroundThreads {
+    spawned: std::sync::atomic::AtomicUsize,
+}
+
+impl ort::environment::ThreadManager for BackgroundThreads {
+    type Thread = std::thread::JoinHandle<()>;
+
+    fn create(&self, work: impl FnOnce() + Send + 'static) -> ort::Result<Self::Thread> {
+        let index = self.spawned.fetch_add(1, Ordering::Relaxed);
+        std::thread::Builder::new()
+            .name(format!("kore-embed-{index}"))
+            .spawn(move || {
+                demote_pool_thread();
+                work();
+            })
+            .map_err(|err| ort::Error::new(format!("spawning an embedding thread: {err}")))
+    }
+
+    fn join(thread: Self::Thread) -> ort::Result<()> {
+        thread
+            .join()
+            .map_err(|_| ort::Error::new("an embedding thread panicked"))
+    }
+}
+
+/// Put a freshly spawned pool thread at utility QoS for its whole life.
+///
+/// Unlike [`BackgroundQos`] this neither checks nor restores the prior class:
+/// the thread belongs to the pool, and a new thread may report `unspecified`
+/// (which `BackgroundQos` treats as "leave alone") while still running at the
+/// default class.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn demote_pool_thread() {
+    let set = unsafe { pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0) };
+    if set != 0 {
+        tracing::warn!(set, "embedding pool thread kept its default QoS");
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+fn demote_pool_thread() {}
+
 /// Configure the same ONNX worker pool in the app and native experiments.
 /// The one attempt this process makes at configuring ONNX Runtime, and how it
 /// went. Every caller after the first reads the same outcome.
@@ -429,8 +478,19 @@ pub(crate) fn commit_environment(
 fn install_environment(environment: ort::environment::EnvironmentBuilder) -> Result<(), String> {
     let threads = embed_thread_count();
     let pool = ort::environment::GlobalThreadPoolOptions::default()
+        // Load-bearing, not cosmetic: ort only switches a session onto the
+        // global pool (`DisablePerSessionThreads`) when the environment holds
+        // a thread manager. Without one every session silently built its own
+        // pool from fastembed's `with_intra_threads(available_parallelism())`,
+        // spinning, at default QoS: the bound below and the spin setting were
+        // never applied, and a backfill held every core of the Mac.
+        .with_thread_manager(BackgroundThreads::default())
+        .map_err(|err| format!("installing the ONNX Runtime thread manager: {err}"))?
         .with_intra_threads(threads)
         .map_err(|err| format!("sizing the ONNX Runtime thread pool: {err}"))?
+        // all-MiniLM runs sequentially; no inter-op parallelism to pay for.
+        .with_inter_threads(1)
+        .map_err(|err| format!("sizing the ONNX Runtime inter-op pool: {err}"))?
         // Idle workers busy-wait by default, which is right for a server
         // running inference back to back and wrong here: embedding arrives in
         // bursts, and between them the spin keeps every pool thread hot.

@@ -39,7 +39,22 @@ import { useSettings } from '@/providers/settings-provider'
  * unloaded model, while idle unload/reload does not trigger another backfill.
  * Disabling the setting or changing graphs cancels work at batch boundaries.
  */
-export function EmbeddingsSync(): null {
+/**
+ * Quiet period after the last applied change before live follow-up embeds.
+ * Every autosave lands here about a second after a typing pause; embedding on
+ * each one put a burst of model inference right on top of the next keystrokes.
+ * Waiting for a real pause costs nothing (semantic results for a note being
+ * written can trail by a few seconds) and coalesces a writing session into
+ * one embed per note.
+ */
+export const FOLLOW_QUIET_MS = 5_000
+
+export function EmbeddingsSync({
+  followQuietMs = FOLLOW_QUIET_MS,
+}: {
+  /** Override for tests; production uses {@link FOLLOW_QUIET_MS}. */
+  followQuietMs?: number
+} = {}): null {
   const { graph, indexGeneration, indexReady } = useGraph()
   const { settings, updateSettings } = useSettings()
   const status = useEmbedStatus()
@@ -91,6 +106,7 @@ export function EmbeddingsSync(): null {
     let active = true
     const pendingFollow = new Map<string, { kind: 'upsert' | 'remove'; retried: boolean }>()
     let followScheduled = false
+    let quietTimer: ReturnType<typeof setTimeout> | undefined
 
     let scheduleFollow: () => void = () => {}
 
@@ -131,7 +147,7 @@ export function EmbeddingsSync(): null {
       }
     }
 
-    scheduleFollow = (): void => {
+    const enqueueDrain = (): void => {
       if (followScheduled) {
         return
       }
@@ -141,6 +157,18 @@ export function EmbeddingsSync(): null {
         // chain off this promise) nor masquerade as a per-change failure.
         console.error('embedding sync failed:', cause)
       })
+    }
+
+    // Trailing debounce: each new change restarts the quiet period, so a
+    // run of autosaves while typing turns into one drain after the pause.
+    scheduleFollow = (): void => {
+      clearTimeout(quietTimer)
+      quietTimer = setTimeout(() => {
+        quietTimer = undefined
+        if (active) {
+          enqueueDrain()
+        }
+      }, followQuietMs)
     }
 
     queue.current = queue.current
@@ -178,10 +206,11 @@ export function EmbeddingsSync(): null {
 
     return () => {
       active = false
+      clearTimeout(quietTimer)
       pendingFollow.clear()
       unlisten()
     }
-  }, [enabled, generation, root, modelId, indexReady])
+  }, [enabled, generation, root, modelId, indexReady, followQuietMs])
 
   return null
 }

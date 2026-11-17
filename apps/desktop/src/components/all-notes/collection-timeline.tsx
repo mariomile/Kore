@@ -39,6 +39,8 @@ import { TimelineHeader, timelineGridStyle } from './timeline-header'
  * so the vault stays plain Markdown any agent (or Obsidian) can read.
  */
 
+/** Pixels a press must travel before it drags a bar instead of opening it. */
+const DRAG_THRESHOLD = 4
 const ROW_HEIGHT = 36
 const HEADER_HEIGHT = 52
 const TITLE_WIDTH = 240
@@ -126,9 +128,17 @@ export function CollectionTimeline({
       const originX = event.clientX
       const origin: DragState = { path: bar.entry.path, edge, span, delta: 0 }
       let delta = 0
+      // A press only turns into a drag once the pointer travels a few pixels:
+      // at month or quarter zoom a day is narrower than a click's jitter.
+      let dragging = false
       setDrag(origin)
       const onMove = (moveEvent: PointerEvent): void => {
-        const next = Math.round((moveEvent.clientX - originX) / dayWidth)
+        const moved = moveEvent.clientX - originX
+        if (!dragging && Math.abs(moved) < DRAG_THRESHOLD) {
+          return
+        }
+        dragging = true
+        const next = Math.round(moved / dayWidth)
         if (next !== delta) {
           delta = next
           setDrag({ ...origin, delta })
@@ -142,8 +152,8 @@ export function CollectionTimeline({
         if (upEvent.type !== 'pointerup') {
           return
         }
-        if (delta === 0) {
-          if (edge === 'move') {
+        if (!dragging || delta === 0) {
+          if (!dragging && edge === 'move') {
             onOpen(bar.entry.path, upEvent)
           }
           return

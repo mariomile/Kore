@@ -276,13 +276,13 @@ function MobileTimelineRow({
       <EdgeHint
         side="left"
         title={title}
-        opacity={`clamp(0, calc((var(--timeline-left, 0) - ${String(end)}) / 24), 1)`}
+        offscreen={`(var(--timeline-left, 0) - ${String(end)})`}
         onReveal={() => onReveal(left)}
       />
       <EdgeHint
         side="right"
         title={title}
-        opacity={`clamp(0, calc((${String(left)} - var(--timeline-right, 1e9)) / 24), 1)`}
+        offscreen={`(${String(left)} - var(--timeline-right, 1e9))`}
         onReveal={() => onReveal(left)}
       />
       <button
@@ -316,12 +316,15 @@ function MobileTimelineRow({
 interface EdgeHintProps {
   side: 'left' | 'right'
   title: string
-  /** A CSS opacity expression over the track's visible stretch. */
-  opacity: string
+  /**
+   * A CSS expression, in px, of how far the bar sits past this edge of the
+   * visible stretch: positive while it is off screen.
+   */
+  offscreen: string
   onReveal: () => void
 }
 
-function EdgeHint({ side, title, opacity, onReveal }: EdgeHintProps): ReactElement {
+function EdgeHint({ side, title, offscreen, onReveal }: EdgeHintProps): ReactElement {
   return (
     <div
       aria-hidden
@@ -334,7 +337,14 @@ function EdgeHint({ side, title, opacity, onReveal }: EdgeHintProps): ReactEleme
         type="button"
         tabIndex={-1}
         onClick={onReveal}
-        style={{ opacity, [side]: GUTTER }}
+        style={{
+          // Fades in over the first 24px the bar leaves the screen. While
+          // the bar is on screen the chip also collapses to nothing, so an
+          // invisible chip never takes a tap or a pan meant for the track.
+          opacity: `clamp(0, calc(${offscreen} / 24), 1)`,
+          scale: `clamp(0, calc(${offscreen} * 1000), 1)`,
+          [side]: GUTTER,
+        }}
         className="pointer-events-auto sticky flex h-8 max-w-[60%] items-center gap-1 rounded-full bg-surface-hover px-2.5 text-[13px] text-text-secondary transition-opacity duration-150"
       >
         {side === 'left' ? <ChevronLeft aria-hidden className="size-3.5 shrink-0" /> : null}

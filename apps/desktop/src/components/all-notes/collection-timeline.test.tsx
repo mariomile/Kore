@@ -92,4 +92,33 @@ describe('CollectionTimeline', () => {
     pointer(bar, 'pointerup', 100)
     expect(onOpen).toHaveBeenCalledWith('notes/launch.md', expect.anything())
   })
+
+  it('treats a press with a few pixels of jitter as a click at quarter zoom', async () => {
+    commitProperties.mockClear()
+    const onOpen = vi.fn()
+    const screen = await render(
+      <div style={{ height: 600, width: 1000 }}>
+        <CollectionTimeline
+          entries={entries}
+          fields={FIELDS}
+          groupProperty={null}
+          zoom="quarter"
+          onZoomChange={vi.fn()}
+          tag="project"
+          type={PROJECT}
+          onOpen={onOpen}
+        />
+      </div>,
+    )
+    const barLocator = screen.getByRole('button', { name: /^Launch, / })
+    await expect.element(barLocator).toBeInTheDocument()
+    const bar = barLocator.element()
+
+    // A quarter day is 6px, so 3px of jitter would round to a one-day move.
+    pointer(bar, 'pointerdown', 100)
+    pointer(bar, 'pointermove', 103)
+    pointer(bar, 'pointerup', 103)
+    expect(commitProperties).not.toHaveBeenCalled()
+    expect(onOpen).toHaveBeenCalledWith('notes/launch.md', expect.anything())
+  })
 })

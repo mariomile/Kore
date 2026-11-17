@@ -1,5 +1,13 @@
 # Kore working state
 
+## iPhone Notes sorting, 2026-11-17
+
+- [x] The iPhone Notes tab gets a sort button: a sheet picks Last updated or
+  Title and the direction, sharing the Mac's allNotesSort setting; pinned
+  notes stay on top and typed search keeps relevance order. Sorting runs in
+  memory with a shared Intl.Collator, which also speeds the Mac list's title
+  sort (#515).
+
 ## Launch crash fix and Syncing watchdog, 2026-11-17
 
 - [x] Fix (shipped inside 0.122.0): the iPhone TestFlight build no longer

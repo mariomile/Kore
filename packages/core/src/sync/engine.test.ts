@@ -1014,9 +1014,14 @@ describe('createSyncEngine', () => {
   })
 
   it('gives up on a local step that never settles instead of holding Syncing', async () => {
+    let finishCommit: (value: unknown) => void = () => {}
     let hang = true
     const calls = fakeGit((command) =>
-      command === 'git_commit_all' && hang ? new Promise(() => {}) : defaultResponses(command),
+      command === 'git_commit_all' && hang
+        ? new Promise((resolve) => {
+            finishCommit = resolve
+          })
+        : defaultResponses(command),
     )
     const statuses: SyncStatus[] = []
     const engine = createSyncEngine({
@@ -1039,11 +1044,23 @@ describe('createSyncEngine', () => {
       'Sync got stuck saving changes and will try again',
     )
 
-    // The next trigger runs a fresh cycle rather than queueing behind the hung one.
+    // While the timed-out command still runs natively, no other Git work
+    // may touch the repository: a new trigger issues nothing.
     hang = false
+    const before = calls.length
     await engine.syncNow()
+    expect(calls).toHaveLength(before)
+
+    // Once it settles, one full cycle catches up on its own.
+    finishCommit(CLEAN_COMMIT)
+    await vi.runAllTimersAsync()
     expect(statuses.at(-1)).toEqual({ state: 'idle' })
-    expect(commandsOf(calls)).toContain('git_push')
+    expect(commandsOf(calls.slice(before))).toEqual([
+      'git_commit_all',
+      'git_fetch',
+      'git_merge_remote',
+      'git_push',
+    ])
     engine.stop()
   })
 

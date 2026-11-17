@@ -194,6 +194,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   let running: Promise<void> | null = null
   /** Follow-up requested while a cycle was in flight (strongest mode wins). */
   let rerunMode: 'push' | 'full' | null = null
+  /** A timed-out command still running natively; set until it settles. */
+  let lingering: Promise<void> | null = null
 
   function emit(status: SyncStatus): void {
     if (signal.aborted) {
@@ -235,7 +237,19 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   function bounded<T>(step: SyncStep, promise: Promise<T>): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined
     const stalled = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new StepStalledError(step)), localStepTimeoutMs)
+      timer = setTimeout(() => {
+        // The command keeps running natively. No other Git work may start on
+        // the repository until it settles; then one full cycle catches up.
+        const pending: Promise<void> = promise.then(
+          () => {},
+          () => {},
+        )
+        lingering = pending.finally(() => {
+          lingering = null
+          void run('full')
+        })
+        reject(new StepStalledError(step))
+      }, localStepTimeoutMs)
     })
     void promise.catch(() => {}) // a late rejection after the timeout is not unhandled
     return Promise.race([promise, stalled]).finally(() => clearTimeout(timer))
@@ -302,6 +316,11 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
 
   async function run(mode: 'push' | 'full'): Promise<void> {
     if (signal.aborted || options.canStartCycle?.() === false) {
+      return
+    }
+    if (lingering !== null) {
+      // A stalled command still owns the repository. Its settling triggers
+      // the catch-up cycle, so this trigger is already covered.
       return
     }
     if (running !== null) {

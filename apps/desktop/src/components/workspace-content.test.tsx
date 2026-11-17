@@ -59,6 +59,13 @@ vi.mock('@/lib/use-macos-traffic-light-inset', () => ({
   useMacosTrafficLightInset: () => trafficLights.inset,
 }))
 vi.mock('@/components/route-content', () => ({ RouteContent: () => <div>Route content</div> }))
+// The modal and the router pin beneath it are `settings-modal.test.tsx`'s
+// subject; here only where the frame mounts them is under test.
+vi.mock('@/components/settings-modal', () => ({
+  BeneathSettings: ({ children }: { children: ReactNode }) => children,
+  SettingsModal: () =>
+    routerState.route.kind === 'settings' ? <div role="dialog" aria-label="Settings" /> : null,
+}))
 vi.mock('@/components/shortcuts-dialog', () => ({ ShortcutsDialog: () => null }))
 vi.mock('@/components/sidebar/sidebar', () => ({
   Sidebar: () => <div data-testid="workspace-sidebar" />,
@@ -263,13 +270,12 @@ describe('WorkspaceContent', () => {
     await expect.element(view.getByTestId('macos-traffic-light-band')).toBeInTheDocument()
   })
 
-  it('covers the workspace chrome when settings is open', async () => {
+  it('floats Settings over the workspace instead of replacing it', async () => {
     routerState.route = { kind: 'settings' }
     const view = await render(<WorkspaceContent graph={GRAPH} />)
 
-    expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
-    expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
-    expect(view.getByTestId('note-pane-gutter').query()).toBeNull()
-    await expect.element(page.getByText('Route content')).toBeInTheDocument()
+    await expect.element(page.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+    await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
+    await expect.element(view.getByTestId('note-pane-gutter')).toBeInTheDocument()
   })
 })

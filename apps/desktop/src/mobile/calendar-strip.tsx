@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { isoWeekOf, weeklyPath } from '@kore/core'
 import { ChevronDown, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { addDaysIso } from '@/lib/dates'
@@ -77,6 +78,18 @@ export function CalendarStrip({
     showWeekOf(today)
   }
 
+  // ISO week of the visible row's Monday (a Sunday-start row's second day).
+  const visibleWeek = isoWeekOf(
+    addDaysIso(
+      displayedWeekStart,
+      settings.weekStartDay === 'sunday' ? 1 : settings.weekStartDay === 'saturday' ? 2 : 0,
+    ),
+  )
+  const openWeek = (): void => {
+    hapticImpactLight()
+    navigate({ kind: 'note', path: weeklyPath(visibleWeek) })
+  }
+
   const openSettings = (): void => {
     hapticImpactLight()
     navigate({ kind: 'settings' })
@@ -137,7 +150,7 @@ export function CalendarStrip({
             <ChevronDown aria-hidden className="size-4 shrink-0 text-text-muted" />
           </button>
         </h1>
-        <div className="justify-self-end">
+        <div className="flex items-center gap-1.5 justify-self-end">
           <Button
             variant="ghost"
             size="sm"
@@ -150,6 +163,17 @@ export function CalendarStrip({
             onClick={jumpToToday}
           >
             Today
+          </Button>
+          {/* The visible week's note: follows the strip while browsing, so
+              the pill always names the seven days under it. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Open week ${visibleWeek.week}`}
+            className="rounded-full bg-surface-hover tabular-nums"
+            onClick={openWeek}
+          >
+            W{visibleWeek.week}
           </Button>
         </div>
       </div>

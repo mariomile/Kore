@@ -16,6 +16,7 @@ import {
 import {
   errorMessage,
   isUntitledNotePath,
+  weekFromWeeklyPath,
   moveSidebarItem,
   SIDEBAR_NAV_IDS,
   type SidebarNavItem,
@@ -65,7 +66,11 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
         label,
         icon: <Pencil className="size-3.5" />,
         commandId: 'nav.today',
-        active: (route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote,
+        active:
+          (route.kind === 'today' ||
+            route.kind === 'daily' ||
+            (route.kind === 'note' && weekFromWeeklyPath(route.path) !== null)) &&
+          !hasActivePinnedNote,
       }
     case 'newNote':
       // Active while the open note is still on its ULID placeholder name, the
@@ -90,7 +95,10 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
           (route.kind === 'allNotes' &&
             route.filter.kind !== 'tag' &&
             route.filter.kind !== 'folder') ||
-          (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote),
+          (route.kind === 'note' &&
+            !isUntitledNotePath(route.path) &&
+            weekFromWeeklyPath(route.path) === null &&
+            !hasActivePinnedNote),
       }
     case 'tasks':
       return {

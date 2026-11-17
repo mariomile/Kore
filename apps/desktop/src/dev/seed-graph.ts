@@ -6,6 +6,8 @@
  * daily stream always lands on the current week.
  */
 
+import { isoWeekOf, weeklyPath } from '@kore/core'
+
 /** Local-time `YYYY-MM-DD` for `offsetDays` before today. */
 function isoDay(offsetDays: number): string {
   const date = new Date()
@@ -29,6 +31,21 @@ export function seedGraphFiles(): Record<string, string> {
   const nextWeek = isoDay(-7)
 
   return {
+    // This week's note (weekly/YYYY-Www.md, ISO week), so the week page
+    // opens on believable content.
+    [weeklyPath(isoWeekOf(today))]: [
+      `## Focus`,
+      `- Ship the [[Kore V2]] mobile parity pass`,
+      `- Close the beta feedback loop before Friday`,
+      ``,
+      `## Notes`,
+      `- Offsite flights still open, see [[Quarterly Goals]]`,
+      ``,
+      `## Review`,
+      `- Went well: day carousel physics landed on Tuesday`,
+      `- Change: fewer context switches midweek`,
+      ``,
+    ].join('\n'),
     [`daily/${today}.md`]: [
       `- Morning review with [[Sarah Chen]] about the [[Kore V2]] launch`,
       `+ [ ] Ship the mobile filter badges [[${today}]]`,

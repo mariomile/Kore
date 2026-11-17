@@ -13,6 +13,7 @@ import {
   openNoteTabTitle,
   type OpenTab,
   tagDisplayName,
+  weekFromWeeklyPath,
 } from '@kore/core'
 import { useDraftTitles } from '@/editor/draft-titles'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -97,9 +98,12 @@ export function useOpenTabItems(): OpenTabItem[] {
         case 'note':
           return {
             tab,
-            title: displayNoteTitle(
-              openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)),
-            ),
+            // A weekly note is named by its week, like a daily by its date.
+            title:
+              weeklyTabTitle(tab.path) ??
+              displayNoteTitle(
+                openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)),
+              ),
           }
         case 'chat':
           return { tab, title: chatTitles.get(tab.conversationId) ?? 'New chat' }
@@ -133,4 +137,9 @@ export function useOpenTabItems(): OpenTabItem[] {
       }
     })
   }, [tabs, noteRows, conversations, drafts])
+}
+
+function weeklyTabTitle(path: string): string | null {
+  const week = weekFromWeeklyPath(path)
+  return week === null ? null : `Week ${week.week}`
 }

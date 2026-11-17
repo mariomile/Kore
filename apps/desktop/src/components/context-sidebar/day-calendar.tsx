@@ -1,13 +1,13 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { dailyDatesInRange, weekStartDow } from '@kore/core'
+import { dailyDatesInRange, isoWeekOf, weekStartDow, weeklyPath } from '@kore/core'
 import { CalendarDays, ChevronLeft, ChevronRight } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { keybindingFor } from '@/lib/commands/app-commands'
-import { formatDayLabel } from '@/lib/dates'
+import { addDaysIso, formatDayLabel } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,42 @@ interface DayCalendarProps {
   selectedDate: string
   /** Today's live ISO date. */
   today: string
+}
+
+/** A quiet week-number column, then the seven days. */
+const WEEK_GRID = 'grid grid-cols-[1.5rem_repeat(7,minmax(0,1fr))]'
+
+/**
+ * The week number left of a calendar row: opens that week's note. Muted
+ * like the weekday labels so the days stay the calendar's subject; the
+ * open week's number sits on the selected day's wash.
+ */
+function WeekNumberButton({
+  firstDay,
+  weekStartsOn,
+}: {
+  firstDay: string
+  weekStartsOn: 0 | 1 | 6
+}): ReactElement {
+  const { route, navigate } = useRouter()
+  const week = isoWeekOf(addDaysIso(firstDay, weekStartsOn === 1 ? 0 : weekStartsOn === 0 ? 1 : 2))
+  const path = weeklyPath(week)
+  const open = route.kind === 'note' && route.path === path
+  return (
+    <button
+      type="button"
+      aria-label={`Week ${week.week}`}
+      title={`Open week ${week.week}`}
+      aria-pressed={open}
+      onClick={() => navigate({ kind: 'note', path })}
+      className={cn(
+        'my-0.5 cursor-default rounded-md text-[10px] font-medium tabular-nums text-text-muted/70 transition-colors duration-100 hover:bg-surface-hover hover:text-text',
+        open && 'bg-surface-active text-text',
+      )}
+    >
+      {week.week}
+    </button>
+  )
 }
 
 const TODAY_BINDING = keybindingFor('nav.today')
@@ -111,7 +147,8 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
       </header>
 
       <div>
-        <div className="grid grid-cols-7 px-4 text-center">
+        <div className={cn(WEEK_GRID, 'px-4 text-center')}>
+          <div aria-hidden />
           {weekdayLabels(weekStartsOn).map((weekday) => (
             <div key={weekday} className="py-2 text-xs font-medium text-text">
               {weekday}
@@ -121,7 +158,13 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
 
         <div className="px-4 py-2">
           {grid.weeks.map((week) => (
-            <div key={week[0]!.date} className="grid grid-cols-7 text-center">
+            <div key={week[0]!.date} className={cn(WEEK_GRID, 'text-center')}>
+              <WeekNumberButton
+                // The ISO week of the row's Monday: a Sunday- or
+                // Saturday-start row still opens one Monday-to-Sunday note.
+                firstDay={week[0]!.date}
+                weekStartsOn={weekStartsOn}
+              />
               {week.map((cell) => {
                 const isSelected = cell.date === selectedDate
                 const isToday = cell.date === today

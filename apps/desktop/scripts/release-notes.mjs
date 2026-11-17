@@ -4,7 +4,7 @@
 //   node scripts/release-notes.mjs testflight --build-number=<n>
 //
 // `print` writes the notes for <version> to stdout: the hand-written
-// `release-notes/<version>.md` when it exists (short, Italian, no PR jargon,
+// `release-notes/<version>.md` when it exists (short, English, no PR jargon,
 // written by whoever cuts the release), otherwise the version's section of
 // CHANGELOG.md with the links and hashes stripped. The DMG release puts this
 // at the top of the GitHub release body, which tauri-action also copies into

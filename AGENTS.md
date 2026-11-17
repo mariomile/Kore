@@ -288,7 +288,7 @@ retry the notarized **Release** workflow.
    `release-please-workflow.test.mjs` fails CI when the three fall out of
    step.
    Then say what is in the build, for the people who install it: add
-   `apps/desktop/release-notes/<version>.md` to master (a few short Italian
+   `apps/desktop/release-notes/<version>.md` to master (a few short English
    bullets, behavior not PR jargon). The DMG release body, the updater's
    `latest.json` notes and TestFlight's "What to Test" all read it
    (`apps/desktop/scripts/release-notes.mjs`); without it they fall back to

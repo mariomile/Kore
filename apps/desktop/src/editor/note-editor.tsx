@@ -73,14 +73,18 @@ type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<Reac
  * note's scroll container never moves. Scroll the heading element itself, to
  * the top of the view the way Obsidian lands on a linked heading.
  */
-function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
+function revealHeading(
+  handle: EditorHandle | null,
+  fragment: string,
+  options: { readonly asScreen?: boolean } = {},
+): boolean {
   if (fragment.startsWith('^')) {
     // A block reference (`[[Note#^id]]`, Plan 33 C3) names a line, not a heading.
     const view = handle?.editor?.view
     if (view === undefined) return false
     const id = fragment.slice(1)
     if (canZoom(view.state) || findBlockId(view.state.doc, id) === null) {
-      return revealBlockId(view, id)
+      return revealBlockId(view, id, options)
     }
     // A note's own plugins (the zoom a sub page opens in) mount a moment
     // after its editor: a page revealed as the note's screen arrives would
@@ -88,7 +92,7 @@ function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
     let frames = 60
     const reveal = (): void => {
       if (view.isDestroyed) return
-      if (canZoom(view.state) || frames-- <= 0) revealBlockId(view, id)
+      if (canZoom(view.state) || frames-- <= 0) revealBlockId(view, id, options)
       else requestAnimationFrame(reveal)
     }
     requestAnimationFrame(reveal)
@@ -224,7 +228,7 @@ export interface NoteEditorHandle {
    * the line a `^id` fragment names, and scroll it into view; false when the
    * note has no such heading or line.
    */
-  revealHeading?(fragment: string): boolean
+  revealHeading?(fragment: string, options?: { readonly asScreen?: boolean }): boolean
 }
 
 interface NoteEditorProps {
@@ -489,7 +493,7 @@ export function NoteEditor({
         const editor = innerRef.current?.editor
         return editor === undefined || editor === null ? null : togglePageAtCaret(editor)
       },
-      revealHeading: (fragment) => revealHeading(innerRef.current, fragment),
+      revealHeading: (fragment, options) => revealHeading(innerRef.current, fragment, options),
     }),
     [],
   )

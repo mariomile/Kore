@@ -38,6 +38,6 @@ describe('revealNoteHeadingOnNoteScreen', () => {
     registerNoteEditorHandle('daily/2026-11-17.md', day, false)
     await flushFrames()
     expect(day.revealHeading).not.toHaveBeenCalled()
-    expect(screen.revealHeading).toHaveBeenCalledWith('^page-a1b2c3')
+    expect(screen.revealHeading).toHaveBeenCalledWith('^page-a1b2c3', { asScreen: true })
   })
 })

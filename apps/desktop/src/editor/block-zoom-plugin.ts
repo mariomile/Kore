@@ -243,21 +243,33 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
       },
     }),
     state: {
-      init: () => ({ target: null, decorations: DecorationSet.empty, transition: null }),
+      init: () => ({
+        target: null,
+        decorations: DecorationSet.empty,
+        transition: null,
+        floor: null,
+      }),
       apply: (tr, previous, oldState, newState) => {
         const meta = tr.getMeta(blockZoomKey) as ZoomMeta | undefined
+        const floor =
+          meta?.floor !== undefined
+            ? meta.floor
+            : previous.floor === null || !tr.docChanged
+              ? previous.floor
+              : mapTarget(tr.mapping, previous.floor, newState.doc)
         if (meta !== undefined) {
           return {
             target: meta.target,
             decorations: buildDecorations(newState.doc, meta.target, meta.transition, jumpToCrumb),
             transition: meta.transition,
+            floor,
           }
         }
         if (!tr.docChanged || (previous.target === null && previous.transition === null)) {
-          return previous
+          return floor === previous.floor ? previous : { ...previous, floor }
         }
         if (previous.target === null) {
-          return { target: null, decorations: DecorationSet.empty, transition: null }
+          return { target: null, decorations: DecorationSet.empty, transition: null, floor }
         }
         const target = mapTarget(tr.mapping, previous.target, newState.doc)
         // Edits inside the zoom only shift what it hides, so the decorations
@@ -269,11 +281,17 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
           (target === null ||
             isLeaf(oldState.doc, previous.target) === isLeaf(newState.doc, target))
         return sameShape
-          ? { target, decorations: previous.decorations.map(tr.mapping, tr.doc), transition: null }
+          ? {
+              target,
+              decorations: previous.decorations.map(tr.mapping, tr.doc),
+              transition: null,
+              floor,
+            }
           : {
               target,
               decorations: buildDecorations(newState.doc, target, null, jumpToCrumb),
               transition: null,
+              floor,
             }
       },
     },

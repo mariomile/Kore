@@ -31,7 +31,8 @@ const PENDING_REVEAL_TTL_MS = 5000
 function scheduleReveal(path: string, heading: string, target?: NoteEditorHandle): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      ;(target ?? handles.get(path))?.revealHeading?.(heading)
+      if (target !== undefined) target.revealHeading?.(heading, { asScreen: true })
+      else handles.get(path)?.revealHeading?.(heading)
     })
   })
 }

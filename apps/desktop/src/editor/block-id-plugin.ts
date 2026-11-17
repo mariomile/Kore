@@ -280,9 +280,14 @@ export function findBlockId(doc: ProseMirrorNode, id: string): BlockIdHit | null
 /**
  * Put the caret on the block `id` names, scroll it to the middle of the view
  * and flash it. Steps out of a zoom that hides it. False when the note has no
- * such id.
+ * such id. `asScreen`: the note's screen opened for this line, so a page it
+ * opens is the zoom Back leaves the screen from.
  */
-export function revealBlockId(view: EditorView, id: string): boolean {
+export function revealBlockId(
+  view: EditorView,
+  id: string,
+  options: { readonly asScreen?: boolean } = {},
+): boolean {
   const hit = findBlockId(view.state.doc, id)
   if (hit === null) {
     return false
@@ -306,7 +311,8 @@ export function revealBlockId(view: EditorView, id: string): boolean {
   const page = closedPageAround(state.doc, zoomAfter, hit.from)
   const pageZoom = page === null ? null : targetAt(state.doc, state.doc.resolve(page.pos + 1))
   if (pageZoom !== null) {
-    setZoom(tr, pageZoom)
+    // Opened as a screen of its own, the page is where Back leaves from.
+    setZoom(tr, pageZoom, null, options.asScreen === true ? pageZoom : undefined)
   }
   tr.setSelection(TextSelection.near(state.doc.resolve(caret))).setMeta(blockIdKey, {
     flash: { from: hit.from, to: hit.to },

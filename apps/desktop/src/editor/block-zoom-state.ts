@@ -13,24 +13,38 @@ export interface BlockZoomState {
   readonly decorations: DecorationSet
   /** While a zoom animates: the block that slides, by its position. */
   readonly transition: number | null
+  /**
+   * The zoom this editor's screen opened on (a sub page opened as a screen
+   * of its own): Back leaves the screen from there instead of zooming out.
+   */
+  readonly floor: ZoomTarget | null
 }
 
 /** The transaction meta that sets the zoom; only this module writes it. */
 export interface ZoomMeta {
   readonly target: ZoomTarget | null
   readonly transition: number | null
+  /** A new floor; left out, the floor stays. */
+  readonly floor?: ZoomTarget | null
 }
 
 export function withZoomMeta(
   tr: Transaction,
   target: ZoomTarget | null,
   transition: number | null,
+  floor?: ZoomTarget | null,
 ) {
-  const meta: ZoomMeta = { target, transition }
+  const meta: ZoomMeta =
+    floor === undefined ? { target, transition } : { target, transition, floor }
   return tr.setMeta(blockZoomKey, meta)
 }
 
 export const blockZoomKey = new PluginKey<BlockZoomState>('kore-block-zoom')
+
+/** The zoom Back stops at (see {@link BlockZoomState.floor}), or null. */
+export function zoomFloor(state: EditorState): ZoomTarget | null {
+  return blockZoomKey.getState(state)?.floor ?? null
+}
 
 /** What the editor is zoomed into, or null when it shows the whole note. */
 export function zoomTarget(state: EditorState): ZoomTarget | null {
@@ -41,8 +55,9 @@ export function setZoom(
   tr: Transaction,
   target: ZoomTarget | null,
   transition: number | null = null,
+  floor?: ZoomTarget | null,
 ): Transaction {
-  withZoomMeta(tr, target, transition)
+  withZoomMeta(tr, target, transition, floor)
   const span = target === null ? null : targetSpan(tr.doc, target)
   if (span !== null) {
     const { from, to } = tr.selection

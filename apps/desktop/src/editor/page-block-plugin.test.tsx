@@ -6,6 +6,8 @@ import { hover, unhover } from '@/test-utils/mouse'
 import { BlockZoom } from './block-zoom'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 import { PageBlocks } from './page-blocks'
+import { RouterProvider } from '@/routing/router'
+import { createRouterStore } from '@/routing/router-store'
 
 /**
  * Sub pages as Craft's page blocks: a list item marked `^page-…` stays in its
@@ -145,6 +147,41 @@ describe('PageBlocks', () => {
     await expect.element(pmRoot.getByText('Passport', { exact: true })).toBeVisible()
     await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  // A page opened from the phone's daily is a screen of its own: Back from
+  // it returns to the day in one step, not to the whole daily note first.
+  it('leaves a page opened as a screen in one Back, zooming out only from deeper', async () => {
+    const store = createRouterStore()
+    store.navigate({ kind: 'note', path: 'daily/2026-11-17.md' })
+    let handle: NoteEditorHandle | null = null
+    await render(
+      <RouterProvider store={store}>
+        <NoteEditor
+          initialContent={NOTE}
+          handleRef={(grabbed) => {
+            handle = grabbed
+          }}
+        >
+          <BlockZoom />
+          <PageBlocks />
+        </NoteEditor>
+      </RouterProvider>,
+    )
+    await expect.poll(() => cards.elements().length).toBe(2)
+    expect(handle!.revealHeading?.('^page-a1b2c3', { asScreen: true })).toBe(true)
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    expect(store.getSnapshot().viewBack).toBe(false)
+    // A page inside it zooms on the same screen, and Back steps out of that.
+    const packing = (cards.elements() as HTMLElement[]).find((card) => card.offsetParent !== null)
+    packing!.click()
+    await expect.element(pmRoot.getByText('Passport', { exact: true })).toBeVisible()
+    await expect.poll(() => store.getSnapshot().viewBack).toBe(true)
+    store.back()
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    await expect.poll(() => store.getSnapshot().viewBack).toBe(false)
+    store.back()
+    expect(store.getSnapshot().route).toEqual({ kind: 'today' })
   })
 
   it('selects a card instead of joining text into it', async () => {

@@ -1,4 +1,18 @@
+import type { SyncStep } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
+
+/** The status detail per in-flight step: what the notes are doing, never git words. */
+const STEP_DETAIL: Record<SyncStep, string> = {
+  preparing: 'Getting ready',
+  saving: 'Saving your changes',
+  downloading: 'Downloading changes',
+  merging: 'Applying changes from your other devices',
+  uploading: 'Uploading your changes',
+}
+
+function clockTime(epochMs: number): string {
+  return new Date(epochMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 
 /**
  * The plain-language sync status mobile shows (Plan 19, step 10). The phone
@@ -38,7 +52,18 @@ export function mobileSyncStatus(
   }
   const status = backup.status
   if (status.state === 'syncing') {
-    return { label: 'Syncing', tone: 'active', detail: null }
+    // The step and its start time make a stuck cycle diagnosable from the
+    // settings sheet: "Downloading changes since 08:41." names the step that
+    // never finished.
+    const progress = backup.progress
+    return {
+      label: 'Syncing',
+      tone: 'active',
+      detail:
+        progress === undefined
+          ? null
+          : `${STEP_DETAIL[progress.step]} since ${clockTime(progress.since)}.`,
+    }
   }
   if (conflictCount > 0) {
     return {

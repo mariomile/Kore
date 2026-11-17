@@ -996,4 +996,82 @@ describe('createSyncEngine', () => {
     expect(commandsOf(calls)).toEqual(['git_commit_all', 'git_push'])
     expect(statuses.map((status) => status.state)).toEqual(['syncing'])
   })
+  it('reports each step a full cycle runs, for the status detail', async () => {
+    fakeGit(defaultResponses)
+    const steps: string[] = []
+    const engine = createSyncEngine({
+      generation: 1,
+      getToken: async () => 'tok',
+      onStep: (step) => {
+        steps.push(step)
+      },
+    })
+
+    await engine.syncNow()
+
+    expect(steps).toEqual(['preparing', 'saving', 'downloading', 'merging', 'uploading'])
+    engine.stop()
+  })
+
+  it('gives up on a local step that never settles instead of holding Syncing', async () => {
+    let hang = true
+    const calls = fakeGit((command) =>
+      command === 'git_commit_all' && hang ? new Promise(() => {}) : defaultResponses(command),
+    )
+    const statuses: SyncStatus[] = []
+    const engine = createSyncEngine({
+      generation: 1,
+      getToken: async () => 'tok',
+      onStatus: (status) => {
+        statuses.push(status)
+      },
+      localStepTimeoutMs: 1000,
+    })
+
+    const first = engine.syncNow()
+    await vi.advanceTimersByTimeAsync(999)
+    expect(statuses.map((status) => status.state)).toEqual(['syncing'])
+    await vi.advanceTimersByTimeAsync(1)
+    await first
+
+    const stalled = statuses.at(-1)!
+    expect(isSyncError(stalled) && stalled.message).toBe(
+      'Sync got stuck saving changes and will try again',
+    )
+
+    // The next trigger runs a fresh cycle rather than queueing behind the hung one.
+    hang = false
+    await engine.syncNow()
+    expect(statuses.at(-1)).toEqual({ state: 'idle' })
+    expect(commandsOf(calls)).toContain('git_push')
+    engine.stop()
+  })
+
+  it('never caps a slow download: network steps keep their transport timeouts', async () => {
+    let finishFetch: (value: unknown) => void = () => {}
+    fakeGit((command) =>
+      command === 'git_fetch'
+        ? new Promise((resolve) => {
+            finishFetch = resolve
+          })
+        : defaultResponses(command),
+    )
+    const statuses: SyncStatus[] = []
+    const engine = createSyncEngine({
+      generation: 1,
+      getToken: async () => 'tok',
+      onStatus: (status) => {
+        statuses.push(status)
+      },
+      localStepTimeoutMs: 1000,
+    })
+
+    const cycle = engine.syncNow()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(statuses.map((status) => status.state)).toEqual(['syncing'])
+    finishFetch(DELTA)
+    await cycle
+    expect(statuses.at(-1)).toEqual({ state: 'idle' })
+    engine.stop()
+  })
 })

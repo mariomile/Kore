@@ -11,12 +11,15 @@ import { z } from 'zod'
 
 /**
  * Layouts a collection page can persist as a named view (the tag-page tabs).
- * Kept as the page-tab contract even though embedded collections now support
- * the same four layouts.
+ * Kept as the page-tab contract; embedded collections support the first four.
  */
-export const COLLECTION_PAGE_VIEWS = ['table', 'board', 'calendar', 'grid'] as const
+export const COLLECTION_PAGE_VIEWS = ['table', 'board', 'calendar', 'grid', 'timeline'] as const
 
 export type CollectionPageView = (typeof COLLECTION_PAGE_VIEWS)[number]
+
+/** How much time one screen of a timeline view covers. */
+export const TIMELINE_ZOOMS = ['week', 'month', 'quarter'] as const
+export type TimelineZoom = (typeof TIMELINE_ZOOMS)[number]
 
 /** One Collection's persisted sort: the property key and direction. */
 export const collectionSortSettingSchema = z.object({
@@ -64,6 +67,12 @@ export const savedCollectionViewSchema = z.preprocess(
     /** The table's row grouping (Plan 29 V1b); `null` = flat rows. Absent in
      * pre-V1b saves, so the catch keeps them applying as they always did. */
     tableGroup: z.string().nullable().catch(null),
+    /** A timeline's bar fields (date property keys); absent = the schema's
+     * own pick (`start`/`end` names, else the first two dates). */
+    start: z.string().min(1).optional().catch(undefined),
+    end: z.string().min(1).optional().catch(undefined),
+    /** A timeline's zoom (absent = month); ignored by the other layouts. */
+    zoom: z.enum(TIMELINE_ZOOMS).optional().catch(undefined),
     filters: z
       .array(z.unknown())
       .catch([])
@@ -119,6 +128,11 @@ export function tagViewsToYaml(views: readonly SavedCollectionView[]): Record<st
       : { sorts: view.sorts.map((sort) => ({ key: sort.key, direction: sort.direction })) }),
     ...(view.group === null ? {} : { group: view.group }),
     ...(view.tableGroup === null ? {} : { tableGroup: view.tableGroup }),
+    ...(view.view !== 'timeline' || view.start === undefined ? {} : { start: view.start }),
+    ...(view.view !== 'timeline' || view.end === undefined ? {} : { end: view.end }),
+    ...(view.view !== 'timeline' || view.zoom === undefined || view.zoom === 'month'
+      ? {}
+      : { zoom: view.zoom }),
     ...(view.filters.length === 0
       ? {}
       : {

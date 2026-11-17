@@ -37,6 +37,12 @@ export interface BaseViewDefinition {
   readonly sort: readonly BaseSort[]
   readonly limit: number | null
   readonly groupBy: BaseGroupBy | null
+  /** A timeline view's bar fields (`note.start`) and zoom, as the base wrote them. */
+  readonly timeline: {
+    readonly start: string | null
+    readonly end: string | null
+    readonly zoom: string | null
+  }
 }
 
 export interface BaseDefinition {
@@ -111,6 +117,11 @@ function parseView(node: unknown, index: number): BaseViewDefinition | null {
     limit,
     groupBy:
       groupBy === null ? null : { ...groupBy, order: stringList(view.groupOrder).map(String) },
+    timeline: {
+      start: typeof view.start === 'string' && view.start !== '' ? view.start : null,
+      end: typeof view.end === 'string' && view.end !== '' ? view.end : null,
+      zoom: typeof view.zoom === 'string' && view.zoom !== '' ? view.zoom : null,
+    },
   }
 }
 
@@ -168,6 +179,7 @@ export function parseBaseFile(text: string): BaseDefinition {
               sort: [],
               limit: null,
               groupBy: null,
+              timeline: { start: null, end: null, zoom: null },
             },
           ],
   }

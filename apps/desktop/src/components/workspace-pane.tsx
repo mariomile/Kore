@@ -4,6 +4,7 @@ import { NoteFindBar } from '@/components/note-find-bar'
 import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
 import { PaneDropZones } from '@/components/pane-drop-zones'
 import { RouteContent } from '@/components/route-content'
+import { BeneathSettings } from '@/components/settings-modal'
 import type { CommandContext } from '@/lib/commands/types'
 import { cn } from '@/lib/utils'
 import { FocusedDailyArrivalReset, FocusedDailyProvider } from '@/providers/focused-daily-provider'
@@ -44,55 +45,57 @@ export function WorkspacePane({
   return (
     <PaneScope id={pane.id}>
       <RouterProvider store={pane.router}>
-        <FocusedDailyProvider store={pane.focusedDaily}>
-          {/* The focused day is this pane's: only the pane that owns the
+        <BeneathSettings>
+          <FocusedDailyProvider store={pane.focusedDaily}>
+            {/* The focused day is this pane's: only the pane that owns the
             router and the store may reset it on arrival. */}
-          <FocusedDailyArrivalReset />
-          <OpenTabsProvider paneId={pane.id}>
-            <NoteFindProvider>
-              {/* The row handle clamps only the pane it drags, so the floor
+            <FocusedDailyArrivalReset />
+            <OpenTabsProvider paneId={pane.id}>
+              <NoteFindProvider>
+                {/* The row handle clamps only the pane it drags, so the floor
                 lives on the pane itself: without it, dragging a divider to
                 the bottom crushes the pane below to nothing. */}
-              <div
-                data-testid="workspace-pane"
-                data-active={active ? 'true' : undefined}
-                onPointerDownCapture={activate}
-                onFocusCapture={activate}
-                className="workspace-main flex min-h-[200px] min-w-0 flex-1 flex-col"
-              >
-                <WorkspaceTabsStrip
-                  commandContext={commandContext}
-                  showSidebarToggle={showSidebarToggle}
-                  showContextToggle={showContextToggle}
-                />
                 <div
-                  data-testid="note-pane-gutter"
-                  className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
+                  data-testid="workspace-pane"
+                  data-active={active ? 'true' : undefined}
+                  onPointerDownCapture={activate}
+                  onFocusCapture={activate}
+                  className="workspace-main flex min-h-[200px] min-w-0 flex-1 flex-col"
                 >
+                  <WorkspaceTabsStrip
+                    commandContext={commandContext}
+                    showSidebarToggle={showSidebarToggle}
+                    showContextToggle={showContextToggle}
+                  />
                   <div
-                    className={cn(
-                      'app-glass-card h-full overflow-hidden rounded-xl bg-surface',
-                      !active && 'opacity-95',
-                    )}
+                    data-testid="note-pane-gutter"
+                    className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
                   >
-                    <AppShell className="bg-transparent">
-                      <div className="relative flex h-full flex-col">
-                        <div className="min-h-0 flex-1">
-                          <RouteContent />
-                        </div>
+                    <div
+                      className={cn(
+                        'app-glass-card h-full overflow-hidden rounded-xl bg-surface',
+                        !active && 'opacity-95',
+                      )}
+                    >
+                      <AppShell className="bg-transparent">
+                        <div className="relative flex h-full flex-col">
+                          <div className="min-h-0 flex-1">
+                            <RouteContent />
+                          </div>
 
-                        <NoteFindBar />
-                        {/* Only mounted while a tab is in flight, so nothing
+                          <NoteFindBar />
+                          {/* Only mounted while a tab is in flight, so nothing
                           sits between the pointer and the editor otherwise. */}
-                        <PaneDropZones paneId={pane.id} />
-                      </div>
-                    </AppShell>
+                          <PaneDropZones paneId={pane.id} />
+                        </div>
+                      </AppShell>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </NoteFindProvider>
-          </OpenTabsProvider>
-        </FocusedDailyProvider>
+              </NoteFindProvider>
+            </OpenTabsProvider>
+          </FocusedDailyProvider>
+        </BeneathSettings>
       </RouterProvider>
     </PaneScope>
   )

@@ -8,7 +8,7 @@ import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { RemoteAccessRunner } from '@/components/remote-access-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
-import { RouteContent } from '@/components/route-content'
+import { BeneathSettings, SettingsModal } from '@/components/settings-modal'
 import { VaultCompatNotice } from '@/components/vault-compat/vault-compat-notice'
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
@@ -29,7 +29,6 @@ import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { usePanes } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
-import { isSettingsPage } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
 interface WorkspaceContentProps {
@@ -48,13 +47,13 @@ interface WorkspaceContentProps {
  * snaps instead of
  * animating, and panels hosting live surfaces (the embedded browser)
  * release them. The always-mounted global surfaces (⌘K palette, embeddings
- * sync) sit on the window so they still work when Settings covers the frame.
+ * sync) sit on the window, beside the Settings modal that floats over the frame.
  * Find stays in the note pane. Split from {@link GraphWorkspace} because
  * these hooks need the providers it mounts.
  */
 export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement {
   const commandContext = useAppShortcuts()
-  const { navigate, route } = useRouter()
+  const { navigate } = useRouter()
   // Web links land in the built-in browser tab: the workspace registers the
   // opener that plain modules (the editor's link handler) route through.
   useEffect(
@@ -86,13 +85,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         .catch(() => undefined)
     }
   }, [])
-  // Daily routes get the day's contextual panel and note routes the note's;
-  // search/settings get none (AppShell omits the region when context is absent).
-  // In the daily stream the route stays put while focus moves between days, so
-  // the panel follows the focused day and snaps back on navigation.
-  const contextTarget = useDailyContextTarget()
   const trafficLightBand = useMacosTrafficLightInset()
-  const settingsPage = isSettingsPage(route)
 
   return (
     <div className="app-window-ground flex h-screen w-screen flex-col overflow-hidden bg-surface-sunken text-text">
@@ -109,17 +102,12 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         <div aria-hidden data-testid="macos-traffic-light-band" className="h-7 flex-none" />
       ) : null}
 
-      {settingsPage ? (
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          <RouteContent />
-        </div>
-      ) : (
-        <WorkspaceFrame
-          graph={graph}
-          commandContext={commandContext}
-          contextTarget={contextTarget}
-        />
-      )}
+      {/* Settings floats over the workspace as a modal, so the frame stays
+          mounted beneath it showing where the user came from. */}
+      <BeneathSettings>
+        <WorkspaceFrame graph={graph} commandContext={commandContext} />
+      </BeneathSettings>
+      <SettingsModal />
 
       <CommandPalette context={commandContext} />
       <ShortcutsDialog />
@@ -138,20 +126,22 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 interface WorkspaceFrameProps {
   graph: GraphInfo
   commandContext: CommandContext
-  contextTarget: ReturnType<typeof useDailyContextTarget>
 }
 
 /**
- * The two-rail workspace around the note pane. Settings is a full-page
- * workspace, not a tab inside this frame.
+ * The two-rail workspace around the note pane. Settings is a modal over this
+ * frame, not a tab inside it.
  */
-function WorkspaceFrame({
-  graph,
-  commandContext,
-  contextTarget,
-}: WorkspaceFrameProps): ReactElement {
+function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed, contextPanels, setContextRailAvailable } = useSidebar()
   const { route } = useRouter()
+  // Daily routes get the day's contextual panel and note routes the note's;
+  // search gets none (AppShell omits the region when context is absent). In
+  // the daily stream the route stays put while focus moves between days, so
+  // the panel follows the focused day and snaps back on navigation. Read
+  // here, beneath the Settings modal's pin, so opening Settings leaves the
+  // rail as it was.
+  const contextTarget = useDailyContextTarget()
   // The rail exists on a route only when it has something to show: Details
   // for a note, a day or a peeking list, or a panel the "+" opened. Graph and
   // Tasks otherwise get the full width, and the toggle that would reveal an
@@ -160,7 +150,7 @@ function WorkspaceFrame({
   const contextRailAvailable = showDetails || contextPanels.opened.length > 0
   useEffect(() => {
     setContextRailAvailable(contextRailAvailable)
-    // Settings and other full-page workspaces unmount the frame, rail and all.
+    // A graph switch unmounts the frame, rail and all.
     return () => setContextRailAvailable(false)
   }, [contextRailAvailable, setContextRailAvailable])
   const panes = usePanes()

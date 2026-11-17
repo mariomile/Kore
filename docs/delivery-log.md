@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fix (iPhone): no more "Due today" card with other notes' tasks above
+  today's daily (#540).
 - Settings: Integrations page for Granola and Readwise (frequency, folder
   and file name, tags, content, daily-note link), Mac and iPhone (#528).
 - Fix: saving a note no longer refetches the vault's folder tree (#532).

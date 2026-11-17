@@ -1,5 +1,10 @@
 # Kore working state
 
+## No Due today card on the iPhone daily, 2026-11-17
+
+- [x] Fix (iPhone): the "Due today" card above today's daily is removed, so
+  other notes' tasks are no longer injected there (#540).
+
 ## Integrations page in Settings, 2026-11-17
 
 - [x] Settings gets an Integrations page: a tile overview with the real Granola

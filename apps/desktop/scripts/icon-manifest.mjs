@@ -81,6 +81,7 @@ export const SOLAR_ICONS = {
   Locate: 'gps-linear',
   Search: 'minimalistic-magnifer-linear',
   Sliders: 'tuning-2-linear',
+  SortVertical: 'sort-vertical-linear',
 
   // Time
   AlarmClock: 'alarm-linear',

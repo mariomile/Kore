@@ -132,6 +132,7 @@ vi.mock('@/providers/settings-provider', () => ({
       editorMarkdownSyntax: 'hide',
       dateFormat: 'mdy',
       weekStartDay: 'monday',
+      allNotesSort: 'updated-desc',
       taskFilters: {
         pinned: true,
         current: true,

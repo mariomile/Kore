@@ -211,7 +211,15 @@ export {
   type RecentNoteRow,
   type RecentNotesOptions,
 } from './note-list'
-export { sortNoteList } from './note-list-sort'
+export {
+  ALL_NOTES_SORT_DEFAULT_DIRECTION,
+  allNotesSortFrom,
+  allNotesSortParts,
+  sortNoteList,
+  type AllNotesSortDirection,
+  type AllNotesSortField,
+  type SortableNoteRow,
+} from './note-list-sort'
 export { listTagMentions, type TagMention } from './tag-mentions'
 export {
   buildTagTree,

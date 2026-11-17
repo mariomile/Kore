@@ -1,16 +1,19 @@
-import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
+import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LayoutGrid, List, Note, SearchOff } from '@/components/icons'
+import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
   parseHighlights,
   searchWithFilters,
+  sortNoteList,
+  type AllNotesSort,
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -26,6 +29,7 @@ import { NoteRowList } from '@/mobile/note-row-list'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
+import { AllNotesSortDrawer, allNotesSortSummary } from '@/mobile/all-notes-sort-drawer'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
@@ -115,19 +119,35 @@ export function MobileAllNotes({
     enabled,
   })
   const {
-    data: hits,
+    data: feed,
     isError,
     refetch,
   } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
-    queryFn: () => searchWithFilters(parsed, searchPlanFor(parsed)),
+    queryFn: async (): Promise<AllNotesFeed> => {
+      const plan = searchPlanFor(parsed)
+      return { hits: await searchWithFilters(parsed, plan), recall: plan.pinnedFirst === true }
+    },
     enabled,
     // Typing re-keys the query as the deferred value settles; holding the
     // previous rows avoids a blank flash between keystrokes.
     placeholderData: keepPreviousData,
   })
+  const hits = feed?.hits
 
-  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
+  // The no-text feed (plain or badge-filtered) follows the persisted sort,
+  // the Mac list's; typed text keeps relevance ranking. Each result records
+  // which kind it is, so the placeholder held while the next query runs keeps
+  // its own order, and a sort change reorders in memory with no index call.
+  // The index already returns the default order (pinned, then newest), so
+  // only another sort pays for a client-side pass.
+  const sort = settings.allNotesSort
+  const rows = useMemo(() => {
+    const ordered =
+      feed?.recall === true && sort !== 'updated-desc' ? sortNoteList(feed.hits, sort) : hits
+    return (ordered ?? []).map(rowForHit)
+  }, [feed, hits, sort])
+  const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
   const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
   const setView = (next: AllNotesLayout): void => {
@@ -136,9 +156,9 @@ export function MobileAllNotes({
   }
 
   const removeDeletedRow = (path: string): void => {
-    queryClient.setQueriesData<FilteredSearchHit[]>(
+    queryClient.setQueriesData<AllNotesFeed>(
       { queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes'] },
-      (cachedHits) => cachedHits?.filter((hit) => hit.path !== path),
+      (cached) => cached && { ...cached, hits: cached.hits.filter((hit) => hit.path !== path) },
     )
     // Do not invalidate yet: the index can still contain the deleted row and
     // would briefly resurrect it. `deleteNote`'s local-write echo reindexes,
@@ -177,6 +197,13 @@ export function MobileAllNotes({
             onValueChange={onQueryChange}
             onFocus={searchHeaderFocus.onFocus}
             onBlur={searchHeaderFocus.onBlur}
+          />
+          <SortButton
+            sort={sort}
+            onPress={() => {
+              hapticImpactLight()
+              setSorting(true)
+            }}
           />
           <AllNotesLayoutToggle view={view} onChange={setView} />
         </div>
@@ -226,8 +253,51 @@ export function MobileAllNotes({
           onDeleted={removeDeletedRow}
         />
       )}
+      <AllNotesSortDrawer
+        open={sorting}
+        onOpenChange={setSorting}
+        sort={sort}
+        onSortChange={(next) => updateSettings({ allNotesSort: next })}
+      />
     </div>
   )
+}
+
+/**
+ * Opens the sort sheet. Tinted while the list is in a non-default order, so
+ * an alphabetical list never reads as "recent first" at a glance.
+ */
+function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void }): ReactElement {
+  const custom = sort !== 'updated-desc'
+  // The name stays "Sort" (the current order is the description), so the
+  // control never collides with other buttons by name ("Newest" vs "New").
+  const summaryId = useId()
+  return (
+    <button
+      type="button"
+      aria-label="Sort"
+      aria-describedby={summaryId}
+      aria-haspopup="dialog"
+      onClick={onPress}
+      className={cn(
+        'flex size-12 shrink-0 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none',
+        custom
+          ? 'bg-accent-soft text-accent-soft-text'
+          : 'bg-surface-hover text-text-muted active:bg-surface-active',
+      )}
+    >
+      <SortVertical aria-hidden className="size-4" />
+      <span id={summaryId} className="sr-only">
+        {allNotesSortSummary(sort)}
+      </span>
+    </button>
+  )
+}
+
+/** One All-tab query result, tagged with whether it is the no-text recall feed. */
+interface AllNotesFeed {
+  hits: FilteredSearchHit[]
+  recall: boolean
 }
 
 /** The `#…` tag-matching mode's suggestion row (replaces the badge row). */

@@ -279,8 +279,8 @@ describe('MobileAllNotes sort', () => {
     await expect.element(page.getByText('Cherry')).toBeInTheDocument()
     expect(titlesInOrder()).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
     await expect
-      .element(page.getByRole('button', { name: 'Sort: Title, A to Z' }))
-      .toBeInTheDocument()
+      .element(page.getByRole('button', { name: 'Sort', exact: true }))
+      .toHaveAccessibleDescription('Title, A to Z')
   })
 
   it('keeps relevance order while free text is searched', async () => {
@@ -294,8 +294,8 @@ describe('MobileAllNotes sort', () => {
         ),
       )
       .toBe(true)
-    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
-    expect(titlesInOrder()).toEqual(['Zebra', 'Banana', 'apple', 'Cherry'])
+    // The sorted placeholder holds until the ranked rows land in index order.
+    await expect.poll(titlesInOrder).toEqual(['Zebra', 'Banana', 'apple', 'Cherry'])
   })
 
   it('keeps the sorted feed while a typed search is still loading', async () => {
@@ -323,7 +323,7 @@ describe('MobileAllNotes sort', () => {
     await renderScreen()
     await expect.element(page.getByText('Cherry')).toBeInTheDocument()
     const calls = searchWithFilters.mock.calls.length
-    await page.getByRole('button', { name: /^Sort:/ }).click()
+    await page.getByRole('button', { name: 'Sort', exact: true }).click()
     await page.getByRole('button', { name: 'Title' }).click()
     await expect.poll(titlesInOrder).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
     expect(searchWithFilters.mock.calls.length).toBe(calls)
@@ -331,7 +331,7 @@ describe('MobileAllNotes sort', () => {
 
   it('writes the sheet’s choice to the shared setting', async () => {
     await renderScreen()
-    await page.getByRole('button', { name: /^Sort:/ }).click()
+    await page.getByRole('button', { name: 'Sort', exact: true }).click()
     await page.getByRole('button', { name: 'Title' }).click()
     expect(updateSettings).toHaveBeenCalledWith({ allNotesSort: 'title-asc' })
   })

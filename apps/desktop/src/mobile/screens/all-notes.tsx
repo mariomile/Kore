@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
 import {
@@ -269,10 +269,14 @@ export function MobileAllNotes({
  */
 function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void }): ReactElement {
   const custom = sort !== 'updated-desc'
+  // The name stays "Sort" (the current order is the description), so the
+  // control never collides with other buttons by name ("Newest" vs "New").
+  const summaryId = useId()
   return (
     <button
       type="button"
-      aria-label={`Sort: ${allNotesSortSummary(sort)}`}
+      aria-label="Sort"
+      aria-describedby={summaryId}
       aria-haspopup="dialog"
       onClick={onPress}
       className={cn(
@@ -283,6 +287,9 @@ function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void
       )}
     >
       <SortVertical aria-hidden className="size-4" />
+      <span id={summaryId} className="sr-only">
+        {allNotesSortSummary(sort)}
+      </span>
     </button>
   )
 }

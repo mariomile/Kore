@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
   type Ref,
@@ -127,7 +128,14 @@ function GlobalSearchSurface({ onClose }: { onClose: () => void }): ReactElement
       aria-modal="true"
       aria-label="Search"
       className="fixed inset-x-0 top-0 z-50 flex flex-col bg-surface-app animate-in duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] fade-in-0 slide-in-from-top-4 motion-reduce:animate-none"
-      style={{ height: 'calc(100dvh - var(--keyboard-height, 0px))' }}
+      style={
+        {
+          height: 'calc(100dvh - var(--keyboard-height, 0px))',
+          // The sheet covers the tab bar: the result list pads only past the
+          // home indicator, not the root's published tab bar height.
+          '--mobile-tab-bar-height': 'env(safe-area-inset-bottom)',
+        } as CSSProperties
+      }
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           onClose()

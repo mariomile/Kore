@@ -12,6 +12,8 @@ import {
 // (`tags/<type>.md`, `views:`); re-exported so settings readers keep one import.
 export {
   COLLECTION_PAGE_VIEWS,
+  TIMELINE_ZOOMS,
+  type TimelineZoom,
   collectionSortChainSchema,
   collectionSortSettingSchema,
   savedCollectionViewSchema,
@@ -43,7 +45,7 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  * first select property, so it additionally needs one in the schema. Screens
  * without the prerequisite render `list`.
  */
-const ALL_NOTES_VIEWS = ['list', ...COLLECTION_EMBED_VIEWS] as const
+const ALL_NOTES_VIEWS = ['list', ...COLLECTION_EMBED_VIEWS, 'timeline'] as const
 
 const allNotesViewValueSchema = z.enum(ALL_NOTES_VIEWS)
 
@@ -69,7 +71,7 @@ export type AllNotesSort = z.infer<typeof allNotesSortSchema>
  * identity. The one mapping shared by saved views and their menu labels.
  */
 export function collectionViewForAllNotesView(view: AllNotesView): CollectionEmbedView {
-  return view === 'list' ? 'table' : view
+  return view === 'list' || view === 'timeline' ? 'table' : view
 }
 
 /**

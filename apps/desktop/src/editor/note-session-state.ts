@@ -452,7 +452,13 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     if (disposed || isProtected || status !== 'ready') {
       return false
     }
-    header = splitDoc(upsertFrontmatter(header + buffer, frontmatterPatchToYaml(patch))).header
+    // The patch only touches the frontmatter, so the buffer still ends the
+    // document: the header is whatever now precedes it. Re-splitting instead
+    // would let the header absorb blank lines the buffer still holds.
+    const patched = upsertFrontmatter(header + buffer, frontmatterPatchToYaml(patch))
+    header = patched.endsWith(buffer)
+      ? patched.slice(0, patched.length - buffer.length)
+      : splitDoc(patched).header
     dirty = header + buffer !== disk
     emit()
     if (dirty) {

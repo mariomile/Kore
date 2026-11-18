@@ -5,6 +5,7 @@ import type {
   CollectionSortSetting,
   SavedCollectionView,
   SavedCollectionViewFilter,
+  TimelineZoom,
 } from '../tags/tag-views'
 import type { BaseDefinition, BaseFilter, BaseViewDefinition } from './base-file'
 import { parseBaseExpression, type BaseExpression } from './expression'
@@ -222,8 +223,27 @@ function layoutOf(view: BaseViewDefinition): CollectionPageView | null {
       return 'board'
     case 'calendar':
       return 'calendar'
+    case 'timeline':
+    case 'gantt':
+      return 'timeline'
     default:
       return null
+  }
+}
+
+/** Kore's zoom for a timeline plugin's (`day`/`week` read as a week, `year` as a quarter). */
+function zoomOf(zoom: string | null): TimelineZoom | undefined {
+  switch (zoom) {
+    case 'day':
+    case 'week':
+      return 'week'
+    case 'quarter':
+    case 'year':
+      return 'quarter'
+    case 'month':
+      return 'month'
+    default:
+      return undefined
   }
 }
 
@@ -310,6 +330,23 @@ export function convertBaseToTypeViews(path: string, base: BaseDefinition): Base
         addColumn(groupKey)
       }
     }
+    const timeline: Pick<SavedCollectionView, 'start' | 'end' | 'zoom'> = {}
+    if (layout === 'timeline') {
+      for (const edge of ['start', 'end'] as const) {
+        const source = view.timeline[edge]
+        const key = source === null ? null : plainPropertyOf(source)
+        if (key !== null) {
+          timeline[edge] = key
+          addColumn(key)
+        } else if (source !== null) {
+          notes.push(`"${view.name}": the timeline's ${edge} (${source}) is not carried`)
+        }
+      }
+      const zoom = zoomOf(view.timeline.zoom)
+      if (zoom !== undefined) {
+        timeline.zoom = zoom
+      }
+    }
     if (layout === 'board' && groupKey === null) {
       notes.push(`"${view.name}": a board needs a field to group by, so it opens as a table`)
       layout = 'table'
@@ -373,6 +410,7 @@ export function convertBaseToTypeViews(path: string, base: BaseDefinition): Base
       tableGroup: layout === 'board' ? null : groupKey,
       match,
       filters,
+      ...timeline,
     }
   })
   for (const name of formulaNotes) {

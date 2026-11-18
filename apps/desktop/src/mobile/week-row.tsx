@@ -1,4 +1,4 @@
-import { memo, type ReactElement } from 'react'
+import { memo, useState, type ReactElement } from 'react'
 import { format } from 'date-fns'
 import { addDaysIso, parseIsoDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -34,15 +34,24 @@ function WeekRowComponent({
 }: WeekRowProps): ReactElement {
   const days = Array.from({ length: 7 }, (_, index) => addDaysIso(weekStart, index))
   const selectedIndex = selectedDay ? days.indexOf(selectedDay) : -1
+  // The circle zooms in only when the selection *arrives* in an
+  // already-mounted row (paging across weeks). A row that mounts with the
+  // selection inside it, which is every launch and every return to Daily,
+  // shows the circle in place from its first frame: at launch the zoom
+  // started under a busy main thread and left today as a bare white number
+  // for most of a second. Flips once, the first time the selection leaves.
+  const [animateArrival, setAnimateArrival] = useState(() => selectedIndex < 0)
+  if (selectedIndex < 0 && !animateArrival) {
+    setAnimateArrival(true)
+  }
   return (
     <div className="relative flex min-w-0 flex-[0_0_100%]">
       {selectedIndex >= 0 && (
         /* One circle per row, translated to the selected column, so moving
            within the week slides it behind the day numbers (the buttons are
            `relative` and paint above). It mounts only when the selection
-           enters this week — the cross-week case, where the strip is paging
-           anyway — and a mount-time transform doesn't transition, so the
-           circle pops in at the right column instead of sliding from a stale
+           enters this week, and a mount-time transform doesn't transition, so
+           it appears at the right column instead of sliding from a stale
            one. The wrapper mirrors a cell's column structure (invisible
            weekday glyph, then the circle) so it lands exactly behind the
            number for any font metrics. */
@@ -54,7 +63,14 @@ function WeekRowComponent({
           <span aria-hidden className="invisible text-[11px] font-medium">
             M
           </span>
-          <span className="size-8 animate-in rounded-full bg-primary duration-200 fade-in zoom-in-75 motion-reduce:animate-none" />
+          <span
+            data-testid="week-selection-circle"
+            className={cn(
+              'size-8 rounded-full bg-primary',
+              animateArrival &&
+                'animate-in duration-200 fade-in zoom-in-75 motion-reduce:animate-none',
+            )}
+          />
         </span>
       )}
       {days.map((day) => {

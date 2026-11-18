@@ -104,7 +104,7 @@ export function useCollectionViewSettings(
   const view =
     (requestedView === 'table' && !collectionAvailable) ||
     (requestedView === 'board' && !boardAvailable) ||
-    (requestedView === 'calendar' && !calendarAvailable)
+    ((requestedView === 'calendar' || requestedView === 'timeline') && !calendarAvailable)
       ? 'list'
       : requestedView === 'list' && collectionAvailable
         ? 'table'
@@ -122,7 +122,8 @@ export function useCollectionViewSettings(
     [tagKey, updateSettings, updateSettingsWith],
   )
   // The views that render collection rows instead of the notes list.
-  const collectionView = view === 'table' || view === 'board' || view === 'calendar'
+  const collectionView =
+    view === 'table' || view === 'board' || view === 'calendar' || view === 'timeline'
   // The sort chain is a persisted per-tag view preference (like task
   // filters): leaving and returning to a collection keeps its order.
   const collectionSorts: readonly CollectionSort[] =
@@ -285,7 +286,12 @@ export interface CollectionSavedViews {
   moveSavedView: (id: string, targetId: string) => void
   /** Swaps tab `id` with its neighbour (a keyboard move); a no-op at the edges. */
   shiftSavedView: (id: string, direction: CollectionViewMoveDirection) => void
+  /** Patch the selected tab's timeline settings; a no-op on the unsaved live tab. */
+  updateActiveTimeline: (patch: TimelineViewPatch) => void
 }
+
+/** The timeline settings a saved tab carries beside its lens. */
+export type TimelineViewPatch = Partial<Pick<SavedCollectionView, 'start' | 'end' | 'zoom'>>
 
 function liveLens(options: {
   view: AllNotesView
@@ -402,7 +408,7 @@ export function useCollectionSavedViews(
       if (nextView === 'board' && boardGroupProperty === null) {
         return
       }
-      if (nextView === 'calendar' && !calendarAvailable) {
+      if ((nextView === 'calendar' || nextView === 'timeline') && !calendarAvailable) {
         return
       }
       const current = liveLens({
@@ -524,7 +530,7 @@ export function useCollectionSavedViews(
     }
     const coerced =
       (active.view === 'board' && boardGroupProperty === null) ||
-      (active.view === 'calendar' && !calendarAvailable)
+      ((active.view === 'calendar' || active.view === 'timeline') && !calendarAvailable)
     const next = liveLens({
       view,
       collectionSorts,
@@ -558,6 +564,21 @@ export function useCollectionSavedViews(
     persistViews,
   ])
 
+  const updateActiveTimeline = useCallback(
+    (patch: TimelineViewPatch) => {
+      const activeId = resolvedActiveIdRef.current
+      if (tagKey === null || activeId === null) {
+        return
+      }
+      switchingRef.current = true
+      persistViews(
+        savedViews.map((entry) => (entry.id === activeId ? { ...entry, ...patch } : entry)),
+        activeId,
+      )
+    },
+    [tagKey, savedViews, persistViews],
+  )
+
   const tabs: SavedCollectionView[] =
     savedViews.length > 0
       ? savedViews
@@ -588,5 +609,6 @@ export function useCollectionSavedViews(
     deleteSavedView,
     moveSavedView,
     shiftSavedView,
+    updateActiveTimeline,
   }
 }

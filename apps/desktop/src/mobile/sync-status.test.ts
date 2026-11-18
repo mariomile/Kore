@@ -27,7 +27,7 @@ describe('mobileSyncStatus', () => {
 
   it('rests on Synced — the quiet tone the pill hides on', () => {
     const status = mobileSyncStatus(connected({ state: 'idle' }), 0)
-    expect(status).toEqual({ label: 'Synced', tone: 'ok', detail: null })
+    expect(status).toEqual({ kind: 'synced', label: 'Synced', tone: 'ok', detail: null })
   })
 
   it('shows Syncing while a cycle runs — even with conflicts pending', () => {

@@ -1,0 +1,20 @@
+diff --git a/dist/index.js b/dist/index.js
+index 25e672334460dc126315897b71f67c07b850cfc4..39e176952584a9304fa9371bfb7588fbb911f768 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -134,11 +134,13 @@ const bareAutolink = { parseInline: [{
+ //#endregion
+ //#region src/hashtag.ts
+ /**
+-* Letters, digits, `-`, `_`. Non-ASCII falls back to a Unicode test;
++* Letters, digits, `-`, `_`, and `/` for nested tags (`#domain/product`,
++* Kore patch: the indexer and Obsidian both read the slash as part of the
++* tag). Non-ASCII falls back to a Unicode test;
+ * surrogate halves fail it, so emoji terminate the tag.
+ */
+ function isTagChar(code) {
+-	return code >= 48 && code <= 57 || code >= 65 && code <= 90 || code >= 97 && code <= 122 || code === 45 || code === 95 || code > 127 && /[\p{L}\p{N}]/u.test(String.fromCharCode(code));
++	return code >= 48 && code <= 57 || code >= 65 && code <= 90 || code >= 97 && code <= 122 || code === 45 || code === 95 || code === 47 || code > 127 && /[\p{L}\p{N}]/u.test(String.fromCharCode(code));
+ }
+ function isLetter(code) {
+ 	return code >= 65 && code <= 90 || code >= 97 && code <= 122 || code > 127 && /\p{L}/u.test(String.fromCharCode(code));

@@ -1,19 +1,20 @@
 import type { AllNotesView, CollectionEntry, CollectionPageView, TagProperty } from '@kore/core'
 
 /** The layouts a type's page offers on the phone. */
-export type MobileTypeView = 'table' | 'board' | 'gallery' | 'calendar'
+export type MobileTypeView = 'table' | 'board' | 'gallery' | 'calendar' | 'timeline'
 
 /** The phone's layouts in switcher order (the Mac's tab order). */
 export const MOBILE_TYPE_VIEWS: readonly MobileTypeView[] = [
   'table',
   'board',
   'calendar',
+  'timeline',
   'gallery',
 ]
 
 /**
  * The layouts this type can show: the board needs a field to group by and
- * the calendar a date field to place rows on.
+ * the calendar and the timeline a date field to place rows on.
  */
 export function availableTypeViews(options: {
   boardAvailable: boolean
@@ -22,7 +23,8 @@ export function availableTypeViews(options: {
   return MOBILE_TYPE_VIEWS.filter(
     (view) =>
       (view !== 'board' || options.boardAvailable) &&
-      (view !== 'calendar' || options.calendarAvailable),
+      (view !== 'calendar' || options.calendarAvailable) &&
+      (view !== 'timeline' || options.calendarAvailable),
   )
 }
 
@@ -36,6 +38,7 @@ export function mobileTypeView(view: AllNotesView): MobileTypeView {
   switch (view) {
     case 'board':
     case 'calendar':
+    case 'timeline':
       return view
     case 'grid':
       return 'gallery'

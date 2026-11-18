@@ -1,5 +1,60 @@
 # Kore working state
 
+## iPhone note cards, 2026-11-18
+
+- [x] Note cards: link-titles by name, wrapped long titles, no raw link paths
+  in previews, no gap above the title, parent shown as a path, nested tags
+  colored in full (#553, projection 38).
+
+## Smooth launch, 2026-11-18
+
+- [x] One continuous splash from the launch screen to the daily note: no white
+  frame, no font swap, no late pieces; native launch cover on iPhone (#555).
+- [x] Obsidian vaults: wiki links resolve by filename first, so a heading with
+  the same name no longer steals the link or its backlinks (#554, projection 37).
+- [x] TestFlight no longer fails when altool crashes after the upload (#550).
+
+## Timeline view for types, 2026-11-17
+
+- [x] Collections get a Timeline view: notes are bars from start to end date,
+  zoom by week, month or quarter; drag a bar on Mac to move its dates, tap on
+  iPhone opens the note (#546).
+
+## Integration settings shared through the vault, 2026-11-17
+
+- [x] Integration settings (folder, file name, tags, content, frequency, daily
+  link) now live in the vault's `.kore.json`, so Mac and iPhone share them.
+  Whether a device syncs, and its credentials, stay on the device (#545).
+- [x] `kore sources` (CLI and always-on host) reads the same settings from
+  `.kore.json`; the per-source `KORE_` variables still override, and tokens
+  stay in the environment (#547).
+
+## AI chat redesign, 2026-11-17
+
+- [x] The chat's context collapses to an "N notes" pill with mini page
+  previews; recall skips greetings and duplicate copies from the archive; the
+  right rail is available on every route (Details shows the chat's notes on
+  the chat route); text fields have no focus border (#544).
+
+## Faster typing in long notes, 2026-11-17
+
+- [x] Typing in long notes is faster: the editor no longer re-renders the
+  table handle and selection menu on every key, and the block-id, sub-page and
+  link-card plugins recompute only the blocks you touch. Last PR of the Mac
+  typing-lag work (#527, #530, #532, #537).
+
+## Settings as a modal on Mac, 2026-11-17
+
+- [x] Settings on Mac opens as a large centered modal over the blurred
+  workspace; the note underneath stays in place, and Escape, a click outside
+  or Close return to it. Cmd+, and deep links work as before; iPhone is
+  unchanged. Look approved by Mario (#541).
+
+## No Due today card on the iPhone daily, 2026-11-17
+
+- [x] Fix (iPhone): the "Due today" card above today's daily is removed, so
+  other notes' tasks are no longer injected there (#540).
+
 ## Integrations page in Settings, 2026-11-17
 
 - [x] Settings gets an Integrations page: a tile overview with the real Granola

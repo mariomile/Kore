@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { ScrollVeil } from '@/components/scroll-veil'
@@ -41,6 +41,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
   // latched per arrival, so a pane that merely becomes active later does not
   // yank the caret out of whatever the user just clicked.
   const paneIsActive = usePaneIsActive()
+  const rootRef = useRef<HTMLDivElement>(null)
   const [arrival, setArrival] = useState({ path, autoFocus: paneIsActive })
   if (arrival.path !== path) {
     setArrival({ path, autoFocus: paneIsActive })
@@ -48,7 +49,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
   return (
     // The relative wrapper pins the floating outline rail to the viewport
     // edge of the pane while the note itself scrolls beneath it.
-    <div className="relative h-full">
+    <div ref={rootRef} className="relative h-full">
       <ScrollRestored className="h-full overflow-auto px-0" elementRef={setScrollElement}>
         <div className="mx-auto flex min-h-full w-full max-w-full flex-col pt-14 pb-8">
           {heading}
@@ -66,7 +67,8 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
       {/* Scrolled content melts at the pane's top edge instead of clipping
           against it (Plan 28). */}
       <ScrollVeil scrollElement={scrollElement} />
-      <NoteOutlineRail />
+      {/* Below `md` the margin the rail floats in doesn't exist. */}
+      <NoteOutlineRail scope={rootRef} className="right-1.5 hidden md:block" />
     </div>
   )
 }

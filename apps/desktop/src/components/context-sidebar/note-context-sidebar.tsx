@@ -33,7 +33,7 @@ export function NoteContextSidebar({ path }: NoteContextSidebarProps): ReactElem
         <DetailsSections
           sections={[
             { id: 'tasks', title: 'Tasks', node: <NoteTasksSection path={path} /> },
-            { id: 'outline', title: 'Outline', node: <NoteOutlineSection /> },
+            { id: 'outline', title: 'Outline', node: <NoteOutlineSection key={path} /> },
             { id: 'localGraph', title: 'Local graph', node: <LocalGraphSection path={path} /> },
             {
               id: 'publishedUrl',

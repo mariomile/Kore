@@ -61,3 +61,15 @@ describe('parseBody (meowdown gfmParser)', () => {
     expect(wikiLinkSpans(body)).toEqual([])
   })
 })
+
+describe('parseBody hashtags', () => {
+  it('reads a nested tag as one tag, slashes included', () => {
+    // The editor colours what this grammar parses; the indexer already reads
+    // `domain/product/framework` as a single tag.
+    const body = '#domain/product/framework and #type/concept'
+    expect(nodeSpans(body, 'Hashtag').map(([from, to]) => body.slice(from, to))).toEqual([
+      '#domain/product/framework',
+      '#type/concept',
+    ])
+  })
+})

@@ -36,8 +36,8 @@ describe('NoteOutlineSection', () => {
     expect(page.getByText('Outline').elements()).toHaveLength(0)
   })
 
-  it('lists the document headings in order', async () => {
-    mountSurface('<h1>Alpha</h1><p>x</p><h2>Beta</h2><h3>Gamma</h3>')
+  it('lists the section headings in order, leaving out the title line', async () => {
+    mountSurface('<h1>Title</h1><h2>Alpha</h2><p>x</p><h2>Beta</h2><h3>Gamma</h3>')
     await render(<NoteOutlineSection />)
 
     await expect.element(page.getByText('Outline')).toBeInTheDocument()
@@ -81,7 +81,7 @@ describe('NoteOutlineSection', () => {
   })
 
   it('follows the document as headings change', async () => {
-    const mounted = mountSurface('<h1>Alpha</h1>')
+    const mounted = mountSurface('<h2>Alpha</h2>')
     await render(<NoteOutlineSection />)
     await expect.element(page.getByRole('button', { name: 'Alpha' })).toBeInTheDocument()
 
@@ -90,7 +90,7 @@ describe('NoteOutlineSection', () => {
   })
 
   it('labels a heading with no text rather than rendering a blank row', async () => {
-    mountSurface('<h1></h1>')
+    mountSurface('<h2></h2>')
     await render(<NoteOutlineSection />)
     await expect.element(page.getByRole('button', { name: 'Untitled heading' })).toBeInTheDocument()
   })

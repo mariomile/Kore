@@ -1,5 +1,6 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, type ReactElement } from 'react'
 import { installBackgroundFlush } from '@/lib/background-flush'
+import { releaseBootSplash } from '@/lib/boot-splash'
 import { MobileAudioMemoProvider } from '@/mobile/audio-memo-provider'
 import { MobileErrorBoundary } from '@/mobile/mobile-error-boundary'
 import { MobileOnboardingScreen } from '@/mobile/onboarding-screen'
@@ -52,6 +53,22 @@ export function MobileApp(): ReactElement {
   useEffect(() => {
     return installBackgroundFlush()
   }, [])
+
+  // Hand the first real screen over from index.html's boot splash, which
+  // picks up from the native launch screen: the shell waits briefly for its
+  // first editor (the daily note); onboarding and the error state show at
+  // once.
+  const splashRelease =
+    status === 'ready' && graph
+      ? 'shell'
+      : needsOnboarding || status === 'choosing'
+        ? 'screen'
+        : null
+  useLayoutEffect(() => {
+    if (splashRelease !== null) {
+      releaseBootSplash(splashRelease)
+    }
+  }, [splashRelease])
 
   if (status === 'ready' && graph) {
     return (
@@ -108,7 +125,7 @@ export function MobileApp(): ReactElement {
     )
   }
 
-  // 'loading' | 'opening': the same breathing mark as desktop, picking up
-  // where the native launch screen (LaunchScreen.storyboard) leaves off.
+  // 'loading' | 'opening': the same breathing mark as desktop. It sits under
+  // index.html's boot splash, which only lifts once a real screen is ready.
   return <AppBootScreen />
 }

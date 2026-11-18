@@ -18,6 +18,9 @@ import { buildPaletteSections, type PaletteSections } from './entries'
  * discarded before admission rather than consuming embedding capacity.
  */
 
+/** Quiet time a query must hold before it is admitted to native hybrid search. */
+export const HYBRID_ADMISSION_DELAY_MS = 180
+
 export interface PaletteResults {
   sections: PaletteSections
   /** True once the index has answered the *live* query (gates "No results"). */
@@ -113,7 +116,7 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
       // Consuming the query signal makes key changes (including close/disable)
       // cancel obsolete consumers. Already admitted native work must finish,
       // so keep its actual promise until completion even after cancellation.
-      await new Promise((resolve) => setTimeout(resolve, 180))
+      await new Promise((resolve) => setTimeout(resolve, HYBRID_ADMISSION_DELAY_MS))
       signal.throwIfAborted()
       while (activeHybrid.current !== null) {
         await activeHybrid.current.catch(() => {})

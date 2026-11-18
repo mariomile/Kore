@@ -10,6 +10,7 @@ import { RouterProvider, useRouter } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import { CommandPalette } from './command-palette'
 import { PaletteProvider, usePalette } from './palette-provider'
+import { HYBRID_ADMISSION_DELAY_MS } from './use-palette-results'
 
 const suggestWikiTargets = vi.hoisted(() => vi.fn())
 const searchWithFilters = vi.hoisted(() => vi.fn())
@@ -339,28 +340,36 @@ describe('CommandPalette', () => {
     )
     const { view } = await renderPalette('')
     const input = view.getByRole('combobox')
-    for (const prefix of [
-      'p',
-      'pe',
-      'per',
-      'perf',
-      'perfo',
-      'perfor',
-      'perform',
-      'performa',
-      'performan',
-      'performanc',
-      'performance',
-    ]) {
-      await input.fill(prefix)
-      await new Promise((resolve) => setTimeout(resolve, 80))
+    // The palette's admission debounce is a timer, so the typing cadence runs
+    // on a fake clock: wall-clock gaps between `fill` round trips (slow on
+    // WebKit under CI load) must not decide which prefix gets admitted.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const query = 'performance'
+    try {
+      for (const prefix of Array.from(query, (_, end) => query.slice(0, end + 1))) {
+        await input.fill(prefix)
+        await vi.advanceTimersByTimeAsync(HYBRID_ADMISSION_DELAY_MS / 2)
+      }
+      // The final query's searches start in one commit; once they have, its
+      // admission timer is pending on the fake clock and the quiet period can
+      // elapse.
+      await vi.waitFor(() =>
+        expect(suggestWikiTargets).toHaveBeenLastCalledWith(query, 8, expect.anything()),
+      )
+      expect(retrieve).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(HYBRID_ADMISSION_DELAY_MS)
+      await vi.waitFor(() => expect(retrieve).toHaveBeenCalled())
+      expect(retrieve).toHaveBeenCalledTimes(1)
+      expect(retrieve).toHaveBeenLastCalledWith(query, { mode: 'hybrid' })
+      // TanStack Query batches renders on a zero-delay timeout: keep ticking
+      // the fake clock until the lexical hit is on screen.
+      await vi.waitFor(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+        expect(view.getByText('Immediate text match', { exact: true }).query()).not.toBeNull()
+      })
+    } finally {
+      vi.useRealTimers()
     }
-    await vi.waitFor(() => expect(retrieve).toHaveBeenCalled())
-    expect(retrieve).toHaveBeenCalledTimes(1)
-    expect(retrieve).toHaveBeenLastCalledWith('performance', { mode: 'hybrid' })
-    await expect
-      .element(view.getByText('Immediate text match', { exact: true }))
-      .toBeInTheDocument()
     complete([])
   })
 

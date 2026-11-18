@@ -20,6 +20,7 @@ mod agent_writes;
 mod blame;
 mod commit;
 mod commit_message;
+mod edit_times;
 mod history;
 mod merge;
 mod remote;

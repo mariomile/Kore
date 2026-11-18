@@ -21,7 +21,7 @@ const GRID_CHUNK = 120
 
 /**
  * The All tab's masonry card grid: the same rows as {@link NoteRowList}, as
- * preview cards flowing down CSS columns. A reading layout — cards open on
+ * preview cards dealt row by row into two columns. A reading layout — cards open on
  * tap; pin and delete stay with the swipeable list. Chunks the mount the
  * same way desktop's All Notes grid does so a large graph never paints every
  * card at once. A note's first image tops its card: one indexed query per
@@ -69,18 +69,22 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
         paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
       }}
     >
-      <div data-testid="all-notes-grid" className="columns-2 gap-3 px-4 py-4 [column-fill:balance]">
-        {mountedRows.map((row) => (
-          <NoteCard
-            key={row.path}
-            row={row}
-            imageUrl={firstImages.get(row.path)}
-            recency={row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
-            onOpen={openPath}
-          />
+      <div data-testid="all-notes-grid" className="flex items-start gap-3 px-4 py-4">
+        {splitIntoColumns(mountedRows).map((column, columnIndex) => (
+          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col">
+            {column.map((row) => (
+              <NoteCard
+                key={row.path}
+                row={row}
+                imageUrl={firstImages.get(row.path)}
+                recency={row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
+                onOpen={openPath}
+              />
+            ))}
+          </div>
         ))}
-        {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px" /> : null}
       </div>
+      {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px" /> : null}
     </div>
   )
 }
@@ -92,6 +96,23 @@ interface NoteCardProps {
   onOpen: (path: string) => void
 }
 
+/** The grid's column count: two cards side by side on a phone. */
+const GRID_COLUMNS = 2
+
+/**
+ * Deal the rows across the columns left to right, row by row, so the grid
+ * reads in the list's order: the newest note top left, the second newest top
+ * right. CSS columns would fill the whole left column first, splitting a
+ * recency sort into "left half newer than right half".
+ */
+function splitIntoColumns<T>(rows: readonly T[]): T[][] {
+  const columns: T[][] = Array.from({ length: GRID_COLUMNS }, () => [])
+  for (const [index, row] of rows.entries()) {
+    columns[index % GRID_COLUMNS]?.push(row)
+  }
+  return columns
+}
+
 /** One grid card; memoized so a thumbnail arriving re-renders only its card. */
 const NoteCard = memo(function NoteCard({
   row,
@@ -101,7 +122,7 @@ const NoteCard = memo(function NoteCard({
 }: NoteCardProps): ReactElement {
   const title = row.titleSegments.map((segment) => segment.text).join('')
   return (
-    <div className="break-inside-avoid pb-3">
+    <div className="pb-3">
       <button
         type="button"
         aria-label={title}

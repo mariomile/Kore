@@ -185,9 +185,12 @@ pub(super) fn clone(
     if let Some(depth) = depth.filter(|depth| *depth > 0) {
         fetch_options.depth(i32::try_from(depth).unwrap_or(i32::MAX));
     }
-    git2::build::RepoBuilder::new()
+    let repo = git2::build::RepoBuilder::new()
         .fetch_options(fetch_options)
         .clone(url, target)?;
+    // The checkout stamped every note with the clone time; give them their
+    // edit times before the first index sees them. Best effort.
+    let _ = super::edit_times::ensure_backfilled(&repo, target);
     Ok(())
 }
 

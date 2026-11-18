@@ -232,6 +232,31 @@ describe('MobileAllNotes grid view', () => {
     expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)
   })
 
+  it('reads row by row in the list order, newest top left then top right', async () => {
+    settingsState.allNotesView = 'grid'
+    searchWithFilters.mockResolvedValue(
+      ['One', 'Two', 'Three', 'Four'].map((title, index) =>
+        hit({
+          path: `notes/${title}.md`,
+          title,
+          highlightedTitle: title,
+          mtime: HEALTH_MTIME - index * 60_000,
+        }),
+      ),
+    )
+    await renderScreen()
+
+    await expect.element(page.getByRole('button', { name: 'Four' })).toBeInTheDocument()
+    const box = (name: string): DOMRect =>
+      page.getByRole('button', { name }).element().getBoundingClientRect()
+    // Second newest sits beside the newest, not at the bottom of the left column.
+    expect(box('Two').top).toBe(box('One').top)
+    expect(box('Two').left).toBeGreaterThan(box('One').left)
+    expect(box('Three').left).toBe(box('One').left)
+    expect(box('Four').left).toBe(box('Two').left)
+    expect(box('Three').top).toBeGreaterThan(box('One').top)
+  })
+
   it('keeps free-text highlights on card titles', async () => {
     settingsState.allNotesView = 'grid'
     searchWithFilters.mockResolvedValue([

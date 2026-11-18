@@ -21,8 +21,24 @@ const HORIZONTAL_DOMINANCE = 1.7
 /** Vertical travel past which the gesture is a scroll, whatever the ratio. */
 const SCROLL_ESCAPE_PX = 34
 
-/** What one finished drag means for the block under it. */
-export type BlockSwipe = 'indent' | 'outdent' | null
+/**
+ * The way a selecting swipe travels along x: right to left (Mario,
+ * 2026-11-18). Every direction-dependent check derives from this sign, so the
+ * gesture flips in one place.
+ */
+export const SELECT_DIRECTION = -1
+
+/** How far a drag has travelled toward selecting; negative when it went the other way. */
+export function selectTravel(deltaX: number): number {
+  return deltaX * SELECT_DIRECTION
+}
+
+/**
+ * What one finished drag means for the block under it: toward
+ * {@link SELECT_DIRECTION} selects it as a block, the other way runs the
+ * quick action.
+ */
+export type BlockSwipe = 'select' | 'action' | null
 
 /**
  * Classify a drag by its total displacement. Returns `null` for anything that
@@ -38,7 +54,7 @@ export function classifyBlockSwipe(deltaX: number, deltaY: number): BlockSwipe {
   if (horizontal < vertical * HORIZONTAL_DOMINANCE) {
     return null
   }
-  return deltaX > 0 ? 'indent' : 'outdent'
+  return selectTravel(deltaX) > 0 ? 'select' : 'action'
 }
 
 /**

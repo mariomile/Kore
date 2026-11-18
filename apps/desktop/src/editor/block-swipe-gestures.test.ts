@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { classifyBlockSwipe, isHorizontalDrag, SWIPE_COMMIT_PX } from './block-swipe-gestures'
 
 describe('classifyBlockSwipe', () => {
-  it('reads a committed rightward drag as indent and leftward as outdent', () => {
-    expect(classifyBlockSwipe(SWIPE_COMMIT_PX, 0)).toBe('indent')
-    expect(classifyBlockSwipe(-SWIPE_COMMIT_PX, 4)).toBe('outdent')
+  it('reads a committed leftward drag as select and rightward as the quick action', () => {
+    expect(classifyBlockSwipe(-SWIPE_COMMIT_PX, 4)).toBe('select')
+    expect(classifyBlockSwipe(SWIPE_COMMIT_PX, 0)).toBe('action')
   })
 
   it('ignores a drag that has not travelled far enough', () => {
     expect(classifyBlockSwipe(SWIPE_COMMIT_PX - 1, 0)).toBeNull()
+    expect(classifyBlockSwipe(-(SWIPE_COMMIT_PX - 1), 0)).toBeNull()
   })
 
   it('leaves a scroll alone however far it drifts sideways', () => {
@@ -17,7 +18,7 @@ describe('classifyBlockSwipe', () => {
   })
 
   it('still reads a swipe that drifts a little', () => {
-    expect(classifyBlockSwipe(80, 20)).toBe('indent')
+    expect(classifyBlockSwipe(-80, 20)).toBe('select')
   })
 })
 

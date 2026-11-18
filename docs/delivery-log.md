@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: clean note cards, no title gap, nested tags colored in full (#553).
+- Launch: one continuous splash to the daily note, no white frame or font
+  swap (#555).
+- Links: wiki links resolve by filename first in Obsidian vaults (#554).
+- Release: altool post-upload crash no longer fails TestFlight (#550).
 - Collections: Timeline view for types, with week/month/quarter zoom and
   draggable bars on Mac (#546).
 - CLI: kore sources reads the vault's shared integration settings (#547).

@@ -33,6 +33,7 @@ mod graph_gitignore;
 mod haptics;
 mod icloud;
 mod kit_script;
+mod launch_cover;
 mod library;
 mod link_preview;
 #[cfg(desktop)]
@@ -147,6 +148,11 @@ fn app_platform() -> &'static str {
         "desktop"
     }
 }
+
+/// How long the iPhone launch cover may wait for the main page's load event
+/// before lifting anyway (`launch_cover`).
+#[cfg(target_os = "ios")]
+const LAUNCH_COVER_FALLBACK: std::time::Duration = std::time::Duration::from_secs(5);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -291,12 +297,37 @@ pub fn run() {
     // The main window starts hidden (`visible: false`); desktop reveals it
     // from the page-load hook above after restoring geometry, but mobile has
     // no window-state plugin, so show it here or the UI would never appear.
+    // On iPhone the launch screen's look is also carried over the webview
+    // until the page has loaded (`launch_cover`), so launch never shows a
+    // white or empty frame between the native screen and the web splash.
     #[cfg(mobile)]
     let builder = builder.setup(|app| {
         if let Some(window) = app.get_webview_window(windows::MAIN_WINDOW_LABEL) {
+            #[cfg(target_os = "ios")]
+            launch_cover::install(&window);
             window.show()?;
         }
+        // Never strand the app behind the cover if the load event is lost.
+        #[cfg(target_os = "ios")]
+        {
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(LAUNCH_COVER_FALLBACK);
+                launch_cover::reveal(&handle);
+            });
+        }
         Ok(())
+    });
+
+    // Lift the iPhone launch cover once the main page has loaded: by then
+    // index.html's boot splash shows the same mark underneath.
+    #[cfg(target_os = "ios")]
+    let builder = builder.on_page_load(|webview, payload| {
+        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
+            && webview.label() == windows::MAIN_WINDOW_LABEL
+        {
+            launch_cover::reveal(webview.app_handle());
+        }
     });
 
     builder

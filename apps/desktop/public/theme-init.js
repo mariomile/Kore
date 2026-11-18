@@ -129,3 +129,23 @@
     )
   }
 }
+{
+  // The quick-capture bar is a transparent, frameless strip: the boot splash
+  // in index.html must never paint there. main.tsx sets the same marker, but
+  // only after the bundle loads — too late for the first frame. Tauri injects
+  // its window metadata before any page script runs.
+  try {
+    if (window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label === 'quick-capture') {
+      document.documentElement.dataset.windowRole = 'quick-capture'
+    }
+  } catch {
+    // Not a Tauri webview (browser dev, tests): nothing to mark.
+  }
+  // Last resort for the boot splash (src/lib/boot-splash.ts): if the app
+  // never releases it (a crash before React mounts), take it down so whatever
+  // rendered underneath stays reachable. A vault that is still opening by
+  // then shows AppBootScreen, the same mark, so nothing visibly changes.
+  setTimeout(() => {
+    document.getElementById('kore-boot')?.remove()
+  }, 15000)
+}

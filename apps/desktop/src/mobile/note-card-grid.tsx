@@ -109,7 +109,7 @@ const NoteCard = memo(function NoteCard({
         className="block w-full rounded-xl border border-border bg-surface p-3 text-left active:bg-surface-hover"
       >
         <div className="flex items-start justify-between gap-2">
-          <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">
+          <h2 className="line-clamp-3 min-w-0 text-[13px] font-semibold leading-snug text-text [overflow-wrap:anywhere]">
             <HighlightedText segments={row.titleSegments} />
           </h2>
           {row.isPinned ? (
@@ -131,7 +131,7 @@ const NoteCard = memo(function NoteCard({
           />
         ) : null}
         {row.snippet.length > 0 ? (
-          <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">
+          <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
             <HighlightedText segments={row.snippet} />
           </p>
         ) : null}

@@ -1,5 +1,19 @@
 # Kore working state
 
+## iPhone note cards, 2026-11-18
+
+- [x] Note cards: link-titles by name, wrapped long titles, no raw link paths
+  in previews, no gap above the title, parent shown as a path, nested tags
+  colored in full (#553, projection 38).
+
+## Smooth launch, 2026-11-18
+
+- [x] One continuous splash from the launch screen to the daily note: no white
+  frame, no font swap, no late pieces; native launch cover on iPhone (#555).
+- [x] Obsidian vaults: wiki links resolve by filename first, so a heading with
+  the same name no longer steals the link or its backlinks (#554, projection 37).
+- [x] TestFlight no longer fails when altool crashes after the upload (#550).
+
 ## Timeline view for types, 2026-11-17
 
 - [x] Collections get a Timeline view: notes are bars from start to end date,

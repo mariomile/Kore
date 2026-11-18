@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import { useDocumentOutline } from '@/hooks/use-document-outline'
 import { cn } from '@/lib/utils'
 import { SidebarSection } from './sidebar-section'
@@ -17,8 +17,18 @@ import { SidebarSection } from './sidebar-section'
  */
 const MAX_INDENT_STEPS = 3
 
+/**
+ * The active pane, whose note the sidebar describes: with split panes open,
+ * a document-wide read would interleave every pane's headings.
+ */
+const ACTIVE_PANE: RefObject<HTMLElement | null> = {
+  get current() {
+    return document.querySelector<HTMLElement>('.workspace-main[data-active="true"]')
+  },
+}
+
 export function NoteOutlineSection(): ReactElement | null {
-  const { entries, reveal } = useDocumentOutline()
+  const { entries, reveal } = useDocumentOutline({ scope: ACTIVE_PANE })
 
   // A note with no headings has no outline to show — an empty section would
   // be a permanent piece of furniture in every short note.

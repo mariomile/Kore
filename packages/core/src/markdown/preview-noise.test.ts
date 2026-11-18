@@ -85,8 +85,14 @@ describe('parseNote — previewText', () => {
   it('is the plain text when nothing is noise', () => {
     const parsed = parseNote({
       path: 'notes/n.md',
-      source: '# Title\n\nSome **bold** [[Link|alias]].',
+      source: '# Title\n\nSome **bold** [[Link]].',
     })
     expect(parsed.previewText).toBe(parsed.text)
+  })
+
+  it('reads an aliased link as its alias, as the editor shows it', () => {
+    const parsed = parseNote({ path: 'notes/n.md', source: 'See [[Link|alias]].' })
+    expect(parsed.previewText).toBe('See alias.')
+    expect(parsed.text).toBe('See Link alias.')
   })
 })

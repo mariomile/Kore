@@ -84,7 +84,8 @@ export function setVaultLayout(layout: VaultLayout): void {
 
 /**
  * A stable fingerprint of everything in the layout that changes what the
- * index derives from a path (which files are dailies, and their dates).
+ * index derives from a path (which files are dailies, and their dates, and
+ * whether the filename stem is the note's name).
  * Empty for Kore's default, so existing indexes stay current.
  */
 export function vaultLayoutIndexKey(layout: VaultLayout = activeLayout): string {
@@ -97,6 +98,10 @@ export function vaultLayoutIndexKey(layout: VaultLayout = activeLayout): string 
   }
   if (layout.templatesFolder !== DEFAULT_VAULT_LAYOUT.templatesFolder) {
     parts.push(`templates=${layout.templatesFolder}`)
+  }
+  // Title-named files make the filename stem the note's name (link claims).
+  if (layout.noteFileNames !== DEFAULT_VAULT_LAYOUT.noteFileNames) {
+    parts.push(`files=${layout.noteFileNames}`)
   }
   return parts.join(';')
 }

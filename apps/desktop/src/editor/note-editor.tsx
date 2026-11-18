@@ -3,6 +3,7 @@ import {
   useEffect,
   useImperativeHandle,
   useInsertionEffect,
+  useLayoutEffect,
   useRef,
   type ReactElement,
   type ReactNode,
@@ -62,6 +63,7 @@ import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 import { findBlockId, revealBlockId } from '@/editor/block-id-plugin'
 import { canZoom } from '@/editor/block-zoom-state'
 import { resolveWikilink } from '@/editor/resolve-wikilink'
+import { releaseBootSplash } from '@/lib/boot-splash'
 import { markLaunch } from '@/lib/launch-timing'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
@@ -420,6 +422,11 @@ export function NoteEditor({
   const followDeepLink = useFollowDeepLink()
   useEffect(() => {
     markLaunch('editor')
+  }, [])
+  // Layout effect: queue the boot splash's fade in the frame this editor
+  // first paints (src/lib/boot-splash.ts). A no-op after launch.
+  useLayoutEffect(() => {
+    releaseBootSplash('content')
   }, [])
 
   // The handlers below keep a stable identity for meowdown's lifetime — a new

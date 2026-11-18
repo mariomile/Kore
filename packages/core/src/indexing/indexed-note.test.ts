@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { DEFAULT_VAULT_LAYOUT, setVaultLayout } from '../graph/vault-layout'
 import { gistBodyHash, parseNote } from '../markdown'
 import { buildIndexedNote, CLAIM_TIER, indexedNoteSchema, PROJECTION_VERSION } from './indexed-note'
 
@@ -9,7 +10,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(37)
+    expect(PROJECTION_VERSION).toBe(38)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {
@@ -519,6 +520,39 @@ describe('projectNoteClaims (via buildIndexedNote)', () => {
       { key: 'roadmap', tier: CLAIM_TIER.alias },
       { key: 'plan', tier: CLAIM_TIER.basename },
     ])
+  })
+
+  describe('in a vault that names files after titles', () => {
+    afterEach(() => setVaultLayout(DEFAULT_VAULT_LAYOUT))
+    const claimsOf = (path: string, source: string) =>
+      buildIndexedNote(parseNote({ path, source }), { ...meta, source }).claims
+
+    it('demotes an H1 that differs from the filename to the alias tier', () => {
+      setVaultLayout({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title' })
+      // A CV whose header is the owner's name must not claim the person note's name.
+      expect(claimsOf('Jobs/CV Cohere.md', '# Mario Miletta\n\nHead of Product')).toEqual([
+        { key: 'mario miletta', tier: CLAIM_TIER.alias },
+        { key: 'cv cohere', tier: CLAIM_TIER.basename },
+      ])
+      expect(claimsOf('CRM/People/Mario Miletta.md', '# Mario Miletta')).toEqual([
+        { key: 'mario miletta', tier: CLAIM_TIER.title },
+      ])
+    })
+
+    it('keeps an explicit frontmatter title at the title tier', () => {
+      setVaultLayout({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title' })
+      expect(claimsOf('Projects/Plan.md', '---\ntitle: Weekly Planning\n---\n# Plan')).toEqual([
+        { key: 'weekly planning', tier: CLAIM_TIER.title },
+        { key: 'plan', tier: CLAIM_TIER.basename },
+      ])
+    })
+
+    it('leaves slug vaults on the H1', () => {
+      expect(claimsOf('notes/meeting-notes.md', '# Meeting Notes')).toEqual([
+        { key: 'meeting notes', tier: CLAIM_TIER.title },
+        { key: 'meeting-notes', tier: CLAIM_TIER.basename },
+      ])
+    })
   })
 
   it('claims nothing for a template', () => {

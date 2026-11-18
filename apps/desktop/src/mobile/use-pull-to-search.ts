@@ -7,12 +7,6 @@ export const PULL_TO_SEARCH_THRESHOLD = 72
 /** Movement (px) that decides whether a touch is a vertical pull at all. */
 const DECIDE_SLOP = 10
 
-/**
- * A touch held this long before it moves is a long press (text selection,
- * block menus), not a pull.
- */
-const LONG_PRESS_MS = 400
-
 interface PullToSearchOptions {
   /** The surface whose touches are watched (the shell's screen stack). */
   container: RefObject<HTMLElement | null>
@@ -47,7 +41,8 @@ function scrollerFor(target: Element, root: Element): Element | null {
  * Pull down from the top of a screen to open global search (iOS Spotlight's
  * gesture). Armed only when the touch starts with its scroller already at the
  * top, so ordinary scrolling never triggers it; a mostly-horizontal drag (the
- * day carousel, row swipes) or a long press abandons it.
+ * day carousel, row swipes) abandons it, and a native long press (text
+ * selection) cancels the touch, which resets it.
  *
  * Passive listeners and direct style writes only: the pull runs on every
  * touchmove, so it never re-renders React and never blocks native scrolling
@@ -73,7 +68,6 @@ export function usePullToSearch({
     let armed = false
     let startX = 0
     let startY = 0
-    let startTime = 0
 
     const paint = (progress: number, nextArmed: boolean): void => {
       const element = indicator.current
@@ -108,7 +102,6 @@ export function usePullToSearch({
       tracking = true
       startX = touch.clientX
       startY = touch.clientY
-      startTime = event.timeStamp
     }
 
     const onTouchMove = (event: TouchEvent): void => {
@@ -126,7 +119,7 @@ export function usePullToSearch({
         if (Math.abs(dx) < DECIDE_SLOP && Math.abs(dy) < DECIDE_SLOP) {
           return
         }
-        if (dy <= 0 || Math.abs(dx) >= dy || event.timeStamp - startTime > LONG_PRESS_MS) {
+        if (dy <= 0 || Math.abs(dx) >= dy) {
           reset()
           return
         }

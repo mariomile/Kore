@@ -26,7 +26,7 @@ const SURFACE = ':is(.ProseMirror.kore-note-surface, .kore-note-surface .ProseMi
 const HEADINGS = ':is(h1, h2, h3, h4, h5, h6)'
 
 /**
- * How far down the viewport a heading may sit and still be the section the
+ * How far down the view a heading may sit and still be the section the
  * reader is in: once a heading has scrolled into the top third, its section
  * is the one on screen.
  */
@@ -65,8 +65,12 @@ function sameEntries(a: readonly OutlineEntry[], b: readonly OutlineEntry[]): bo
 }
 
 /** The last heading that has reached the reading line, else the first. */
-function currentIndexOf(headings: readonly HTMLElement[]): number {
-  const line = window.innerHeight * CURRENT_SECTION_LINE
+function currentIndexOf(headings: readonly HTMLElement[], view: HTMLElement): number {
+  // Measured in the view, not the window: a split pane's top third is not
+  // the window's.
+  const bounds =
+    view === document.body ? { top: 0, height: window.innerHeight } : view.getBoundingClientRect()
+  const line = bounds.top + bounds.height * CURRENT_SECTION_LINE
   let current = 0
   for (const [index, heading] of headings.entries()) {
     if (heading.getBoundingClientRect().top > line) {
@@ -132,7 +136,7 @@ export function useDocumentOutline({
       // paragraph re-runs the read but never re-renders the panel.
       setEntries((previous) => (sameEntries(previous, next) ? previous : next))
       if (trackCurrent) {
-        setCurrent(currentIndexOf(headings))
+        setCurrent(currentIndexOf(headings, root))
       }
     }
     // Coalesce to one read per frame: the observer fires for every mutation

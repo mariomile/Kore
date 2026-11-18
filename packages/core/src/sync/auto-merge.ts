@@ -5,10 +5,9 @@ import { gitNoteVersion, type ChangedFile, type MergeOutcome, type MergeSides } 
 import { mergeNoteText } from './note-merge'
 
 /**
- * After a conflicted sync merge, re-merge each conflicted note with the
- * Markdown-aware rules of {@link mergeNoteText} and, where both devices'
- * edits can be kept, replace the conflict markers with the merged note.
- * Notes that still conflict keep their markers (and `Needs review`).
+ * After a conflicted sync merge, re-merge each conflicted note with
+ * {@link mergeNoteText}, which keeps every device's writing, and replace the
+ * conflict markers with the merged note: nothing to review, nothing lost.
  *
  * A note is only rewritten while it still carries the markers this merge
  * wrote: one the user already resolved, or edited meanwhile, is left alone.
@@ -43,7 +42,9 @@ async function remergeNote(
       sides.base === null ? '' : versionOrEmpty(sides.base, path, generation),
       readNote(path, generation),
     ])
-    const merged = detectConflictMarkers(current) ? mergeNoteText(base, ours, theirs) : null
+    const merged = detectConflictMarkers(current)
+      ? mergeNoteText(base, ours, theirs, sides.theirsTime > sides.oursTime ? 'theirs' : 'ours')
+      : null
     if (merged === null) {
       return null // still conflicted, or already resolved since the merge
     }

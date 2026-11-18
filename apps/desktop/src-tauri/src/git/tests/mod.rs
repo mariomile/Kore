@@ -689,6 +689,7 @@ fn conflicting_edits_are_committed_with_labeled_markers() {
         .as_deref()
         .expect("shared history has a merge base");
     assert_eq!(version(base), "# Shared\n\noriginal line\n");
+    assert!(sides.ours_time > 0 && sides.theirs_time > 0, "{sides:?}");
     assert!(
         merged
             .changed_files

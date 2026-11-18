@@ -2,53 +2,75 @@ import { lineHunks, type LineHunk } from '@kore/utils'
 import { detectConflictMarkers } from '../markdown/conflict-markers'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 
+/** Which side's edit is newer, for the one place that can't keep both. */
+export type NewerSide = 'ours' | 'theirs'
+
 /**
- * A Markdown-aware three-way merge for notes that two devices edited
- * between syncs. Git's line merge flags as conflicts several edits that
- * can both be kept:
+ * A three-way merge for a note two devices edited between syncs that never
+ * drops anyone's writing and never asks the user to pick:
  *
- * - **Both devices appended** at the same spot (the daily-note case): git
- *   sees two insertions at one point and gives up. Here both are kept,
- *   this device's lines first.
- * - **Edits on neighbouring lines** (two properties next to each other,
- *   two adjacent tasks): git treats touching hunks as one conflict. Here
- *   only edits to the *same* lines conflict.
- * - **The same edit on both devices** merges to that edit.
+ * - **Edits that don't touch** (including neighbouring lines, and both
+ *   devices appending at one spot) all land, this device's lines first.
+ * - **The same edit on both devices** lands once.
+ * - **The same lines changed two different ways** (or edited on one device
+ *   and deleted on the other) keep *both* versions, one after the other, as
+ *   ordinary lines the user can tidy like any other text.
+ * - **Properties** (the frontmatter header) can't hold two values for one
+ *   key, so there a clash takes the `newer` side's value; the older one stays
+ *   in the note's history.
  *
- * Anything else (the same lines changed two different ways, an edit
- * against a deletion) is a real conflict: the function returns `null` and
- * the caller keeps the conflict markers for the user to review. So does a
- * merge that would produce broken frontmatter (a property added on both
- * devices with different values, YAML that no longer parses).
+ * Returns `null` only when a version already carries unresolved conflict
+ * markers, which are left for the user rather than buried.
  */
-export function mergeNoteText(base: string, ours: string, theirs: string): string | null {
+export function mergeNoteText(
+  base: string,
+  ours: string,
+  theirs: string,
+  newer: NewerSide,
+): string | null {
   if (ours === theirs) {
     return ours
   }
   if (detectConflictMarkers(ours) || detectConflictMarkers(theirs)) {
-    return null // an earlier conflict is still unresolved; don't bury it
-  }
-  const merged = mergeLines(base.split('\n'), ours.split('\n'), theirs.split('\n'))
-  if (merged === null) {
     return null
   }
-  const text = merged.join('\n')
-  return frontmatterIsSound(text, ours, theirs) ? text : null
+  const [baseHeader, baseBody] = splitHeader(base)
+  const [ourHeader, ourBody] = splitHeader(ours)
+  const [theirHeader, theirBody] = splitHeader(theirs)
+  const newerHeader = newer === 'ours' ? ourHeader : theirHeader
+  const keepBoth: OnClash = (mine, other) => [...mine, ...other]
+  const takeNewer: OnClash = (mine, other) => (newer === 'ours' ? mine : other)
+  const header = mergeLines(baseHeader, ourHeader, theirHeader, takeNewer)
+  const body = mergeLines(baseBody, ourBody, theirBody, keepBoth)
+  // A header merge that breaks the YAML (the same property added on both
+  // devices) falls back to the newer side's header whole.
+  const safeHeader = headerIsBroken(header) && !headerIsBroken(newerHeader) ? newerHeader : header
+  return safeHeader + body
 }
 
-function mergeLines(base: string[], ours: string[], theirs: string[]): string[] | null {
+/** A note's frontmatter block (fences included, empty when none) and its body. */
+function splitHeader(source: string): [string, string] {
+  const { bodyOffset } = splitFrontmatter(source)
+  return [source.slice(0, bodyOffset), source.slice(bodyOffset)]
+}
+
+function headerIsBroken(header: string): boolean {
+  return parseFrontmatter(splitFrontmatter(header).raw).warning !== undefined
+}
+
+/** How to settle the same lines changed two different ways. */
+type OnClash = (ours: readonly string[], theirs: readonly string[]) => readonly string[]
+
+function mergeLines(base: string, ours: string, theirs: string, onClash: OnClash): string {
+  const baseLines = base.split('\n')
   const out: string[] = []
   let cursor = 0
-  for (const group of changeGroups(base, ours, theirs)) {
-    const resolved = resolveGroup(base, group)
-    if (resolved === null) {
-      return null
-    }
-    out.push(...base.slice(cursor, group.lo), ...resolved)
+  for (const group of changeGroups(baseLines, ours.split('\n'), theirs.split('\n'))) {
+    out.push(...baseLines.slice(cursor, group.lo), ...resolveGroup(baseLines, group, onClash))
     cursor = group.hi
   }
-  out.push(...base.slice(cursor))
-  return out
+  out.push(...baseLines.slice(cursor))
+  return out.join('\n')
 }
 
 /** Overlapping hunks of both sides, spanning base lines `[lo, hi)`. */
@@ -101,7 +123,11 @@ function overlaps(lo: number, hi: number, hunk: LineHunk): boolean {
   return hunk.start < hi && hunk.end > lo
 }
 
-function resolveGroup(base: readonly string[], group: ChangeGroup): readonly string[] | null {
+function resolveGroup(
+  base: readonly string[],
+  group: ChangeGroup,
+  onClash: OnClash,
+): readonly string[] {
   const { lo, hi } = group
   const ourText = applyHunks(base, lo, hi, group.ours)
   const theirText = applyHunks(base, lo, hi, group.theirs)
@@ -112,9 +138,9 @@ function resolveGroup(base: readonly string[], group: ChangeGroup): readonly str
     return theirText
   }
   if (lo === hi) {
-    return [...ourText, ...theirText] // both appended here: keep both
+    return [...ourText, ...theirText] // both added here: keep both
   }
-  return null
+  return onClash(ourText, theirText)
 }
 
 /** One side's version of base `[lo, hi)`, given its hunks inside that range. */
@@ -136,14 +162,4 @@ function applyHunks(
 
 function sameLines(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((line, i) => line === b[i])
-}
-
-/**
- * The merged frontmatter must be as sound as both inputs': YAML that still
- * parses to a mapping, every property once (a duplicate key fails the parse).
- */
-function frontmatterIsSound(merged: string, ours: string, theirs: string): boolean {
-  const broken = (source: string): boolean =>
-    parseFrontmatter(splitFrontmatter(source).raw).warning !== undefined
-  return !broken(merged) || broken(ours) || broken(theirs)
 }

@@ -7,7 +7,7 @@ import {
   isDaily,
   isTemplatePath,
 } from '../graph/paths'
-import { vaultLayoutIndexKey } from '../graph/vault-layout'
+import { getVaultLayout, vaultLayoutIndexKey } from '../graph/vault-layout'
 import {
   detectConflictMarkers,
   extractEmailFields,
@@ -152,8 +152,12 @@ import {
  * 36 - a task's due date is only a date link that ends or opens the item; a
  * date mid-sentence (a source citation) no longer schedules it, so existing
  * `tasks.due_date` rows must be rederived.
+ * 37 - in a vault that names files after titles (Obsidian), the filename stem
+ * is the note's name: it claims the title tier, and an H1 that differs from
+ * it drops to the alias tier, so a `# Mario Miletta` CV header no longer
+ * steals `[[Mario Miletta]]` from `Mario Miletta.md`.
  */
-export const PROJECTION_VERSION = 36
+export const PROJECTION_VERSION = 37
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -184,11 +188,15 @@ export function projectionStamp(): string {
 export const CLAIM_TIER = {
   /** Calendar-valid daily date (`daily/2026-07-26.md` answering to `2026-07-26`). */
   dailyDate: 1,
-  /** Authored title (frontmatter or first heading; filename when untitled). */
+  /**
+   * Authored title (frontmatter or first heading; filename when untitled). In
+   * a title-named (Obsidian) vault the filename stem holds this tier and a
+   * differing H1 drops to the alias tier.
+   */
   title: 2,
   /** Frontmatter or derived alias. */
   alias: 3,
-  /** Filename stem — the weakest address, how Obsidian names every note. */
+  /** Filename stem — the weakest address in a slug vault. */
   basename: 4,
 } as const
 
@@ -438,12 +446,45 @@ export function projectNoteClaims(
   if (date !== null && isCalendarDate(date)) {
     claim(date, CLAIM_TIER.dailyDate)
   }
-  claim(foldKey(parsed.title), CLAIM_TIER.title)
+  const titleKey = foldKey(parsed.title)
+  const basenameKey = noteBasenameKey(parsed.path)
+  if (filenameIsTheName(parsed, titleKey, basenameKey)) {
+    // Obsidian addresses a note by its filename; an H1 that says something
+    // else is a heading, not a second name. It still answers, but only as
+    // strongly as an alias, so it never outranks another note's filename.
+    claim(basenameKey, CLAIM_TIER.title)
+    for (const alias of aliases) {
+      claim(alias.aliasKey, CLAIM_TIER.alias)
+    }
+    claim(titleKey, CLAIM_TIER.alias)
+    return claims
+  }
+  claim(titleKey, CLAIM_TIER.title)
   for (const alias of aliases) {
     claim(alias.aliasKey, CLAIM_TIER.alias)
   }
-  claim(noteBasenameKey(parsed.path), CLAIM_TIER.basename)
+  claim(basenameKey, CLAIM_TIER.basename)
   return claims
+}
+
+/**
+ * Is the filename stem this note's name rather than its H1? Only in a vault
+ * that names files after titles (`noteFileNames: 'title'`, an Obsidian vault),
+ * and only when the derived title differs from the stem: an explicit
+ * frontmatter `title:` is an authored name and keeps the title tier, and
+ * Kore's slug vaults (`meeting-notes.md` titled "Meeting Notes") keep the H1
+ * as the name.
+ */
+function filenameIsTheName(parsed: ParsedNote, titleKey: string, basenameKey: string): boolean {
+  if (
+    getVaultLayout().noteFileNames !== 'title' ||
+    basenameKey === '' ||
+    titleKey === basenameKey
+  ) {
+    return false
+  }
+  const fmTitle = parsed.frontmatter['title']
+  return !(typeof fmTitle === 'string' && fmTitle.trim() !== '')
 }
 
 /**

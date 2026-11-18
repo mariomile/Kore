@@ -139,7 +139,9 @@ describe('daily paths under an adopted layout', () => {
     expect(isDaily('daily/2026-10-09.md')).toBe(false)
     expect(isDaily('Journal/Daily/Weekly review.md')).toBe(false)
     expect(dailyPathPattern()).toBe('Journal/Daily/DD-MM-YYYY.md')
-    expect(vaultLayoutIndexKey()).toBe('daily=Journal/Daily/DD-MM-YYYY;templates=_system/templates')
+    expect(vaultLayoutIndexKey()).toBe(
+      'daily=Journal/Daily/DD-MM-YYYY;templates=_system/templates;files=title',
+    )
   })
 
   it('treats the vault’s templates folder as templates', () => {

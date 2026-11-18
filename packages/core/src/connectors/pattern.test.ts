@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeConnectorPattern, parseConnectorTags, renderNotePlacement } from './pattern'
+import { granolaConnector } from './granola'
+import {
+  connectorPathPreview,
+  normalizeConnectorPattern,
+  normalizeDailyHeading,
+  parseConnectorTags,
+  renderNotePlacement,
+} from './pattern'
 import { readwiseConnector } from './readwise'
 
 describe('renderNotePlacement', () => {
@@ -39,5 +46,24 @@ describe('parseConnectorTags', () => {
       'type/reference',
       'my-tag',
     ])
+  })
+})
+
+describe('normalizeDailyHeading', () => {
+  it('drops leading #s and stores the default as null', () => {
+    expect(normalizeDailyHeading('### Calls ', granolaConnector)).toBe('Calls')
+    expect(normalizeDailyHeading('## Meetings', granolaConnector)).toBeNull()
+    expect(normalizeDailyHeading('  ', granolaConnector)).toBeNull()
+  })
+})
+
+describe('connectorPathPreview', () => {
+  it('previews the typed folder and pattern, and the default for a bad pattern', () => {
+    expect(connectorPathPreview(readwiseConnector, '/Reading/', '{category}/{title}')).toMatch(
+      /^Reading\/[^/]+\/[^/]+\.md$/,
+    )
+    expect(connectorPathPreview(readwiseConnector, '', '{nope}')).toBe(
+      connectorPathPreview(readwiseConnector, '', readwiseConnector.defaultPattern),
+    )
   })
 })

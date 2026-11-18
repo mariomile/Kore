@@ -260,6 +260,12 @@ export { libraryFileTitle } from '../library/title'
 export { createWorkspaceStatePublisher, workspaceNotes } from '../graph/workspace-state'
 export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
+  NOTE_SKELETON_ROWS,
+  noteSkeleton,
+  type NoteSkeletonKind,
+  type NoteSkeletonRow,
+} from '../markdown/note-skeleton'
+export {
   loadAttachmentIndex,
   noteAttachmentAdded,
   resolveAttachmentSource,
@@ -401,7 +407,9 @@ export {
   collectionViewForAllNotesView,
   collectionPageViewForAllNotesView,
   COLLECTION_PAGE_VIEWS,
+  TIMELINE_ZOOMS,
   type CollectionPageView,
+  type TimelineZoom,
   type SavedCollectionView,
   type SavedSearch,
   type TaskFilters,
@@ -420,6 +428,8 @@ export {
   type AiPromptMode,
   type ConnectorSettings,
   type ConnectorsSettings,
+  type ConnectorSyncEvery,
+  CONNECTOR_SYNC_EVERY,
 } from '../settings/schema'
 export {
   loadWorkspaceLayout,
@@ -521,6 +531,7 @@ export {
   type Connector,
   type ConnectorId,
 } from '../connectors/registry'
+export type { ConnectorOption } from '../connectors/types'
 export {
   normalizeConnectorFolder,
   syncConnector,
@@ -536,4 +547,26 @@ export {
   normalizeConnectorPattern,
   parseConnectorTags,
   renderNotePlacement,
+  connectorPathPreview,
+  normalizeDailyHeading,
 } from '../connectors/pattern'
+export {
+  connectorRunSettings,
+  isConnectorSyncDue,
+  type ConnectorRunSettings,
+} from '../connectors/schedule'
+export {
+  SHARED_CONNECTOR_KEYS,
+  VAULT_SETTINGS_FILE,
+  adoptDeviceConnectors,
+  mergeVaultConnectors,
+  parseVaultSettings,
+  readVaultSettings,
+  serializeVaultSettings,
+  sharedConnectorSettings,
+  splitConnectorChange,
+  withVaultConnector,
+  writeVaultSettings,
+  type SharedConnectorSettings,
+  type VaultSettings,
+} from '../connectors/vault-settings'

@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, type QueryKey } from '@tanstack/react-query'
+import { folderTreeAffectedBy, type FileChange, type FolderTreeFolder } from '@kore/core'
 
 /**
  * The app's one TanStack Query client (adopted in Plan 07 per architecture
@@ -38,6 +39,65 @@ export const INVALIDATE_THROTTLE_MS = 3_000
 
 let lastInvalidateAt = 0
 let invalidateTimer: ReturnType<typeof setTimeout> | null = null
+/** What the next throttled round covers: the batches since the last one, or everything. */
+let pendingChanges: FileChange[] | 'all' = []
+
+/** Most changes one throttled round narrows by before it refreshes everything. */
+const NARROW_INVALIDATION_LIMIT = 256
+
+/** Key segment of the vault folder tree query (`useFolderTree`). */
+export const FOLDER_TREE_QUERY = 'folder-tree'
+
+function isFolderTreeKey(key: QueryKey): boolean {
+  return key[0] === INDEX_QUERY_SCOPE && key[2] === FOLDER_TREE_QUERY
+}
+
+/**
+ * Refetch the index queries an applied batch can have changed. Everything is
+ * refetched as before, except the folder tree: it reads every note's path and
+ * title, and an autosave that only edits a note's body leaves it unchanged, so
+ * it refetches only when {@link folderTreeAffectedBy} says the batch moved it.
+ */
+function invalidateIndexQueriesFor(changes: readonly FileChange[] | 'all'): void {
+  if (changes === 'all') {
+    invalidateIndexQueries()
+    return
+  }
+  void queryClient.invalidateQueries({
+    queryKey: [INDEX_QUERY_SCOPE],
+    predicate: (query) => !isFolderTreeKey(query.queryKey),
+  })
+  for (const [key, tree] of queryClient.getQueriesData<FolderTreeFolder>({
+    queryKey: [INDEX_QUERY_SCOPE],
+    predicate: (query) => isFolderTreeKey(query.queryKey),
+  })) {
+    const refetch = (): void => {
+      void queryClient.invalidateQueries({ queryKey: key, exact: true })
+    }
+    if (tree === undefined) {
+      refetch()
+      continue
+    }
+    folderTreeAffectedBy(tree, changes).then(
+      (affected) => {
+        if (affected) {
+          refetch()
+        }
+      },
+      (cause: unknown) => {
+        console.error('folder tree change check failed:', cause)
+        refetch() // when unsure, refresh
+      },
+    )
+  }
+}
+
+function flushThrottledInvalidation(): void {
+  const changes = pendingChanges
+  pendingChanges = []
+  lastInvalidateAt = Date.now()
+  invalidateIndexQueriesFor(changes)
+}
 
 /**
  * {@link invalidateIndexQueries} with leading+trailing throttling, for the
@@ -47,12 +107,19 @@ let invalidateTimer: ReturnType<typeof setTimeout> | null = null
  * trailing edge always runs). Direct user-action invalidations should keep
  * calling the unthrottled function.
  */
-export function throttledInvalidateIndexQueries(): void {
-  const now = Date.now()
-  const elapsed = now - lastInvalidateAt
+export function throttledInvalidateIndexQueries(changes?: readonly FileChange[]): void {
+  // Without the batch nothing can be narrowed: refresh every index query.
+  // Past a few hundred changes (a sync pull) checking each costs more than
+  // the refetch it could save.
+  pendingChanges =
+    changes === undefined ||
+    pendingChanges === 'all' ||
+    pendingChanges.length + changes.length > NARROW_INVALIDATION_LIMIT
+      ? 'all'
+      : [...pendingChanges, ...changes]
+  const elapsed = Date.now() - lastInvalidateAt
   if (elapsed >= INVALIDATE_THROTTLE_MS) {
-    lastInvalidateAt = now
-    invalidateIndexQueries()
+    flushThrottledInvalidation()
     return
   }
   if (invalidateTimer !== null) {
@@ -60,8 +127,7 @@ export function throttledInvalidateIndexQueries(): void {
   }
   invalidateTimer = setTimeout(() => {
     invalidateTimer = null
-    lastInvalidateAt = Date.now()
-    invalidateIndexQueries()
+    flushThrottledInvalidation()
   }, INVALIDATE_THROTTLE_MS - elapsed)
 }
 

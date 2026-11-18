@@ -67,6 +67,8 @@ interface SettingsNavRowProps {
   label: string
   /** Muted current value shown before the chevron. */
   value?: string | undefined
+  /** A mark before the label, such as an integration's logo. */
+  leading?: ReactNode
   onPress: () => void
   disabled?: boolean
 }
@@ -75,11 +77,13 @@ interface SettingsNavRowProps {
 export function SettingsNavRow({
   label,
   value,
+  leading,
   onPress,
   disabled,
 }: SettingsNavRowProps): ReactElement {
   return (
     <button type="button" className={PRESSABLE_ROW_CLASS} onClick={onPress} disabled={disabled}>
+      {leading}
       <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
       {value !== undefined ? <span className="shrink-0 text-text-muted">{value}</span> : null}
       <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />

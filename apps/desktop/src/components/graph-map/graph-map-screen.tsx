@@ -140,7 +140,7 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
             setQuery(event.target.value)
           }}
           placeholder="Highlight notes…"
-          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted focus-visible:border-border-focus"
+          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted"
         />
         <label
           className={cn(

@@ -8,8 +8,9 @@ import { publishKeyboardHeight } from '@/mobile/use-keyboard'
 import { SyncStatusPill } from './sync-status-pill'
 
 /**
- * The floating status pill (Plan 19, step 10): visible only when sync has
- * something to say, plain language only, and it yields to the keyboard.
+ * The floating sync indicator (Plan 19, step 10): an icon visible only when
+ * sync has something to say, named in plain language for assistive tech,
+ * opening Settings on tap, and yielding to the keyboard.
  */
 
 vi.mock('@kore/core', async (importOriginal) => ({
@@ -22,6 +23,9 @@ const graphState = vi.hoisted(() => ({
   graph: { root: '/g', name: 'G', generation: 3 } as GraphInfo | null,
 }))
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => graphState }))
+
+const router = vi.hoisted(() => ({ navigate: vi.fn() }))
+vi.mock('@/routing/router', () => ({ useRouter: () => router }))
 
 const sync = vi.hoisted(() => ({ backup: { phase: 'loading' } as BackupState }))
 vi.mock('@/providers/sync-provider', () => ({
@@ -101,6 +105,30 @@ describe('SyncStatusPill', () => {
     await mount()
 
     await expect.element(page.getByRole('status')).toHaveTextContent('Needs review')
+  })
+
+  it('shows an icon, not words, and opens Settings on tap', async () => {
+    sync.backup = connected({ state: 'syncing' })
+    await mount()
+
+    const button = page.getByRole('button', { name: 'Syncing' })
+    await expect.element(button).toBeInTheDocument()
+    // The label is for assistive tech only: nothing readable on screen.
+    const label = button.element().querySelector('.sr-only')
+    expect(label?.textContent).toBe('Syncing')
+    expect(button.element().querySelector('svg')).not.toBeNull()
+
+    await button.click()
+    expect(router.navigate).toHaveBeenCalledWith({ kind: 'settings' })
+  })
+
+  it('tells a failed sync apart from a note to review', async () => {
+    sync.backup = connected({ state: 'error', errorKind: 'other', message: 'boom' })
+    await mount()
+
+    const button = page.getByRole('button', { name: 'Needs attention' })
+    await expect.element(button).toBeInTheDocument()
+    expect(button.element().querySelector('svg')?.getAttribute('class')).toContain('text-danger')
   })
 
   it('yields to the software keyboard', async () => {

@@ -262,8 +262,8 @@ CLI surface, before their address leaks.
 Lists the graph's tasks (round `+ [ ]` checkboxes) from the index's tasks
 projection — open ones by default, `--all` includes completed. Rows come back
 grouped by source note in file order, each with the note's title and the
-task's due date (the first calendar-valid `[[YYYY-MM-DD]]` link inside the
-item). Like `search`, this requires the index (exit `4` when missing) and
+task's due date (the calendar-valid `[[YYYY-MM-DD]]` link that ends or opens
+the item; a date link mid-sentence is only a link). Like `search`, this requires the index (exit `4` when missing) and
 re-checks each source note's own frontmatter, so a note flagged private after
 the last index run never surfaces. A stale index warns on stderr and sets
 `"stale": true`.
@@ -509,8 +509,11 @@ and again afterwards, so what it wrote is searchable at once.
 - Tokens come only from the environment: `KORE_READWISE_TOKEN`
   (readwise.io/access_token) and `KORE_GRANOLA_TOKEN` (Granola's personal API
   key). A source without one is skipped; neither set is a usage error.
-- Where notes land and what they carry is yours, per source, the same three
-  settings the app has under Settings → Connectors:
+- Where notes land and what they carry come from the vault's `.kore.json`,
+  the file the Mac and iPhone apps write from Settings → Integrations: the
+  folder, file name, tags, content switches and daily-note link, so a
+  terminal run files notes exactly where the apps do. Without the file, the
+  defaults below apply. A variable overrides one field for that run:
   - `KORE_<SOURCE>_FOLDER`: the folder (defaults `Readwise`, `Granola`);
   - `KORE_<SOURCE>_PATTERN`: the file name inside it, where `/` makes
     subfolders and `{field}` inserts a value. Readwise offers `{title}`,
@@ -524,6 +527,8 @@ and again afterwards, so what it wrote is searchable at once.
   file at the book's path is adopted (same `url`, or a Readwise cover or
   link); only highlights it lacks are appended, under
   `### New highlights added <date>`.
+- A `.kore.json` that is there but is not valid JSON stops the run, rather
+  than filing notes somewhere the apps would not.
 - Each source's window lives in `.kore/sources.json` (per machine, never
   committed). The first run starts from that moment, so history another app
   already wrote is not imported; `--since YYYY-MM-DD` reaches back further.

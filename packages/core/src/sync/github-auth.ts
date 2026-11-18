@@ -3,11 +3,14 @@ import { KoreError } from '../errors'
 import { deleteSecret, getJsonSecret, setJsonSecret } from '../secrets/keychain'
 import { apiHeaders, JSON_HEADERS, readJson, type FetchFn } from './github-api'
 
-/** Kore has no registered GitHub App; use the personal access token flow. */
-export const GITHUB_APP_CLIENT_ID: string = ''
+/**
+ * Client ID of Kore's GitHub App ("Kore Vault Mario"). Public by design: the
+ * device flow and token refresh need no client secret.
+ */
+export const GITHUB_APP_CLIENT_ID: string = 'Iv23lihLSNUw7QSRIhC8'
 
-/** Public slug of Kore's GitHub App, once registered. */
-export const GITHUB_APP_SLUG: string = ''
+/** Public slug of Kore's GitHub App (`github.com/apps/<slug>`). */
+export const GITHUB_APP_SLUG: string = 'kore-vault-mario'
 
 /**
  * Where the user grants the app access to repositories. Authorization

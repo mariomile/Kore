@@ -70,7 +70,7 @@ function flushQueue(): Promise<void> {
 
 describe('EmbeddingsSync', () => {
   it('backfills and follows applied index batches while enabled and ready', async () => {
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalled())
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
 
@@ -85,8 +85,47 @@ describe('EmbeddingsSync', () => {
     )
   })
 
+  it('waits for a pause in edits before embedding, then embeds each note once', async () => {
+    // Autosaves land about a second apart while typing; embedding on each one
+    // put model inference on top of the next keystrokes.
+    await render(<EmbeddingsSync followQuietMs={150} />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+
+    for (let save = 0; save < 3; save += 1) {
+      onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
+      await new Promise((resolve) => setTimeout(resolve, 60))
+    }
+    expect(core.embedNote).not.toHaveBeenCalled() // still inside the quiet period
+
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(core.embedNote).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves changes that land during a drain for their own quiet period', async () => {
+    let releaseFirst = (): void => {}
+    core.embedNote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirst = () => resolve({ written: 0 })
+        }),
+    )
+    await render(<EmbeddingsSync followQuietMs={150} />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+
+    onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
+    onApplied?.([{ kind: 'upsert', path: 'notes/b.md' }], 7) // typing resumed
+    releaseFirst()
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect(core.embedNote).toHaveBeenCalledTimes(1) // b is not embedded on the spot
+
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(2))
+    expect(core.embedNote).toHaveBeenLastCalledWith(expect.objectContaining({ path: 'notes/b.md' }))
+  })
+
   it('ignores a delayed emit from a superseded index session', async () => {
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
 
     onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 6)
@@ -95,7 +134,7 @@ describe('EmbeddingsSync', () => {
   })
 
   it('never embeds asset-file changes riding the same batches', async () => {
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
 
     onApplied?.(
@@ -112,7 +151,7 @@ describe('EmbeddingsSync', () => {
 
   it('starts no embedding work while semantic search is disabled', async () => {
     semanticSetting.enabled = false
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await flushQueue()
     expect(semantic.backfillEmbeddingsVisibly).not.toHaveBeenCalled()
     expect(core.subscribeIndexApplied).not.toHaveBeenCalled()
@@ -120,7 +159,7 @@ describe('EmbeddingsSync', () => {
 
   it('starts no embedding work until the index session has finished reconciling', async () => {
     graphState.indexReady = false
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await flushQueue()
     expect(semantic.backfillEmbeddingsVisibly).not.toHaveBeenCalled()
     expect(core.subscribeIndexApplied).not.toHaveBeenCalled()
@@ -134,7 +173,7 @@ describe('EmbeddingsSync', () => {
           releaseBackfill = () => resolve('completed')
         }),
     )
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
 
     for (let index = 0; index < 8; index += 1) {
@@ -167,7 +206,7 @@ describe('EmbeddingsSync', () => {
       .mockResolvedValueOnce({ written: 1 })
       .mockRejectedValueOnce(error)
     try {
-      await render(<EmbeddingsSync />)
+      await render(<EmbeddingsSync followQuietMs={0} />)
       await vi.waitFor(() => expect(onApplied).not.toBeNull())
       onApplied?.(
         [
@@ -197,7 +236,7 @@ describe('EmbeddingsSync', () => {
           fail = reject
         }),
     )
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
     onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
     await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
@@ -209,11 +248,11 @@ describe('EmbeddingsSync', () => {
   })
 
   it('pauses follow-up work the moment semantic search is disabled', async () => {
-    const view = await render(<EmbeddingsSync />)
+    const view = await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
 
     semanticSetting.enabled = false
-    await view.rerender(<EmbeddingsSync />)
+    await view.rerender(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(unlisten).toHaveBeenCalled())
 
     // A batch still in flight when the teardown ran must be dropped, not
@@ -224,16 +263,16 @@ describe('EmbeddingsSync', () => {
   })
 
   it('follows edits across idle unload and reload without another graph backfill', async () => {
-    const view = await render(<EmbeddingsSync />)
+    const view = await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
     modelState.current = { status: 'unloaded', model: 'all-MiniLM-L6-v2' }
-    await view.rerender(<EmbeddingsSync />)
+    await view.rerender(<EmbeddingsSync followQuietMs={0} />)
     onApplied?.([{ kind: 'upsert', path: 'notes/idle-edit.md' }], 7)
     await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
     modelState.current = { status: 'loading' }
-    await view.rerender(<EmbeddingsSync />)
+    await view.rerender(<EmbeddingsSync followQuietMs={0} />)
     modelState.current = { status: 'ready', model: 'all-MiniLM-L6-v2' }
-    await view.rerender(<EmbeddingsSync />)
+    await view.rerender(<EmbeddingsSync followQuietMs={0} />)
     await flushQueue()
     expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalledTimes(1)
     expect(core.subscribeIndexApplied).toHaveBeenCalledTimes(1)
@@ -242,7 +281,7 @@ describe('EmbeddingsSync', () => {
 
   it('initializes synchronization when the graph opens with an unloaded model', async () => {
     modelState.current = { status: 'unloaded', model: 'all-MiniLM-L6-v2' }
-    await render(<EmbeddingsSync />)
+    await render(<EmbeddingsSync followQuietMs={0} />)
     await vi.waitFor(() => expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalledTimes(1))
     await vi.waitFor(() => expect(onApplied).not.toBeNull())
   })

@@ -47,7 +47,7 @@ Start with today's note (⌘D). Everything else is optional.
 
 1. **Capture.** Write a decision in today's note. Add a title inside \`[[double brackets]]\` to connect it to a project or person.
 2. **Ask.** In Settings → AI, connect Claude Code or Codex with your subscription, or add a provider API key. Open chat (⌘J) and ask about that decision.
-3. **Verify.** Expand **Context used** under the reply to see the notes included with your question. Open a source to check the answer.
+3. **Verify.** Open **Used N notes** above the reply to see the notes included with your question. Open a source to check the answer.
 
 ## When you want more
 
@@ -75,7 +75,7 @@ Start with today's note in the Daily tab. Everything else is optional.
 
 1. **Capture.** Write a decision in today's note. Type \`[[\` and a title to connect it to a project or person.
 2. **Ask.** In Settings → AI, add a provider API key. Open the Chat tab and ask about that decision.
-3. **Verify.** Expand **Context used** under the reply to see the notes included with your question. Tap a source to check the answer.
+3. **Verify.** Open **Used N notes** above the reply to see the notes included with your question. Tap a source to check the answer.
 
 ## When you want more
 

@@ -371,6 +371,8 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
         token,
         destination: root,
         allowPublic: options?.allowPublic === true,
+        // Recent history only: the phone never needs years of commits to sync.
+        light: true,
       })
       invalidateGithubAuth()
       await finishOnboarding('local', root, await openRecent(root, { seedFirstRun: false }))

@@ -6,6 +6,8 @@ import { hover, unhover } from '@/test-utils/mouse'
 import { BlockZoom } from './block-zoom'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 import { PageBlocks } from './page-blocks'
+import { RouterProvider } from '@/routing/router'
+import { createRouterStore } from '@/routing/router-store'
 
 /**
  * Sub pages as Craft's page blocks: a list item marked `^page-…` stays in its
@@ -35,7 +37,11 @@ function clickGrip(element: Element): void {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
 }
 
-async function renderNote(content = NOTE, blockHandle = false): Promise<NoteEditorHandle> {
+async function renderNote(
+  content = NOTE,
+  blockHandle = false,
+  onOpenPage?: (id: string) => boolean,
+): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null
   await render(
     <NoteEditor
@@ -46,7 +52,7 @@ async function renderNote(content = NOTE, blockHandle = false): Promise<NoteEdit
       }}
     >
       <BlockZoom />
-      <PageBlocks />
+      <PageBlocks {...(onOpenPage !== undefined ? { onOpenPage } : {})} />
     </NoteEditor>,
   )
   await expect.element(pmRoot.getByText(content.split('\n')[0]!.slice(2, 8))).toBeVisible()
@@ -106,6 +112,41 @@ describe('PageBlocks', () => {
     expect(handle.getMarkdown()).toBe(NOTE)
   })
 
+  // The phone's daily opens a tapped page on the note's own screen: the card
+  // hands the page's id over and the day itself stays as it is.
+  it('hands a tapped page to the surface that opens it elsewhere', async () => {
+    const opened: string[] = []
+    const handle = await renderNote(NOTE, false, (id) => {
+      opened.push(id)
+      return true
+    })
+    await expect.poll(() => cards.elements().length).toBe(2)
+    ;(cards.elements()[0] as HTMLElement).click()
+    expect(opened).toEqual(['page-a1b2c3'])
+    expect(pmRoot.element().classList.contains('kore-zoomed')).toBe(false)
+    await expect.element(pmRoot.getByText('Groceries')).toBeVisible()
+    expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  it('ends a zoom here when a page inside it opens elsewhere, so its Back step goes', async () => {
+    const opened: string[] = []
+    const handle = await renderNote(NOTE, false, (id) => {
+      opened.push(id)
+      return true
+    })
+    await expect.poll(() => cards.elements().length).toBe(2)
+    expect(handle.revealHeading?.('^page-a1b2c3')).toBe(true)
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    const packing = (cards.elements() as HTMLElement[]).find((card) => card.offsetParent !== null)
+    packing!.click()
+    expect(opened).toEqual(['page-d4e5f6'])
+    expect(pmRoot.element().classList.contains('kore-zoomed')).toBe(false)
+    // The caret left the page with the zoom: past the "Trip to Lisbon" card
+    // and the empty page after it, never in hidden text.
+    handle.focus()
+    await expect.poll(() => window.getSelection()?.anchorNode?.textContent ?? '').toBe('After')
+  })
+
   it('keeps the caret out of a collapsed page', async () => {
     const handle = await renderNote()
     await expect.poll(() => cards.elements().length).toBe(2)
@@ -125,6 +166,41 @@ describe('PageBlocks', () => {
     await expect.element(pmRoot.getByText('Passport', { exact: true })).toBeVisible()
     await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  // A page opened from the phone's daily is a screen of its own: Back from
+  // it returns to the day in one step, not to the whole daily note first.
+  it('leaves a page opened as a screen in one Back, zooming out only from deeper', async () => {
+    const store = createRouterStore()
+    store.navigate({ kind: 'note', path: 'daily/2026-11-17.md' })
+    let handle: NoteEditorHandle | null = null
+    await render(
+      <RouterProvider store={store}>
+        <NoteEditor
+          initialContent={NOTE}
+          handleRef={(grabbed) => {
+            handle = grabbed
+          }}
+        >
+          <BlockZoom />
+          <PageBlocks />
+        </NoteEditor>
+      </RouterProvider>,
+    )
+    await expect.poll(() => cards.elements().length).toBe(2)
+    expect(handle!.revealHeading?.('^page-a1b2c3', { asScreen: true })).toBe(true)
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    expect(store.getSnapshot().viewBack).toBe(false)
+    // A page inside it zooms on the same screen, and Back steps out of that.
+    const packing = (cards.elements() as HTMLElement[]).find((card) => card.offsetParent !== null)
+    packing!.click()
+    await expect.element(pmRoot.getByText('Passport', { exact: true })).toBeVisible()
+    await expect.poll(() => store.getSnapshot().viewBack).toBe(true)
+    store.back()
+    await expect.element(pmRoot.getByText('Book the flight', { exact: true })).toBeVisible()
+    await expect.poll(() => store.getSnapshot().viewBack).toBe(false)
+    store.back()
+    expect(store.getSnapshot().route).toEqual({ kind: 'today' })
   })
 
   it('selects a card instead of joining text into it', async () => {

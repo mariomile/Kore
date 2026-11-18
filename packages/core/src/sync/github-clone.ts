@@ -33,8 +33,19 @@ export interface CloneGithubVaultOptions {
   readonly destination: string
   /** The user confirmed syncing with a public repository. */
   readonly allowPublic?: boolean
+  /**
+   * Download only recent history ({@link LIGHT_CLONE_DEPTH} commits). The
+   * phone wants this: a long-lived vault's full history can run to gigabytes
+   * (Mario's was 1.5 GB) that the first open would have to download and keep,
+   * while sync itself only ever needs the newest commit. History views just
+   * reach back less far.
+   */
+  readonly light?: boolean
   readonly fetchFn?: FetchFn
 }
+
+/** Commits a light clone keeps: enough for a few days of note history. */
+export const LIGHT_CLONE_DEPTH = 50
 
 /**
  * "Open from GitHub": check the token and the repository up front (so a
@@ -77,7 +88,12 @@ export async function cloneGithubVault(options: CloneGithubVaultOptions): Promis
     throw new PublicRepoRefusedError(repo.fullName)
   }
   try {
-    await gitClone(githubRemoteUrl(options.ref), options.destination, token)
+    await gitClone(
+      githubRemoteUrl(options.ref),
+      options.destination,
+      token,
+      options.light === true ? { depth: LIGHT_CLONE_DEPTH } : {},
+    )
   } catch (err) {
     if (isAppError(err) && /exists and is not an empty directory/i.test(err.message)) {
       throw new KoreError(

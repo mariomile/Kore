@@ -61,12 +61,11 @@ async function runRebuild(generation: number): Promise<void> {
   // the caches), so cached note lists, backlinks, and tags would otherwise
   // show pre-rebuild rows until some unrelated change invalidated them.
   invalidateIndexQueries()
-  // index_clear wiped the embedding tables with everything else — rebuild
-  // them too, or semantic search stays silently empty until some other
-  // trigger re-embeds.
-  // An idle-released model has to come back for this: the rebuild wiped the
-  // vectors, and nothing else re-embeds them until a semantic query happens
-  // to reload the runtime.
+  // index_clear keeps the embedding tables, but a manual rebuild is a repair:
+  // run the backfill so changed notes re-embed and rows of deleted notes are
+  // pruned (unchanged chunks hash-skip, so this is cheap on a healthy vault).
+  // An idle-released model has to come back for this, or nothing re-embeds
+  // until a semantic query happens to reload the runtime.
   const status = await embedStatus()
   const embed = status.status === 'unloaded' ? await ensureEmbeddingsVisibly() : status
   if (embed.status === 'ready') {

@@ -280,6 +280,7 @@ describe('GraphChooser', () => {
           url: 'https://github.com/alex/brain.git',
           path: '/Users/alex/Documents/brain',
           token: 'github_pat_abc',
+          depth: null,
         },
       ])
       expect(invokeLog).toContainEqual([

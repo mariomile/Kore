@@ -3,8 +3,15 @@ import { CONNECTORS } from '../connectors/registry'
 import { normalizeConnectorPattern, parseConnectorTags } from '../connectors/pattern'
 import { syncConnector } from '../connectors/sync'
 import type { Connector } from '../connectors/types'
+import {
+  VAULT_SETTINGS_FILE,
+  mergeVaultConnectors,
+  readVaultSettings,
+  type VaultSettings,
+} from '../connectors/vault-settings'
 import { errorMessage } from '../errors'
 import { call } from '../ipc/invoke'
+import { connectorsSchema } from '../settings/schema-connectors'
 
 /**
  * `kore sources`: pull the connectors (Readwise, Granola) into the graph
@@ -12,10 +19,15 @@ import { call } from '../ipc/invoke'
  * minutes.
  *
  * This side owns the policy: which connectors exist ({@link CONNECTORS}),
- * the `KORE_<SOURCE>_*` variables that configure each one, their defaults,
- * and each source's window. The CLI only serves what it cannot know: the
- * user's flags and the per-machine window state in `.kore/sources.json`,
- * which it persists from the reports this run sends back.
+ * how each one is configured, their defaults, and each source's window.
+ * Where notes land, their name, tags and content and the daily link come
+ * from the vault's `.kore.json`, the same file the Mac and iPhone apps share
+ * (`connectors/vault-settings`), so an agent syncing from a terminal files
+ * notes exactly where the apps do; a `KORE_<SOURCE>_*` variable still wins
+ * for one run. The token only ever comes from the environment. The CLI
+ * serves what it cannot know: the user's flags, the per-machine window state
+ * in `.kore/sources.json` (persisted from the reports this run sends back),
+ * and the vault file.
  */
 
 const windowSchema = z.object({
@@ -54,6 +66,10 @@ export interface SourceRun {
   readonly folder: string
   readonly pattern: string | null
   readonly tags: readonly string[] | null
+  /** The connector's content switches, from the vault. */
+  readonly options: Readonly<Record<string, boolean>>
+  /** The daily-note heading new notes are linked under; `null`: no daily links. */
+  readonly dailyHeading: string | null
   readonly since: string | null
   /** The window floor this run honors (`null` when `--since` overrides it). */
   readonly floor: string | null
@@ -78,7 +94,8 @@ function envName(connector: Connector, field: 'TOKEN' | 'FOLDER' | 'PATTERN' | '
 
 /**
  * Resolve which sources run and how: every connector with a token (or just
- * `only`), its folder, pattern and tags from the environment, and its window.
+ * `only`), its settings from the vault file (a `KORE_<SOURCE>_FOLDER`,
+ * `_PATTERN` or `_TAGS` variable overriding its field), and its window.
  * The first run starts the window at `now`, so history another app already
  * wrote is not duplicated; `--since` reaches further back. A pattern the
  * connector rejects throws, failing only that source.
@@ -87,6 +104,7 @@ export function resolveSourceRuns(
   request: SourcesRequest,
   env: SourcesEnv,
   now: string,
+  vault: VaultSettings = {},
 ): SourcesPlan {
   if (request.only !== null && !CONNECTORS.some((connector) => connector.id === request.only)) {
     return {
@@ -94,6 +112,7 @@ export function resolveSourceRuns(
       usage: `unknown source "${request.only}"; known: ${CONNECTORS.map((c) => c.id).join(', ')}`,
     }
   }
+  const shared = mergeVaultConnectors(connectorsSchema.parse({}), vault)
   const runs: SourceRun[] = []
   for (const connector of CONNECTORS) {
     const token = envValue(env, envName(connector, 'TOKEN'))
@@ -102,13 +121,17 @@ export function resolveSourceRuns(
     }
     const saved = request.state[connector.id]
     const keptFloor = saved?.floor ?? now
+    const entry = shared[connector.id]
     const tags = envValue(env, envName(connector, 'TAGS'))
     runs.push({
       connector,
       token,
-      folder: envValue(env, envName(connector, 'FOLDER')) ?? connector.defaultFolder,
-      pattern: envValue(env, envName(connector, 'PATTERN')),
-      tags: tags === null ? null : parseConnectorTags(tags),
+      folder:
+        envValue(env, envName(connector, 'FOLDER')) ?? entry.folder ?? connector.defaultFolder,
+      pattern: envValue(env, envName(connector, 'PATTERN')) ?? entry.pattern,
+      tags: tags === null ? entry.tags : parseConnectorTags(tags),
+      options: entry.options,
+      dailyHeading: entry.dailyLink ? (entry.dailyHeading ?? connector.dailyHeading) : null,
       since: request.since ?? saved?.lastSyncedAt ?? null,
       floor: request.since === null ? keptFloor : null,
       keptFloor,
@@ -137,6 +160,8 @@ async function runSource(run: SourceRun, generation: number): Promise<SourceRunR
       folder: run.folder,
       pattern: run.pattern === null ? null : normalizeConnectorPattern(run.pattern, run.connector),
       tags: run.tags,
+      options: run.options,
+      dailyHeading: run.dailyHeading,
       since: date(run.since),
       floor: date(run.floor),
       generation,
@@ -161,7 +186,21 @@ async function runSource(run: SourceRun, generation: number): Promise<SourceRunR
  */
 export async function planSources(env: SourcesEnv): Promise<readonly SourceRun[] | null> {
   const request = await call('sources_config', {}, sourcesRequestSchema)
-  const plan = resolveSourceRuns(request, env, new Date().toISOString())
+  let vault: VaultSettings
+  try {
+    // The CLI host serves one graph, so any generation reads it.
+    vault = await readVaultSettings(0)
+  } catch (error) {
+    // Unreadable (not merely absent): stop rather than file notes somewhere
+    // the apps would not.
+    const message = errorMessage(error)
+    const usage = message.includes(VAULT_SETTINGS_FILE)
+      ? message
+      : `${VAULT_SETTINGS_FILE}: ${message}`
+    await call('sources_report', { reports: [], usage }, z.null())
+    return null
+  }
+  const plan = resolveSourceRuns(request, env, new Date().toISOString(), vault)
   if (plan.kind === 'usage') {
     await call('sources_report', { reports: [], usage: plan.usage }, z.null())
     return null

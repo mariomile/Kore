@@ -14,6 +14,7 @@ import {
   tagDisplayName,
   type SavedCollectionView,
   type TagType,
+  type TimelineZoom,
 } from '@kore/core'
 import { applyCollectionFilters } from '@/components/all-notes/collection-filter-menu'
 import type {
@@ -24,6 +25,7 @@ import {
   useCollectionSavedViews,
   useCollectionViewSettings,
 } from '@/components/all-notes/use-collection-view-settings'
+import { LIVE_COLLECTION_VIEW_ID } from '@/components/all-notes/collection-view-model'
 import {
   BoardView,
   Calendar,
@@ -35,9 +37,11 @@ import {
   Settings,
   Sliders,
   TableView,
+  TimelineView,
   type Icon,
 } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { timelineFieldsOf } from '@/lib/tags/timeline-layout'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
@@ -57,6 +61,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { MobileCalendar } from './mobile-calendar'
+import { MobileTimeline } from './mobile-timeline'
 import { MobileCollectionTable } from './mobile-collection-table'
 import { MobileGallery } from './mobile-gallery'
 import { MobileViewOptions, type ViewGrouping } from './mobile-view-options'
@@ -75,6 +80,7 @@ const VIEW_GLYPH: Record<MobileTypeView, Icon> = {
   table: TableView,
   board: BoardView,
   calendar: Calendar,
+  timeline: TimelineView,
   gallery: LayoutGrid,
 }
 
@@ -82,6 +88,7 @@ const VIEW_LABEL: Record<MobileTypeView, string> = {
   table: 'Table',
   board: 'Board',
   calendar: 'Calendar',
+  timeline: 'Timeline',
   gallery: 'Grid',
 }
 
@@ -129,27 +136,46 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   // sheet edits them and the saved-views hook writes them back.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
   const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
-  const { tabs, activeViewId, applySavedView, addView } = useCollectionSavedViews({
-    tagKey,
-    typeViews:
-      loadedTagType === undefined || loadedTagType === null
-        ? loadedTagType
-        : (loadedTagType.views ?? NO_TYPE_VIEWS),
-    view: storedView,
-    collectionSorts,
-    boardGroupProperty,
-    tableGroupProperty,
-    calendarAvailable,
-    collectionFilters,
-    filterMatch,
-    setViewMode,
-    setCollectionSorts,
-    setCollectionGroup,
-    setTableGroup,
-    setCollectionFilters,
-    setFilterMatch,
-  })
+  const { tabs, activeViewId, applySavedView, addView, updateActiveTimeline } =
+    useCollectionSavedViews({
+      tagKey,
+      typeViews:
+        loadedTagType === undefined || loadedTagType === null
+          ? loadedTagType
+          : (loadedTagType.views ?? NO_TYPE_VIEWS),
+      view: storedView,
+      collectionSorts,
+      boardGroupProperty,
+      tableGroupProperty,
+      calendarAvailable,
+      collectionFilters,
+      filterMatch,
+      setViewMode,
+      setCollectionSorts,
+      setCollectionGroup,
+      setTableGroup,
+      setCollectionFilters,
+      setFilterMatch,
+    })
   const activeTab = tabs.find((entry) => entry.id === activeViewId) ?? tabs[0]
+  // The timeline's fields and zoom ride on its saved tab, as on the Mac.
+  const [liveTimelineZoom, setLiveTimelineZoom] = useState<TimelineZoom>('month')
+  const timelineZoom =
+    activeViewId === LIVE_COLLECTION_VIEW_ID ? liveTimelineZoom : (activeTab?.zoom ?? 'month')
+  const setTimelineZoom = (zoom: TimelineZoom): void => {
+    if (activeViewId === LIVE_COLLECTION_VIEW_ID) {
+      setLiveTimelineZoom(zoom)
+    } else {
+      updateActiveTimeline({ zoom })
+    }
+  }
+  const timelineFields = useMemo(
+    () =>
+      tagType === undefined
+        ? null
+        : timelineFieldsOf(tagType.properties, { start: activeTab?.start, end: activeTab?.end }),
+    [tagType, activeTab?.start, activeTab?.end],
+  )
 
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
@@ -174,7 +200,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   const [choosingView, setChoosingView] = useState(false)
   const [adjustingView, setAdjustingView] = useState(false)
   const grouping: ViewGrouping | null =
-    view === 'table'
+    view === 'table' || view === 'timeline'
       ? {
           properties: tableGroupProperties,
           selected: tableGroupProperty,
@@ -198,7 +224,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   const lensActive =
     collectionFilters.length > 0 ||
     collectionSorts.length > 0 ||
-    (view === 'table' && tableGroupProperty !== null)
+    ((view === 'table' || view === 'timeline') && tableGroupProperty !== null)
   const [configuring, setConfiguring] = useState(false)
   const resolveTemplateValues = useTemplateValues()
   const createRow = useCallback(
@@ -378,6 +404,15 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           cardType={visibleTagType}
           onOpen={open}
         />
+      ) : view === 'timeline' && timelineFields !== null ? (
+        <MobileTimeline
+          entries={rows}
+          fields={timelineFields}
+          groupProperty={tableGroupProperty}
+          zoom={timelineZoom}
+          onZoomChange={setTimelineZoom}
+          onOpen={open}
+        />
       ) : view === 'gallery' ? (
         rows.length === 0 ? (
           <EmptyRows searching={deferredQuery.trim() !== ''} name={name} />
@@ -520,7 +555,9 @@ function TypeViewToggle({ view, layouts, onChange }: TypeViewToggleProps): React
             aria-pressed={view === entry}
             onClick={() => onChange(entry)}
             className={cn(
-              "relative z-20 flex h-9 w-11 items-center before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
+              "relative z-20 flex h-9 items-center before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
+              // Five layouts (a dated type) still leave the view's name room.
+              layouts.length > 4 ? 'w-9' : 'w-11',
               view === entry ? 'text-text' : 'text-text-muted',
             )}
           >

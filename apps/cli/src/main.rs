@@ -231,7 +231,8 @@ enum Command {
         rebuild: bool,
     },
     /// Pull Readwise highlights and Granola meetings into the graph without the app
-    /// (tokens from KORE_READWISE_TOKEN / KORE_GRANOLA_TOKEN; needs Node 22+)
+    /// (tokens from KORE_READWISE_TOKEN / KORE_GRANOLA_TOKEN, where notes land from
+    /// the vault's .kore.json; needs Node 22+)
     Sources {
         /// Only this source (readwise or granola)
         #[arg(long, value_name = "SOURCE")]

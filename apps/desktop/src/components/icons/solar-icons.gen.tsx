@@ -814,6 +814,15 @@ export const Smile: Icon = createIcon(
   </>,
 )
 
+/** Solar `sort-vertical-linear`. */
+export const SortVertical: Icon = createIcon(
+  'SortVertical',
+  <g strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 18L16 6M12 10.125L16 6L20 10.125" />
+    <path d="M8 6L8 18M4 13.875L8 18L12 13.875" />
+  </g>,
+)
+
 /** Solar `stars-linear`. */
 export const Sparkles: Icon = createIcon(
   'Sparkles',

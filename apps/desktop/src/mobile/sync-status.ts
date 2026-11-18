@@ -1,4 +1,18 @@
+import type { SyncStep } from '@kore/core'
 import type { BackupState } from '@/lib/backup-controller'
+
+/** The status detail per in-flight step: what the notes are doing, never git words. */
+const STEP_DETAIL: Record<SyncStep, string> = {
+  preparing: 'Getting ready',
+  saving: 'Saving your changes',
+  downloading: 'Downloading changes',
+  merging: 'Applying changes from your other devices',
+  uploading: 'Uploading your changes',
+}
+
+function clockTime(epochMs: number): string {
+  return new Date(epochMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 
 /**
  * The plain-language sync status mobile shows (Plan 19, step 10). The phone
@@ -7,6 +21,8 @@ import type { BackupState } from '@/lib/backup-controller'
  * no commits, branches, or merges, just what the user's notes are doing.
  */
 export interface MobileSyncStatus {
+  /** Which state this is — picks the indicator's glyph. */
+  kind: 'synced' | 'syncing' | 'review' | 'error' | 'offline'
   /** What the user reads: `Synced`, `Syncing`, `Needs review`, … */
   label: string
   /**
@@ -38,10 +54,23 @@ export function mobileSyncStatus(
   }
   const status = backup.status
   if (status.state === 'syncing') {
-    return { label: 'Syncing', tone: 'active', detail: null }
+    // The step and its start time make a stuck cycle diagnosable from the
+    // settings sheet: "Downloading changes since 08:41." names the step that
+    // never finished.
+    const progress = backup.progress
+    return {
+      kind: 'syncing',
+      label: 'Syncing',
+      tone: 'active',
+      detail:
+        progress === undefined
+          ? null
+          : `${STEP_DETAIL[progress.step]} since ${clockTime(progress.since)}.`,
+    }
   }
   if (conflictCount > 0) {
     return {
+      kind: 'review',
       label: 'Needs review',
       tone: 'attention',
       detail:
@@ -51,10 +80,15 @@ export function mobileSyncStatus(
     }
   }
   if (status.state === 'error') {
-    return { label: 'Needs attention', tone: 'attention', detail: status.message }
+    return {
+      kind: 'error',
+      label: 'Needs attention',
+      tone: 'attention',
+      detail: status.message,
+    }
   }
   if (status.state === 'offline') {
-    return { label: 'Offline', tone: 'attention', detail: status.message }
+    return { kind: 'offline', label: 'Offline', tone: 'attention', detail: status.message }
   }
-  return { label: 'Synced', tone: 'ok', detail: null }
+  return { kind: 'synced', label: 'Synced', tone: 'ok', detail: null }
 }

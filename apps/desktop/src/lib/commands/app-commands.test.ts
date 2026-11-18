@@ -591,7 +591,7 @@ describe('app commands', () => {
       embedStatus.mockResolvedValueOnce({ status: 'ready', model: 'all-MiniLM-L6-v2' })
       const { context } = fakeContext()
       await command('index.rebuild').run(context)
-      // index_clear wiped the embedding tables; rebuild must repopulate them.
+      // The rebuild runs the embedding backfill so changed notes re-embed.
       expect(backfillEmbeddingsVisibly).toHaveBeenCalledWith({
         generation: 7,
         modelId: 'all-MiniLM-L6-v2',

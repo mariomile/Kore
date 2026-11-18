@@ -121,6 +121,7 @@ export function ConnectGithubDialog({
             repoName={wizard.tokenTarget.name}
             repoOwner={wizard.tokenTarget.owner}
             createRepoFirst={wizard.tokenTarget.createFirst}
+            startWithToken={wizard.startWithToken}
           />
         ) : null}
 

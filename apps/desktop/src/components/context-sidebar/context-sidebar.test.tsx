@@ -2,6 +2,7 @@ import { render as renderBare } from 'vitest-browser-react'
 import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { SidebarProvider, useSidebar } from '@/providers/sidebar-provider'
+import { setPeekPath } from '@/lib/selection/peek-store'
 
 /**
  * The right rail's panel switcher: the band starts as Details alone plus the
@@ -37,6 +38,9 @@ vi.mock('@/components/context-sidebar/day-calendar', () => ({
 }))
 vi.mock('@/components/context-sidebar/daily-events-section', () => ({
   DailyEventsSection: () => null,
+}))
+vi.mock('@/components/chat/chat-context-overview', () => ({
+  ChatContextOverview: () => <div data-testid="chat-context" />,
 }))
 vi.mock('@/lib/use-today', () => ({
   useToday: () => '2026-08-19',
@@ -258,6 +262,31 @@ describe('ContextSidebar', () => {
     const view = await render(<ContextSidebar target={null} showDetails={false} />)
     // Nothing to show: the rail draws no band and no empty card.
     expect(view.container.querySelector('[role="tablist"]')).toBeNull()
+    await view.unmount()
+  })
+
+  it('describes the conversation on the chat route and never mirrors it as a Chat panel', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails routeKind="chat" />)
+    await expect.element(view.getByTestId('chat-context')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Open a panel' }).click()
+    await expect.element(view.getByRole('menuitem', { name: 'Calendar' })).toBeInTheDocument()
+    expect(view.getByRole('menuitem', { name: 'Chat' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('keeps the conversation on the chat route while a list still peeks a note', async () => {
+    setPeekPath('Projects/Kore.md')
+    const view = await render(<ContextSidebar target={null} showDetails routeKind="chat" />)
+    await expect.element(view.getByTestId('chat-context')).toBeInTheDocument()
+    await view.unmount()
+    setPeekPath(null)
+  })
+
+  it('offers the other panels where a page has nothing to describe', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails routeKind="graphMap" />)
+    await expect.element(view.getByText('Open beside this page')).toBeVisible()
+    await view.getByRole('button', { name: /^Calendar/ }).click()
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
     await view.unmount()
   })
 })

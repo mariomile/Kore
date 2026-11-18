@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildFolderTree, setBridge } from '@kore/core'
 import { queryClient, throttledInvalidateIndexQueries } from './query-client'
 
 const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
@@ -62,5 +63,54 @@ describe('throttledInvalidateIndexQueries', () => {
 
     throttledInvalidateIndexQueries()
     expect(invalidateSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('narrowed invalidation of the folder tree', () => {
+  const treeKey = ['index', '/g', 'folder-tree']
+
+  afterEach(() => {
+    setBridge(null)
+    queryClient.removeQueries({ queryKey: treeKey })
+  })
+
+  function cacheTree(titleInIndex: string): void {
+    queryClient.setQueryData(treeKey, buildFolderTree([{ path: 'notes/a.md', title: 'A' }]))
+    setBridge({
+      invoke: async (command) =>
+        command === 'db_query' ? [{ path: 'notes/a.md', title: titleInIndex }] : null,
+      listen: async () => () => {},
+    })
+  }
+
+  const treeRefetches = (): number =>
+    invalidateSpy.mock.calls.filter(([filters]) => filters?.exact === true).length
+
+  it('skips the folder tree for a body-only save but refreshes everything else', async () => {
+    cacheTree('A')
+    throttledInvalidateIndexQueries([{ path: 'notes/a.md', kind: 'upsert' }])
+    expect(invalidateSpy).toHaveBeenCalledTimes(1)
+    const [filters] = invalidateSpy.mock.calls[0]!
+    expect(filters?.predicate?.(queryClient.getQueryCache().find({ queryKey: treeKey })!)).toBe(
+      false,
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(treeRefetches()).toBe(0)
+  })
+
+  it('refreshes the folder tree when the save retitled the note', async () => {
+    cacheTree('A renamed')
+    throttledInvalidateIndexQueries([{ path: 'notes/a.md', kind: 'upsert' }])
+    await vi.waitFor(() => expect(treeRefetches()).toBe(1))
+  })
+
+  it('refreshes everything when a batch in the window came without its changes', () => {
+    cacheTree('A')
+    throttledInvalidateIndexQueries([{ path: 'notes/a.md', kind: 'upsert' }]) // leading
+    throttledInvalidateIndexQueries([{ path: 'notes/a.md', kind: 'upsert' }])
+    throttledInvalidateIndexQueries() // e.g. a sync pull: no batch to narrow by
+    invalidateSpy.mockClear()
+    vi.advanceTimersByTime(3_000)
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['index'] })
   })
 })

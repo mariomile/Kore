@@ -145,6 +145,38 @@ fn commit_excludes_runtime_dir_but_keeps_proposals_and_skips_when_clean() {
 }
 
 #[test]
+fn commit_refreshes_stale_file_stats_so_the_next_commit_skips_hashing() {
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    write(root, "notes/a.md", "# A\n");
+    assert!(
+        commit_all(root, "Update notes", MAX_FILE_BYTES)
+            .unwrap()
+            .committed
+    );
+
+    // Same contents, new mtime: what an app update or a restore does to
+    // every file in a phone's vault.
+    let touched = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(2_000_000_000);
+    fs::File::options()
+        .write(true)
+        .open(root.join("notes/a.md"))
+        .unwrap()
+        .set_modified(touched)
+        .unwrap();
+
+    let outcome = commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    assert!(!outcome.committed, "unchanged contents must not commit");
+
+    // The index now carries the file's current mtime, so libgit2 trusts the
+    // stat data next time instead of re-hashing the file.
+    let repo = Repository::open(root).unwrap();
+    let index = repo.index().unwrap();
+    let entry = index.get_path(Path::new("notes/a.md"), 0).unwrap();
+    assert_eq!(entry.mtime.seconds(), 2_000_000_000);
+}
+
+#[test]
 fn commit_describes_single_note_changes() {
     let fixture = fixture();
     let root = &fixture.graph_a;
@@ -390,14 +422,14 @@ fn clone_restores_a_backup_into_an_empty_destination() {
     push(root, None).unwrap();
 
     let target = fixture._dir.path().join("restored");
-    super::remote::clone(&fixture.remote_url, &target, None).unwrap();
+    super::remote::clone(&fixture.remote_url, &target, None, None).unwrap();
     assert_eq!(read(&target, "notes/a.md"), "# A\n");
 
     // A non-empty destination is refused — a restore must never overwrite.
     let occupied = fixture._dir.path().join("occupied");
     fs::create_dir_all(&occupied).unwrap();
     fs::write(occupied.join("keep.txt"), "existing").unwrap();
-    assert!(super::remote::clone(&fixture.remote_url, &occupied, None).is_err());
+    assert!(super::remote::clone(&fixture.remote_url, &occupied, None, None).is_err());
 }
 
 #[test]
@@ -1078,6 +1110,7 @@ fn a_silent_remote_times_out_as_a_network_error() {
     let result = super::remote::clone(
         &format!("http://127.0.0.1:{port}/vault.git"),
         &target.path().join("vault"),
+        None,
         None,
     );
     let elapsed = started.elapsed();

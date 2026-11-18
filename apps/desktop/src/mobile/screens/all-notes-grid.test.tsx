@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useState, type ReactElement, type ReactNode } from 'react'
-import type { FilteredSearchHit } from '@kore/core'
+import type { AllNotesSort, FilteredSearchHit } from '@kore/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { EMPTY_ALL_NOTES_FILTERS } from '@/mobile/search-filters/filter-state'
 import '@/test-utils/locator'
@@ -19,9 +19,18 @@ const listNoteTags = vi.hoisted(() => vi.fn())
 const firstImageAssets = vi.hoisted(() => vi.fn())
 const hapticImpactLight = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
-const settingsState = vi.hoisted((): { allNotesView: 'list' | 'grid' } => ({
-  allNotesView: 'list',
-}))
+// Lets a test re-render the screen after mutating `settingsState`, the way
+// the real provider does after `updateSettings`.
+const settingsListeners = vi.hoisted(() => new Set<() => void>())
+function notifySettings(): void {
+  for (const listener of settingsListeners) listener()
+}
+const settingsState = vi.hoisted(
+  (): { allNotesView: 'list' | 'grid'; allNotesSort: AllNotesSort } => ({
+    allNotesView: 'list',
+    allNotesSort: 'updated-desc',
+  }),
+)
 
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
@@ -42,16 +51,32 @@ vi.mock('@/components/ui/drawer', () => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: {
-      dateFormat: 'mdy',
-      timeFormat: '12h',
-      allNotesView: settingsState.allNotesView,
+vi.mock('@/providers/settings-provider', async () => {
+  const { useSyncExternalStore } = await import('react')
+  let version = 0
+  const subscribe = (listener: () => void) => {
+    const bump = () => {
+      version += 1
+      listener()
+    }
+    settingsListeners.add(bump)
+    return () => settingsListeners.delete(bump)
+  }
+  return {
+    useSettings: () => {
+      useSyncExternalStore(subscribe, () => version)
+      return {
+        settings: {
+          dateFormat: 'mdy',
+          timeFormat: '12h',
+          allNotesView: settingsState.allNotesView,
+          allNotesSort: settingsState.allNotesSort,
+        },
+        updateSettings,
+      }
     },
-    updateSettings,
-  }),
-}))
+  }
+})
 
 const HEALTH_MTIME = new Date(2020, 0, 15, 12, 0).getTime()
 
@@ -109,6 +134,7 @@ afterEach(async () => {
 
 beforeEach(() => {
   settingsState.allNotesView = 'list'
+  settingsState.allNotesSort = 'updated-desc'
   updateSettings.mockReset()
   hapticImpactLight.mockReset()
   listNoteTags.mockResolvedValue([])
@@ -221,5 +247,92 @@ describe('MobileAllNotes grid view', () => {
     expect(page.getByTestId('all-notes-grid').element().querySelector('mark')?.textContent).toBe(
       'Health',
     )
+  })
+})
+
+describe('MobileAllNotes sort', () => {
+  // Each row's swipe action names its note ("Pin Banana" / "Unpin Zebra").
+  const titlesInOrder = (): string[] =>
+    [...document.querySelectorAll('button[aria-label^="Pin "], button[aria-label^="Unpin "]')].map(
+      (button) => (button.getAttribute('aria-label') ?? '').replace(/^(?:Un)?[Pp]in /, ''),
+    )
+
+  beforeEach(() => {
+    // The index's own order: pinned first, then newest.
+    searchWithFilters.mockResolvedValue([
+      hit({ path: 'notes/pinned.md', title: 'Zebra', highlightedTitle: 'Zebra', isPinned: true }),
+      hit({ path: 'notes/b.md', title: 'Banana', highlightedTitle: 'Banana', mtime: 300 }),
+      hit({ path: 'notes/a.md', title: 'apple', highlightedTitle: 'apple', mtime: 200 }),
+      hit({ path: 'notes/c.md', title: 'Cherry', highlightedTitle: 'Cherry', mtime: 100 }),
+    ])
+  })
+
+  it('keeps the index order for the default sort', async () => {
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    expect(titlesInOrder()).toEqual(['Zebra', 'Banana', 'apple', 'Cherry'])
+  })
+
+  it('orders the feed by the persisted sort, pinned notes still first', async () => {
+    settingsState.allNotesSort = 'title-asc'
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    expect(titlesInOrder()).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+    await expect
+      .element(page.getByRole('button', { name: 'Sort', exact: true }))
+      .toHaveAccessibleDescription('Title, A to Z')
+  })
+
+  it('keeps relevance order while free text is searched', async () => {
+    settingsState.allNotesSort = 'title-asc'
+    await renderScreen()
+    await page.getByRole('searchbox', { name: 'Search notes' }).fill('fruit')
+    await expect
+      .poll(() =>
+        searchWithFilters.mock.calls.some(
+          ([parsed]) => (parsed as { text: string }).text === 'fruit',
+        ),
+      )
+      .toBe(true)
+    // The sorted placeholder holds until the ranked rows land in index order.
+    await expect.poll(titlesInOrder).toEqual(['Zebra', 'Banana', 'apple', 'Cherry'])
+  })
+
+  it('keeps the sorted feed while a typed search is still loading', async () => {
+    settingsState.allNotesSort = 'title-asc'
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    // The ranked query never settles, so the previous (sorted) rows stay up.
+    searchWithFilters.mockImplementation(() => new Promise<FilteredSearchHit[]>(() => {}))
+    await page.getByRole('searchbox', { name: 'Search notes' }).fill('fruit')
+    await expect
+      .poll(() =>
+        searchWithFilters.mock.calls.some(
+          ([parsed]) => (parsed as { text: string }).text === 'fruit',
+        ),
+      )
+      .toBe(true)
+    expect(titlesInOrder()).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+  })
+
+  it('reorders in memory on a sort change, without asking the index again', async () => {
+    updateSettings.mockImplementation((patch: { allNotesSort?: AllNotesSort }) => {
+      Object.assign(settingsState, patch)
+      notifySettings()
+    })
+    await renderScreen()
+    await expect.element(page.getByText('Cherry')).toBeInTheDocument()
+    const calls = searchWithFilters.mock.calls.length
+    await page.getByRole('button', { name: 'Sort', exact: true }).click()
+    await page.getByRole('button', { name: 'Title' }).click()
+    await expect.poll(titlesInOrder).toEqual(['Zebra', 'apple', 'Banana', 'Cherry'])
+    expect(searchWithFilters.mock.calls.length).toBe(calls)
+  })
+
+  it('writes the sheet’s choice to the shared setting', async () => {
+    await renderScreen()
+    await page.getByRole('button', { name: 'Sort', exact: true }).click()
+    await page.getByRole('button', { name: 'Title' }).click()
+    expect(updateSettings).toHaveBeenCalledWith({ allNotesSort: 'title-asc' })
   })
 })

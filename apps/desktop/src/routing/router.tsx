@@ -186,3 +186,32 @@ export function RouterFreeze({ frozen, children }: RouterFreezeProps): ReactElem
   }
   return <RouterContext value={frozen ? captured : live}>{children}</RouterContext>
 }
+
+interface RouterBeneathProps {
+  /** Routes drawn over the workspace (Settings) rather than inside it. */
+  covers: (route: Route) => boolean
+  /** What the workspace shows when it opened straight into a covering route. */
+  fallback: Route
+  children: ReactNode
+}
+
+/**
+ * Keep the workspace beneath a covering route drawn as it was. Settings opens
+ * as a modal over the window: the pane under it goes on showing the route the
+ * user came from (pinned like {@link RouterFreeze}, so nothing in it reacts to
+ * the Settings navigations), and a window that launched into Settings shows
+ * `fallback` under it. Closing Settings hands the live value back.
+ */
+export function RouterBeneath({ covers, fallback, children }: RouterBeneathProps): ReactElement {
+  const live = useRouter()
+  const covered = covers(live.route)
+  // A window that launched into a covering route pins `fallback` once, so
+  // the Settings navigations after it reach nothing beneath either.
+  const [captured, setCaptured] = useState<RouterValue>(() =>
+    covered ? { ...live, route: fallback } : live,
+  )
+  if (!covered && captured !== live) {
+    setCaptured(live)
+  }
+  return <RouterContext value={covered ? captured : live}>{children}</RouterContext>
+}

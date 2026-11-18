@@ -9,6 +9,7 @@ import {
 } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
 import { linkCardElement } from './link-card-dom'
+import { memoByNode } from './node-memo'
 
 /**
  * Link preview cards in the live editor: a paragraph holding nothing but a
@@ -63,7 +64,9 @@ function readMeta(tr: Transaction): LinkCardMeta | null {
  * sentence, and a link with words around it stays inline — a card replaces a
  * URL nobody wanted to read, never prose.
  */
-export function paragraphCardUrl(paragraph: ProseMirrorNode): string | null {
+export const paragraphCardUrl = memoByNode(cardUrlOf)
+
+function cardUrlOf(paragraph: ProseMirrorNode): string | null {
   if (paragraph.type.name !== 'paragraph') {
     return null
   }

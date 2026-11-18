@@ -1,5 +1,153 @@
 # Kore working state
 
+## iPhone note cards, 2026-11-18
+
+- [x] Note cards: link-titles by name, wrapped long titles, no raw link paths
+  in previews, no gap above the title, parent shown as a path, nested tags
+  colored in full (#553, projection 38).
+
+## Smooth launch, 2026-11-18
+
+- [x] One continuous splash from the launch screen to the daily note: no white
+  frame, no font swap, no late pieces; native launch cover on iPhone (#555).
+- [x] Obsidian vaults: wiki links resolve by filename first, so a heading with
+  the same name no longer steals the link or its backlinks (#554, projection 37).
+- [x] TestFlight no longer fails when altool crashes after the upload (#550).
+
+## Timeline view for types, 2026-11-17
+
+- [x] Collections get a Timeline view: notes are bars from start to end date,
+  zoom by week, month or quarter; drag a bar on Mac to move its dates, tap on
+  iPhone opens the note (#546).
+
+## Integration settings shared through the vault, 2026-11-17
+
+- [x] Integration settings (folder, file name, tags, content, frequency, daily
+  link) now live in the vault's `.kore.json`, so Mac and iPhone share them.
+  Whether a device syncs, and its credentials, stay on the device (#545).
+- [x] `kore sources` (CLI and always-on host) reads the same settings from
+  `.kore.json`; the per-source `KORE_` variables still override, and tokens
+  stay in the environment (#547).
+
+## AI chat redesign, 2026-11-17
+
+- [x] The chat's context collapses to an "N notes" pill with mini page
+  previews; recall skips greetings and duplicate copies from the archive; the
+  right rail is available on every route (Details shows the chat's notes on
+  the chat route); text fields have no focus border (#544).
+
+## Faster typing in long notes, 2026-11-17
+
+- [x] Typing in long notes is faster: the editor no longer re-renders the
+  table handle and selection menu on every key, and the block-id, sub-page and
+  link-card plugins recompute only the blocks you touch. Last PR of the Mac
+  typing-lag work (#527, #530, #532, #537).
+
+## Settings as a modal on Mac, 2026-11-17
+
+- [x] Settings on Mac opens as a large centered modal over the blurred
+  workspace; the note underneath stays in place, and Escape, a click outside
+  or Close return to it. Cmd+, and deep links work as before; iPhone is
+  unchanged. Look approved by Mario (#541).
+
+## No Due today card on the iPhone daily, 2026-11-17
+
+- [x] Fix (iPhone): the "Due today" card above today's daily is removed, so
+  other notes' tasks are no longer injected there (#540).
+
+## Integrations page in Settings, 2026-11-17
+
+- [x] Settings gets an Integrations page: a tile overview with the real Granola
+  and Readwise icons; per connection a sync frequency (5/15/30/60 min, on
+  launch, manual), folder and file name with a live preview, tags, content
+  switches, and a link in the daily note under a chosen heading. Granola notes
+  get richer frontmatter with optional My notes and Transcript; unaliased path
+  wikilinks show the note name. Mac and iPhone; look approved by Mario (#528).
+
+## Folder tree not refetched on save, 2026-11-17
+
+- [x] Fix: saving a note no longer refetches the whole vault's folder tree; the
+  tree refreshes only when a note is added, removed or retitled. Part of the
+  Mac typing-lag work after #527 and #530 (#532).
+
+## Sub pages from the daily on iPhone, 2026-11-17
+
+- [x] Fix: on iPhone, tapping a sub page on the daily opens it full screen and
+  one Back returns to the day. Turn into Text inside an open page no longer
+  freezes the app (the unwrap loop spun forever against the zoom). A day
+  re-registering no longer takes over the note screen's editor handle (#534).
+- Not verified on a real iPhone yet.
+
+## Embedding stays in the background on Mac, 2026-11-17
+
+- [x] Fix: semantic search no longer takes over the Mac; embedding runs on at
+  most 4 low-priority threads (the bound was never applied before), and live
+  updates wait for a 5-second pause in typing instead of firing after every
+  autosave. Second half of the Mac typing-lag fix after #527 (#530).
+
+## Embeddings kept across a full rebuild, 2026-11-17
+
+- [x] Fix (shipped inside 0.123.2, with #524): updating Kore no longer re-runs
+  semantic search over the whole vault; a full index rebuild keeps embeddings
+  and re-embeds only notes that changed. Fixes heavy CPU and typing lag on Mac
+  after 0.123.x, seen by Mario on 2026-11-17 (#527).
+
+## Task due dates only at the item's edges, 2026-11-17
+
+- [x] Fix: a task's due date is only a [[YYYY-MM-DD]] link that ends the item
+  (optionally followed by @HH:MM, @repeat, #tags, [[links]], ^id), opens it,
+  or carries @HH:MM; a date cited mid-sentence (e.g. "Fonte: [[2026-09-13]].")
+  stays a plain link. PROJECTION_VERSION 36 forces a one-time reindex. Fixes
+  fake overdue tasks from vault agents citing dailies; rule chosen by Mario
+  (#524).
+
+## iPhone Syncing fix, 2026-11-17
+
+- [x] Fix: on iPhone, Syncing no longer sticks on "Saving your changes"; the
+  commit refreshes libgit2's stale file stats instead of re-hashing the whole
+  vault every cycle (#521).
+- Not verified on a real iPhone yet.
+
+## iPhone Notes sorting, 2026-11-17
+
+- [x] The iPhone Notes tab gets a sort button: a sheet picks Last updated or
+  Title and the direction, sharing the Mac's allNotesSort setting; pinned
+  notes stay on top and typed search keeps relevance order. Sorting runs in
+  memory with a shared Intl.Collator, which also speeds the Mac list's title
+  sort (#515).
+
+## Launch crash fix and Syncing watchdog, 2026-11-17
+
+- [x] Fix (shipped inside 0.122.0): the iPhone TestFlight build no longer
+  crashes on launch; the UIScene manifest added in 0.120 (#503) is removed,
+  since CI builds with the iOS 26.5 SDK, which does not require it (#514).
+- [x] Fix: a stuck local step no longer holds Syncing on forever (5-minute
+  watchdog, never overlapping the stalled command), and the Sync footer on
+  iPhone shows the current step (#516).
+- Not verified on a real iPhone; Mario still saw Syncing stuck before #516.
+
+## Light clone on iPhone, 2026-11-16
+
+- [x] Opening a vault from GitHub on the iPhone downloads only the last 50
+  commits, not the full history; the Mac keeps full clones (#509).
+- Not verified on a real iPhone.
+
+## Type home folder, Syncing pill, GitHub sign-in, 2026-11-16
+
+- [x] Type home folder: a type's settings gain a Folder field (Mac + iPhone);
+  new notes of the type are born there from every surface
+  (table/board/calendar, relations, `kore new --tag`, MCP create_note),
+  optionally one folder per note via `folder: <path>/{title}`; existing notes
+  never move. PROJECTION_VERSION 35: one reindex on upgrade (#508).
+- [x] Fix: the Syncing pill no longer waits for pulled notes to reindex on
+  iPhone (#505).
+- [x] Sign in to GitHub with one click: Kore's GitHub App is registered
+  (Contents read/write + Metadata read only, device flow, refreshing tokens);
+  the Connect GitHub wizard now starts from Sign in with GitHub plus a code,
+  the personal token stays as the alternative, and 'Use a different token'
+  goes straight to token entry (#500).
+- Not verified on a real Mac or iPhone.
+
 ## iPhone share sheet, type dialog, UIScene, layout out of settings, 2026-11-16
 
 - [x] iPhone share sheet: when you share a link or an X post, you pick where

@@ -38,6 +38,8 @@ interface GithubAuthStepProps {
    * never reach it.
    */
   createRepoFirst?: boolean | undefined
+  /** Open on token entry even when the device flow is available (swapping a saved token). */
+  startWithToken?: boolean | undefined
 }
 
 /**
@@ -53,13 +55,14 @@ export function GithubAuthStep({
   repoName,
   repoOwner,
   createRepoFirst = false,
+  startWithToken = false,
 }: GithubAuthStepProps): ReactElement {
   const deviceFlow = useDeviceFlowAuth()
   const pat = useAsyncAction()
   const [patValue, setPatValue] = useState('')
   // The device flow leads when the app is registered; the PAT path stays one
   // click away (some users prefer a scoped token; GHES needs it).
-  const [usePat, setUsePat] = useState(!isDeviceFlowConfigured())
+  const [usePat, setUsePat] = useState(startWithToken || !isDeviceFlowConfigured())
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   /** Opening the browser failed — show the URL, the only way left to get there. */
   const [openFailed, setOpenFailed] = useState(false)

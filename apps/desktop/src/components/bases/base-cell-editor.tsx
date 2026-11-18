@@ -98,7 +98,7 @@ export function BaseCellEditor({
           setDraft(null)
         }
       }}
-      className="w-full min-w-24 rounded-sm bg-surface px-1 text-[13px] text-text outline-none ring-1 ring-border focus:ring-accent"
+      className="w-full min-w-24 rounded-sm bg-surface px-1 text-[13px] text-text outline-none ring-1 ring-border"
     />
   )
 }

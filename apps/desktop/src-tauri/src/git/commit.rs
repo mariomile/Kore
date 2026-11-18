@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::path::Path;
 
-use git2::{Index, IndexAddOption};
+use git2::{DiffOptions, Index, IndexAddOption, Repository};
 use serde::Serialize;
 
 use crate::error::AppResult;
@@ -54,6 +54,7 @@ pub(super) fn commit_all(
     repo.add_ignore_rule(&kore_index_schema::IGNORE_RULES.join("\n"))?;
 
     let mut index = repo.index()?;
+    refresh_stat_cache(&repo, &index)?;
     let skipped = add_all_with_size_guard(&mut index, root, max_file_bytes)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
@@ -65,6 +66,25 @@ pub(super) fn commit_all(
         fallback_message,
         skipped,
     )
+}
+
+/// Bring the index's cached file stats up to date with the working tree.
+///
+/// libgit2 decides "unchanged" from the stat data the index recorded (mtime,
+/// ctime, size, inode). When that data goes stale while the contents do not
+/// (the files were touched, restored, or moved with the app container on an
+/// iPhone update), `add_all`/`update_all` hash every such file to prove it
+/// unchanged, and never write the fresh stats back. Every commit then
+/// re-reads the whole vault: about 13 s for a 2.2 GB vault on a fast Linux
+/// box, minutes on a phone, which held `Syncing` on for good. A diff with
+/// `update_index` pays that hash once and records the fresh stats, which
+/// the caller's `index.write()` persists, so the next commit is back to
+/// milliseconds.
+fn refresh_stat_cache(repo: &Repository, index: &Index) -> AppResult<()> {
+    let mut opts = DiffOptions::new();
+    opts.update_index(true);
+    repo.diff_index_to_workdir(Some(index), Some(&mut opts))?;
+    Ok(())
 }
 
 /// Stage every change (adds, edits, deletes — `.gitignore` respected) into

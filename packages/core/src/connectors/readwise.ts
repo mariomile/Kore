@@ -223,6 +223,7 @@ function bookNote(book: ReadwiseBook, tags: readonly string[]): ConnectorNote | 
   }
   return {
     sourceId: String(book.user_book_id),
+    title: bookTitle(book),
     fields: {
       title: bookTitle(book),
       category: readwiseCategoryName(book.category),
@@ -281,7 +282,10 @@ export const readwiseConnector: Connector = {
   defaultFolder: 'Readwise',
   defaultPattern: '{title}',
   patternFields: ['title', 'category', 'author'],
+  exampleFields: { title: 'Atomic Habits', category: 'Books', author: 'James Clear' },
   defaultTags: ['readwise'],
+  options: [],
+  dailyHeading: 'Reading',
   tokenUrl: 'https://readwise.io/access_token',
   tokenLabel: 'Access token',
   tokenNoun: 'access token',

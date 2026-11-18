@@ -7,6 +7,47 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: clean note cards, no title gap, nested tags colored in full (#553).
+- Launch: one continuous splash to the daily note, no white frame or font
+  swap (#555).
+- Links: wiki links resolve by filename first in Obsidian vaults (#554).
+- Release: altool post-upload crash no longer fails TestFlight (#550).
+- Collections: Timeline view for types, with week/month/quarter zoom and
+  draggable bars on Mac (#546).
+- CLI: kore sources reads the vault's shared integration settings (#547).
+- Integrations: settings live in the vault's .kore.json, shared by Mac and
+  iPhone; credentials stay on each device (#545).
+- AI chat: context as an "N notes" pill with previews, quieter recall, right
+  rail on every route (#544).
+- Faster typing in long notes: less editor re-rendering per key (#537).
+- Mac: Settings opens as a centered modal over the blurred workspace (#541).
+- Fix (iPhone): no more "Due today" card with other notes' tasks above
+  today's daily (#540).
+- Settings: Integrations page for Granola and Readwise (frequency, folder
+  and file name, tags, content, daily-note link), Mac and iPhone (#528).
+- Fix: saving a note no longer refetches the vault's folder tree (#532).
+- Fix (iPhone): sub pages on the daily open full screen; Turn into Text in
+  an open page no longer freezes the app (#534).
+- Fix: embedding runs on at most 4 low-priority threads and waits for a
+  pause in typing, so it no longer slows the Mac (#530).
+- Fix: an update's full index rebuild no longer re-embeds the whole vault
+  (heavy CPU and typing lag on Mac, #527).
+- Fix: a date cited mid-sentence in a task no longer becomes its due date, so
+  no more fake overdue tasks (#524).
+- Fix: iPhone Syncing no longer sticks on "Saving your changes" (stale file
+  stats refreshed instead of re-hashing the vault, #521).
+- iPhone: Notes tab sorting (Last updated / Title, direction), shared with
+  the Mac's setting; faster title sort on Mac (#515).
+- Fix: iPhone TestFlight build no longer crashes on launch (UIScene manifest
+  removed, #514).
+- Fix: Syncing can no longer stay on forever; the iPhone Sync footer shows the
+  current step (#516).
+- iPhone: vaults opened from GitHub clone only the last 50 commits (#509).
+- Type home folder: new notes of a type are born in its Folder, on every
+  surface (#508).
+- Fix: the iPhone Syncing pill no longer waits for the reindex (#505).
+- Sign in to GitHub with one click (GitHub App, device flow); personal token
+  stays as an alternative (#500).
 - iPhone share sheet: choose destination and link style, add a thought,
   offline-instant save (#498).
 - Redesigned type configuration dialog with value colors and ordering (#501).

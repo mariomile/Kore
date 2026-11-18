@@ -23,6 +23,7 @@ import {
   type GraphInfo,
   type SyncEngine,
   type SyncStatus,
+  type SyncProgress,
   type Unlisten,
 } from '@kore/core'
 import { setBackupFlusher } from '@/lib/backup-flush'
@@ -52,28 +53,28 @@ export type BackupState =
    * connect a new one.
    */
   | { phase: 'disconnected'; linkedRepo?: GithubRepoRef }
-  | { phase: 'connected'; remoteUrl: string; repo: GithubRepoRef | null; status: SyncStatus }
+  | {
+      phase: 'connected'
+      remoteUrl: string
+      repo: GithubRepoRef | null
+      status: SyncStatus
+      progress?: SyncProgress // diagnostics: the in-flight step
+    }
 
 /** Outcome of connecting to an existing repo (the public case needs consent). */
 export type ConnectExistingResult = 'connected' | 'needsPublicConfirm' | 'notFound'
 
 /**
- * A single foreground/resume transition fires several DOM events at once —
- * WKWebView emits both `visibilitychange` and `focus` on app resume, desktop
- * unminimize can too. Each would queue its own full engine cycle (single
- * flight queues a *follow-up*, it doesn't drop the second call), doubling
- * the network work of every resume; triggers inside this window collapse
+ * One resume fires several DOM events (WKWebView: `visibilitychange` and
+ * `focus`), each queueing a full cycle; triggers inside this window collapse
  * into one cycle.
  */
 const RESUME_SYNC_DEDUPE_MS = 1500
 
 /**
- * Quiet period after the last edit before a backup commit, on mobile.
- * Desktop keeps the engine's 30s default, but mobile foreground sessions are
- * often shorter than that — with the desktop window most edit-triggered
- * cycles would never fire before backgrounding, deferring every push to the
- * *next* app open. (Capture is still never lost either way: the background
- * flush commits locally.)
+ * Mobile's quiet period before a backup commit. Phone sessions are often
+ * shorter than the desktop's 30s, which would defer every push to the next
+ * app open (the background flush still commits locally).
  */
 const MOBILE_IDLE_MS = 10_000
 
@@ -209,12 +210,8 @@ export function createBackupController(options: BackupControllerOptions): Backup
       remoteIndexTail = task.catch((cause) => {
         console.error('pulled-note direct index apply failed:', cause)
       })
-      // Deliberately not returned to the engine: `Syncing` means the notes
-      // themselves are moving, and they are already on disk and committed
-      // by now. Joining the index catch-up held the pill on for minutes
-      // after a large pull (a whole-vault merge on the phone, or a pull that
-      // lands while the first index pass runs), long after Git was done.
-      // Index work has its own progress surface.
+      // Not returned to the engine: `Syncing` must not wait on the index
+      // catch-up, which held the pill on for minutes after a large pull.
     }
   }
 
@@ -372,6 +369,10 @@ export function createBackupController(options: BackupControllerOptions): Backup
         getToken: repo === null ? async () => null : () => getGithubToken(providerFetch),
         onStatus: (engineStatus) => {
           setState({ phase: 'connected', remoteUrl, repo, status: engineStatus })
+        },
+        onStep: (step) => {
+          if (state.phase === 'connected' && state.status.state === 'syncing')
+            setState({ ...state, progress: { step, since: Date.now() } })
         },
         onLargeFilesSkipped: (files) => {
           // Surface the guardrail loudly: these files are NOT in the backup.

@@ -10,6 +10,7 @@ import {
   listNoteTags,
   sortNoteList,
   type NoteListFilter,
+  type TimelineZoom,
   type NoteListFolder,
   type SavedCollectionView,
   type TagPropertyType,
@@ -57,6 +58,9 @@ import {
 } from '@/components/ui/select'
 import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
+import { CollectionTimeline } from './collection-timeline'
+import { LIVE_COLLECTION_VIEW_ID } from './collection-view-model'
+import { timelineFieldsOf } from '@/lib/tags/timeline-layout'
 import { CollectionOptionsMenu } from './collection-options-menu'
 import { CollectionTable } from './collection-table'
 import { TagChildrenFilter } from './tag-children-filter'
@@ -331,6 +335,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     deleteSavedView,
     moveSavedView,
     shiftSavedView,
+    updateActiveTimeline,
   } = useCollectionSavedViews({
     tagKey,
     typeViews:
@@ -351,6 +356,26 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     setCollectionFilters,
     setFilterMatch,
   })
+  // The timeline's bar fields and zoom ride on its saved tab; the unsaved
+  // live tab keeps its zoom for the visit.
+  const activeTab = tabs.find((entry) => entry.id === activeViewId) ?? null
+  const [liveTimelineZoom, setLiveTimelineZoom] = useState<TimelineZoom>('month')
+  const timelineZoom =
+    activeViewId === LIVE_COLLECTION_VIEW_ID ? liveTimelineZoom : (activeTab?.zoom ?? 'month')
+  const setTimelineZoom = (zoom: TimelineZoom): void => {
+    if (activeViewId === LIVE_COLLECTION_VIEW_ID) {
+      setLiveTimelineZoom(zoom)
+    } else {
+      updateActiveTimeline({ zoom })
+    }
+  }
+  const timelineFields = useMemo(
+    () =>
+      view === 'timeline' && tagType !== undefined
+        ? timelineFieldsOf(tagType.properties, { start: activeTab?.start, end: activeTab?.end })
+        : null,
+    [view, tagType, activeTab?.start, activeTab?.end],
+  )
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
 
@@ -409,7 +434,10 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     selection,
     // The card grid, board, and calendar have no selection affordance, so the
     // list shortcuts would act on rows the user can't see selected — disarm.
-    orderedPaths: view === 'grid' || view === 'board' || view === 'calendar' ? [] : orderedPaths,
+    orderedPaths:
+      view === 'grid' || view === 'board' || view === 'calendar' || view === 'timeline'
+        ? []
+        : orderedPaths,
     onOpen: openNote,
     onRequestTrash: openTrashConfirm,
     rootRef,
@@ -512,7 +540,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             onShift={shiftSavedView}
           />
           <div className="flex flex-wrap items-center gap-3">
-            {view === 'table' && tableGroupProperties.length > 0 ? (
+            {(view === 'table' || view === 'timeline') && tableGroupProperties.length > 0 ? (
               <Select
                 value={tableGroupProperty?.key ?? '__none'}
                 items={{
@@ -655,6 +683,20 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               <CollectionCalendar
                 entries={filteredCollection}
                 property={calendarDateProperty}
+                tag={tag}
+                type={tagType}
+                onOpen={openNote}
+              />
+            ) : collectionAvailable &&
+              view === 'timeline' &&
+              timelineFields !== null &&
+              tag !== null ? (
+              <CollectionTimeline
+                entries={filteredCollection}
+                fields={timelineFields}
+                groupProperty={tableGroupProperty}
+                zoom={timelineZoom}
+                onZoomChange={setTimelineZoom}
                 tag={tag}
                 type={tagType}
                 onOpen={openNote}

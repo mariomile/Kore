@@ -975,8 +975,10 @@ describe('ChatScreen', () => {
     expect(content).toContain('tell me about [[Atlas]]')
     expect(content).toContain('<mentioned-note path="notes/atlas.md" title="Atlas">')
     expect(content).toContain('Ships in June.')
-    await view.getByText('Context used · 1 note').click()
-    await expect.element(view.getByText('Ships in June.')).toBeVisible()
+    await view.getByRole('button', { name: 'Used 1 note' }).click()
+    await expect
+      .element(view.getByRole('button', { name: /Open note Atlas/ }))
+      .toHaveAttribute('title', expect.stringContaining('Ships in June.'))
     await expect.element(view.getByText('tell me about [[Atlas]]')).toBeInTheDocument()
   })
 

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, type ComponentType, type ReactElement } from 'react'
+import { useEffect, type ComponentType, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { settingsGroupOf, settingsRoute } from '@/routing/route'
+import { settingsGroupOf, settingsRoute, type SettingsRouteGroup } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { useCloseSettings } from '@/routing/use-close-settings'
 import { AgentsScreen } from './agents/agents-screen'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
@@ -13,22 +14,26 @@ import { AllNotesSection } from './settings/all-notes-section'
 import { AppearanceSection } from './settings/appearance-section'
 import { AudioMemosSection } from './settings/audio-memos-section'
 import { BrowserSection } from './settings/browser-section'
-import { ConnectorsSection } from './settings/connectors-section'
+import { ConnectorSection } from './settings/connector-section'
 import { DateTimeSection } from './settings/date-time-section'
 import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
+import { IntegrationsPage } from './settings/integrations-page'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { PastedResourcesSection } from './settings/pasted-resources-section'
 import { ObsidianImportSection } from './settings/obsidian-import-section'
 import { SearchSection } from './settings/search-section'
-import type { SettingsSectionId } from './settings/sections'
+import type { SettingsSectionEntry, SettingsSectionId } from './settings/sections'
 import { SettingsNavigator } from './settings/settings-navigator'
 import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
 import { VaultCompatSection } from './settings/vault-compat-section'
-import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
+import {
+  useVisibleSettingsGroups,
+  type VisibleSettingsGroup,
+} from './settings/use-visible-settings-sections'
 
 const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   appearance: AppearanceSection,
@@ -48,8 +53,9 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   'agent-workspace': AgentsScreen,
   agents: AgentsSection,
   sync: SyncSection,
-  connectors: ConnectorsSection,
-  integrations: IntegrationsSection,
+  granola: () => <ConnectorSection id="granola" />,
+  readwise: () => <ConnectorSection id="readwise" />,
+  apple: IntegrationsSection,
   'vault-compat': VaultCompatSection,
   'obsidian-import': ObsidianImportSection,
   about: AboutSection,
@@ -57,27 +63,39 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
 }
 
 /**
- * The settings screen is a full-page workspace: a stable local sidebar
- * selects one settings group at a time, and the page pane scrolls independently.
- * It is not a strip tab — opening it covers the workspace chrome, and Close
- * (or Escape) returns to the previous route. Every control still applies
- * instantly through the settings provider.
+ * Groups drawn as a page of their own rather than a stack of section cards:
+ * Integrations is an overview of tiles that opens one source at a time.
  */
-export function SettingsScreen(): ReactElement {
+const GROUP_PAGES: Partial<
+  Record<SettingsRouteGroup, ComponentType<{ sections: readonly SettingsSectionEntry[] }>>
+> = {
+  integrations: IntegrationsPage,
+}
+
+/**
+ * The settings screen: a stable local sidebar selects one settings group at a
+ * time, and the page pane scrolls independently. On the Mac it fills the
+ * Settings modal sheet (`settings-modal.tsx`); it is not a strip tab, and Close (or Escape)
+ * returns to the previous route. Every control still applies instantly
+ * through the settings provider.
+ */
+export function SettingsScreen({
+  closeOnEscape = true,
+}: {
+  /** Off inside the modal, whose dialog already closes on Escape. */
+  closeOnEscape?: boolean
+}): ReactElement {
   const groups = useVisibleSettingsGroups()
-  const { back, canBack, navigate, route } = useRouter()
+  const { navigate, route } = useRouter()
   const requestedGroup = settingsGroupOf(route)
   const activeGroup = groups.find((group) => group.id === requestedGroup) ?? groups[0]
   const activeGroupId = activeGroup?.id ?? 'general'
-  const closeSettings = useCallback((): void => {
-    if (canBack) {
-      back()
-      return
-    }
-    navigate({ kind: 'today' })
-  }, [back, canBack, navigate])
+  const closeSettings = useCloseSettings()
 
   useEffect(() => {
+    if (!closeOnEscape) {
+      return
+    }
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key !== 'Escape' || event.defaultPrevented) {
         return
@@ -87,7 +105,7 @@ export function SettingsScreen(): ReactElement {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closeSettings])
+  }, [closeOnEscape, closeSettings])
 
   return (
     <div aria-label="Settings" className="flex h-full min-h-0 overflow-hidden bg-surface-app">
@@ -121,15 +139,26 @@ export function SettingsScreen(): ReactElement {
                 {activeGroup.title}
               </h2>
             </header>
-            <div>
-              {activeGroup.sections.map((section) => {
-                const Section = SECTION_COMPONENTS[section.id]
-                return <Section key={section.id} />
-              })}
-            </div>
+            <GroupBody key={activeGroup.id} group={activeGroup} />
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+/** A group's content: its own page when it has one, else its section cards. */
+function GroupBody({ group }: { group: VisibleSettingsGroup }): ReactElement {
+  const Page = GROUP_PAGES[group.id]
+  if (Page !== undefined) {
+    return <Page sections={group.sections} />
+  }
+  return (
+    <div>
+      {group.sections.map((section) => {
+        const Section = SECTION_COMPONENTS[section.id]
+        return <Section key={section.id} />
+      })}
     </div>
   )
 }

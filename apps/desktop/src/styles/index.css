@@ -328,9 +328,9 @@ body {
 /* Text entry — inputs, textareas, contenteditable editors, the cmdk input:
    no outline and no ring, ever. `:focus-visible` matches a focused text field
    on every click, not just keyboard entry, so a ring here is a highlight that
-   lights up whenever you type. The caret plus the field's border stepping to
-   `--border-focus` (set by the ui/ primitives) is the whole treatment;
-   borderless fields inside a frame (palette, find bar) show the caret alone.
+   lights up whenever you type. The caret is the whole treatment: fields keep
+   their resting border on focus too (no step to `--border-focus`), so the
+   composer and every other field stay calm while you type.
 
    Menu and list rows are focus-managed by their parent and already carry the
    row highlight (`focus:bg-surface-hover`), the idiom Apple's HIG prescribes
@@ -906,6 +906,13 @@ html:root {
    `--meowdown-gutter` padding. */
 .kore-content-gutter {
   padding-inline: var(--editor-content-gutter, max(2rem, calc((100% - 42rem) / 2)));
+}
+
+/* An outline jump lands a section heading clear of the floating chrome
+   above the note: the pane's top inset on the Mac, the glass header on the
+   iPhone (its note screen sets the variable from the measured bar). */
+:is(.ProseMirror.kore-note-surface, .kore-note-surface .ProseMirror) > :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: var(--kore-outline-scroll-margin, 3.5rem);
 }
 
 /* Mobile note-body gutter. This mirrors `.kore-content-gutter`'s cascade
@@ -1954,7 +1961,7 @@ html[data-sidebar-resizing] aside {
     inset 0 0 0 1px color-mix(in oklab, var(--text) 12%, transparent),
     0 1px 2px color-mix(in oklab, var(--text) 6%, transparent);
 }
-.kore-editor .kore-page-skel {
+.kore-page-skel {
   --lead: 0px;
   position: relative;
   flex: none;
@@ -1965,26 +1972,24 @@ html[data-sidebar-resizing] aside {
   border-radius: 1px;
   background: color-mix(in oklab, var(--text) 28%, transparent);
 }
-.kore-editor .kore-page-skel[data-kind='heading'] {
+.kore-page-skel[data-kind='heading'] {
   height: 3px;
   margin-bottom: 1px;
   background: color-mix(in oklab, var(--text) 55%, transparent);
 }
-.kore-editor
-  .kore-page-skel:is(
-    [data-kind='bullet'],
-    [data-kind='ordered'],
-    [data-kind='task'],
-    [data-kind='done'],
-    [data-kind='page'],
-    [data-kind='quote']
-  ) {
+.kore-page-skel:is(
+  [data-kind='bullet'],
+  [data-kind='ordered'],
+  [data-kind='task'],
+  [data-kind='done'],
+  [data-kind='page'],
+  [data-kind='quote']
+) {
   --lead: 4px;
 }
-.kore-editor .kore-page-skel[data-kind='bullet']::before,
-.kore-editor .kore-page-skel[data-kind='ordered']::before,
-.kore-editor
-  .kore-page-skel:is([data-kind='task'], [data-kind='done'], [data-kind='page'])::before {
+.kore-page-skel[data-kind='bullet']::before,
+.kore-page-skel[data-kind='ordered']::before,
+.kore-page-skel:is([data-kind='task'], [data-kind='done'], [data-kind='page'])::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -1995,31 +2000,31 @@ html[data-sidebar-resizing] aside {
   background: color-mix(in oklab, var(--text) 45%, transparent);
   transform: translateY(-50%);
 }
-.kore-editor .kore-page-skel[data-kind='ordered']::before {
+.kore-page-skel[data-kind='ordered']::before {
   /* A numeral, not a dot: a short upright stroke. */
   width: 1px;
   height: 3.5px;
   left: -3.5px;
   border-radius: 0.5px;
 }
-.kore-editor .kore-page-skel:is([data-kind='task'], [data-kind='done'])::before {
+.kore-page-skel:is([data-kind='task'], [data-kind='done'])::before {
   width: 3px;
   height: 3px;
   left: -4.5px;
   background: transparent;
   box-shadow: inset 0 0 0 0.75px color-mix(in oklab, var(--text) 55%, transparent);
 }
-.kore-editor .kore-page-skel[data-kind='done']::before {
+.kore-page-skel[data-kind='done']::before {
   background: color-mix(in oklab, var(--text) 45%, transparent);
 }
-.kore-editor .kore-page-skel[data-kind='page']::before {
+.kore-page-skel[data-kind='page']::before {
   width: 2.5px;
   height: 3.5px;
   border-radius: 0.5px;
   background: transparent;
   box-shadow: inset 0 0 0 0.75px color-mix(in oklab, var(--text) 55%, transparent);
 }
-.kore-editor .kore-page-skel[data-kind='quote']::before {
+.kore-page-skel[data-kind='quote']::before {
   content: '';
   position: absolute;
   top: -1px;
@@ -2027,6 +2032,56 @@ html[data-sidebar-resizing] aside {
   left: -4px;
   width: 1px;
   background: color-mix(in oklab, var(--text) 40%, transparent);
+}
+/* The page-in-miniature outside the editor (chat sources, rail rows): the
+   sub-page card's paper at fixed sizes, drawing the same `.kore-page-skel`
+   rows below. */
+.kore-page-thumb {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 3px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--text) 4%, var(--surface-app));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--text) 12%, transparent),
+    0 1px 2px color-mix(in oklab, var(--text) 6%, transparent);
+}
+.kore-page-thumb[data-size='row'] {
+  width: 26px;
+  height: 32px;
+  padding: 6px 5px;
+  border-radius: 0.375rem;
+}
+.kore-page-thumb[data-size='stack'] {
+  width: 15px;
+  height: 19px;
+  padding: 4px 3px;
+  gap: 2px;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--text) 14%, transparent),
+    0 0 0 1.5px var(--surface-hover);
+}
+.kore-page-thumb[data-size='stack'] .kore-page-skel {
+  --lead: 0px;
+  height: 1.5px;
+}
+.kore-page-skel[data-kind='block'] {
+  height: 6px;
+  border-radius: 1.5px;
+  background: color-mix(in oklab, var(--text) 13%, transparent);
+}
+.kore-page-thumb[data-size='stack'] .kore-page-skel[data-kind='block'] {
+  height: 3px;
+}
+.kore-page-thumb[data-size='stack'] .kore-page-skel::before {
+  display: none;
+}
+.kore-page-thumb[data-size='stack'] .kore-page-skel[data-kind='heading'] {
+  height: 2px;
+  margin-bottom: 0;
 }
 .kore-editor .kore-page-card-body {
   display: flex;

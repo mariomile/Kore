@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  CONNECTOR_SYNC_EVERY,
   CONNECTORS,
   connectConnector,
+  connectorById,
   disconnectConnector,
   errorMessage,
   hasBridge,
   isConnectorConnected,
   normalizeConnectorFolder,
   normalizeConnectorPattern,
+  normalizeDailyHeading,
   parseConnectorTags,
   type Connector,
   type ConnectorId,
   type ConnectorSettings,
+  type ConnectorSyncEvery,
 } from '@kore/core'
 import type { ConnectorRunStatus } from '@/lib/connector-controller'
 import { formatDateTime, type DateTimePrefs } from '@/lib/dates'
@@ -43,27 +47,74 @@ export interface UseConnectorsResult {
   setFolder(id: ConnectorId, folder: string): string | null
   /** Save the file name pattern; returns an error message for an unusable one. */
   setPattern(id: ConnectorId, pattern: string): string | null
-  /** Save the tags new notes carry (comma-separated); empty restores the default. */
-  setTags(id: ConnectorId, tags: string): void
-  syncNow(): void
+  /** Save the tags new notes carry (comma-separated); empty restores the default. Never rejects. */
+  setTags(id: ConnectorId, tags: string): null
+  /** When automatic syncs run. */
+  setSyncEvery(id: ConnectorId, every: ConnectorSyncEvery): void
+  /** Turn one of the connector's content switches on or off. */
+  setOption(id: ConnectorId, key: string, on: boolean): void
+  /** Turn the daily-note links on or off. */
+  setDailyLink(id: ConnectorId, on: boolean): void
+  /** Save the daily-note heading; empty restores the default. Never rejects. */
+  setDailyHeading(id: ConnectorId, heading: string): null
+  /** Sync this connector now, whatever its frequency. */
+  syncNow(id: ConnectorId): void
+}
+
+const SYNC_EVERY_LABELS: Record<ConnectorSyncEvery, string> = {
+  5: 'Every 5 minutes',
+  15: 'Every 15 minutes',
+  30: 'Every 30 minutes',
+  60: 'Every hour',
+  launch: 'When Kore opens',
+  manual: 'Only when I ask',
+}
+
+/**
+ * The frequency choices as the pickers list them. `key` is the value as a
+ * string, what a `<select>` or a Select item carries.
+ */
+export const SYNC_EVERY_OPTIONS: readonly {
+  value: ConnectorSyncEvery
+  key: string
+  label: string
+}[] = CONNECTOR_SYNC_EVERY.map((value) => ({
+  value,
+  key: String(value),
+  label: SYNC_EVERY_LABELS[value],
+}))
+
+/** The label of a frequency choice. */
+export function syncEveryLabel(every: ConnectorSyncEvery): string {
+  return SYNC_EVERY_LABELS[every]
+}
+
+/** The frequency a picker's `key` stands for, or `undefined` for a stray one. */
+export function syncEveryFromKey(key: string): ConnectorSyncEvery | undefined {
+  return SYNC_EVERY_OPTIONS.find((option) => option.key === key)?.value
 }
 
 /**
  * Connector state and actions shared by the desktop settings section and the
- * mobile settings drawer. The credential lives in the keychain; everything
- * else is per-device settings.
+ * mobile settings drawer. The credential lives in the keychain; where notes
+ * land, their content, the frequency and the daily link live in the vault
+ * (`.kore.json`, shared by every device); whether this device syncs and its
+ * sync window are its own settings.
  */
 export function useConnectors(): UseConnectorsResult {
-  const { settings, updateSettingsWith, whenSettingsLoaded } = useSettings()
-  const { snapshot, syncNow } = useConnectorSync()
+  const { settings: deviceSettings, updateSettingsWith, whenSettingsLoaded } = useSettings()
+  const { snapshot, syncNow, connectors, updateConnector } = useConnectorSync()
+  // Outside the sync provider (tests, a bare harness) the device's own settings.
+  const settings = connectors ?? deviceSettings.connectors
   const [connected, setConnected] = useState<Partial<Record<ConnectorId, boolean>>>({})
   // A sync requested together with a settings change runs once that change
   // is committed, so the loop sees the connector as enabled.
-  const syncRequested = useRef(false)
+  const syncRequested = useRef<ConnectorId | null>(null)
   useEffect(() => {
-    if (syncRequested.current) {
-      syncRequested.current = false
-      syncNow()
+    const requested = syncRequested.current
+    if (requested !== null) {
+      syncRequested.current = null
+      syncNow(requested)
     }
   })
 
@@ -89,13 +140,18 @@ export function useConnectors(): UseConnectorsResult {
     }
   }, [])
 
+  const inProvider = connectors != null
   const patch = useCallback(
     (id: ConnectorId, change: Partial<ConnectorSettings>) => {
+      if (inProvider) {
+        updateConnector(id, change)
+        return
+      }
       updateSettingsWith((current) => ({
         connectors: { ...current.connectors, [id]: { ...current.connectors[id], ...change } },
       }))
     },
-    [updateSettingsWith],
+    [inProvider, updateConnector, updateSettingsWith],
   )
 
   const connect = useCallback(
@@ -108,7 +164,7 @@ export function useConnectors(): UseConnectorsResult {
         lastSyncedAt: null,
         importFrom: importHistory ? null : new Date().toISOString(),
       })
-      syncRequested.current = true
+      syncRequested.current = id
     },
     [patch, whenSettingsLoaded],
   )
@@ -126,8 +182,7 @@ export function useConnectors(): UseConnectorsResult {
     (id: ConnectorId, folder: string): string | null => {
       try {
         const normalized = normalizeConnectorFolder(folder)
-        const connector = CONNECTORS.find((candidate) => candidate.id === id)
-        patch(id, { folder: normalized === connector?.defaultFolder ? null : normalized })
+        patch(id, { folder: normalized === connectorById(id).defaultFolder ? null : normalized })
         return null
       } catch (cause) {
         return errorMessage(cause)
@@ -138,10 +193,7 @@ export function useConnectors(): UseConnectorsResult {
 
   const setPattern = useCallback(
     (id: ConnectorId, pattern: string): string | null => {
-      const connector = CONNECTORS.find((candidate) => candidate.id === id)
-      if (connector === undefined) {
-        return null
-      }
+      const connector = connectorById(id)
       try {
         const normalized = normalizeConnectorPattern(pattern, connector)
         patch(id, { pattern: normalized === connector.defaultPattern ? null : normalized })
@@ -154,16 +206,17 @@ export function useConnectors(): UseConnectorsResult {
   )
 
   const setTags = useCallback(
-    (id: ConnectorId, tags: string): void => {
+    (id: ConnectorId, tags: string): null => {
       const parsed = parseConnectorTags(tags)
       patch(id, { tags: parsed.length === 0 ? null : parsed })
+      return null
     },
     [patch],
   )
 
   const items = CONNECTORS.map((connector) => ({
     connector,
-    settings: settings.connectors[connector.id],
+    settings: settings[connector.id],
     connected: connected[connector.id] ?? null,
     running: snapshot.running === connector.id,
     status: snapshot.statuses[connector.id],
@@ -177,6 +230,13 @@ export function useConnectors(): UseConnectorsResult {
     setFolder,
     setPattern,
     setTags,
+    setSyncEvery: (id, syncEvery) => patch(id, { syncEvery }),
+    setOption: (id, key, on) => patch(id, { options: { ...settings[id].options, [key]: on } }),
+    setDailyLink: (id, dailyLink) => patch(id, { dailyLink }),
+    setDailyHeading: (id, heading) => {
+      patch(id, { dailyHeading: normalizeDailyHeading(heading, connectorById(id)) })
+      return null
+    },
     syncNow,
   }
 }

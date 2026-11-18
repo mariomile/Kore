@@ -1,9 +1,11 @@
 import {
   CONNECTORS,
+  connectorRunSettings,
   connectorSecretName,
   errorMessage,
   getSecret,
   hasBridge,
+  isConnectorSyncDue,
   syncConnector,
   toAppError,
   type Connector,
@@ -15,8 +17,8 @@ import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { startOperation } from '@/lib/operations'
 import { providerFetch } from '@/lib/provider-fetch'
 
-/** Automatic runs re-sync a source at most this often. */
-const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000
+/** How often the loop wakes to see which sources are due: the shortest choice. */
+const TICK_MS = 5 * 60 * 1000
 
 /** The outcome of a connector's latest run in this session. */
 export type ConnectorRunStatus =
@@ -33,8 +35,8 @@ export interface ConnectorSyncSnapshot {
 export interface ConnectorController {
   /** Attach the triggers (interval, focus, resume) and run the launch pass. */
   start(): void
-  /** Sync every enabled connector now, ignoring the automatic interval. */
-  syncNow(): void
+  /** Sync one enabled connector now, ignoring its frequency. */
+  syncNow(id: ConnectorId): void
   subscribe(listener: () => void): () => void
   getSnapshot(): ConnectorSyncSnapshot
   /** Tear down triggers and abort an in-flight pass at its next gate. */
@@ -45,13 +47,9 @@ export interface ConnectorControllerOptions {
   /** The open graph's generation — every write pins to it. */
   generation: number
   /** The latest connector settings, read at the start of every pass. */
-  getSettings: () => ConnectorsSettings
+  getSettings: () => ConnectorsSettings | Promise<ConnectorsSettings>
   /** Persist a completed run's cursor. */
   onSynced: (id: ConnectorId, syncedAt: string) => void
-}
-
-function isDue(lastSyncedAt: string | null, now: number): boolean {
-  return lastSyncedAt === null || now - Date.parse(lastSyncedAt) >= AUTO_SYNC_INTERVAL_MS
 }
 
 /**
@@ -67,7 +65,9 @@ export function createConnectorController(
 ): ConnectorController {
   let snapshot: ConnectorSyncSnapshot = { running: null, statuses: {} }
   const listeners = new Set<() => void>()
-  let forceNext = false
+  /** Connectors asked for by hand, synced on the next pass whatever their frequency. */
+  const forced = new Set<ConnectorId>()
+  const sessionStart = Date.now()
   /** Last failure toasted per connector — retries must not re-toast it. */
   const surfaced = new Map<ConnectorId, string>()
 
@@ -101,11 +101,7 @@ export function createConnectorController(
       const result = await syncConnector({
         connector,
         token: token.trim(),
-        folder: entry.folder ?? connector.defaultFolder,
-        pattern: entry.pattern,
-        tags: entry.tags,
-        since: entry.lastSyncedAt === null ? null : new Date(entry.lastSyncedAt),
-        floor: entry.importFrom === null ? null : new Date(entry.importFrom),
+        ...connectorRunSettings(connector, entry),
         generation: options.generation,
         fetchFn: providerFetch,
         isStale,
@@ -134,16 +130,19 @@ export function createConnectorController(
       if (!hasBridge()) {
         return // browser dev: no graph to write into
       }
-      const force = forceNext
-      forceNext = false
-      const settings = options.getSettings()
+      const force = new Set(forced)
+      forced.clear()
+      const settings = await options.getSettings()
       const now = Date.now()
       for (const connector of CONNECTORS) {
         const entry = settings[connector.id]
         if (isStale()) {
           return
         }
-        if (!entry.enabled || (!force && !isDue(entry.lastSyncedAt, now))) {
+        if (
+          !entry.enabled ||
+          (!force.has(connector.id) && !isConnectorSyncDue(entry, now, sessionStart))
+        ) {
           continue
         }
         await syncOne(connector, entry, isStale)
@@ -157,7 +156,7 @@ export function createConnectorController(
     }
     loop.schedule()
     loop.retryOnWake()
-    const timer = window.setInterval(loop.schedule, AUTO_SYNC_INTERVAL_MS)
+    const timer = window.setInterval(loop.schedule, TICK_MS)
     // `focus` is unreliable in the iOS webview; resume arrives as visibility.
     const onVisible = (): void => {
       if (document.visibilityState === 'visible') {
@@ -173,8 +172,8 @@ export function createConnectorController(
 
   return {
     start,
-    syncNow() {
-      forceNext = true
+    syncNow(id) {
+      forced.add(id)
       loop.schedule()
     },
     subscribe(listener) {

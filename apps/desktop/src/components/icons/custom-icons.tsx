@@ -186,6 +186,19 @@ export const BoardView: Icon = createIcon(
 )
 
 /**
+ * A timeline: three staggered bars on a day axis, the Gantt shape. Solar's
+ * chart glyphs read as analytics, so the timeline view draws its own.
+ */
+export const TimelineView: Icon = createIcon(
+  'TimelineView',
+  <>
+    <rect x="2.75" y="4.75" width="10" height="4" rx="2" />
+    <rect x="7.75" y="10" width="13.5" height="4" rx="2" />
+    <rect x="5.25" y="15.25" width="7.5" height="4" rx="2" />
+  </>,
+)
+
+/**
  * GitHub's mark (Octicons `mark-github-24`, MIT): where a vault lives in a
  * GitHub repository. A brand mark, so it is filled rather than drawn in the
  * hairline.

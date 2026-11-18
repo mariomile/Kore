@@ -34,6 +34,7 @@ const files = new Map<string, string>()
 function note(sourceId: string, title: string, body: string, kind = 'Articles'): ConnectorNote {
   return {
     sourceId,
+    title,
     fields: { title, kind },
     source: `---\nsample_id: "${sourceId}"\n---\n${body}\n`,
     merge: (existing) => (existing.includes(body) ? null : `${existing}${body}\n`),
@@ -49,7 +50,10 @@ function connector(notes: ConnectorNote[]): Connector {
     defaultFolder: 'Sample',
     defaultPattern: '{title}',
     patternFields: ['title', 'kind'],
+    exampleFields: {},
     defaultTags: [],
+    options: [],
+    dailyHeading: 'Sample',
     tokenUrl: '',
     tokenLabel: '',
     tokenNoun: '',

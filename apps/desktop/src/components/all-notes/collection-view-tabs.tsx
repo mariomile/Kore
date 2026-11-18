@@ -13,7 +13,15 @@ import type {
   CollectionViewMoveDirection,
   SavedCollectionView,
 } from '@kore/core'
-import { BoardView, Calendar, Close, LayoutGrid, Plus, TableView } from '@/components/icons'
+import {
+  BoardView,
+  Calendar,
+  Close,
+  LayoutGrid,
+  Plus,
+  TableView,
+  TimelineView,
+} from '@/components/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +37,16 @@ const VIEW_GLYPH = {
   board: BoardView,
   calendar: Calendar,
   grid: LayoutGrid,
+  timeline: TimelineView,
 } as const
 
-const ADDABLE_VIEWS: readonly CollectionPageView[] = ['table', 'board', 'calendar', 'grid']
+const ADDABLE_VIEWS: readonly CollectionPageView[] = [
+  'table',
+  'board',
+  'calendar',
+  'timeline',
+  'grid',
+]
 
 interface CollectionViewTabsProps {
   tabs: readonly SavedCollectionView[]
@@ -55,7 +70,7 @@ function viewAvailable(
   if (view === 'board') {
     return boardAvailable
   }
-  if (view === 'calendar') {
+  if (view === 'calendar' || view === 'timeline') {
     return calendarAvailable
   }
   return true
@@ -65,7 +80,7 @@ function unavailableReason(view: CollectionPageView): string {
   if (view === 'board') {
     return 'Add a select, status, or relation property first'
   }
-  if (view === 'calendar') {
+  if (view === 'calendar' || view === 'timeline') {
     return 'Add a date property first'
   }
   return ''
@@ -73,7 +88,7 @@ function unavailableReason(view: CollectionPageView): string {
 
 /**
  * Notion-style collection view tabs: the named lenses plus `+` to add
- * table / board / calendar / grid. The last remaining tab cannot be removed.
+ * table / board / calendar / timeline / grid. The last remaining tab cannot be removed.
  * Tabs reorder by dragging (the pill is its own handle; the 4px activation
  * distance keeps a click a click) or with Alt/Option+Arrow on a focused tab.
  */

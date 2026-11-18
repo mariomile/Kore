@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { dailyPath } from '@kore/core'
 import { NotePane } from '@/components/note-pane'
 import { formatMobileDayTitle } from '@/lib/dates'
-import { TodayCard } from '@/mobile/today-card'
 import { cn } from '@/lib/utils'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
@@ -128,7 +127,6 @@ export function DaySlide({
         >
           {formatMobileDayTitle(day, settings.dateFormat)}
         </h2>
-        {day === today ? <TodayCard day={day} /> : null}
         <NotePane
           path={dailyPath(day)}
           lazy
@@ -140,6 +138,7 @@ export function DaySlide({
           showBacklinks={false}
           gutterClassName={MOBILE_CONTENT_GUTTER}
           editorClassName="min-h-[30dvh]"
+          openPagesOnNoteScreen
         />
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink swipes the carousel to that

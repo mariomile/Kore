@@ -4,6 +4,7 @@ import { classifyGraphPath } from '../graph/paths'
 import { db } from '../indexing/db'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { FetchFn } from '../sync/github-api'
+import { linkInDailyNotes, type DailyLinkEntry } from './daily-link'
 import { renderNotePlacement } from './pattern'
 import { connectorFileStem } from './markdown'
 import type { Connector, ConnectorNote } from './types'
@@ -33,6 +34,13 @@ export interface SyncConnectorInput {
   readonly pattern: string | null
   /** Tags for new notes; `null` uses the connector's. */
   readonly tags: readonly string[] | null
+  /** The connector's content switches; omitted: all off. */
+  readonly options?: Readonly<Record<string, boolean>>
+  /**
+   * Heading under which each newly created note is linked in its day's
+   * daily note; omitted or `null`: no daily links.
+   */
+  readonly dailyHeading?: string | null
   /** The last successful sync, or `null` for a first (full) sync. */
   readonly since: Date | null
   /**
@@ -218,10 +226,14 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
 
   let created = 0
   let updated = 0
+  const dailyEntries: DailyLinkEntry[] = []
+  const today = localDay(new Date())
+  const dailyHeading = input.dailyHeading?.trim() || null
   const since = effectiveSince(input.since, input.floor, connector.overlapMs)
   const notes = connector.fetchNotes({
     token: input.token,
     tags: input.tags ?? connector.defaultTags,
+    options: input.options ?? {},
     since,
     fetchFn: input.fetchFn,
     isStale: input.isStale,
@@ -234,9 +246,26 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
     const outcome = await place(note)
     if (outcome === 'created') {
       created += 1
+      const path = placed.get(note.sourceId)
+      if (dailyHeading !== null && path !== undefined) {
+        dailyEntries.push({
+          path,
+          title: note.title,
+          date: note.day?.date ?? today,
+          time: note.day?.time ?? null,
+        })
+      }
     } else if (outcome === 'updated') {
       updated += 1
     }
   }
+  if (dailyHeading !== null && dailyEntries.length > 0 && !input.isStale()) {
+    await linkInDailyNotes(dailyEntries, dailyHeading, generation)
+  }
   return { created, updated, syncedAt: input.isStale() ? null : startedAt }
+}
+
+function localDay(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }

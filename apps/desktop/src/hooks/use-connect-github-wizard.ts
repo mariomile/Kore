@@ -91,6 +91,11 @@ export interface ConnectGithubWizard {
    * The credential is machine-wide, so this replaces it for every vault.
    */
   switchToken: () => void
+  /**
+   * The sign-in step should open on token entry rather than "Sign in with
+   * GitHub": set once the user asked to swap their saved token.
+   */
+  startWithToken: boolean
 }
 
 /**
@@ -139,6 +144,7 @@ export function useConnectGithubWizard({
   const [publicConfirm, setPublicConfirm] = useState<GithubRepoRef | null>(null)
   const [showCreateGuide, setShowCreateGuide] = useState(false)
   const [showGrantAccess, setShowGrantAccess] = useState(false)
+  const [startWithToken, setStartWithToken] = useState(false)
 
   function targetRef(forUser: GithubUser): GithubRepoRef | null {
     if (mode === 'existing') {
@@ -321,8 +327,10 @@ export function useConnectGithubWizard({
         setShowGrantAccess(false)
         setUser(null)
         setAuthKind(null)
+        setStartWithToken(true)
         setStep('auth')
       })
     },
+    startWithToken,
   }
 }

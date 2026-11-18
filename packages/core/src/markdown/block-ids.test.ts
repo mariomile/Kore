@@ -169,7 +169,9 @@ describe('wikilinkLabel', () => {
     expect(wikilinkLabel('Prezzi#^p1')).toBe('Prezzi')
     expect(wikilinkLabel('Prezzi#Plans|plans')).toBe('plans')
     expect(wikilinkLabel('Prezzi|')).toBeNull()
-    expect(wikilinkLabel('CRM/People/Luca')).toBeNull()
+    expect(wikilinkLabel('CRM/People/Luca')).toBe('Luca')
+    expect(wikilinkLabel('Input/Granola/Standup, 2026-11-16.md')).toBe('Standup, 2026-11-16')
+    expect(wikilinkLabel('Luca')).toBeNull()
   })
 })
 

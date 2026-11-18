@@ -106,9 +106,15 @@ export async function gitDisconnect(generation: number): Promise<GitStatus> {
 /**
  * Clone a backup repository into an absolute `path` (restore on a fresh
  * machine — runs before any graph is open). Refuses non-empty destinations.
+ * `depth` makes it a shallow clone of only the newest commits.
  */
-export async function gitClone(url: string, path: string, token: string | null): Promise<void> {
-  await call('git_clone', { url, path, token }, z.null())
+export async function gitClone(
+  url: string,
+  path: string,
+  token: string | null,
+  options: { depth?: number } = {},
+): Promise<void> {
+  await call('git_clone', { url, path, token, depth: options.depth ?? null }, z.null())
 }
 
 /**

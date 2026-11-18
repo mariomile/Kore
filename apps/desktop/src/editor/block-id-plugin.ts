@@ -13,6 +13,7 @@ import { targetAt, targetSpan } from './block-zoom-target'
 import { setZoom } from './block-zoom-state'
 import { closedPageAround } from './page-block-plugin'
 import { clearZoom, zoomTarget } from './block-zoom-plugin'
+import { memoByNode } from './node-memo'
 
 /**
  * Obsidian block ids in the live editor (Plan 33 C3). A followed
@@ -44,7 +45,8 @@ interface HiddenMarker {
   readonly idOnly: boolean
 }
 
-function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
+/** {@link hiddenMarker} relative to the node's own position, memoized per node. */
+const nodeMarker = memoByNode((node): HiddenMarker | null => {
   const last = node.lastChild
   if (!node.isTextblock || node.type.spec.code === true || last?.isText !== true) {
     return null
@@ -55,12 +57,19 @@ function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
   if (tail === null) {
     return null
   }
-  const to = pos + 1 + node.content.size
+  const to = 1 + node.content.size
   return {
     from: to - (text.length - tail.start),
     to,
     idOnly: tail.idOnly && node.childCount === 1,
   }
+})
+
+function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
+  const marker = nodeMarker(node)
+  return marker === null
+    ? null
+    : { from: pos + marker.from, to: pos + marker.to, idOnly: marker.idOnly }
 }
 
 /** The hidden marker of the caret's textblock, when the caret's line has one. */
@@ -280,9 +289,14 @@ export function findBlockId(doc: ProseMirrorNode, id: string): BlockIdHit | null
 /**
  * Put the caret on the block `id` names, scroll it to the middle of the view
  * and flash it. Steps out of a zoom that hides it. False when the note has no
- * such id.
+ * such id. `asScreen`: the note's screen opened for this line, so a page it
+ * opens is the zoom Back leaves the screen from.
  */
-export function revealBlockId(view: EditorView, id: string): boolean {
+export function revealBlockId(
+  view: EditorView,
+  id: string,
+  options: { readonly asScreen?: boolean } = {},
+): boolean {
   const hit = findBlockId(view.state.doc, id)
   if (hit === null) {
     return false
@@ -306,7 +320,8 @@ export function revealBlockId(view: EditorView, id: string): boolean {
   const page = closedPageAround(state.doc, zoomAfter, hit.from)
   const pageZoom = page === null ? null : targetAt(state.doc, state.doc.resolve(page.pos + 1))
   if (pageZoom !== null) {
-    setZoom(tr, pageZoom)
+    // Opened as a screen of its own, the page is where Back leaves from.
+    setZoom(tr, pageZoom, null, options.asScreen === true ? pageZoom : undefined)
   }
   tr.setSelection(TextSelection.near(state.doc.resolve(caret))).setMeta(blockIdKey, {
     flash: { from: hit.from, to: hit.to },

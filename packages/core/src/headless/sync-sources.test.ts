@@ -21,7 +21,56 @@ function runs(req: SourcesRequest, env: SourcesEnv): readonly SourceRun[] {
   return plan.runs
 }
 
+function resolveRuns(
+  req: SourcesRequest,
+  env: SourcesEnv,
+  vault: Parameters<typeof resolveSourceRuns>[3],
+): readonly SourceRun[] {
+  const plan = resolveSourceRuns(req, env, NOW, vault)
+  if (plan.kind !== 'runs') {
+    throw new Error(`expected runs, got: ${plan.usage}`)
+  }
+  return plan.runs
+}
+
 describe('resolveSourceRuns', () => {
+  it('takes where and how notes land from the vault file the apps share', () => {
+    const vault = {
+      integrations: {
+        granola: {
+          folder: 'Input/Granola',
+          pattern: '{date} {title}',
+          tags: ['meeting', 'work'],
+          options: { transcript: true },
+          dailyLink: true,
+          syncEvery: 60,
+        },
+      },
+    }
+
+    const [run] = resolveRuns(request(), { KORE_GRANOLA_TOKEN: 'grn' }, vault)
+
+    expect(run).toMatchObject({
+      folder: 'Input/Granola',
+      pattern: '{date} {title}',
+      tags: ['meeting', 'work'],
+      options: { transcript: true },
+      dailyHeading: run?.connector.dailyHeading,
+    })
+  })
+
+  it('lets a KORE_ variable override the vault for one run', () => {
+    const vault = { integrations: { granola: { folder: 'Shared', tags: ['meeting'] } } }
+
+    const [run] = resolveRuns(
+      request(),
+      { KORE_GRANOLA_TOKEN: 'grn', KORE_GRANOLA_FOLDER: 'Elsewhere' },
+      vault,
+    )
+
+    expect(run).toMatchObject({ folder: 'Elsewhere', tags: ['meeting'], dailyHeading: null })
+  })
+
   it('runs every connector with a token, configured from its KORE_ variables', () => {
     const resolved = runs(request(), {
       KORE_READWISE_TOKEN: ' rw ',
@@ -36,6 +85,8 @@ describe('resolveSourceRuns', () => {
         folder: 'Readwise',
         pattern: '{category}/{title}',
         tags: ['reading', 'type/reference'],
+        options: {},
+        dailyHeading: null,
         since: null,
         floor: NOW,
         keptFloor: NOW,
@@ -62,13 +113,13 @@ describe('resolveSourceRuns', () => {
   it('names the problem when nothing can run', () => {
     expect(resolveSourceRuns(request({ only: 'notion' }), {}, NOW)).toEqual({
       kind: 'usage',
-      usage: 'unknown source "notion"; known: readwise, granola',
+      usage: 'unknown source "notion"; known: granola, readwise',
     })
     expect(
       resolveSourceRuns(request({ only: 'granola' }), { KORE_READWISE_TOKEN: 'rw' }, NOW),
     ).toMatchObject({
       kind: 'usage',
-      usage: expect.stringContaining('KORE_READWISE_TOKEN and/or KORE_GRANOLA_TOKEN'),
+      usage: expect.stringContaining('KORE_GRANOLA_TOKEN and/or KORE_READWISE_TOKEN'),
     })
   })
 })

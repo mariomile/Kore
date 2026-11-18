@@ -87,6 +87,8 @@ export {
   type SyncEngineOptions,
   type SyncErrorKind,
   type SyncStatus,
+  type SyncProgress,
+  type SyncStep,
 } from './engine'
 export { AGENT_TRAILER, commitAgentWrites } from './agent-commits'
 export {

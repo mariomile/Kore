@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { CollectionEntry, NoteListEntry, TagType } from '@kore/core'
+import {
+  displayNoteTitle,
+  type CollectionEntry,
+  type NoteListEntry,
+  type TagType,
+} from '@kore/core'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -132,8 +137,8 @@ export function AllNotesGrid({
           >
             <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl p-5">
               <div className="flex shrink-0 items-start justify-between gap-2">
-                <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">
-                  {note.title}
+                <h2 className="min-w-0 text-sm font-semibold leading-snug text-text [overflow-wrap:anywhere]">
+                  {displayNoteTitle(note.title)}
                 </h2>
                 {note.isPinned ? (
                   <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />

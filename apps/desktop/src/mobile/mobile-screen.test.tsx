@@ -132,6 +132,7 @@ vi.mock('@/providers/settings-provider', () => ({
       editorMarkdownSyntax: 'hide',
       dateFormat: 'mdy',
       weekStartDay: 'monday',
+      allNotesSort: 'updated-desc',
       taskFilters: {
         pinned: true,
         current: true,
@@ -378,6 +379,10 @@ describe('MobileShell', () => {
     const initialTransform = indicator.style.transform
 
     expect(initialTransform).not.toBe('')
+    // The first placement jumps into place: no fade-in growing out of the
+    // bar's top-left corner on launch.
+    expect(indicator.getAnimations()).toHaveLength(0)
+    expect(indicator.style.transition).toBe('')
     expect(Array.from(indicator.classList)).toContain('transition-[transform,width,height,opacity]')
     expect(Array.from(indicator.classList)).toContain('top-0')
     expect(Array.from(indicator.classList)).toContain('left-0')

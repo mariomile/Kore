@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { isUntitledNotePath } from '@kore/core'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
+import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
+import { hapticImpactLight } from '@/mobile/haptics'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
 import { MobileScreenHeader } from '@/mobile/screen-header'
@@ -92,6 +94,9 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         style={{
           paddingTop: 'var(--mobile-header-height, 0px)',
           paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+          // An outline jump parks its heading just under the glass header.
+          ['--kore-outline-scroll-margin' as string]:
+            'calc(var(--mobile-header-height, 0px) + 0.75rem)',
         }}
       >
         <NotePane
@@ -112,6 +117,9 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         <NoteChildrenPanel key={path} path={path} className={MOBILE_CONTENT_GUTTER} />
         <IncomingBacklinks path={path} className={cn(MOBILE_CONTENT_GUTTER, 'pb-4')} />
       </main>
+      {/* The Mac's outline, sized for the phone's margin: a tap opens the
+          jump list, and it steps aside while the keyboard is up. */}
+      <NoteOutlineRail scope={mainRef} className="right-0" onOpen={hapticImpactLight} />
     </div>
   )
 }

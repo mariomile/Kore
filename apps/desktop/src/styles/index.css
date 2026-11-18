@@ -908,6 +908,13 @@ html:root {
   padding-inline: var(--editor-content-gutter, max(2rem, calc((100% - 42rem) / 2)));
 }
 
+/* An outline jump lands a section heading clear of the floating chrome
+   above the note: the pane's top inset on the Mac, the glass header on the
+   iPhone (its note screen sets the variable from the measured bar). */
+:is(.ProseMirror.kore-note-surface, .kore-note-surface .ProseMirror) > :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: var(--kore-outline-scroll-margin, 3.5rem);
+}
+
 /* Mobile note-body gutter. This mirrors `.kore-content-gutter`'s cascade
    role with a fixed phone-sized inset: the class must be un-layered so it beats
    `.kore-editor { padding: 0; }` on the contenteditable itself. */

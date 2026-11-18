@@ -10,14 +10,15 @@ import {
   remoteAgents,
   type McpClientId,
 } from '@kore/core'
-import { Check, Copy } from '@/components/icons'
+import { Check } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { openUrlSync } from '@/lib/open-url'
 import { cn } from '@/lib/utils'
 import { requestRemoteAccessRestart, useRemoteAccess } from '@/lib/remote-access-store'
 import { useSettings } from '@/providers/settings-provider'
+import { CopyButton } from './copy-button'
 import { SettingsField } from './field'
-import { PROVIDER_BRANDS, ProviderLogo, type ProviderBrand } from './provider-brands'
+import { PROVIDER_BRANDS, BrandTile, type ProviderBrand } from './provider-brands'
 
 /** Cloud apps reach the vault through Remote access, each with its own key. */
 const CLOUD_APPS = [
@@ -82,7 +83,6 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
   const [done, setDone] = useState<McpClientId | null>(null)
   const [error, setError] = useState<{ app: string; message: string } | null>(null)
   const [cloud, setCloud] = useState<{ app: CloudAppId; key: string } | null>(null)
-  const [copied, setCopied] = useState<'url' | 'key' | null>(null)
 
   async function connectLocal(client: McpClientId): Promise<void> {
     setBusy(client)
@@ -102,7 +102,6 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
   async function connectCloud(app: (typeof CLOUD_APPS)[number]): Promise<void> {
     setBusy(app.id)
     setError(null)
-    setCopied(null)
     try {
       const existing = (await remoteAgents()).find(
         (agent) => agent.name.toLowerCase() === app.agentName.toLowerCase(),
@@ -119,15 +118,6 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
       setError({ app: app.id, message: errorMessage(caught) })
     } finally {
       setBusy(null)
-    }
-  }
-
-  async function copy(target: 'url' | 'key', text: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(target)
-    } catch (caught) {
-      setError({ app: cloud?.app ?? '', message: errorMessage(caught) })
     }
   }
 
@@ -193,8 +183,9 @@ export function AgentsConnectField({ cliPath }: { cliPath: string }): ReactEleme
                         ? 'Kore is reachable only on this Mac. Set up Tailscale in Remote access below, then try again.'
                         : null
                   }
-                  copied={copied}
-                  onCopy={(target, text) => void copy(target, text)}
+                  onCopyError={(message) =>
+                    setError(message === null ? null : { app: cloud.app, message })
+                  }
                   keyValue={cloud.key}
                 />
               ) : null
@@ -234,11 +225,7 @@ function AppRow({
     <li className="flex flex-col gap-2 py-1.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {brand !== undefined ? (
-            <span className="flex size-8 flex-none items-center justify-center rounded-lg border border-border bg-surface-sunken text-text">
-              <ProviderLogo brand={brand} className="size-4.5" />
-            </span>
-          ) : null}
+          {brand !== undefined ? <BrandTile path={brand.path} /> : null}
           <div className="flex min-w-0 flex-col">
             <span className="text-sm text-text">{label}</span>
             <span className="text-xs text-text-muted">{note}</span>
@@ -261,16 +248,14 @@ function CloudSteps({
   url,
   waiting,
   failure,
-  copied,
-  onCopy,
+  onCopyError,
   keyValue,
 }: {
   app: (typeof CLOUD_APPS)[number]
   url: string | null
   waiting: boolean
   failure: string | null
-  copied: 'url' | 'key' | null
-  onCopy: (target: 'url' | 'key', text: string) => void
+  onCopyError: (message: string | null) => void
   keyValue: string
 }): ReactElement {
   if (url === null) {
@@ -283,10 +268,7 @@ function CloudSteps({
   return (
     <ol className="flex flex-col gap-2.5 rounded-md bg-surface-hover px-3 py-2.5 text-xs text-text-secondary">
       <Step n={1} text="Copy the address of your vault.">
-        <Button size="xs" variant="outline" onClick={() => onCopy('url', url)}>
-          {copied === 'url' ? <Check aria-hidden /> : <Copy aria-hidden />}
-          {copied === 'url' ? 'Copied' : 'Copy address'}
-        </Button>
+        <CopyButton text={url} label="Copy address" onError={onCopyError} />
       </Step>
       <Step n={2} text={app.where}>
         <Button size="xs" variant="outline" onClick={() => openUrlSync(app.openUrl)}>
@@ -294,10 +276,7 @@ function CloudSteps({
         </Button>
       </Step>
       <Step n={3} text={`When Kore asks for a key, paste the one made for ${app.agentName}.`}>
-        <Button size="xs" variant="outline" onClick={() => onCopy('key', keyValue)}>
-          {copied === 'key' ? <Check aria-hidden /> : <Copy aria-hidden />}
-          {copied === 'key' ? 'Copied' : 'Copy key'}
-        </Button>
+        <CopyButton text={keyValue} label="Copy key" onError={onCopyError} />
       </Step>
     </ol>
   )

@@ -15,15 +15,14 @@ export * from './exports/sync-markdown-indexing'
 export * from './cyber-brain'
 export {
   activateKoreCloudForVault,
-  connectorUrl as koreCloudConnectorUrl,
   forgetKoreCloud,
-  koreCloudAgents,
+  koreCloudClient,
   loadKoreCloud,
-  revokeKoreCloudAgent,
   uploadVaultToKoreCloud,
   type StoredKoreCloud,
 } from './cloud/app'
 export {
+  connectorUrl as koreCloudConnectorUrl,
   tokenPageUrl as koreCloudTokenPageUrl,
   type KoreCloudAgent,
   type UploadReport as KoreCloudUploadReport,

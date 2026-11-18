@@ -1,19 +1,19 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { siCloudflare } from 'simple-icons'
 import {
   activateKoreCloudForVault,
   errorMessage,
   forgetKoreCloud,
-  koreCloudAgents,
+  koreCloudClient,
   koreCloudConnectorUrl,
   koreCloudTokenPageUrl,
   loadKoreCloud,
-  revokeKoreCloudAgent,
   uploadVaultToKoreCloud,
   type KoreCloudAgent,
   type KoreCloudUploadReport,
   type StoredKoreCloud,
 } from '@kore/core'
-import { Check, Copy } from '@/components/icons'
+import { Check } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,10 @@ import { Spinner } from '@/components/ui/spinner'
 import { loadKoreCloudWorker } from '@/lib/kore-cloud-bundle'
 import { openUrlSync } from '@/lib/open-url'
 import { providerFetch } from '@/lib/provider-fetch'
+import { cn } from '@/lib/utils'
+import { CopyButton } from './copy-button'
 import { SettingsField } from './field'
+import { BrandTile } from './provider-brands'
 
 type Phase =
   | { kind: 'loading' }
@@ -30,8 +33,6 @@ type Phase =
   | { kind: 'token' }
   | { kind: 'working'; step: string; sent: number; total: number }
   | { kind: 'on' }
-
-type CopiedTarget = 'url' | 'key' | null
 
 const count = new Intl.NumberFormat()
 
@@ -85,7 +86,6 @@ export function AgentsKoreCloudField({
   const [token, setToken] = useState('')
   const [report, setReport] = useState<KoreCloudUploadReport | null>(null)
   const [agents, setAgents] = useState<KoreCloudAgent[] | null>(null)
-  const [copied, setCopied] = useState<CopiedTarget>(null)
   const [error, setError] = useState<string | null>(null)
 
   const mine = stored !== null && stored.vaultRoot === graphRoot ? stored : null
@@ -115,7 +115,8 @@ export function AgentsKoreCloudField({
       return
     }
     let current = true
-    koreCloudAgents(mine, providerFetch)
+    koreCloudClient(mine, providerFetch)
+      .agents()
       .then((loaded) => {
         if (current) {
           setAgents(loaded)
@@ -189,24 +190,15 @@ export function AgentsKoreCloudField({
     }
   }
 
-  async function copy(target: Exclude<CopiedTarget, null>, text: string): Promise<void> {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(target)
-    } catch (caught) {
-      setError(errorMessage(caught))
-    }
-  }
-
   async function disconnect(agent: KoreCloudAgent): Promise<void> {
     if (mine === null) {
       return
     }
     setError(null)
     try {
-      await revokeKoreCloudAgent(mine, providerFetch, agent.id)
-      setAgents(await koreCloudAgents(mine, providerFetch))
+      const cloud = koreCloudClient(mine, providerFetch)
+      await cloud.revokeAgent(agent.id)
+      setAgents(await cloud.agents())
     } catch (caught) {
       setError(errorMessage(caught))
     }
@@ -241,13 +233,16 @@ export function AgentsKoreCloudField({
                 creates a separate one.
               </p>
             ) : null}
-            <div className="flex items-center gap-2">
+            <CloudflareRow note="Needs a free account.">
               <Button size="xs" onClick={begin}>
                 Set up Kore Cloud
               </Button>
-              <span className="text-xs text-text-muted">Needs a free Cloudflare account.</span>
-            </div>
+            </CloudflareRow>
           </>
+        ) : null}
+
+        {phase.kind === 'token' || phase.kind === 'working' ? (
+          <CloudflareRow note="Your free account." />
         ) : null}
 
         {phase.kind === 'token' ? (
@@ -323,30 +318,23 @@ export function AgentsKoreCloudField({
 
         {phase.kind === 'on' && mine !== null ? (
           <>
-            <div className="flex items-center gap-2">
+            <CloudflareRow note={koreCloudConnectorUrl(mine)} mono>
               <Badge variant="secondary">
                 <Check aria-hidden />
                 On
               </Badge>
-              <p
-                className="min-w-0 truncate font-mono text-xs text-text-secondary select-text"
-                title={koreCloudConnectorUrl(mine)}
-              >
-                {koreCloudConnectorUrl(mine)}
-              </p>
-            </div>
+            </CloudflareRow>
             {report !== null ? (
               <p className="text-xs text-text-muted">{uploadSummary(report)}</p>
             ) : null}
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="xs" onClick={() => void copy('url', koreCloudConnectorUrl(mine))}>
-                {copied === 'url' ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied === 'url' ? 'Copied' : 'Copy connector URL'}
-              </Button>
-              <Button size="xs" variant="outline" onClick={() => void copy('key', mine.ownerKey)}>
-                {copied === 'key' ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied === 'key' ? 'Copied' : 'Copy owner key'}
-              </Button>
+              <CopyButton
+                variant="default"
+                text={koreCloudConnectorUrl(mine)}
+                label="Copy connector URL"
+                onError={setError}
+              />
+              <CopyButton text={mine.ownerKey} label="Copy owner key" onError={setError} />
               <Button size="xs" variant="outline" onClick={() => void uploadNew()}>
                 Upload new notes
               </Button>
@@ -399,5 +387,38 @@ export function AgentsKoreCloudField({
         {error !== null ? <p className="text-xs text-destructive">{error}</p> : null}
       </div>
     </SettingsField>
+  )
+}
+
+/**
+ * Where Kore Cloud runs: Cloudflare's mark in the same tile the other agent
+ * rows use, a one-line note (the connector URL once it is on), and the
+ * state's control on the right.
+ */
+function CloudflareRow({
+  note,
+  mono = false,
+  children,
+}: {
+  note: string
+  mono?: boolean
+  children?: ReactNode
+}): ReactElement {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <BrandTile path={siCloudflare.path} />
+        <div className="flex min-w-0 flex-col">
+          <span className="text-sm text-text">Cloudflare</span>
+          <span
+            className={cn('text-xs text-text-muted', mono && 'truncate font-mono select-text')}
+            title={mono ? note : undefined}
+          >
+            {note}
+          </span>
+        </div>
+      </div>
+      {children !== undefined ? <div className="shrink-0">{children}</div> : null}
+    </div>
   )
 }

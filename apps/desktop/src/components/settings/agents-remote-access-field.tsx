@@ -6,16 +6,14 @@ import {
   rotateRemoteAccessToken,
   type RemoteTunnel,
 } from '@kore/core'
-import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { openUrlSync } from '@/lib/open-url'
 import { requestRemoteAccessRestart, useRemoteAccess } from '@/lib/remote-access-store'
 import { useSettings } from '@/providers/settings-provider'
+import { CopyButton } from './copy-button'
 import { AgentsRemoteAgentsList } from './agents-remote-agents-list'
 import { SettingsField } from './field'
-
-type CopiedTarget = 'url' | 'token' | 'prompt' | null
 
 function tunnelNote(tunnel: RemoteTunnel, localUrl: string): string | null {
   switch (tunnel.kind) {
@@ -41,27 +39,18 @@ function tunnelNote(tunnel: RemoteTunnel, localUrl: string): string | null {
 export function AgentsRemoteAccessField({ graphName }: { graphName: string }): ReactElement {
   const { settings, updateSettings } = useSettings()
   const { phase } = useRemoteAccess()
-  const [copied, setCopied] = useState<CopiedTarget>(null)
+  // A new token means the copied one is stale: remount its button.
+  const [tokenRevision, setTokenRevision] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const enabled = settings.remoteAccessEnabled
   const state = phase.kind === 'on' ? phase.state : null
   const url = state === null ? null : (state.publicUrl ?? state.localUrl)
 
-  async function copy(target: Exclude<CopiedTarget, null>, text: () => Promise<string>) {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(await text())
-      setCopied(target)
-    } catch (caught) {
-      setError(errorMessage(caught))
-    }
-  }
-
   async function newToken(): Promise<void> {
     setError(null)
     try {
       await rotateRemoteAccessToken()
-      setCopied(null)
+      setTokenRevision((revision) => revision + 1)
       requestRemoteAccessRestart()
     } catch (caught) {
       setError(errorMessage(caught))
@@ -81,10 +70,7 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
           <Switch
             aria-label="Remote access"
             checked={enabled}
-            onCheckedChange={(checked) => {
-              setCopied(null)
-              updateSettings({ remoteAccessEnabled: checked })
-            }}
+            onCheckedChange={(checked) => updateSettings({ remoteAccessEnabled: checked })}
           />
           <span className="text-xs text-text-secondary">
             {!enabled
@@ -120,28 +106,20 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
         {enabled ? (
           <div className="flex flex-wrap items-center gap-2">
             {url !== null ? (
-              <Button
-                size="xs"
-                onClick={() => void copy('prompt', async () => remoteAccessSetupPrompt(url))}
-              >
-                {copied === 'prompt' ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied === 'prompt' ? 'Copied' : 'Copy setup prompt'}
-              </Button>
+              <CopyButton
+                variant="default"
+                text={remoteAccessSetupPrompt(url)}
+                label="Copy setup prompt"
+                onError={setError}
+              />
             ) : null}
-            {url !== null ? (
-              <Button size="xs" variant="outline" onClick={() => void copy('url', async () => url)}>
-                {copied === 'url' ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied === 'url' ? 'Copied' : 'Copy URL'}
-              </Button>
-            ) : null}
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => void copy('token', remoteAccessToken)}
-            >
-              {copied === 'token' ? <Check aria-hidden /> : <Copy aria-hidden />}
-              {copied === 'token' ? 'Copied' : 'Copy token'}
-            </Button>
+            {url !== null ? <CopyButton text={url} label="Copy URL" onError={setError} /> : null}
+            <CopyButton
+              key={tokenRevision}
+              text={remoteAccessToken}
+              label="Copy token"
+              onError={setError}
+            />
             {enableUrl !== null ? (
               <Button size="xs" onClick={() => openUrlSync(enableUrl)}>
                 Turn on Funnel

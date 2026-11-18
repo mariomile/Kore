@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { KoreError } from '../errors'
-import { deleteSecret, getSecret, setSecret } from '../secrets/keychain'
+import { deleteSecret, getJsonSecret, setJsonSecret } from '../secrets/keychain'
 import { apiHeaders, JSON_HEADERS, readJson, type FetchFn } from './github-api'
 
 /** Kore has no registered GitHub App; use the personal access token flow. */
@@ -54,20 +54,12 @@ export const githubAuthSchema = z.discriminatedUnion('kind', [
 export type GithubAuth = z.infer<typeof githubAuthSchema>
 
 export async function saveGithubAuth(auth: GithubAuth): Promise<void> {
-  await setSecret(GITHUB_AUTH_SECRET, JSON.stringify(auth))
+  await setJsonSecret(GITHUB_AUTH_SECRET, auth)
 }
 
 /** The stored credential, or `null` when absent or unreadable (re-connect). */
 export async function loadGithubAuth(): Promise<GithubAuth | null> {
-  const raw = await getSecret(GITHUB_AUTH_SECRET)
-  if (raw === null) {
-    return null
-  }
-  try {
-    return githubAuthSchema.parse(JSON.parse(raw))
-  } catch {
-    return null
-  }
+  return await getJsonSecret(GITHUB_AUTH_SECRET, githubAuthSchema)
 }
 
 export async function clearGithubAuth(): Promise<void> {

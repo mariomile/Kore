@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { listFiles, readNote } from '../graph/commands'
 import { getVaultLayout } from '../graph/vault-layout'
-import { deleteSecret, getSecret, setSecret } from '../secrets/keychain'
-import { activateKoreCloud, connectorUrl, waitForWorker, type Activated } from './activate'
-import { KoreCloud, type KoreCloudAgent } from './client'
+import { deleteSecret, getJsonSecret, setJsonSecret } from '../secrets/keychain'
+import { activateKoreCloud, waitForWorker, type Activated } from './activate'
+import { KoreCloud } from './client'
 import type { Fetch } from './cloudflare'
 import { isNotePath } from './note-rules'
 import { uploadNotes, type LocalNote, type UploadReport } from './upload'
@@ -32,16 +32,7 @@ export type StoredKoreCloud = z.infer<typeof storedSchema>
 
 /** The Kore Cloud this app turned on, or null. */
 export async function loadKoreCloud(): Promise<StoredKoreCloud | null> {
-  const raw = await getSecret(KORE_CLOUD_SECRET)
-  if (raw === null) {
-    return null
-  }
-  try {
-    const parsed = storedSchema.safeParse(JSON.parse(raw))
-    return parsed.success ? parsed.data : null
-  } catch {
-    return null
-  }
+  return await getJsonSecret(KORE_CLOUD_SECRET, storedSchema)
 }
 
 /** Forget Kore Cloud on this Mac. The Worker and its notes stay in Cloudflare. */
@@ -89,14 +80,19 @@ export async function activateKoreCloudForVault(
     saved,
     readNotes: () => readVaultNotes(options.generation),
     onConfig: async (config) => {
-      await setSecret(
-        KORE_CLOUD_SECRET,
-        JSON.stringify({ ...config, vaultRoot: options.vaultRoot } satisfies StoredKoreCloud),
-      )
+      await setJsonSecret(KORE_CLOUD_SECRET, {
+        ...config,
+        vaultRoot: options.vaultRoot,
+      } satisfies StoredKoreCloud)
     },
     ...(options.onStep === undefined ? {} : { onStep: options.onStep }),
     ...(options.onUpload === undefined ? {} : { onUpload: options.onUpload }),
   })
+}
+
+/** The saved Kore Cloud as a client: agents, revoking one, pushes. */
+export function koreCloudClient(stored: StoredKoreCloud, fetchFn: Fetch): KoreCloud {
+  return new KoreCloud(stored.url, stored.ownerKey, fetchFn)
 }
 
 /** Send the open vault's notes Kore Cloud lacks (no Cloudflare token needed). */
@@ -106,26 +102,7 @@ export async function uploadVaultToKoreCloud(
   generation: number,
   onUpload?: (sent: number, total: number) => void,
 ): Promise<UploadReport> {
-  const cloud = new KoreCloud(stored.url, stored.ownerKey, fetchFn)
+  const cloud = koreCloudClient(stored, fetchFn)
   await waitForWorker(cloud)
   return await uploadNotes(cloud, await readVaultNotes(generation), onUpload)
 }
-
-/** The agents approved on Kore Cloud's consent page. */
-export async function koreCloudAgents(
-  stored: StoredKoreCloud,
-  fetchFn: Fetch,
-): Promise<KoreCloudAgent[]> {
-  return await new KoreCloud(stored.url, stored.ownerKey, fetchFn).agents()
-}
-
-/** Disconnect one agent from Kore Cloud. */
-export async function revokeKoreCloudAgent(
-  stored: StoredKoreCloud,
-  fetchFn: Fetch,
-  id: string,
-): Promise<void> {
-  await new KoreCloud(stored.url, stored.ownerKey, fetchFn).revokeAgent(id)
-}
-
-export { connectorUrl }

@@ -1,9 +1,9 @@
 import { useState, type ReactElement } from 'react'
-import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useOptionalRouter } from '@/routing/router'
 import { settingsRoute } from '@/routing/route'
 import { useSyncContext } from '@/providers/sync-provider'
+import { CopyButton } from './copy-button'
 import { SettingsField } from './field'
 
 /**
@@ -15,21 +15,10 @@ import { SettingsField } from './field'
 export function AgentsRepoAccessField(): ReactElement {
   const sync = useSyncContext()
   const router = useOptionalRouter()
-  const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const backup = sync?.backup ?? null
   const repo = backup?.phase === 'connected' ? backup.repo : null
   const repoUrl = repo === null ? null : `https://github.com/${repo.owner}/${repo.name}`
-
-  async function copyUrl(url: string): Promise<void> {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-    } catch {
-      setError(`Couldn’t copy. The address is ${url}`)
-    }
-  }
 
   return (
     <SettingsField
@@ -45,10 +34,13 @@ export function AgentsRepoAccessField(): ReactElement {
           <span className="truncate font-mono text-xs text-text-secondary select-text">
             {repo.owner}/{repo.name}
           </span>
-          <Button size="xs" variant="outline" onClick={() => void copyUrl(repoUrl)}>
-            {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-            {copied ? 'Copied' : 'Copy repository URL'}
-          </Button>
+          <CopyButton
+            text={repoUrl}
+            label="Copy repository URL"
+            onError={(message) =>
+              setError(message === null ? null : `Couldn’t copy. The address is ${repoUrl}`)
+            }
+          />
         </div>
       ) : router !== null ? (
         <div className="mt-3">

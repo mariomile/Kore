@@ -1,10 +1,9 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { clientsWithPinnedVault, errorMessage, mcpClientServers, mcpClientSetup } from '@kore/core'
-import { Check, Copy } from '@/components/icons'
+import { clientsWithPinnedVault, mcpClientServers, mcpClientSetup } from '@kore/core'
 import { InlineAlert } from '@/components/inline-alert'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { CopyButton } from './copy-button'
 import { SettingsField } from './field'
 
 interface AgentsMcpFieldProps {
@@ -12,8 +11,6 @@ interface AgentsMcpFieldProps {
   cliPath: string
   graphName: string
 }
-
-type CopiedTarget = 'config' | 'command' | null
 
 const list = new Intl.ListFormat('en', { type: 'conjunction' })
 
@@ -27,7 +24,6 @@ const list = new Intl.ListFormat('en', { type: 'conjunction' })
  */
 export function AgentsMcpField({ cliPath, graphName }: AgentsMcpFieldProps): ReactElement {
   const [readOnly, setReadOnly] = useState(false)
-  const [copied, setCopied] = useState<CopiedTarget>(null)
   const [error, setError] = useState<string | null>(null)
   const setup = mcpClientSetup({ cliPath, readOnly })
   const { data: servers } = useQuery({
@@ -35,16 +31,6 @@ export function AgentsMcpField({ cliPath, graphName }: AgentsMcpFieldProps): Rea
     queryFn: mcpClientServers,
   })
   const pinned = servers === undefined ? [] : clientsWithPinnedVault(servers)
-
-  async function copy(target: Exclude<CopiedTarget, null>, text: string): Promise<void> {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(target)
-    } catch (caught) {
-      setError(errorMessage(caught))
-    }
-  }
 
   return (
     <SettingsField
@@ -57,32 +43,19 @@ export function AgentsMcpField({ cliPath, graphName }: AgentsMcpFieldProps): Rea
         </InlineAlert>
       ) : null}
       <div className="mt-3 flex items-center gap-3">
-        <Switch
-          aria-label="Read-only"
-          checked={readOnly}
-          onCheckedChange={(checked) => {
-            setReadOnly(checked)
-            setCopied(null)
-          }}
-        />
+        <Switch aria-label="Read-only" checked={readOnly} onCheckedChange={setReadOnly} />
         <span className="text-xs text-text-muted">Read-only (no tools that write)</span>
       </div>
       <pre className="mt-3 max-h-40 overflow-auto rounded-md bg-surface-hover p-2 font-mono text-xs text-text-secondary select-text">
         {setup.configJson}
       </pre>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Button size="xs" variant="outline" onClick={() => void copy('config', setup.configJson)}>
-          {copied === 'config' ? <Check aria-hidden /> : <Copy aria-hidden />}
-          {copied === 'config' ? 'Copied' : 'Copy config'}
-        </Button>
-        <Button
-          size="xs"
-          variant="outline"
-          onClick={() => void copy('command', setup.claudeCodeCommand)}
-        >
-          {copied === 'command' ? <Check aria-hidden /> : <Copy aria-hidden />}
-          {copied === 'command' ? 'Copied' : 'Copy Claude Code command'}
-        </Button>
+        <CopyButton text={setup.configJson} label="Copy config" onError={setError} />
+        <CopyButton
+          text={setup.claudeCodeCommand}
+          label="Copy Claude Code command"
+          onError={setError}
+        />
       </div>
       {error !== null ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
     </SettingsField>

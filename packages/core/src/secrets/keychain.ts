@@ -29,3 +29,26 @@ export async function getSecret(name: string): Promise<string | null> {
 export async function deleteSecret(name: string): Promise<void> {
   await call('secret_delete', { name }, voidSchema)
 }
+
+/**
+ * Read a secret stored as JSON and check it against `schema`. A missing,
+ * malformed or out-of-shape entry is `null`: the caller treats it as never
+ * set (the user reconnects), never as an error.
+ */
+export async function getJsonSecret<T>(name: string, schema: z.ZodType<T>): Promise<T | null> {
+  const raw = await getSecret(name)
+  if (raw === null) {
+    return null
+  }
+  try {
+    const parsed = schema.safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
+}
+
+/** Store `value` as JSON under `name`; read it back with {@link getJsonSecret}. */
+export async function setJsonSecret(name: string, value: unknown): Promise<void> {
+  await setSecret(name, JSON.stringify(value))
+}

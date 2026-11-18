@@ -130,6 +130,29 @@ export function createAltoolUploadArgs({ authArgs, ipa, wait }) {
   return args
 }
 
+/**
+ * What an altool upload run means. altool 26.x can crash with an uncaught
+ * NSException ("Invalid type in JSON write (NSError)") while `--wait` polls an
+ * upload that already reached App Store Connect and is PROCESSING. The build
+ * is there; only the poll died. Treat that as uploaded, not failed, so the
+ * release goes on to set What to Test (which polls for the build itself).
+ */
+export function altoolUploadOutcome({ status, signal, output, wait }) {
+  if (status === 0) return 'ok'
+  if (!wait) return 'failed'
+  const crashed =
+    signal === 'SIGABRT' ||
+    status === 134 ||
+    /Terminating app due to uncaught exception/.test(output)
+  // Only the last state App Store Connect reported counts: an earlier
+  // PROCESSING followed by INVALID or FAILED is a rejected build.
+  const states = [...output.matchAll(/Upload is in state '([A-Z_]+)'/g)].map((match) => match[1])
+  const last = states.at(-1)
+  return crashed && ['PROCESSING', 'VALID', 'COMPLETE'].includes(last ?? '')
+    ? 'uploaded-wait-crashed'
+    : 'failed'
+}
+
 /** Build the altool command that validates an IPA before upload. */
 export function createAltoolValidateArgs({ authArgs, ipa }) {
   return ['altool', '--validate-app', ipa, ...authArgs, '--output-format', 'json']
@@ -562,10 +585,26 @@ function uploadIpaWithCredentials({ credentials, ipa, wait }) {
     const args = createAltoolUploadArgs({ authArgs: credentials.altoolArgs, ipa, wait })
     const result = spawnSync('xcrun', args, {
       cwd: repoRoot,
-      stdio: 'inherit',
+      stdio: ['inherit', 'pipe', 'pipe'],
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
       env: { ...process.env, ...credentials.env },
     })
-    if (result.status !== 0) fail('altool upload failed')
+    process.stdout.write(result.stdout ?? '')
+    process.stderr.write(result.stderr ?? '')
+    const outcome = altoolUploadOutcome({
+      status: result.status,
+      signal: result.signal,
+      output: `${result.stdout ?? ''}\n${result.stderr ?? ''}`,
+      wait,
+    })
+    if (outcome === 'failed') fail('altool upload failed')
+    if (outcome === 'uploaded-wait-crashed') {
+      console.log(
+        '::warning::altool crashed while waiting for App Store Connect processing; the upload itself finished, so the build is on TestFlight.',
+      )
+      return
+    }
     log(
       wait
         ? 'upload accepted and processing completed'

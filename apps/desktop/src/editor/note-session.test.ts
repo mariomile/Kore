@@ -452,6 +452,15 @@ describe('frontmatter ownership (Plan 07b)', () => {
     expect(h.snapshots.at(-1)?.dirty).toBe(false)
   })
 
+  it('commitFrontmatter keeps a body that opens on a blank line byte-exact', async () => {
+    const h = harness({ disk: '\n# Hello\n' })
+    h.session.load()
+    await vi.runAllTimersAsync()
+    await expect(h.session.commitFrontmatter({ pinned: true })).resolves.toBe(true)
+    // The gap the new header absorbs is the body's own: never written twice.
+    expect(h.writes.at(-1)?.contents).toBe('---\npinned: true\n---\n\n# Hello\n')
+  })
+
   it('commitFrontmatter declines when the session has no write channel', async () => {
     // No graph generation → no `io.write`. The patch can't land, so report
     // false rather than the in-memory success that would let publish/pin/private

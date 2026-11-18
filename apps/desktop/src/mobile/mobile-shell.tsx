@@ -6,12 +6,12 @@ import { useBlockSelection } from '@/editor/block-selection-store'
 import { MobileBlockActionBar } from '@/mobile/block-action-bar'
 import { MobileCaptureDrawer } from '@/mobile/capture-drawer'
 import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
-import { GlobalSearchSheet, PullToSearchIndicator } from '@/mobile/global-search-sheet'
+import { GlobalSearchSheet } from '@/mobile/global-search-sheet'
 import { MobileStack } from '@/mobile/mobile-stack'
 import { MobileTabBar, tabRootFor, type MobileTab } from '@/mobile/mobile-tab-bar'
 import { EMPTY_ALL_NOTES_FILTERS, type AllNotesFilters } from '@/mobile/search-filters/filter-state'
 import { useKeyboardVisible } from '@/mobile/use-keyboard'
-import { usePullToSearch } from '@/mobile/use-pull-to-search'
+import { PullToSearchIndicator, usePullToSearch } from '@/mobile/pull-to-search'
 import { useWakeToToday } from '@/mobile/use-wake-to-today'
 import { routesEqual, type Route } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -181,7 +181,7 @@ export function MobileShell(): ReactElement {
         onRecord={audioMemo.toggle}
         recordingAvailable={audioMemo.available}
       />
-      <GlobalSearchSheet open={searchOpen} onOpenChange={setSearchOpen} />
+      {searchOpen ? <GlobalSearchSheet onClose={() => setSearchOpen(false)} /> : null}
     </div>
   )
 }

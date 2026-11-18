@@ -1,4 +1,5 @@
-import { useEffect, useEffectEvent, type RefObject } from 'react'
+import { useEffect, useEffectEvent, type ReactElement, type Ref, type RefObject } from 'react'
+import { Search } from '@/components/icons'
 import { hapticImpactLight } from '@/mobile/haptics'
 
 /** How far (px) a pull must travel before letting go opens search. */
@@ -154,4 +155,30 @@ export function usePullToSearch({
       reset()
     }
   }, [container, indicator, enabled])
+}
+
+/**
+ * The pull-to-search indicator: a "Search" capsule that drops in from above
+ * the top edge as the pull travels (`--pull`, 0…1, written by
+ * {@link usePullToSearch}) and fills with the accent once letting go would
+ * open search (`data-armed`). Pure CSS on purpose: the pull repaints it on
+ * every touchmove without a React render, and only `transform` moves.
+ */
+export function PullToSearchIndicator({ ref }: { ref: Ref<HTMLDivElement> }): ReactElement {
+  return (
+    <div
+      ref={ref}
+      aria-hidden
+      className="group pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-center"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top) + 0.375rem)',
+        transform: 'translate3d(0, calc((var(--pull, 0) - 1) * (100% + 0.5rem)), 0)',
+      }}
+    >
+      <span className="flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-[15px] font-medium text-text-secondary shadow-[0_4px_20px_rgb(0_0_0/0.12)] ring-1 ring-foreground/10 transition-colors duration-150 group-data-armed:bg-primary group-data-armed:text-primary-foreground group-data-armed:ring-transparent motion-reduce:transition-none">
+        <Search aria-hidden className="size-[18px]" />
+        Search
+      </span>
+    </div>
+  )
 }

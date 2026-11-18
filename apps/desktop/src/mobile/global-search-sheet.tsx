@@ -7,59 +7,18 @@ import {
   type CSSProperties,
   type ReactElement,
   type ReactNode,
-  type Ref,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, SearchOff } from '@/components/icons'
-import { searchWithFilters, type FilteredSearchHit } from '@kore/core'
+import { SearchOff } from '@/components/icons'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { NoteRowList } from '@/mobile/note-row-list'
-import { rowForHit } from '@/mobile/screens/all-notes'
-import {
-  buildAllNotesSearch,
-  EMPTY_ALL_NOTES_FILTERS,
-  searchPlanFor,
-} from '@/mobile/search-filters/filter-state'
+import { rowForHit, useNoteSearchFeed } from '@/mobile/note-search-feed'
+import { buildAllNotesSearch, EMPTY_ALL_NOTES_FILTERS } from '@/mobile/search-filters/filter-state'
 import { SearchInput } from '@/mobile/search-input'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
-import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-
-/**
- * The pull-to-search indicator: a "Search" capsule that drops in from above
- * the top edge as the pull travels (`--pull`, 0…1, written by
- * {@link usePullToSearch}) and fills with the accent once letting go would
- * open search (`data-armed`). Pure CSS on purpose: the pull repaints it on
- * every touchmove without a React render, and only `transform` moves.
- */
-export function PullToSearchIndicator({ ref }: { ref: Ref<HTMLDivElement> }): ReactElement {
-  return (
-    <div
-      ref={ref}
-      aria-hidden
-      className="group pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-center"
-      style={{
-        paddingTop: 'calc(env(safe-area-inset-top) + 0.375rem)',
-        transform: 'translate3d(0, calc((var(--pull, 0) - 1) * (100% + 0.5rem)), 0)',
-      }}
-    >
-      <span className="flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-[15px] font-medium text-text-secondary shadow-[0_4px_20px_rgb(0_0_0/0.12)] ring-1 ring-foreground/10 transition-colors duration-150 group-data-armed:bg-primary group-data-armed:text-primary-foreground group-data-armed:ring-transparent motion-reduce:transition-none">
-        <Search aria-hidden className="size-[18px]" />
-        Search
-      </span>
-    </div>
-  )
-}
-
-interface GlobalSearchSheetProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
 
 /**
  * Global search on iPhone, opened by pulling down from the top of a screen
@@ -69,21 +28,14 @@ interface GlobalSearchSheetProps {
  * cache). Opening a result closes the sheet and pushes the note; Cancel
  * returns to the screen underneath, untouched.
  */
-export function GlobalSearchSheet({ open, onOpenChange }: GlobalSearchSheetProps): ReactNode {
-  if (!open) {
-    return null
-  }
+export function GlobalSearchSheet({ onClose }: { onClose: () => void }): ReactNode {
   // Portaled to the end of <body>: above the shell's status pills, while the
   // row actions' dialogs (portaled later) still land above the sheet.
-  return createPortal(<GlobalSearchSurface onClose={() => onOpenChange(false)} />, document.body)
+  return createPortal(<GlobalSearchSurface onClose={onClose} />, document.body)
 }
 
 function GlobalSearchSurface({ onClose }: { onClose: () => void }): ReactElement {
-  const { graph } = useGraph()
   const { navigate } = useRouter()
-  const queryClient = useQueryClient()
-  const bridgeReady = useBridgeReady()
-  const enabled = bridgeReady && graph !== null
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -99,27 +51,8 @@ function GlobalSearchSurface({ onClose }: { onClose: () => void }): ReactElement
     () => buildAllNotesSearch(deferredQuery, EMPTY_ALL_NOTES_FILTERS, null),
     [deferredQuery],
   )
-  // The All tab's query key and shape: an empty field reuses its cached feed.
-  const queryKey = [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed]
-  const { data: feed, isError } = useQuery({
-    queryKey,
-    queryFn: async (): Promise<{ hits: FilteredSearchHit[]; recall: boolean }> => {
-      const plan = searchPlanFor(parsed)
-      return { hits: await searchWithFilters(parsed, plan), recall: plan.pinnedFirst === true }
-    },
-    enabled,
-    placeholderData: keepPreviousData,
-  })
+  const { feed, enabled, isError, removeDeletedRow } = useNoteSearchFeed(parsed)
   const rows = useMemo(() => (feed?.hits ?? []).map(rowForHit), [feed])
-
-  const removeDeletedRow = (path: string): void => {
-    // Same as the All tab: drop the row now, let the delete's reindex echo
-    // invalidate once the index has caught up.
-    queryClient.setQueriesData<{ hits: FilteredSearchHit[]; recall: boolean }>(
-      { queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes'] },
-      (cached) => cached && { ...cached, hits: cached.hits.filter((hit) => hit.path !== path) },
-    )
-  }
 
   return (
     <div

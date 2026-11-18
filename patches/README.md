@@ -20,6 +20,10 @@ Kore patches the exact installed `@meowdown/core@0.74.1` and
 
 - `@meowdown/core`: Adds the `insertMarkdown` `after-block` selection option,
   and makes pointer placement immediate while retaining keyboard caret gliding.
+- `@meowdown/markdown@0.72.0`: `isTagChar` accepts `/`, so a nested tag
+  (`#domain/product/framework`) parses as one `Hashtag` the way the indexer's
+  `TAG_RE` and Obsidian read it, instead of stopping at `#domain`. One-line
+  Kore-only hunk; `grammar.test.ts` ("reads a nested tag as one tag") guards it.
 - `@meowdown/react`: Adds the host `renderCodeBlock` callback, atomic `updateCode`,
   and the custom code-block presentation styles.
 

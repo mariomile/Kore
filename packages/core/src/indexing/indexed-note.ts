@@ -10,6 +10,7 @@ import {
 import { getVaultLayout, vaultLayoutIndexKey } from '../graph/vault-layout'
 import {
   detectConflictMarkers,
+  displayNoteTitle,
   extractEmailFields,
   foldEmail,
   foldKey,
@@ -156,8 +157,12 @@ import {
  * differs from the filename stem claims the alias tier, not the title tier,
  * so a `# Mario Miletta` CV header no longer steals `[[Mario Miletta]]` from
  * `Mario Miletta.md`.
+ * 38 - `notes.preview` shows an aliased wiki link as its alias alone and drops
+ * a leading title written with link syntax (`# [[Folder/Note|Note]]`), so a
+ * card no longer opens with the raw path. Existing rows keep it until
+ * reprojected.
  */
-export const PROJECTION_VERSION = 37
+export const PROJECTION_VERSION = 38
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -561,7 +566,7 @@ export function buildIndexedNote(
     mtime: meta.mtime,
     text: parsed.text,
     assetText: meta.assetText ?? '',
-    preview: previewSnippet(parsed.previewText, parsed.title),
+    preview: previewSnippet(parsed.previewText, displayNoteTitle(parsed.title)),
     links: [...wikiLinks, ...mdLinks],
     tags: parsed.tags.map((tag) => {
       const tagKey = foldTag(tag)

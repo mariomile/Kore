@@ -1,5 +1,5 @@
 import { memo, type CSSProperties, type MouseEvent, type ReactElement, type ReactNode } from 'react'
-import type { CollectionEntry } from '@kore/core'
+import { displayNoteTitle, type CollectionEntry } from '@kore/core'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -92,7 +92,7 @@ export const CollectionRow = memo(function CollectionRow({
           selected ? 'text-accent' : 'text-text',
         )}
       >
-        <span className="min-w-0 truncate">{entry.title}</span>
+        <span className="min-w-0 truncate">{displayNoteTitle(entry.title)}</span>
         {openTasks > 0 ? <CollectionTaskBadge count={openTasks} /> : null}
       </button>
       {children}

@@ -473,7 +473,14 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       }
 
       if (isWikiNodeName(name)) {
-        const wiki = readWikiLink(body, wikiBracketStart(node), to, bodyOffset)
+        const bracketStart = wikiBracketStart(node)
+        const wiki = readWikiLink(body, bracketStart, to, bodyOffset)
+        // A reader sees an aliased link as its alias alone: the preview drops
+        // `[[target|` and `]]`, while the search text keeps both halves.
+        if (name === 'Wikilink' && wiki.alias !== undefined) {
+          const pipe = body.indexOf('|', bracketStart)
+          previewCuts.push({ from: bracketStart, to: pipe + 1 }, { from: to - 2, to })
+        }
         // `![[photo.png]]` names a file, not a note: it must never become a
         // backlink row or resolve through the note-key tiers. An unsafe
         // target (traversal, hidden components) stays a visible wiki link

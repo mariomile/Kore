@@ -1,5 +1,11 @@
 # Kore working state
 
+## Foreground sync, 2026-11-18
+
+- [x] Sync: foreground pull every 2 min while visible and online; triggers
+  extracted to lib/sync-triggers.ts (#564).
+- [x] WebKit command-palette test runs its typing on a fake clock (#563).
+
 ## Note outline on iPhone, 2026-11-18
 
 - [x] Notion-style outline on iPhone (lines on the right edge, tap for the

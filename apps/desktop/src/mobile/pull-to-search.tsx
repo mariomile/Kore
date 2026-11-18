@@ -173,6 +173,9 @@ export function PullToSearchIndicator({ ref }: { ref: Ref<HTMLDivElement> }): Re
       style={{
         paddingTop: 'calc(env(safe-area-inset-top) + 0.375rem)',
         transform: 'translate3d(0, calc((var(--pull, 0) - 1) * (100% + 0.5rem)), 0)',
+        // Fully transparent at rest: the capsule's shadow would otherwise
+        // peek below the top edge (under the Dynamic Island).
+        opacity: 'calc(var(--pull, 0) * 4)',
       }}
     >
       <span className="flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-[15px] font-medium text-text-secondary shadow-[0_4px_20px_rgb(0_0_0/0.12)] ring-1 ring-foreground/10 transition-colors duration-150 group-data-armed:bg-primary group-data-armed:text-primary-foreground group-data-armed:ring-transparent motion-reduce:transition-none">

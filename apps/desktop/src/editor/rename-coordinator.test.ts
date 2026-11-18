@@ -24,6 +24,7 @@ const io = vi.hoisted(() => ({
   writeNote: vi.fn(),
   resolveWikiTarget: vi.fn(),
   slugPathForTitle: vi.fn(),
+  titleFilePathForRetitle: vi.fn(),
   moveNoteIndexed: vi.fn(),
 }))
 vi.mock('@kore/core', async (importOriginal) => ({
@@ -36,6 +37,7 @@ vi.mock('@kore/core', async (importOriginal) => ({
   writeNote: io.writeNote,
   resolveWikiTarget: io.resolveWikiTarget,
   slugPathForTitle: io.slugPathForTitle,
+  titleFilePathForRetitle: io.titleFilePathForRetitle,
   // The birth path is the slug path unless the note's type has a home
   // folder; these notes are untyped, so it delegates (and core tests the rest).
   birthPathForTitle: async (path: string, title: string): Promise<string> =>
@@ -154,6 +156,9 @@ beforeEach(() => {
   // tests override with a diverging target.
   io.slugPathForTitle.mockReset()
   io.slugPathForTitle.mockImplementation(async (path: string) => path)
+  // Default: a slug vault — adopted notes keep their paths.
+  io.titleFilePathForRetitle.mockReset()
+  io.titleFilePathForRetitle.mockResolvedValue(null)
   io.moveNoteIndexed.mockReset()
   io.moveNoteIndexed.mockResolvedValue(undefined)
   operationLog.records.length = 0
@@ -608,5 +613,95 @@ describe('rename coordinator', () => {
     expect(io.slugPathForTitle).not.toHaveBeenCalled()
     expect(io.moveNoteIndexed).not.toHaveBeenCalled()
     expect(operationLog.records).toEqual([])
+  })
+})
+
+/**
+ * An Obsidian vault names files after titles, so a retitle there is a file
+ * rename, as in Obsidian: the file follows the title in its own folder, links
+ * address the new filename, and no alias is left behind once every link
+ * moved. `titleFilePathForRetitle` (core-tested) decides the destination.
+ */
+describe('rename coordinator in a vault that names files after titles', () => {
+  /** Retitle an adopted note (no Kore id) whose filename was its title. */
+  async function retitleAdopted(): Promise<void> {
+    io.titleFilePathForRetitle.mockResolvedValue('notes/New Title.md')
+    const coordinator = makeCoordinator()
+    coordinator.content('# Old Title\n', 'load')
+    coordinator.content('# New: Title\n', 'saved')
+    coordinator.settle()
+    await coordinator.settled()
+  }
+
+  it('renames the file in place, points links at the new filename, and adds no alias', async () => {
+    await retitleAdopted()
+
+    expect(io.titleFilePathForRetitle).toHaveBeenCalledWith(PATH, {
+      from: 'Old Title',
+      to: 'New: Title',
+    })
+    // Links carry the filename stem, not the title: `[[New: Title]]` would
+    // name no file in Obsidian.
+    expect(io.rewriteLinksForTitleChange).toHaveBeenCalledWith(
+      expect.objectContaining({ from: 'Old Title', to: 'New: Title', target: 'New Title' }),
+    )
+    expect(io.moveNoteIndexed).toHaveBeenCalledWith(PATH, 'notes/New Title.md', 7)
+    expect(io.slugPathForTitle).not.toHaveBeenCalled()
+    expect(io.writeNote).not.toHaveBeenCalled()
+    expect(operationLog.records).toEqual([
+      { label: 'Renaming "Old Title" → "New: Title"', outcome: 'done', message: null },
+    ])
+  })
+
+  it('keeps the file and aliases the old title when the new name belongs to another note', async () => {
+    io.rewriteLinksForTitleChange.mockResolvedValue({
+      rewritten: [],
+      failed: [],
+      collision: false,
+      destinationBlocked: true,
+    })
+    io.readNote.mockResolvedValue('# New: Title\n')
+    await retitleAdopted()
+
+    expect(io.moveNoteIndexed).not.toHaveBeenCalled()
+    expect(io.writeNote).toHaveBeenCalledWith(
+      PATH,
+      upsertFrontmatter('# New: Title\n', { aliases: ['Old Title'] }),
+      7,
+    )
+  })
+
+  it('keeps the file and aliases the old title when a linking note could not be rewritten', async () => {
+    io.rewriteLinksForTitleChange.mockResolvedValue({
+      rewritten: ['notes/a.md'],
+      failed: ['notes/locked.md'],
+      collision: false,
+      destinationBlocked: false,
+    })
+    io.readNote.mockResolvedValue('# New: Title\n')
+    await retitleAdopted()
+
+    // `notes/locked.md` still says [[Old Title]]: renaming the file would
+    // break it in Obsidian, and the alias keeps it resolving in Kore.
+    expect(io.moveNoteIndexed).not.toHaveBeenCalled()
+    expect(io.writeNote).toHaveBeenCalledWith(
+      PATH,
+      upsertFrontmatter('# New: Title\n', { aliases: ['Old Title'] }),
+      7,
+    )
+  })
+
+  it('aliases the old title when the rename itself is refused', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    io.moveNoteIndexed.mockRejectedValue(new Error('destination exists'))
+    io.readNote.mockResolvedValue('# New: Title\n')
+    await retitleAdopted()
+
+    expect(io.writeNote).toHaveBeenCalledWith(
+      PATH,
+      upsertFrontmatter('# New: Title\n', { aliases: ['Old Title'] }),
+      7,
+    )
+    expect(operationLog.records[0]!.outcome).toBe('failed')
   })
 })

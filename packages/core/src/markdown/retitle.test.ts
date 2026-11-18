@@ -21,6 +21,29 @@ describe('retitleWikiLinks', () => {
     )
   })
 
+  it('repoints heading, block and .md links, keeping the fragment and extension', () => {
+    const source = '[[Foo#Goals]], [[foo#^ab12|see]], ![[Foo#Goals]], [[Foo.md]], [[Foo.MD#x]]'
+    expect(retitleWikiLinks(source, repointOnly('foo', 'Baz'))).toBe(
+      '[[Baz#Goals]], [[Baz#^ab12|see]], ![[Baz#Goals]], [[Baz.md]], [[Baz.MD#x]]',
+    )
+  })
+
+  it('leaves same-named path links and self fragments to their own rewrites', () => {
+    const source = '[[Area/Foo]] and [[#Foo]]'
+    expect(retitleWikiLinks(source, repointOnly('foo', 'Baz'))).toBe(source)
+  })
+
+  it('syncs a title-mirroring display on a heading link to the subject', () => {
+    const source = '[[Foo#Goals|Foo]]'
+    expect(
+      retitleWikiLinks(source, {
+        repoint: { fromKey: 'foo', to: 'Baz' },
+        display: { from: 'Foo', to: 'Baz' },
+        subjectTargetKeys: new Set(['foo']),
+      }),
+    ).toBe('[[Baz#Goals|Baz]]')
+  })
+
   it('is a byte-identical no-op when nothing matches', () => {
     const source = 'see [[Alpha]] and [[Beta]]'
     expect(retitleWikiLinks(source, repointOnly('gamma', 'Delta'))).toBe(source)
@@ -104,6 +127,12 @@ describe('repointPathWikiLinks', () => {
     expect(repointPathWikiLinks('See [[notes/plan-2]].', options)).toBe('See [[notes/roadmap]].')
   })
 
+  it('keeps an explicit .md extension', () => {
+    expect(repointPathWikiLinks('See [[notes/plan-2.md#Goals]].', options)).toBe(
+      'See [[notes/roadmap.md#Goals]].',
+    )
+  })
+
   it('keeps the display and the fragment byte-for-byte', () => {
     expect(repointPathWikiLinks('See [[notes/plan-2|The Plan]].', options)).toBe(
       'See [[notes/roadmap|The Plan]].',
@@ -113,8 +142,10 @@ describe('repointPathWikiLinks', () => {
     )
   })
 
-  it('matches the folded spelling, including a trailing .md and case', () => {
-    expect(repointPathWikiLinks('See [[Notes/Plan-2.md]].', options)).toBe('See [[notes/roadmap]].')
+  it('matches the folded spelling, keeping a trailing .md, whatever its case', () => {
+    expect(repointPathWikiLinks('See [[Notes/Plan-2.md]].', options)).toBe(
+      'See [[notes/roadmap.md]].',
+    )
   })
 
   it('leaves a same-stem link in another folder untouched', () => {

@@ -25,6 +25,32 @@ export function applySplices(source: string, splices: readonly Splice[]): string
   return result
 }
 
+/**
+ * The folded note name a wiki target addresses, `#heading`/`#^block` fragment
+ * and `.md` extension shed: `Plan#Goals`, `plan.md` and `Plan` are one key.
+ * The same reduction the index stores as a link's `targetKey`
+ * ({@link wikiNoteReference}), so a retitle matches exactly the links the
+ * index reported. A target with no name reading folds as written.
+ */
+export function wikiTargetNameKey(target: string): string {
+  const reference = wikiNoteReference(target)
+  return reference?.kind === 'key' || reference?.kind === 'pathOrKey'
+    ? reference.key
+    : foldKey(target)
+}
+
+/**
+ * What a repointed target keeps of its old spelling: an explicit `.md`
+ * extension and the `#fragment`, byte for byte, so `[[Old.md#Goals]]` becomes
+ * `[[New.md#Goals]]` the way Obsidian rewrites it.
+ */
+function retainedTargetSuffix(targetRaw: string): string {
+  const hash = targetRaw.indexOf('#')
+  const name = (hash === -1 ? targetRaw : targetRaw.slice(0, hash)).trimEnd()
+  const extension = /\.md$/i.test(name) ? name.slice(-3) : ''
+  return hash === -1 ? extension : `${extension}${targetRaw.slice(hash)}`
+}
+
 /** Which links one source's retitle touches, and how. The caller decides each. */
 export interface WikiLinkRetitleOptions {
   /**
@@ -70,8 +96,11 @@ export function retitleWikiLinks(source: string, options: WikiLinkRetitleOptions
     const targetRaw = pipe === -1 ? inner : inner.slice(0, pipe)
     const displayRaw = pipe === -1 ? null : inner.slice(pipe + 1)
 
-    const targetKey = foldKey(link.target)
-    const nextTarget = repoint !== null && targetKey === repoint.fromKey ? repoint.to : targetRaw
+    const targetKey = wikiTargetNameKey(link.target)
+    const nextTarget =
+      repoint !== null && targetKey === repoint.fromKey
+        ? `${repoint.to}${retainedTargetSuffix(targetRaw)}`
+        : targetRaw
     // A bare `[[target]]` has no display to mirror the old title, so it never
     // gains one: `link.alias` is undefined and can't equal `display.from`.
     const nextDisplay =
@@ -100,7 +129,8 @@ export interface PathWikiLinkRepointOptions {
 
 /**
  * Repoint every wiki link that names the moved file by vault path
- * (`[[notes/plan-2]]`), keeping pipe displays and `#fragments` byte-for-byte.
+ * (`[[notes/plan-2]]`), keeping pipe displays, an explicit `.md` and
+ * `#fragments` byte-for-byte.
  * Which link addresses the file is decided with the same reduction the index
  * projection uses ({@link wikiNoteReference}), so a same-stem link in another
  * folder is never touched. Markdown hrefs stay as written: Kore never
@@ -130,9 +160,7 @@ export function repointPathWikiLinks(source: string, options: PathWikiLinkRepoin
     ) {
       continue
     }
-    const hash = targetRaw.indexOf('#')
-    const fragment = hash === -1 ? '' : targetRaw.slice(hash)
-    const nextTarget = `${to}${fragment}`
+    const nextTarget = `${to}${retainedTargetSuffix(targetRaw)}`
     if (nextTarget === targetRaw) {
       continue
     }

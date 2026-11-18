@@ -6,7 +6,9 @@ from the note's title: a Reflect-created note titled "Meeting Notes" is
 opened Markdown vault can also contain adopted notes at the root or in visible
 nested folders. Reflect edits those files in place: in-app title changes keep
 known wiki links and title-mirroring displays current, but never move the file
-or opt its filename into title projection (Plan 17).
+or opt its filename into title projection (Plan 17). The one exception is a
+vault that names files after titles (an Obsidian vault): there a retitle
+renames the file in its folder, as Obsidian does (see *Obsidian vaults* below).
 
 Three rules make the whole system hang together:
 
@@ -92,7 +94,29 @@ failing independently with an honest report (`rename-failure.ts`):
 2. **Alias** the old title onto the note (`alias-placement.ts`), so anything
    the rewrite missed still resolves.
 3. **Move** the file onto the new title's slug (`move-note.ts`), only when the
-   note is Reflect-managed. Adopted and stable-path notes stop after phase 2.
+   note is Reflect-managed. Adopted and stable-path notes stop after phase 2,
+   except in an Obsidian vault (below).
+
+### Obsidian vaults: the filename is the title
+
+In a vault that names files after titles (`noteFileNames: 'title'`, set when
+the vault carries `.obsidian/app.json`), a note's filename *is* its name, and
+every link addresses it. A settled retitle of a note whose filename was its old
+title (`titleFilePathForRetitle`) therefore behaves like a rename in Obsidian:
+
+1. inbound links are rewritten to the **new filename stem**, not the raw title
+   (`[[Q3 plan]]` for the title `Q3: plan`, because `[[Q3: plan]]` names no file
+   in Obsidian), with `#heading`/`#^block` fragments and pipe displays kept;
+2. the file is renamed in its own folder, and inbound `[[Folder/Old]]` path
+   links follow it;
+3. no old-title alias is written: once every link moved, the filename is the
+   only name, as in Obsidian.
+
+If any link cannot follow (the new name already belongs to another note, or a
+linking file cannot be written), the file keeps its name and the old title
+becomes an alias, so nothing dangles in either app. A note whose filename is
+not its title (a frontmatter `title:` over another name), or whose title links
+to its own file, keeps its path.
 
 The move itself (`moveNoteCarryingSession`) is ordering-as-mechanism: flush
 the session, retarget it to the new path (so any later save writes the new

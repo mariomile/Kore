@@ -3,12 +3,18 @@ import {
   collisionStem,
   foldGraphPath,
   notePath,
+  noteFileStem,
   noteFileStemForTitle,
   templatePath,
 } from '../graph/paths'
+import { wikiNoteReference } from '../graph/note-reference'
+import { getVaultLayout } from '../graph/vault-layout'
 import { frontmatterTagNames } from '../markdown/extract'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
-import { slugForTitle } from '../markdown/slug'
+import { foldKey } from '../markdown/keys'
+import { displayNoteTitle } from '../markdown/note-title'
+import { scanInlineSegments } from '../markdown/scan'
+import { slugForTitle, titleFileStem } from '../markdown/slug'
 import { typedNoteFolder } from '../tags/type-folder'
 import { getTagType } from './collections'
 import { db } from './db'
@@ -121,6 +127,59 @@ export async function slugPathForTitle(
   taken: (candidate: string) => Promise<boolean> = pathTaken,
 ): Promise<string> {
   return await probeNotePath(noteFileStemForTitle(title), taken, path)
+}
+
+/**
+ * Does `title` hold a wiki link addressing the file at `path` itself
+ * (`# [[Resources/HEART|HEART]]` in `Resources/HEART.md`)? Renaming that file
+ * would leave its own title pointing at a path that no longer exists.
+ */
+function titleLinksToFile(title: string, path: string): boolean {
+  const pathKey = foldGraphPath(path)
+  return scanInlineSegments(title).some((segment) => {
+    if (segment.kind !== 'wikiLink') {
+      return false
+    }
+    const reference = wikiNoteReference(segment.target)
+    return (
+      (reference?.kind === 'path' || reference?.kind === 'pathOrKey') &&
+      foldGraphPath(reference.path) === pathKey
+    )
+  })
+}
+
+/**
+ * Where a retitled note's file goes in a vault that names files after titles
+ * (an Obsidian vault): the new title's filename, in the folder the note
+ * already lives in, as renaming a note in Obsidian does. `null` when the
+ * filename was not the old title's own (a frontmatter `title:` over a
+ * differently named file): that note's name is not its title, so the file
+ * stays, and so does a file whose title links to the file itself. Slug
+ * vaults never answer here; their adopted notes keep their paths
+ * (`docs/readable-filenames.md`). Titles compare by what they display, so
+ * `# Meeting with [[Ada]]` names `Meeting with Ada.md`.
+ */
+export async function titleFilePathForRetitle(
+  path: string,
+  rename: { from: string; to: string },
+  taken: (candidate: string) => Promise<boolean> = pathTaken,
+): Promise<string | null> {
+  if (getVaultLayout().noteFileNames !== 'title') {
+    return null
+  }
+  const folder = path.slice(0, path.lastIndexOf('/') + 1)
+  if (foldKey(titleFileStem(displayNoteTitle(rename.from))) !== foldKey(noteFileStem(path))) {
+    return null
+  }
+  if (titleLinksToFile(rename.to, path)) {
+    return null
+  }
+  return await probeNotePath(
+    titleFileStem(displayNoteTitle(rename.to)),
+    taken,
+    path,
+    (candidate) => `${folder}${candidate}.md`,
+  )
 }
 
 /**

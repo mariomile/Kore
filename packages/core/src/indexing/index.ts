@@ -39,6 +39,7 @@ export {
   birthPathForTitle,
   slugPathForTitle,
   templateSlugPathForTitle,
+  titleFilePathForRetitle,
 } from './note-paths'
 export { listTemplates, type TemplateEntry } from './template-list'
 export {

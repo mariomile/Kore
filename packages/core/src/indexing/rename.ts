@@ -3,7 +3,7 @@ import { wikiLinkSafe } from '../markdown/edit'
 import { foldKey } from '../markdown/keys'
 import { displayNoteTitle, wikiLinkTargetForTitle } from '../markdown/note-title'
 import type { Resolution } from '../markdown/resolve'
-import { repointPathWikiLinks, retitleWikiLinks } from '../markdown/retitle'
+import { repointPathWikiLinks, retitleWikiLinks, wikiTargetNameKey } from '../markdown/retitle'
 import { isWikiLinkSafeText, serializeWikiSuggestionAddress } from './suggest'
 
 /**
@@ -39,6 +39,13 @@ export interface TitleRenameRewriteOptions {
   path: string
   from: string
   to: string
+  /**
+   * The address rewritten links carry, when it is not the new title's own
+   * linkable form: in a vault that names files after titles it is the new
+   * filename stem (`Q3 plan` for the title `Q3: plan`), because a link there
+   * addresses the file, as in Obsidian.
+   */
+  target?: string | undefined
   io: RenameIo
   onProgress?: (done: number, total: number) => void
 }
@@ -82,7 +89,7 @@ export async function rewriteLinksForTitleChange(
   // title (`Meeting with [[Ada]]`) the two differ, and only the linkable form
   // ever appears inside `[[…]]`. Rewrite in that space.
   const fromTarget = wikiLinkTargetForTitle(from)
-  const toTarget = wikiLinkTargetForTitle(to)
+  const toTarget = options.target ?? wikiLinkTargetForTitle(to)
   const fromDisplay = wikiLinkSafe(displayNoteTitle(from))
   const toDisplay = wikiLinkSafe(displayNoteTitle(to))
 
@@ -137,7 +144,7 @@ export async function rewriteLinksForTitleChange(
       continue
     }
     backlinkSources.add(backlink.sourcePath)
-    const key = foldKey(backlink.targetRaw)
+    const key = wikiTargetNameKey(backlink.targetRaw)
     if (!candidateTargets.has(key)) {
       candidateTargets.set(key, backlink.targetRaw)
     }

@@ -4,6 +4,8 @@
 
 - [x] One continuous splash from the launch screen to the daily note: no white
   frame, no font swap, no late pieces; native launch cover on iPhone (#555).
+- [x] Obsidian vaults: wiki links resolve by filename first, so a heading with
+  the same name no longer steals the link or its backlinks (#554, projection 37).
 - [x] TestFlight no longer fails when altool crashes after the upload (#550).
 
 ## Timeline view for types, 2026-11-17

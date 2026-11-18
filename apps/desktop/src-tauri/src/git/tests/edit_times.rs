@@ -163,3 +163,18 @@ fn the_one_time_backfill_repairs_an_existing_checkout_once() {
     merge_remote(&root_b).unwrap();
     assert_eq!(mtime_secs(&root_b, "notes/old.md"), touched);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_note_never_re_times_the_file_it_points_to() {
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    let outside = fixture._dir.path().join("outside.txt");
+    std::fs::write(&outside, "not in the vault").unwrap();
+    std::fs::create_dir_all(root.join("notes")).unwrap();
+    std::os::unix::fs::symlink(&outside, root.join("notes/link.md")).unwrap();
+    let before = outside.metadata().unwrap().modified().unwrap();
+
+    super::super::edit_times::apply_edit_time(root, "notes/link.md", Some(1_000));
+    assert_eq!(outside.metadata().unwrap().modified().unwrap(), before);
+}

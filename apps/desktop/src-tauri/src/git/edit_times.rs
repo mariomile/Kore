@@ -99,13 +99,18 @@ fn last_change_times(
 }
 
 /// Set `rel`'s mtime to `edit_ms` when that is older than its current one.
-/// Returns the file's resulting mtime (epoch ms), or `None` when it can't be
+/// Symlinks are never followed. Returns the file's resulting mtime (epoch ms), or `None` when it can't be
 /// read.
 pub(super) fn apply_edit_time(root: &Path, rel: &str, edit_ms: Option<u64>) -> Option<u64> {
     let path = root.join(rel);
     let current = crate::fs::modified_ms(&path.metadata().ok()?)?;
+    // Only a regular file at that very path: a pulled history can carry a
+    // symlink note, and following it would re-time a file outside the vault.
+    let regular = path
+        .symlink_metadata()
+        .is_ok_and(|meta| meta.file_type().is_file());
     match edit_ms {
-        Some(edit) if edit < current => {
+        Some(edit) if regular && edit < current => {
             let time = UNIX_EPOCH + Duration::from_millis(edit);
             // Opened read-only: setting times needs ownership, not write access.
             match fs::File::open(&path).and_then(|file| file.set_modified(time)) {

@@ -28,6 +28,7 @@ use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
 
+use super::edit_times;
 use super::repo::{current_branch, ensure_clean_state, open_existing, signature};
 
 /// Conflict-marker labels. "this device" is the local side, "other device"
@@ -114,6 +115,8 @@ fn side_of(entry: Option<IndexEntry>) -> Option<ConflictSide> {
 pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
     let repo = open_existing(root)?;
     ensure_clean_state(&repo)?;
+    // Best effort: a failed repair must never block the sync itself.
+    let _ = edit_times::ensure_backfilled(&repo, root);
     let branch = current_branch(&repo)?;
     let Ok(remote_oid) = repo.refname_to_id(&format!("refs/remotes/origin/{branch}")) else {
         // A brand-new (empty) backup repo has no remote branch until the
@@ -141,7 +144,8 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
 
     if analysis.is_unborn() || analysis.is_fast_forward() {
         // Capture the outgoing tree before the ref moves (None on unborn).
-        let old_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
+        let old_head = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+        let old_tree = old_head.as_ref().and_then(|head| head.tree().ok());
         let new_tree = repo.find_commit(remote_oid)?.tree()?;
         let mut changed_files = changed_between(&repo, old_tree.as_ref(), &new_tree)?;
         let refname = format!("refs/heads/{branch}");
@@ -173,7 +177,8 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
             repo.set_head(&refname)?;
         }
         // Stamp mtimes only now — the checkout above is what wrote the files.
-        stamp_modified_times(root, &mut changed_files);
+        let base = old_head.map(|head| head.id());
+        stamp_modified_times(&repo, root, &mut changed_files, &[remote_oid], base, &[]);
         return Ok(MergeOutcome {
             kind: MergeKind::FastForward,
             conflicted_paths: Vec::new(),
@@ -242,7 +247,15 @@ fn complete_merge(
     // The working tree is final here (merge checkout + conflict resolution
     // wrote everything), so the stamped mtimes are the files' real ones.
     let mut changed_files = changed_between(repo, Some(&local_commit.tree()?), &tree)?;
-    stamp_modified_times(root, &mut changed_files);
+    let base = repo.merge_base(local_commit.id(), remote_oid).ok();
+    stamp_modified_times(
+        repo,
+        root,
+        &mut changed_files,
+        &[local_commit.id(), remote_oid],
+        base,
+        &conflicted_paths,
+    );
     let sig = signature(repo)?;
     let message = if conflicted_paths.is_empty() {
         "Merge changes from other devices"
@@ -292,19 +305,31 @@ fn changed_between(
     Ok(out)
 }
 
-/// Fill `modified_ms` for upserts from the (now final) working-tree files.
-fn stamp_modified_times(root: &Path, changes: &mut [ChangedFile]) {
+/// Fill `modified_ms` for upserts from the (now final) working-tree files,
+/// first moving each pulled note's mtime back to when it was really edited
+/// (see [`edit_times`]) so a sync never reads as a fresh edit. `tips` are the
+/// merged heads and `base` where they diverged; `skip` holds paths the merge
+/// itself rewrote (conflict markers), which keep the checkout's time.
+fn stamp_modified_times(
+    repo: &Repository,
+    root: &Path,
+    changes: &mut [ChangedFile],
+    tips: &[git2::Oid],
+    base: Option<git2::Oid>,
+    skip: &[String],
+) {
+    let notes = changes
+        .iter()
+        .filter(|change| matches!(change.kind, ChangeKind::Upsert))
+        .filter(|change| edit_times::is_note(&change.path) && !skip.contains(&change.path))
+        .map(|change| change.path.clone());
+    let edited = edit_times::incoming_edit_times(repo, tips, base, notes);
     for change in changes {
         if matches!(change.kind, ChangeKind::Remove) {
             continue;
         }
-        change.modified_ms = root
-            .join(&change.path)
-            .metadata()
-            .ok()
-            .and_then(|meta| meta.modified().ok())
-            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|duration| duration.as_millis() as u64);
+        let edit = edited.get(&change.path).copied();
+        change.modified_ms = edit_times::apply_edit_time(root, &change.path, edit);
     }
 }
 

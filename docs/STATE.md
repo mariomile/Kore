@@ -12,6 +12,8 @@
   notes (#552).
 - [x] Kore Cloud (Plan 34) slices 1, 2 and 4: Worker, `kore cloud setup`,
   Settings button (#364).
+- [x] Weekly notes: Week pages (weekly/YYYY-Www.md) from Details, calendar week
+  numbers, the Monday header and the W pill on iPhone (#562).
 - [ ] Kore Cloud: first real Cloudflare run and slice 3 (app sync).
 
 ## iPhone note cards, 2026-11-18

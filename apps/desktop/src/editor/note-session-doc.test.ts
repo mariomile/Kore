@@ -9,7 +9,8 @@ describe('splitDoc', () => {
     expect(doc.header + doc.body).toBe(content)
   })
 
-  it('leaves a note without frontmatter untouched', () => {
-    expect(splitDoc('\n# Title')).toEqual({ header: '', body: '\n# Title' })
+  it('keeps leading blank lines out of a note without frontmatter too', () => {
+    expect(splitDoc('\n# Title')).toEqual({ header: '\n', body: '# Title' })
+    expect(splitDoc('# Title')).toEqual({ header: '', body: '# Title' })
   })
 })

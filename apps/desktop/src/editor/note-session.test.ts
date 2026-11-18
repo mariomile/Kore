@@ -1,6 +1,7 @@
 import { parseNote, TaskStaleError, type TaskMarker } from '@kore/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNoteSession, type NoteSessionSnapshot } from './note-session'
+import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import type { RoundTripFidelity } from './roundtrip'
 
@@ -459,6 +460,16 @@ describe('frontmatter ownership (Plan 07b)', () => {
     await expect(h.session.commitFrontmatter({ pinned: true })).resolves.toBe(true)
     // The gap the new header absorbs is the body's own: never written twice.
     expect(h.writes.at(-1)?.contents).toBe('---\npinned: true\n---\n\n# Hello\n')
+  })
+
+  it('removing the last property never brings the title gap back', async () => {
+    const h = harness({ disk: '---\npinned: true\n---\n\n# Hello\n' })
+    h.session.load()
+    await vi.runAllTimersAsync()
+    await expect(h.session.commitFrontmatter({ pinned: false })).resolves.toBe(true)
+    const written = h.writes.at(-1)?.contents ?? ''
+    expect(written).not.toContain('pinned')
+    expect(splitDoc(written).body).toBe('# Hello\n')
   })
 
   it('commitFrontmatter declines when the session has no write channel', async () => {

@@ -176,12 +176,32 @@ export function ProviderLogo({
   brand: ProviderBrand
   className?: string
 }): ReactElement {
-  if (brand.path === null) {
+  return <BrandMark path={brand.path} className={className} />
+}
+
+/** A 24×24 brand path drawn with currentColor; null renders the generic plug. */
+export function BrandMark({
+  path,
+  className,
+}: {
+  path: string | null
+  className?: string | undefined
+}): ReactElement {
+  if (path === null) {
     return <Plug aria-hidden className={cn('size-5', className)} />
   }
   return (
     <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={cn('size-5', className)}>
-      <path d={brand.path} />
+      <path d={path} />
     </svg>
+  )
+}
+
+/** The bordered tile a settings row shows its brand mark in. */
+export function BrandTile({ path }: { path: string | null }): ReactElement {
+  return (
+    <span className="flex size-8 flex-none items-center justify-center rounded-lg border border-border bg-surface-sunken text-text">
+      <BrandMark path={path} className="size-4.5" />
+    </span>
   )
 }

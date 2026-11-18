@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { call } from '../ipc/invoke'
-import { getSecret, setSecret } from '../secrets/keychain'
+import { getJsonSecret, getSecret, setJsonSecret, setSecret } from '../secrets/keychain'
 
 /**
  * Remote access (Settings → Agents): the vault reachable by cloud agents —
@@ -132,22 +132,11 @@ export async function rotateRemoteAccessToken(): Promise<string> {
 
 /** The named agents, oldest first. A missing or unreadable entry is none. */
 export async function remoteAgents(): Promise<RemoteAgent[]> {
-  const stored = await getSecret(REMOTE_ACCESS_AGENTS_SECRET)
-  if (stored === null || stored === '') {
-    return []
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(stored)
-  } catch {
-    return []
-  }
-  const agents = z.array(remoteAgentSchema).safeParse(parsed)
-  return agents.success ? agents.data : []
+  return (await getJsonSecret(REMOTE_ACCESS_AGENTS_SECRET, z.array(remoteAgentSchema))) ?? []
 }
 
 async function saveRemoteAgents(agents: readonly RemoteAgent[]): Promise<void> {
-  await setSecret(REMOTE_ACCESS_AGENTS_SECRET, JSON.stringify(agents))
+  await setJsonSecret(REMOTE_ACCESS_AGENTS_SECRET, agents)
 }
 
 /** Give a new agent its own key with `access`; it works once the server restarts. */

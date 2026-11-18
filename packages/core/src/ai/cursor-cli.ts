@@ -7,10 +7,10 @@ import {
   noteContentSafetyRules,
   type AgentCliChunk,
   chunkList,
+  vaultLayoutLine,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import type { StreamCliChatOptions } from './claude-cli'
-import { dailyPathPattern } from '../graph/paths'
 
 /**
  * The Cursor CLI provider ("subscription" AI): chat runs through the locally
@@ -77,7 +77,7 @@ export function cursorCliSystemPrompt(options: {
   const custom = options.customSystemPrompt.trim()
   return [
     `You are Kore’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the working directory, a folder of markdown files.`,
-    `Today’s date is ${options.today}. Daily notes are ${dailyPathPattern()}; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
+    vaultLayoutLine(options.today),
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and a [[YYYY-MM-DD]] wiki link at the end of an item is its due date (a date link mid-sentence, like a source citation, is only a link). Square `- [ ]` checkboxes are plain checklists, not tasks.',
     ...agentContextPromptLines(options.agentContext ?? null, {
       canEdit: false,

@@ -97,6 +97,12 @@ describe('routeForOpenTab', () => {
 })
 
 describe('tabKey', () => {
+  it('gives every week one shared tab, like the Daily surface', () => {
+    const week = (path: string) => tabKey({ kind: 'note', path, pinned: false })
+    expect(week('weekly/2026-W47.md')).toBe(week('weekly/2026-W48.md'))
+    expect(week('weekly/2026-W47.md')).not.toBe(week('notes/2026-W47.md'))
+  })
+
   it('ignores pin and singleton route state without collapsing conversations', () => {
     expect(tabKey({ kind: 'surface', surface: 'browser', pinned: false })).toBe(
       tabKey({ kind: 'surface', surface: 'browser', pinned: true }),

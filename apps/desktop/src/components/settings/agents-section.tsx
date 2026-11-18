@@ -10,6 +10,7 @@ import {
   type AgentSkillsStatus,
 } from '@kore/core'
 import { AgentsConnectField } from '@/components/settings/agents-connect-field'
+import { AgentsKoreCloudField } from '@/components/settings/agents-kore-cloud-field'
 import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
 import { AgentsMemoryKitField } from '@/components/settings/agents-memory-kit-field'
 import { AgentsRemoteAccessField } from '@/components/settings/agents-remote-access-field'
@@ -27,7 +28,8 @@ import { useGraph } from '@/providers/graph-provider'
  * answer without knowing what MCP is. On this Mac: the bundled skills
  * (`~/.agents/skills/`, teaching coding agents the `kore` CLI and Kore's
  * formats), the copyable `kore mcp` setup ({@link AgentsMcpField}) and the
- * memory kit. In the cloud: remote access ({@link AgentsRemoteAccessField}).
+ * memory kit. Always on: Kore Cloud in the user's own Cloudflare account
+ * ({@link AgentsKoreCloudField}). In the cloud: remote access ({@link AgentsRemoteAccessField}).
  * With their own computer: the GitHub repository they clone
  * ({@link AgentsRepoAccessField}). Each group states when it works, so the
  * Mac-must-be-awake limits are visible up front. macOS desktop only, like the
@@ -144,6 +146,16 @@ export function AgentsSection(): ReactElement | null {
         <AgentsMcpField cliPath={status.cliPath} graphName={graph.name} />
       ) : null}
       <AgentsMemoryKitField graphRoot={graph.root} generation={graph.generation} />
+      <AgentAccessGroup
+        title="Always on"
+        agents="Claude on the web and iPhone, ChatGPT, Grok"
+        availability="Always"
+      />
+      <AgentsKoreCloudField
+        graphName={graph.name}
+        graphRoot={graph.root}
+        generation={graph.generation}
+      />
       <AgentAccessGroup
         title="In the cloud"
         agents="Claude on the web and iPhone, ChatGPT, Grok"

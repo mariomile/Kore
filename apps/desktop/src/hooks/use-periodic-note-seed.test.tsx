@@ -2,7 +2,8 @@ import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
-import { dailyConflictWritePath, useDailyNoteSeed } from './use-daily-note-seed'
+import { conflictWritePath, useDailyNoteSeed, useWeeklyNoteSeed } from './use-periodic-note-seed'
+import { isoWeekFromKey } from '@kore/core'
 
 const readNote = vi.hoisted(() => vi.fn())
 const todayIso = vi.hoisted(() => vi.fn(() => '2026-08-22'))
@@ -120,22 +121,54 @@ describe('useDailyNoteSeed', () => {
   })
 })
 
-describe('dailyConflictWritePath', () => {
-  it('resolves a missing daily against the template, not a file that does not exist', () => {
-    expect(dailyConflictWritePath('daily/2026-08-22.md', { dailyNote: true, missing: true })).toBe(
-      'templates/daily.md',
+function WeeklyProbe({ weekKey }: { weekKey: string }): ReactElement {
+  const seed = useWeeklyNoteSeed(isoWeekFromKey(weekKey))
+  return <pre data-testid="seed">{seed ?? '<none>'}</pre>
+}
+
+describe('useWeeklyNoteSeed', () => {
+  it('seeds any week from templates/weekly.md, expanded for that week', async () => {
+    readNote.mockResolvedValue('# {{title}}\n\nFrom [[{{date:iso}}]]\n')
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const view = await render(
+      <QueryClientProvider client={client}>
+        <WeeklyProbe weekKey="2026-W47" />
+      </QueryClientProvider>,
     )
+    await vi.waitFor(() =>
+      expect(view.getByTestId('seed').element().textContent).toContain('# Week 47'),
+    )
+    expect(view.getByTestId('seed').element().textContent).toContain('[[2026-11-16]]')
+    expect(readNote).toHaveBeenCalledWith('templates/weekly.md')
+  })
+
+  it('yields nothing when the vault has no weekly template', async () => {
+    readNote.mockRejectedValue(new Error('not found'))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const view = await render(
+      <QueryClientProvider client={client}>
+        <WeeklyProbe weekKey="2026-W47" />
+      </QueryClientProvider>,
+    )
+    await vi.waitFor(() => expect(readNote).toHaveBeenCalled())
+    expect(view.getByTestId('seed').element().textContent).toBe('<none>')
+  })
+})
+
+describe('conflictWritePath', () => {
+  it('resolves a missing daily against the template, not a file that does not exist', () => {
+    expect(conflictWritePath('daily/2026-08-22.md', { missing: true })).toBe('templates/daily.md')
+  })
+
+  it('resolves a missing weekly against the weekly template', () => {
+    expect(conflictWritePath('weekly/2026-W47.md', { missing: true })).toBe('templates/weekly.md')
   })
 
   it('resolves an on-disk daily against itself', () => {
-    expect(dailyConflictWritePath('daily/2026-08-22.md', { dailyNote: true, missing: false })).toBe(
-      'daily/2026-08-22.md',
-    )
+    expect(conflictWritePath('daily/2026-08-22.md', { missing: false })).toBe('daily/2026-08-22.md')
   })
 
   it('leaves ordinary notes on their own path', () => {
-    expect(dailyConflictWritePath('notes/clash.md', { dailyNote: false, missing: true })).toBe(
-      'notes/clash.md',
-    )
+    expect(conflictWritePath('notes/clash.md', { missing: true })).toBe('notes/clash.md')
   })
 })

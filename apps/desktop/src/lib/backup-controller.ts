@@ -33,6 +33,7 @@ import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { providerFetch } from '@/lib/provider-fetch'
 import { throttledInvalidateIndexQueries } from '@/lib/query-client'
+import { installSyncTriggers } from '@/lib/sync-triggers'
 
 /**
  * Backup state as the UI sees it. `connected` means the graph has a repo and
@@ -63,13 +64,6 @@ export type BackupState =
 
 /** Outcome of connecting to an existing repo (the public case needs consent). */
 export type ConnectExistingResult = 'connected' | 'needsPublicConfirm' | 'notFound'
-
-/**
- * One resume fires several DOM events (WKWebView: `visibilitychange` and
- * `focus`), each queueing a full cycle; triggers inside this window collapse
- * into one cycle.
- */
-const RESUME_SYNC_DEDUPE_MS = 1500
 
 /**
  * Mobile's quiet period before a backup commit. Phone sessions are often
@@ -386,34 +380,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
         return
       }
 
-      // Resume triggers: window focus (desktop refocus) and visibility →
-      // visible (mobile app resume; desktop unminimize, which doesn't
-      // reliably fire `focus`). Deduped — see RESUME_SYNC_DEDUPE_MS.
-      let lastResumeSyncAt = 0
-      const onResume = (): void => {
-        const now = Date.now()
-        if (now - lastResumeSyncAt < RESUME_SYNC_DEDUPE_MS) {
-          return
-        }
-        lastResumeSyncAt = now
-        void next.syncNow()
-      }
-      const onVisibilityChange = (): void => {
-        if (document.visibilityState === 'visible') {
-          onResume()
-        }
-      }
-      const onOnline = (): void => {
-        void next.syncNow() // the `offline` state's recovery trigger
-      }
-      window.addEventListener('focus', onResume)
-      document.addEventListener('visibilitychange', onVisibilityChange)
-      window.addEventListener('online', onOnline)
-      domDisposers.push(
-        () => window.removeEventListener('focus', onResume),
-        () => document.removeEventListener('visibilitychange', onVisibilityChange),
-        () => window.removeEventListener('online', onOnline),
-      )
+      domDisposers.push(installSyncTriggers(() => next.syncNow()))
 
       void next.syncNow() // launch pull: pick up other devices' changes
     } catch (error) {

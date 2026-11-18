@@ -1,5 +1,27 @@
 # Kore working state
 
+## Foreground sync, 2026-11-18
+
+- [x] Sync: foreground pull every 2 min while visible and online; triggers
+  extracted to lib/sync-triggers.ts (#564).
+- [x] WebKit command-palette test runs its typing on a fake clock (#563).
+
+## Note outline on iPhone, 2026-11-18
+
+- [x] Notion-style outline on iPhone (lines on the right edge, tap for the
+  section list); the Mac outline lists its note's sections again (#549).
+- [x] iPhone: the Syncing text pill becomes a quiet icon; tap it for details in
+  Settings (#548).
+- [x] Sync: notes edited on two devices merge automatically when both edits can
+  be kept; Needs review only for real conflicts (#561).
+- [x] iPhone: pull down from the top of Daily, Tasks or a note to search all
+  notes (#552).
+- [x] Kore Cloud (Plan 34) slices 1, 2 and 4: Worker, `kore cloud setup`,
+  Settings button (#364).
+- [x] Weekly notes: Week pages (weekly/YYYY-Www.md) from Details, calendar week
+  numbers, the Monday header and the W pill on iPhone (#562).
+- [ ] Kore Cloud: first real Cloudflare run and slice 3 (app sync).
+
 ## iPhone note cards, 2026-11-18
 
 - [x] Note cards: link-titles by name, wrapped long titles, no raw link paths

@@ -46,7 +46,7 @@ export function chatSystemPrompt({
   const customInstructions = normalizeChatSystemPrompt(customSystemPrompt)
   return [
     'You are Kore’s assistant, embedded in the user’s personal note graph.',
-    `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Kore-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
+    `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md; weekly notes are weekly/YYYY-Www.md (ISO weeks, Monday to Sunday). Kore-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
     'A #name on a note (e.g. #book) is its type: what the note is, and the collection it belongs to. The app calls these types, so say “type” to the user; tool inputs take a type’s name in their “tag” field, without the #.',
     ...graphOverviewLines(context),
     // The API chat writes no files; in a kit vault its memory tools are the

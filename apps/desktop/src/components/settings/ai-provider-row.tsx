@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { startOperation } from '@/lib/operations'
 import { ModelCombobox } from './model-combobox'
-import { brandForProvider, ProviderLogo } from './provider-brands'
+import { brandForProvider, BrandTile } from './provider-brands'
 
 interface AiProviderRowProps {
   config: AiProviderConfig
@@ -62,11 +62,7 @@ export function AiProviderRow({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_12rem_auto] items-center gap-3 px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
-        {brand ? (
-          <span className="flex size-8 flex-none items-center justify-center rounded-lg border border-border bg-surface-sunken text-text">
-            <ProviderLogo brand={brand} className="size-4.5" />
-          </span>
-        ) : null}
+        {brand ? <BrandTile path={brand.path} /> : null}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-medium text-text">

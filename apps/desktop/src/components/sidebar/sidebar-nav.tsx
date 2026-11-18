@@ -29,7 +29,7 @@ import { startOperation } from '@/lib/operations'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
-import type { Route } from '@/routing/route'
+import { isWeeklyNoteRoute, type Route } from '@/routing/route'
 import { SidebarItem } from './sidebar-item'
 import { useMemoryKitActive } from '@/hooks/use-memory-kit'
 
@@ -65,7 +65,10 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
         label,
         icon: <Pencil className="size-3.5" />,
         commandId: 'nav.today',
-        active: (route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote,
+        active:
+          // A week is the daily surface zoomed out: it lights Daily notes.
+          (route.kind === 'today' || route.kind === 'daily' || isWeeklyNoteRoute(route)) &&
+          !hasActivePinnedNote,
       }
     case 'newNote':
       // Active while the open note is still on its ULID placeholder name, the
@@ -90,7 +93,10 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
           (route.kind === 'allNotes' &&
             route.filter.kind !== 'tag' &&
             route.filter.kind !== 'folder') ||
-          (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote),
+          (route.kind === 'note' &&
+            !isUntitledNotePath(route.path) &&
+            !isWeeklyNoteRoute(route) &&
+            !hasActivePinnedNote),
       }
     case 'tasks':
       return {

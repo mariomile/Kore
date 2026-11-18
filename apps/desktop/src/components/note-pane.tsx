@@ -25,6 +25,7 @@ import {
 import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
+import { WeekHeader } from '@/components/weekly/week-header'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
@@ -63,7 +64,7 @@ import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
 import { MoveBranch } from '@/editor/move-branch-picker'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
-import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
+import { conflictWritePath } from '@/hooks/use-periodic-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -218,7 +219,11 @@ export function NotePaneComponent({
   const generation = graph?.generation ?? null
   // The document session plus the lazy-create/seed policy around it — see
   // use-note-pane-document.
-  const { document, dailyNote } = useNotePaneDocument(path, generation, lazy, dailyDate)
+  // A weekly note's subject is its week (`Week 47`), drawn by WeekHeader.
+  const { document, dailyNote, weeklyWeek } = useNotePaneDocument(path, generation, lazy, dailyDate)
+  // Named by a date or a week, never a title: no title placeholder, no
+  // icon or cover editing, no contact suggestion.
+  const periodicNote = dailyNote || weeklyWeek !== null
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
   const resources = useResourceCollection(generation, path, document.header, saveFile)
@@ -264,7 +269,7 @@ export function NotePaneComponent({
   // them, and touch has no hover to reveal them.
   const appearanceEdit = useNoteAppearanceEdit(path, generation)
   const editableAppearance =
-    appearanceEdit !== null && !dailyNote && !isTouchEditorSurface() ? appearanceEdit : null
+    appearanceEdit !== null && !periodicNote && !isTouchEditorSurface() ? appearanceEdit : null
   const onIconChange = editableAppearance?.setIcon
   // A note with a `#` title draws its icon on that line, left of the text;
   // only a title-less note keeps it above the body.
@@ -514,10 +519,7 @@ export function NotePaneComponent({
         />
         {conflicted ? (
           <ConflictProtectedSection
-            path={dailyConflictWritePath(path, {
-              dailyNote,
-              missing: document.missing,
-            })}
+            path={conflictWritePath(path, { missing: document.missing })}
             content={document.initialContent}
           />
         ) : (
@@ -549,7 +551,7 @@ export function NotePaneComponent({
   return (
     <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
-        <NoteBreadcrumb path={path} />
+        {weeklyWeek !== null ? <WeekHeader week={weeklyWeek} /> : <NoteBreadcrumb path={path} />}
 
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
@@ -571,11 +573,11 @@ export function NotePaneComponent({
 
         <SyncConflictNotice path={path} className="mb-4" />
 
-        {/* Daily notes are date-titled, so a contact can never match one —
+        {/* Periodic notes are date- or week-titled, so a contact can never match one —
             the hook gates on it, and skipping the mount keeps the stream lean.
             Keyed by path: a note switch must not carry one card's busy/error
             state into the next note's card. */}
-        {!dailyNote ? <SuggestedContactCard key={path} path={path} /> : null}
+        {!periodicNote ? <SuggestedContactCard key={path} path={path} /> : null}
       </div>
 
       <NoteAppearance
@@ -633,9 +635,9 @@ export function NotePaneComponent({
         pendingReplacementActions={aiMenu.pendingReplacementActions}
         onPendingReplacementResolve={aiMenu.onPendingReplacementResolve}
         onSlashMenuSearch={onSlashMenuSearch}
-        // Daily notes carry no title semantics (the date is their subject),
+        // Periodic notes carry no title semantics (the date or week is their subject),
         // so an empty leading H1 there is just an empty heading.
-        {...(dailyNote ? {} : { titlePlaceholder: 'Untitled' })}
+        {...(periodicNote ? {} : { titlePlaceholder: 'Untitled' })}
         // `kore-note-surface` opts this primary editor into the reading
         // text size (Settings → Editor); compact MarkdownView previews that
         // also carry `kore-editor` keep their own context size.

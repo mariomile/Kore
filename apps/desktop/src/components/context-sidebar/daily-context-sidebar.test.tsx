@@ -23,7 +23,10 @@ vi.mock('@kore/core', async (importOriginal) => ({
   readNote,
   relatedNotes,
 }))
-vi.mock('@/hooks/use-note-row', () => ({ useNoteRow }))
+vi.mock('@/hooks/use-note-row', () => ({
+  useNoteRow,
+  useNoteRowState: (path: string) => ({ row: useNoteRow(path), settled: true }),
+}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -93,6 +96,40 @@ describe('DailyContextSidebar calendar header', () => {
     const view = await renderSidebar('2026-06-09')
     await userEvent.click(page.getByRole('button', { name: 'Jump to today' }))
     await expect.element(page.getByTestId('route')).toHaveTextContent('"kind":"today"')
+    await view.unmount()
+  })
+})
+
+describe('DailyContextSidebar week', () => {
+  it('opens the day’s week from the card under the calendar', async () => {
+    const view = await renderSidebar('2026-06-09')
+    const card = page.getByRole('button').filter({ hasText: 'Jun 8 – 14, 2026' })
+    await expect.element(card).toHaveTextContent('Week 24')
+    await expect.element(card).toHaveTextContent('Jun 8 – 14, 2026 · Not started')
+    await userEvent.click(card)
+    await expect
+      .element(page.getByTestId('route'))
+      .toHaveTextContent(JSON.stringify({ kind: 'note', path: 'weekly/2026-W24.md' }))
+    await view.unmount()
+  })
+
+  it('drops "Not started" once the week has a note', async () => {
+    useNoteRow.mockImplementation((path) =>
+      path === 'weekly/2026-W24.md' ? noteRow({ path, title: '2026-W24', dailyDate: null }) : null,
+    )
+    const view = await renderSidebar('2026-06-09')
+    const card = page.getByRole('button').filter({ hasText: 'Jun 8 – 14, 2026' })
+    await expect.element(card).toHaveTextContent('Jun 8 – 14, 2026')
+    await expect.element(card).not.toHaveTextContent('Not started')
+    await view.unmount()
+  })
+
+  it('opens a week from the calendar’s week-number column', async () => {
+    const view = await renderSidebar('2026-06-09')
+    await userEvent.click(page.getByRole('button', { name: 'Week 25' }))
+    await expect
+      .element(page.getByTestId('route'))
+      .toHaveTextContent(JSON.stringify({ kind: 'note', path: 'weekly/2026-W25.md' }))
     await view.unmount()
   })
 })

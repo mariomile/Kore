@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { isoWeekOfCalendarRow, weekStartDow } from '@kore/core'
 import { ChevronDown, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { addDaysIso } from '@/lib/dates'
@@ -8,10 +9,11 @@ import { monthPickTarget, weekAtIndex, weekStartOf } from '@/mobile/calendar'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { MonthPickerDrawer } from '@/mobile/month-picker-drawer'
 import { MonthTitle } from '@/mobile/month-title'
-import { useDailyNoteDates } from '@/mobile/use-daily-note-dates'
+import { useDailyNoteDates } from '@/hooks/use-daily-note-dates'
 import { useWeekStrip } from '@/mobile/use-week-strip'
 import { WeekRow } from '@/mobile/week-row'
 import { useSettings } from '@/providers/settings-provider'
+import { weeklyRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
 interface CalendarStripProps {
@@ -77,6 +79,12 @@ export function CalendarStrip({
     showWeekOf(today)
   }
 
+  const visibleWeek = isoWeekOfCalendarRow(displayedWeekStart, weekStartDow(settings.weekStartDay))
+  const openWeek = (): void => {
+    hapticImpactLight()
+    navigate(weeklyRoute(visibleWeek))
+  }
+
   const openSettings = (): void => {
     hapticImpactLight()
     navigate({ kind: 'settings' })
@@ -137,7 +145,7 @@ export function CalendarStrip({
             <ChevronDown aria-hidden className="size-4 shrink-0 text-text-muted" />
           </button>
         </h1>
-        <div className="justify-self-end">
+        <div className="flex items-center gap-1.5 justify-self-end">
           <Button
             variant="ghost"
             size="sm"
@@ -150,6 +158,17 @@ export function CalendarStrip({
             onClick={jumpToToday}
           >
             Today
+          </Button>
+          {/* The visible week's note: follows the strip while browsing, so
+              the pill always names the seven days under it. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Open week ${visibleWeek.week}`}
+            className="rounded-full bg-surface-hover tabular-nums"
+            onClick={openWeek}
+          >
+            W{visibleWeek.week}
           </Button>
         </div>
       </div>

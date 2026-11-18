@@ -374,6 +374,13 @@ fn local_date(updated_at: &str, zone: &jiff::tz::TimeZone) -> Option<String> {
 }
 
 /// The seven dates ending today, oldest first.
+/// The graph-relative path of the week's note holding `date`:
+/// `weekly/2026-W47.md` (ISO week, as the app names it).
+fn weekly_note_path(date: jiff::civil::Date) -> String {
+    let week = date.iso_week_date();
+    format!("weekly/{:04}-W{:02}.md", week.year(), week.week())
+}
+
 fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
     let mut dates = vec![today];
     while dates.len() < 7 {
@@ -786,12 +793,15 @@ impl<R: Runner> Server<R> {
     }
 
     fn weekly_review(&self) -> Vec<Value> {
-        let dates = last_seven_days(jiff::Zoned::now().date());
+        let today = jiff::Zoned::now().date();
+        let dates = last_seven_days(today);
         let (start, end) = (dates[0].clone(), dates[dates.len() - 1].clone());
-        let mut messages: Vec<Value> = dates
-            .iter()
-            .filter_map(|date| {
-                self.run_json(&["show".to_string(), "--".to_string(), date.clone()])
+        let week_path = weekly_note_path(today);
+        // This week's own note first, when it exists: its focus frames the days.
+        let mut messages: Vec<Value> = std::iter::once(week_path.clone())
+            .chain(dates.iter().cloned())
+            .filter_map(|note| {
+                self.run_json(&["show".to_string(), "--".to_string(), note])
                     .ok()
             })
             .map(|note| user_message(note_content(&note)))
@@ -838,7 +848,8 @@ impl<R: Runner> Server<R> {
              notes I changed, and my open tasks. Write my weekly review: the main threads and \
              decisions, what moved and what stalled, and the open loops worth closing next week. \
              Read a changed note with read_note when its title is not enough, and cite notes by \
-             title."
+             title. This week's note is {week_path}: when you can write notes, add the review \
+             there."
         ))));
         messages
     }
@@ -1646,6 +1657,16 @@ mod tests {
 
         let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
         assert!(weekly["result"]["messages"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn the_weekly_note_path_follows_iso_weeks() {
+        let date = |y, m, d| jiff::civil::date(y, m, d);
+        assert_eq!(weekly_note_path(date(2026, 11, 18)), "weekly/2026-W47.md");
+        assert_eq!(weekly_note_path(date(2026, 11, 22)), "weekly/2026-W47.md");
+        // 2027-01-01 is a Friday: its week's Thursday is in 2026.
+        assert_eq!(weekly_note_path(date(2027, 1, 1)), "weekly/2026-W53.md");
+        assert_eq!(weekly_note_path(date(2026, 1, 1)), "weekly/2026-W01.md");
     }
 
     #[test]

@@ -170,6 +170,21 @@ export {
   type GraphPathKind,
 } from '../graph/paths'
 export {
+  WEEKLY_FOLDER,
+  WEEKLY_TEMPLATE,
+  isoWeekOf,
+  isoWeekFromKey,
+  isoWeekOfCalendarRow,
+  isIsoWeekStart,
+  addWeeks,
+  daysOfWeek,
+  weeklyPath,
+  weekFromWeeklyPath,
+  weeklyNoteTitle,
+  weeklyPathPattern,
+  type IsoWeek,
+} from '../graph/weekly'
+export {
   wikiNoteReference,
   markdownNoteReference,
   noteLinkHeading,

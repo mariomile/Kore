@@ -9,7 +9,11 @@
   },
   "overrides": [
     {
-      "files": ["**/*.config.{ts,js,mjs}", "apps/extension/entrypoints/**"],
+      "files": [
+        "**/*.config.{ts,js,mjs}",
+        "apps/extension/entrypoints/**",
+        "apps/cloud/src/worker.ts"
+      ],
       "rules": {
         "import/no-default-export": "off"
       }

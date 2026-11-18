@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Sync: clashing edits keep both versions inline, never Needs review;
+  properties take the newer edit (#568).
 - Sync: foreground pull every 2 minutes while Kore is open (#564).
 - Outline: note outline on iPhone; Mac outline fixed (#549).
 - iPhone: the Syncing text pill becomes a quiet icon; tap it for details in

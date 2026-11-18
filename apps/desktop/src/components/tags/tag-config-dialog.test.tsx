@@ -58,8 +58,12 @@ vi.mock('@kore/core', async (importOriginal) => ({
   listTagTypes: async () => tagTypesRows.current,
   listTagParentCandidates: async () => parentCandidates.current,
   listNoteTags: async () => noteTagsRows.current,
+  listTagOccurrences: async () => [],
 }))
-vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
+vi.mock('@/lib/note-frontmatter', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/note-frontmatter')>()),
+  commitNoteFrontmatter,
+}))
 const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('@/editor/move-note', () => ({ moveNoteCarryingSession }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -92,6 +96,20 @@ beforeEach(() => {
 })
 
 describe('TagConfigDialog', () => {
+  it('opens the rename from the header and previews it before anything is written', async () => {
+    const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+
+    await view.getByRole('button', { name: 'Rename' }).click()
+    await expect.element(view.getByRole('heading', { name: 'Rename #Book' })).toBeVisible()
+    await view.getByRole('textbox', { name: 'New tag name' }).fill('novel')
+
+    // No note carries it here, so the preview says so and nothing can run.
+    await expect.element(view.getByText(/No note carries/)).toBeVisible()
+    await expect
+      .element(view.getByRole('button', { name: 'Rename', exact: true }).last())
+      .toBeDisabled()
+  })
+
   it('shows the stored schema and saves an added property with a derived key', async () => {
     definition.current = {
       path: 'tags/book.md',

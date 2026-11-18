@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { applyIndexedNotes, moveIndexedRows, removeFromIndexBatch } from './commands'
+import {
+  applyIndexedNotes,
+  moveIndexedRows,
+  moveNoteIndexed,
+  removeFromIndexBatch,
+} from './commands'
+import { subscribeFileChanges, type FileChange } from './file-changes'
+import { setLocalWriteEcho } from './local-write-echo'
 import type { IndexedNote } from './indexed-note'
 
 const invoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
@@ -15,6 +22,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setBridge(null)
+  setLocalWriteEcho(false)
 })
 
 function commands(): string[] {
@@ -55,5 +63,41 @@ describe('the tag inheritance pass after index writes (Plan 33 B2)', () => {
     await applyIndexedNotes([note('people/ada.md')], 3)
     await removeFromIndexBatch(['people/ada.md'], 3)
     expect(commands()).toEqual(['index_apply_batch', 'index_remove_batch'])
+  })
+})
+
+describe('moveNoteIndexed', () => {
+  it('echoes the delete+create pair where no watcher does, after the move lands', async () => {
+    // Mobile has no watcher: without this echo the Notes list kept a renamed
+    // note under its placeholder path, and its card opened an empty note.
+    setLocalWriteEcho(true)
+    const seen: FileChange[] = []
+    const unlisten = await subscribeFileChanges((changes) => {
+      seen.push(...changes)
+    })
+    await moveNoteIndexed('notes/01m7r5y5hah6wv8yw1863caw71.md', 'notes/gta-6.md', 4)
+    unlisten()
+
+    expect(commands()).toEqual(['note_move_indexed'])
+    expect(seen).toEqual([
+      { path: 'notes/01m7r5y5hah6wv8yw1863caw71.md', kind: 'remove' },
+      {
+        path: 'notes/gta-6.md',
+        kind: 'upsert',
+        modifiedMs: expect.any(Number),
+      },
+    ])
+  })
+
+  it('echoes nothing when the move is refused', async () => {
+    setLocalWriteEcho(true)
+    invoke.mockRejectedValue({ kind: 'conflict', message: 'occupied' })
+    const seen: FileChange[] = []
+    const unlisten = await subscribeFileChanges((changes) => {
+      seen.push(...changes)
+    })
+    await expect(moveNoteIndexed('notes/a.md', 'notes/b.md', 4)).rejects.toBeDefined()
+    unlisten()
+    expect(seen).toEqual([])
   })
 })

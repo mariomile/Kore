@@ -317,18 +317,34 @@ export async function applyIndexChanges(
  * storms without changing the converged index. Events dropped after
  * suspension are intentionally recovered by the lifecycle's foreground
  * reconcile.
+ *
+ * `heldUntil` admits changes without applying them until it settles: the
+ * lifecycle subscribes *before* its full reconcile and holds the queue for
+ * the pass, so a note written mid-pass (a new note, its birth rename) is
+ * applied right after it instead of falling into the gap between the pass's
+ * file listing and the subscription — a gap that left new notes missing from
+ * the index, or indexed under the placeholder path they had already left.
  */
 export function subscribeIndexChanges(
   generation: number,
   onApplied?: (changes: FileChange[]) => void,
   onMoved?: MovedHandler,
   canApply: () => boolean = () => true,
+  heldUntil?: Promise<unknown>,
 ): Promise<Unlisten> {
   const pendingChanges = new Map<string, FileChange>()
   let isApplying = false
+  let held = heldUntil !== undefined
+  if (heldUntil !== undefined) {
+    const release = (): void => {
+      held = false
+      void drainQueue()
+    }
+    void heldUntil.then(release, release)
+  }
 
   async function drainQueue(): Promise<void> {
-    if (isApplying) {
+    if (isApplying || held) {
       return
     }
     isApplying = true

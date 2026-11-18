@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { captureInboxSpool, errorMessage } from '@kore/core'
+import { captureInboxSpool, createNoteWithTitle, errorMessage } from '@kore/core'
 import { ArrowRight, CheckCircle, Microphone, NoteEdit, NotePlus } from '@/components/icons'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import {
@@ -17,7 +17,11 @@ interface MobileCaptureDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onDaily: () => void
-  onNote: () => void
+  /**
+   * Open a note: `path` is the note just created from the typed line, or
+   * absent for the empty-field shortcut (a fresh untitled note).
+   */
+  onNote: (path?: string) => void
   onTask: () => void
   onRecord: () => void
   recordingAvailable: boolean
@@ -31,7 +35,9 @@ type Destination = 'daily' | 'task' | 'note'
  * Type, pick where it goes (today's daily by default, a task, or a new note),
  * send. Daily and task lines go through the same capture inbox the share
  * sheet and the Mac's global shortcut write, so they land on today's daily
- * even while the daily is not open. An empty field keeps the old shortcuts:
+ * even while the daily is not open; a note line becomes a new note titled by
+ * it, created before the sheet closes and then opened.
+ * An empty field keeps the old shortcuts:
  * Daily / Note / Task open their screens, the mic records a memo.
  */
 export function MobileCaptureDrawer({
@@ -71,6 +77,13 @@ export function MobileCaptureDrawer({
     onOpenChange(false)
   }
 
+  /** A line landed where it was sent: confirm, clear, and close. */
+  function sent(): void {
+    hapticImpactLight()
+    setText('')
+    close()
+  }
+
   function openScreen(target: Destination): void {
     close()
     if (target === 'daily') onDaily()
@@ -90,19 +103,18 @@ export function MobileCaptureDrawer({
       openScreen(destination)
       return
     }
-    if (destination === 'note') {
-      close()
-      onNote()
-      return
-    }
     if (graph === null) return
     try {
+      if (destination === 'note') {
+        const path = await createNoteWithTitle(line, graph.generation)
+        sent()
+        onNote(path)
+        return
+      }
       const envelope = buildGlobalShortcutEnvelope(line, destination === 'task' ? 'task' : 'append')
       await captureInboxSpool(`${envelope.id}.json`, JSON.stringify(envelope), graph.generation)
       requestCaptureDrain()
-      hapticImpactLight()
-      setText('')
-      close()
+      sent()
     } catch (cause) {
       setError(errorMessage(cause))
     }

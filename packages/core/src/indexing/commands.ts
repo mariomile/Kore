@@ -3,6 +3,7 @@ import { noteBasenameKey } from '../graph/note-reference'
 import { dateFromDailyPath, foldGraphPath, isCalendarDate } from '../graph/paths'
 import { call } from '../ipc/invoke'
 import type { IndexedNote } from './indexed-note'
+import { echoLocalWrite } from './local-write-echo'
 import { refreshTagTypeResolutionsSafely, touchesTagDefinitions } from './resolved-tag-types'
 
 /** Index commands return `()` from Rust, which serializes to `null` over IPC. */
@@ -107,6 +108,11 @@ function movedNoteAddress(path: string) {
  * finds no rows; the upsert re-applies identical rows). Unlike
  * the other index commands, `generation` here is the **graph** generation
  * (the `note_write` gate) — a rename is user-initiated file mutation.
+ *
+ * Echoes that same delete+create pair itself where no watcher does (mobile,
+ * `echoLocalWrite`): without it nothing downstream heard of the move, so the
+ * Notes list kept the moved row under its old path and a tap on a just-named
+ * note opened that vanished placeholder as an empty note.
  */
 export async function moveNoteIndexed(from: string, to: string, generation: number): Promise<void> {
   await call(
@@ -122,6 +128,8 @@ export async function moveNoteIndexed(from: string, to: string, generation: numb
     },
     voidSchema,
   )
+  echoLocalWrite({ path: from, kind: 'remove' })
+  echoLocalWrite({ path: to, kind: 'upsert', modifiedMs: Date.now() })
 }
 
 const scanCandidateSchema = z.object({

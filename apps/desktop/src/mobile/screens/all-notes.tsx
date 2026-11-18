@@ -2,6 +2,7 @@ import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement }
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
 import {
+  displayNoteTitle,
   foldTag,
   listNoteTags,
   parseHighlights,
@@ -9,6 +10,7 @@ import {
   sortNoteList,
   type AllNotesSort,
   type FilteredSearchHit,
+  type HighlightSegment,
   type NoteTagFacet,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
@@ -38,11 +40,49 @@ import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
+/**
+ * The title as a reader sees it, with the search matches still marked. A
+ * title holding link syntax (`# [[Folder/Note|Note]]`) shows its display
+ * text, the way the editor renders that heading; the marks are re-found in
+ * the display text, since the raw title's offsets no longer line up.
+ */
+export function displayTitleSegments(hit: FilteredSearchHit): HighlightSegment[] {
+  const segments = parseHighlights(hit.highlightedTitle)
+  const display = displayNoteTitle(hit.title)
+  if (display === hit.title) {
+    return segments
+  }
+  const folded = display.toLowerCase()
+  const terms = segments
+    .filter((segment) => segment.highlighted)
+    .map((segment) => segment.text.toLowerCase())
+    .filter((term) => term.trim() !== '')
+  if (terms.length === 0 || folded.length !== display.length) {
+    return [{ text: display, highlighted: false }]
+  }
+  const marked = Array.from({ length: display.length }, () => false)
+  for (const term of terms) {
+    for (let at = folded.indexOf(term); at !== -1; at = folded.indexOf(term, at + term.length)) {
+      marked.fill(true, at, at + term.length)
+    }
+  }
+  const out: HighlightSegment[] = []
+  for (let index = 0; index < display.length; index += 1) {
+    const last = out.at(-1)
+    if (last !== undefined && last.highlighted === marked[index]) {
+      last.text += display[index]
+    } else {
+      out.push({ text: display[index]!, highlighted: marked[index]! })
+    }
+  }
+  return out
+}
+
 /** A search hit resolved into the shared row shape. */
 export function rowForHit(hit: FilteredSearchHit): NoteRowModel {
   return {
     path: hit.path,
-    titleSegments: parseHighlights(hit.highlightedTitle),
+    titleSegments: displayTitleSegments(hit),
     mtime: hit.mtime,
     isPinned: hit.isPinned,
     canDelete: hit.dailyDate === null,

@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(36)
+    expect(PROJECTION_VERSION).toBe(37)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {
@@ -216,6 +216,22 @@ describe('buildIndexedNote', () => {
     expect(indexed.preview).toBe('First body line. #CAFÉ')
     // Folding is Unicode-aware — exactly what SQLite's ASCII-only lower() misses.
     expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café', member: false }])
+  })
+
+  it('previews an aliased link as its alias and drops a linked title', () => {
+    const source = [
+      '# [[Resources/Frameworks/HEART Framework|HEART Framework]]',
+      '',
+      'Measures UX, see [[Product Analytics|analytics]] and [[North Star]].',
+    ].join('\n')
+    const indexed = buildIndexedNote(parseNote({ path: 'Knowledge/HEART.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.preview).toBe('Measures UX, see analytics and North Star.')
+    // Search keeps both halves of an aliased link.
+    expect(indexed.text).toContain('Product Analytics analytics')
   })
 
   it('previews the prose under an Obsidian query block, not the query', () => {

@@ -10,6 +10,7 @@ import {
 import { vaultLayoutIndexKey } from '../graph/vault-layout'
 import {
   detectConflictMarkers,
+  displayNoteTitle,
   extractEmailFields,
   foldEmail,
   foldKey,
@@ -152,8 +153,12 @@ import {
  * 36 - a task's due date is only a date link that ends or opens the item; a
  * date mid-sentence (a source citation) no longer schedules it, so existing
  * `tasks.due_date` rows must be rederived.
+ * 37 - `notes.preview` shows an aliased wiki link as its alias alone and drops
+ * a leading title written with link syntax (`# [[Folder/Note|Note]]`), so a
+ * card no longer opens with the raw path. Existing rows keep it until
+ * reprojected.
  */
-export const PROJECTION_VERSION = 36
+export const PROJECTION_VERSION = 37
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -524,7 +529,7 @@ export function buildIndexedNote(
     mtime: meta.mtime,
     text: parsed.text,
     assetText: meta.assetText ?? '',
-    preview: previewSnippet(parsed.previewText, parsed.title),
+    preview: previewSnippet(parsed.previewText, displayNoteTitle(parsed.title)),
     links: [...wikiLinks, ...mdLinks],
     tags: parsed.tags.map((tag) => {
       const tagKey = foldTag(tag)

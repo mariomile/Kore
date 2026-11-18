@@ -152,10 +152,10 @@ import {
  * 36 - a task's due date is only a date link that ends or opens the item; a
  * date mid-sentence (a source citation) no longer schedules it, so existing
  * `tasks.due_date` rows must be rederived.
- * 37 - in a vault that names files after titles (Obsidian), the filename stem
- * is the note's name: it claims the title tier, and an H1 that differs from
- * it drops to the alias tier, so a `# Mario Miletta` CV header no longer
- * steals `[[Mario Miletta]]` from `Mario Miletta.md`.
+ * 37 - in a vault that names files after titles (Obsidian), an H1 that
+ * differs from the filename stem claims the alias tier, not the title tier,
+ * so a `# Mario Miletta` CV header no longer steals `[[Mario Miletta]]` from
+ * `Mario Miletta.md`.
  */
 export const PROJECTION_VERSION = 37
 
@@ -190,13 +190,13 @@ export const CLAIM_TIER = {
   dailyDate: 1,
   /**
    * Authored title (frontmatter or first heading; filename when untitled). In
-   * a title-named (Obsidian) vault the filename stem holds this tier and a
-   * differing H1 drops to the alias tier.
+   * a title-named (Obsidian) vault an H1 that differs from the filename drops
+   * to the alias tier.
    */
   title: 2,
   /** Frontmatter or derived alias. */
   alias: 3,
-  /** Filename stem — the weakest address in a slug vault. */
+  /** Filename stem — the weakest address, how Obsidian names every note. */
   basename: 4,
 } as const
 
@@ -448,18 +448,14 @@ export function projectNoteClaims(
   }
   const titleKey = foldKey(parsed.title)
   const basenameKey = noteBasenameKey(parsed.path)
-  if (filenameIsTheName(parsed, titleKey, basenameKey)) {
-    // Obsidian addresses a note by its filename; an H1 that says something
-    // else is a heading, not a second name. It still answers, but only as
-    // strongly as an alias, so it never outranks another note's filename.
-    claim(basenameKey, CLAIM_TIER.title)
-    for (const alias of aliases) {
-      claim(alias.aliasKey, CLAIM_TIER.alias)
-    }
-    claim(titleKey, CLAIM_TIER.alias)
-    return claims
-  }
-  claim(titleKey, CLAIM_TIER.title)
+  // In a title-named (Obsidian) vault an H1 that differs from the filename is
+  // a heading, not the note's name. It still answers, but only as strongly as
+  // an alias, so it never outranks a note whose name that is. The filename
+  // stays the path-derived basename claim that a rename restates.
+  const titleTier = filenameIsTheName(parsed, titleKey, basenameKey)
+    ? CLAIM_TIER.alias
+    : CLAIM_TIER.title
+  claim(titleKey, titleTier)
   for (const alias of aliases) {
     claim(alias.aliasKey, CLAIM_TIER.alias)
   }

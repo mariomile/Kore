@@ -511,12 +511,12 @@ describe('projectNoteClaims (via buildIndexedNote)', () => {
     const claimsOf = (path: string, source: string) =>
       buildIndexedNote(parseNote({ path, source }), { ...meta, source }).claims
 
-    it('lets the filename win over a differing H1', () => {
+    it('demotes an H1 that differs from the filename to the alias tier', () => {
       setVaultLayout({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title' })
       // A CV whose header is the owner's name must not claim the person note's name.
       expect(claimsOf('Jobs/CV Cohere.md', '# Mario Miletta\n\nHead of Product')).toEqual([
-        { key: 'cv cohere', tier: CLAIM_TIER.title },
         { key: 'mario miletta', tier: CLAIM_TIER.alias },
+        { key: 'cv cohere', tier: CLAIM_TIER.basename },
       ])
       expect(claimsOf('CRM/People/Mario Miletta.md', '# Mario Miletta')).toEqual([
         { key: 'mario miletta', tier: CLAIM_TIER.title },

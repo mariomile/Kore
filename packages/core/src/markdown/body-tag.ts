@@ -136,3 +136,38 @@ export function removeBodyTag(source: string, tag: string): string | null {
   }
   return raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`
 }
+
+/**
+ * `source` with every indexed `#tag` token whose name `rename` maps rewritten
+ * to the new name, or `null` when no token changes. Only the name after the
+ * `#` is replaced, so surrounding prose and spacing stay byte-identical;
+ * tokens inside code, URLs or wiki targets are left alone, exactly the ones
+ * {@link bodyHasTag} ignores. Frontmatter is untouched.
+ */
+export function renameBodyTags(
+  source: string,
+  rename: (name: string) => string | null,
+): string | null {
+  const { body, bodyOffset } = splitFrontmatter(source)
+  const excluded = tagExcludedRanges(body)
+  let nextBody = ''
+  let cursor = 0
+  for (const match of body.matchAll(TAG_ANYWHERE)) {
+    const name = match[1]!
+    const hashIndex = tagHashIndex(match)
+    if (inAnyRange(hashIndex, excluded)) {
+      continue
+    }
+    const renamed = rename(name)
+    if (renamed === null || renamed === name) {
+      continue
+    }
+    nextBody += `${body.slice(cursor, hashIndex + 1)}${renamed}`
+    cursor = hashIndex + 1 + name.length
+  }
+  if (cursor === 0) {
+    return null
+  }
+  nextBody += body.slice(cursor)
+  return source.slice(0, bodyOffset) + nextBody
+}

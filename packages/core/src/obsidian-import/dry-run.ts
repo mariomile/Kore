@@ -1,3 +1,4 @@
+import { forEachConcurrent } from '@kore/utils'
 import { isBasePath } from '../bases/embeds'
 import { readBaseFile } from '../bases/rows'
 import { errorMessage } from '../errors'
@@ -150,34 +151,23 @@ export async function readObsidianImportSource(
   ])
   const notes: ImportSourceNote[] = []
   let skipped = 0
-  let next = 0
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const file = files[next]
-      next += 1
-      if (file === undefined) {
-        return
-      }
-      if (file.placeholder) {
-        skipped += 1
-        continue
-      }
-      try {
-        const result = await readNoteLocal(file.path, generation)
-        if (result.kind === 'evicted') {
-          skipped += 1
-        } else {
-          notes.push({ path: file.path, content: result.content })
-        }
-      } catch (cause) {
-        skipped += 1
-        console.warn(`obsidian import: could not read ${file.path}:`, errorMessage(cause))
-      }
+  await forEachConcurrent(files, READ_CONCURRENCY, async (file) => {
+    if (file.placeholder) {
+      skipped += 1
+      return
     }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(READ_CONCURRENCY, files.length) }, async () => await worker()),
-  )
+    try {
+      const result = await readNoteLocal(file.path, generation)
+      if (result.kind === 'evicted') {
+        skipped += 1
+      } else {
+        notes.push({ path: file.path, content: result.content })
+      }
+    } catch (cause) {
+      skipped += 1
+      console.warn(`obsidian import: could not read ${file.path}:`, errorMessage(cause))
+    }
+  })
   const attachments = attachmentFiles.map((file) => file.path)
   const bases: ImportSourceNote[] = []
   for (const path of attachments) {

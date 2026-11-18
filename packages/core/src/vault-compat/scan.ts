@@ -1,3 +1,4 @@
+import { forEachConcurrent } from '@kore/utils'
 import { errorMessage } from '../errors'
 import { listFiles, readNoteLocal } from '../graph/commands'
 import { detectCompatFindings, type CompatFinding } from './detect'
@@ -93,37 +94,26 @@ export async function scanVaultCompat(generation: number): Promise<VaultCompatRe
   const scanned: ScannedNote[] = []
   let skipped = 0
   let read = 0
-  let next = 0
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const file = files[next]
-      next += 1
-      if (file === undefined) {
+  await forEachConcurrent(files, SCAN_CONCURRENCY, async (file) => {
+    if (file.placeholder) {
+      skipped += 1
+      return
+    }
+    try {
+      const result = await readNoteLocal(file.path, generation)
+      if (result.kind === 'evicted') {
+        skipped += 1
         return
       }
-      if (file.placeholder) {
-        skipped += 1
-        continue
+      read += 1
+      const findings = detectCompatFindings(file.path, result.content)
+      if (findings.length > 0) {
+        scanned.push({ path: file.path, findings })
       }
-      try {
-        const result = await readNoteLocal(file.path, generation)
-        if (result.kind === 'evicted') {
-          skipped += 1
-          continue
-        }
-        read += 1
-        const findings = detectCompatFindings(file.path, result.content)
-        if (findings.length > 0) {
-          scanned.push({ path: file.path, findings })
-        }
-      } catch (cause) {
-        skipped += 1
-        console.warn(`vault compat: could not read ${file.path}:`, errorMessage(cause))
-      }
+    } catch (cause) {
+      skipped += 1
+      console.warn(`vault compat: could not read ${file.path}:`, errorMessage(cause))
     }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(SCAN_CONCURRENCY, files.length) }, async () => await worker()),
-  )
+  })
   return buildVaultCompatReport(scanned, { scanned: read, skipped })
 }

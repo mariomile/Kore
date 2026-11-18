@@ -31,6 +31,10 @@ interface TagConfigSheetProps {
   /** The tag being configured (display casing). */
   tag: string
   onClose: () => void
+  /** Open the rename for the tag being configured. */
+  onRename: () => void
+  /** A rebind moved the type onto another tag. */
+  onRebound: (tag: string) => void
 }
 
 /** Base UI's drawer leaves a swipe that starts here alone (the drag handle). */
@@ -46,17 +50,12 @@ const SWIPE_IGNORE = { 'data-base-ui-swipe-ignore': '' }
  * settings. Nothing is written until Save, and dismissing the sheet discards
  * the edits, like closing the desktop dialog.
  */
-export function TagConfigSheet({ tag: initialTag, onClose }: TagConfigSheetProps): ReactElement {
-  // A rebind moves the type onto another tag; the sheet reopens there.
-  const [tag, setTag] = useState(initialTag)
-  return <TagConfigSheetFor key={foldTag(tag)} tag={tag} onClose={onClose} onRebound={setTag} />
-}
-
-function TagConfigSheetFor({
+export function TagConfigSheet({
   tag,
   onClose,
+  onRename,
   onRebound,
-}: TagConfigSheetProps & { onRebound: (tag: string) => void }): ReactElement {
+}: TagConfigSheetProps): ReactElement {
   const { navigate } = useRouter()
   // Set by "Show notes": after the save lands, open the type's notes.
   const afterSaveRef = useRef<(() => void) | null>(null)
@@ -130,6 +129,7 @@ function TagConfigSheetFor({
               tagKey={key}
               tag={tag}
               onRebound={onRebound}
+              onRename={onRename}
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
@@ -173,6 +173,7 @@ function TypePage({
   tagKey,
   tag,
   onRebound,
+  onRename,
   config,
   onOpenField,
   onShowNotes,
@@ -180,6 +181,7 @@ function TypePage({
   tagKey: string
   tag: string
   onRebound: (tag: string) => void
+  onRename: () => void
   config: TagConfigDraft
   onOpenField: (rowId: number) => void
   onShowNotes: () => void
@@ -234,6 +236,15 @@ function TypePage({
       ) : null}
 
       <Section title="Type">
+        <button
+          type="button"
+          onClick={onRename}
+          className="flex min-h-12 w-full items-center gap-3 border-b border-border px-4 py-2 text-left active:bg-surface-hover"
+        >
+          <span className="flex-1 text-base">Name</span>
+          <span className="min-w-0 truncate text-base text-text-muted">#{tagKey}</span>
+          <ChevronRight aria-hidden className="size-5 shrink-0 text-text-muted" />
+        </button>
         <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
           <span className="text-base">Icon</span>
           <TagIconPicker value={config.icon} onChange={config.setIcon} />

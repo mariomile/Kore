@@ -6,11 +6,13 @@ import {
   getPathLinkSources,
   isKoreManagedNote,
   isUntitledNotePath,
+  noteFileStem,
   readNote,
   resolveWikiTarget,
   rewriteLinksForTitleChange,
   rewritePathLinksForMove,
   slugPathForTitle,
+  titleFilePathForRetitle,
   writeNote,
 } from '@kore/core'
 import { placeOldTitleAlias } from './alias-placement'
@@ -87,21 +89,14 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
   let latestSource = ''
 
   /**
-   * Move the file onto its title's slug path (Plan 17). A failed move leaves
-   * the filename drifting (cosmetic — resolution never reads filenames) until
-   * the next settled rename re-derives it.
+   * Move the file onto the path its title derives (Plan 17). A failed move
+   * leaves the filename drifting until the next settled rename re-derives it.
    */
   const runMove = async (
-    title: string,
+    target: string,
     gen: number,
-    options?: { rewriteInboundPathLinks?: boolean; birth?: boolean },
+    options?: { rewriteInboundPathLinks?: boolean },
   ): Promise<void> => {
-    // A birth may land in the note's type folder (`folder:` on the type);
-    // a retitle only re-derives the name where the note already lives.
-    const target =
-      options?.birth === true
-        ? await birthPathForTitle(currentPath, title, latestSource)
-        : await slugPathForTitle(currentPath, title)
     if (target === currentPath) {
       return
     }
@@ -158,7 +153,8 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
         // the file sheds its placeholder name for the title's slug.
         const operation = startOperation(`Naming "${rename.to}"`)
         try {
-          await runMove(rename.to, gen, { birth: true })
+          // A birth may land in the note's type folder (`folder:` on the type).
+          await runMove(await birthPathForTitle(currentPath, rename.to, latestSource), gen)
           operation.done()
         } catch (cause) {
           console.error('note file move failed:', cause)
@@ -174,12 +170,25 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
       // permutations live in `composeRenameFailure`.
       const failures: RenamePhaseFailures = { rewrite: null, alias: null, move: null }
       try {
+        // Which file move this retitle carries, if any: a Kore-managed note
+        // re-derives its slug name; in a vault that names files after titles
+        // (Obsidian), a note named after its old title is renamed in place,
+        // and its links then address the new filename. Other notes keep
+        // their paths. Decided before the rewrite, which needs the address.
+        const managed = isKoreManagedNote(currentPath, latestSource)
+        const inPlaceTarget = managed
+          ? null
+          : await titleFilePathForRetitle(currentPath, { from, to: rename.to })
         let collision = false
+        // Whether every link to the old title now addresses the new one, so
+        // nothing needs the old title as an alias to keep resolving.
+        let linksFollowed = false
         try {
           const result = await rewriteLinksForTitleChange({
             path: currentPath,
             from,
             to: rename.to,
+            target: inPlaceTarget === null ? undefined : noteFileStem(inPlaceTarget),
             io: {
               sources: getLinkSources,
               backlinks: getBacklinks,
@@ -190,6 +199,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
             onProgress: operation.progress,
           })
           collision = result.collision
+          linksFollowed = !result.destinationBlocked && result.failed.length === 0
         } catch (cause) {
           // A failed rewrite must NOT skip the alias below: the tracker's
           // baseline has already advanced (re-arming would re-fire with a
@@ -198,22 +208,34 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
           failures.rewrite = errorMessage(cause)
           console.error('rename link rewrite failed:', cause)
         }
-        if (!collision) {
+        // An in-place rename follows the links: when they could not all be
+        // repointed (the new name belongs to another note, or a source was
+        // unwritable), the file keeps the name those links still use.
+        const moveTarget = managed
+          ? await slugPathForTitle(currentPath, rename.to)
+          : linksFollowed
+            ? inPlaceTarget
+            : null
+        let renamedInPlace = false
+        if (moveTarget !== null) {
+          try {
+            await runMove(moveTarget, gen, { rewriteInboundPathLinks: true })
+            renamedInPlace = !managed
+          } catch (cause) {
+            failures.move = errorMessage(cause)
+            console.error('note file move failed:', cause)
+          }
+        }
+        // The old title becomes an alias so links the rewrite missed still
+        // resolve, except after an in-place Obsidian rename, which only runs
+        // once every link moved: there, as in Obsidian, the filename is the
+        // only name.
+        if (!collision && !renamedInPlace) {
           try {
             await placeOldTitleAlias(currentPath, { ...rename, from }, gen)
           } catch (cause) {
             failures.alias = errorMessage(cause)
             console.error('rename alias placement failed:', cause)
-          }
-        }
-        // Link maintenance applies to every editable note. Filename projection
-        // is a separate capability: stable-path and adopted notes stay put.
-        if (isKoreManagedNote(currentPath, latestSource)) {
-          try {
-            await runMove(rename.to, gen, { rewriteInboundPathLinks: true })
-          } catch (cause) {
-            failures.move = errorMessage(cause)
-            console.error('note file move failed:', cause)
           }
         }
       } finally {

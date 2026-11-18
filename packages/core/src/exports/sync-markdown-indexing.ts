@@ -582,6 +582,7 @@ export {
   slugPathForTitle,
   birthPathForTitle,
   templateSlugPathForTitle,
+  titleFilePathForRetitle,
   listTemplates,
   type TemplateEntry,
   parseHighlights,

@@ -57,6 +57,14 @@ export const changedFileSchema = z.object({
 })
 export type ChangedFile = z.infer<typeof changedFileSchema>
 
+/** The commits behind a conflicted merge: local, fetched, and their merge base. */
+export const mergeSidesSchema = z.object({
+  ours: z.string(),
+  theirs: z.string(),
+  base: z.string().nullable(),
+})
+export type MergeSides = z.infer<typeof mergeSidesSchema>
+
 export const mergeOutcomeSchema = z.object({
   kind: z.enum(['upToDate', 'fastForward', 'merged', 'mergedWithConflicts']),
   conflictedPaths: z.array(z.string()),
@@ -70,14 +78,7 @@ export const mergeOutcomeSchema = z.object({
    * The commits behind a conflicted merge (local, fetched, merge base), so
    * conflicted notes can be re-merged Markdown-aware. Absent otherwise.
    */
-  sides: z
-    .object({
-      ours: z.string(),
-      theirs: z.string(),
-      base: z.string().nullable(),
-    })
-    .nullable()
-    .optional(),
+  sides: mergeSidesSchema.nullable().optional(),
 })
 export type MergeOutcome = z.infer<typeof mergeOutcomeSchema>
 

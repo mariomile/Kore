@@ -66,6 +66,18 @@ export const mergeOutcomeSchema = z.object({
    * not be yet) to keep the index in step with the notes.
    */
   changedFiles: z.array(changedFileSchema),
+  /**
+   * The commits behind a conflicted merge (local, fetched, merge base), so
+   * conflicted notes can be re-merged Markdown-aware. Absent otherwise.
+   */
+  sides: z
+    .object({
+      ours: z.string(),
+      theirs: z.string(),
+      base: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
 })
 export type MergeOutcome = z.infer<typeof mergeOutcomeSchema>
 

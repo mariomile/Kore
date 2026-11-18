@@ -1,5 +1,6 @@
 import { isAppError } from '../errors'
 import { commitAgentWrites } from './agent-commits'
+import { autoMergeConflicts } from './auto-merge'
 import {
   gitCommitAll,
   gitFetch,
@@ -143,6 +144,8 @@ export interface SyncEngine {
 }
 
 const DEFAULT_IDLE_MS = 30_000
+/** Commit message for notes re-merged after a conflicted sync merge. */
+const AUTO_MERGE_MESSAGE = 'Merge notes edited on two devices'
 const DEFAULT_MAX_WAIT_MS = 5 * 60_000
 const DEFAULT_LOCAL_STEP_TIMEOUT_MS = 5 * 60_000
 
@@ -434,13 +437,28 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   /** Merge fetched changes and start any changed-file notification. */
   async function merge(remoteChanges: (changes: ChangedFile[]) => void): Promise<{ kind: string }> {
     enter('merging')
-    return await step(bounded('merging', gitMergeRemote(options.generation)), (outcome) => {
+    const outcome = await step(bounded('merging', gitMergeRemote(options.generation)), (result) => {
       // The command may already have rewritten files before suspension. Fan
       // those changes out before the boundary gate stops subsequent Git work.
-      if (outcome.changedFiles.length > 0) {
-        remoteChanges(outcome.changedFiles)
+      if (result.changedFiles.length > 0) {
+        remoteChanges(result.changedFiles)
       }
     }) // upToDate is a no-op
+    if (outcome.kind === 'mergedWithConflicts') {
+      // Re-merge conflicted notes; commit any rewrite so the push carries it.
+      const resolved = await step(
+        bounded('merging', autoMergeConflicts(outcome, options.generation)),
+        (files) => {
+          if (files.length > 0) {
+            remoteChanges(files)
+          }
+        },
+      )
+      if (resolved.length > 0) {
+        await step(bounded('saving', gitCommitAll(AUTO_MERGE_MESSAGE, options.generation)))
+      }
+    }
+    return outcome
   }
 
   function syncNow(): Promise<void> {

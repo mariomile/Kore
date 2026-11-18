@@ -371,7 +371,13 @@ describe('createSyncEngine', () => {
             kind: 'mergedWithConflicts',
             conflictedPaths: ['daily/2026-11-18.md', 'assets/photo.png'],
             changedFiles: [{ path: 'daily/2026-11-18.md', kind: 'upsert' }],
-            sides: { ours: 'local', theirs: 'remote', base: 'base' },
+            sides: {
+              ours: 'local',
+              theirs: 'remote',
+              base: 'base',
+              oursTime: 100,
+              theirsTime: 200,
+            },
           }
         case 'git_note_version':
           return versions[String(args.commit)]
@@ -415,7 +421,7 @@ describe('createSyncEngine', () => {
     engine.stop()
   })
 
-  it('keeps the markers when the same lines changed two different ways', async () => {
+  it('leaves a note the user already resolved since the merge alone', async () => {
     const versions: Record<string, string> = {
       base: 'x\n',
       local: 'mine\n',
@@ -429,12 +435,18 @@ describe('createSyncEngine', () => {
             kind: 'mergedWithConflicts',
             conflictedPaths: ['notes/plan.md'],
             changedFiles: [],
-            sides: { ours: 'local', theirs: 'remote', base: 'base' },
+            sides: {
+              ours: 'local',
+              theirs: 'remote',
+              base: 'base',
+              oursTime: 100,
+              theirsTime: 200,
+            },
           }
         case 'git_note_version':
           return versions[String(args.commit)]
         case 'note_read':
-          return '<<<<<<< this device\nmine\n=======\ntheirs\n>>>>>>> other device\n'
+          return 'resolved by hand\n'
         default:
           return defaultResponses(command)
       }

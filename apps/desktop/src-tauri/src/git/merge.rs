@@ -86,13 +86,16 @@ pub struct MergeOutcome {
 }
 
 /// Commit ids of the local side, the fetched side and their merge base
-/// (`None` for unrelated histories).
+/// (`None` for unrelated histories), plus each side's commit time (epoch
+/// seconds) so the sync layer can tell which edit is newer.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MergeSides {
     pub ours: String,
     pub theirs: String,
     pub base: Option<String>,
+    pub ours_time: i64,
+    pub theirs_time: i64,
 }
 
 /// One side of an index conflict, lifted out of the index so the borrow ends
@@ -212,6 +215,8 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
                 .merge_base(local_oid, remote_oid)
                 .ok()
                 .map(|oid| oid.to_string()),
+            ours_time: repo.find_commit(local_oid)?.time().seconds(),
+            theirs_time: repo.find_commit(remote_oid)?.time().seconds(),
         };
         (MergeKind::MergedWithConflicts, Some(sides))
     };

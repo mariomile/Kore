@@ -57,11 +57,14 @@ export const changedFileSchema = z.object({
 })
 export type ChangedFile = z.infer<typeof changedFileSchema>
 
-/** The commits behind a conflicted merge: local, fetched, and their merge base. */
+/** The commits behind a conflicted merge: local, fetched, their merge base, and when each side committed. */
 export const mergeSidesSchema = z.object({
   ours: z.string(),
   theirs: z.string(),
   base: z.string().nullable(),
+  /** Commit times (epoch seconds): which side's edit is newer. */
+  oursTime: z.number(),
+  theirsTime: z.number(),
 })
 export type MergeSides = z.infer<typeof mergeSidesSchema>
 

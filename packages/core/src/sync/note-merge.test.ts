@@ -8,7 +8,7 @@ describe('mergeNoteText', () => {
     const base = lines('# 2026-11-18', '', '- Coffee with Luca')
     const ours = lines('# 2026-11-18', '', '- Coffee with Luca', '- Call the bank')
     const theirs = lines('# 2026-11-18', '', '- Coffee with Luca', '- Idea: weekly notes')
-    expect(mergeNoteText(base, ours, theirs)).toBe(
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
       lines('# 2026-11-18', '', '- Coffee with Luca', '- Call the bank', '- Idea: weekly notes'),
     )
   })
@@ -17,7 +17,7 @@ describe('mergeNoteText', () => {
     const base = lines('- [ ] Book flight', '- [ ] Pay invoice', '- [ ] Email Sara')
     const ours = lines('- [x] Book flight', '- [ ] Pay invoice', '- [ ] Email Sara')
     const theirs = lines('- [ ] Book flight', '- [x] Pay invoice', '- [ ] Email Sara')
-    expect(mergeNoteText(base, ours, theirs)).toBe(
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
       lines('- [x] Book flight', '- [x] Pay invoice', '- [ ] Email Sara'),
     )
   })
@@ -26,7 +26,7 @@ describe('mergeNoteText', () => {
     const base = lines('---', 'status: draft', 'owner: Mario', '---', 'Body')
     const ours = lines('---', 'status: done', 'owner: Mario', '---', 'Body')
     const theirs = lines('---', 'status: draft', 'owner: Sara', '---', 'Body')
-    expect(mergeNoteText(base, ours, theirs)).toBe(
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
       lines('---', 'status: done', 'owner: Sara', '---', 'Body'),
     )
   })
@@ -35,32 +35,64 @@ describe('mergeNoteText', () => {
     const base = lines('---', 'title: Plan', '---', 'Body')
     const ours = lines('---', 'title: Plan', 'status: done', '---', 'Body')
     const theirs = lines('---', 'title: Plan', 'area: Work', '---', 'Body')
-    expect(mergeNoteText(base, ours, theirs)).toBe(
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
       lines('---', 'title: Plan', 'status: done', 'area: Work', '---', 'Body'),
     )
   })
 
-  it('declines when both devices add the same property with different values', () => {
+  it('takes the newer value when both devices set the same property', () => {
+    const base = lines('---', 'status: draft', '---', 'Body')
+    const ours = lines('---', 'status: done', '---', 'Body')
+    const theirs = lines('---', 'status: blocked', '---', 'Body')
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
+      lines('---', 'status: blocked', '---', 'Body'),
+    )
+    expect(mergeNoteText(base, ours, theirs, 'ours')).toBe(
+      lines('---', 'status: done', '---', 'Body'),
+    )
+  })
+
+  it('falls back to the newer header when both devices add the same property', () => {
     const base = lines('---', 'title: Plan', '---', 'Body')
     const ours = lines('---', 'title: Plan', 'status: done', '---', 'Body')
     const theirs = lines('---', 'title: Plan', 'status: draft', '---', 'Body')
-    expect(mergeNoteText(base, ours, theirs)).toBeNull()
+    expect(mergeNoteText(base, ours, theirs, 'ours')).toBe(ours)
   })
 
-  it('declines when the same line changed two different ways', () => {
-    const base = lines('Meeting at 10')
-    expect(mergeNoteText(base, lines('Meeting at 11'), lines('Meeting at 12'))).toBeNull()
+  it('still keeps both devices’ body text when the header clashes', () => {
+    const base = lines('---', 'status: draft', '---', 'Plan')
+    const ours = lines('---', 'status: done', '---', 'Plan', '- from the Mac')
+    const theirs = lines('---', 'status: blocked', '---', 'Plan', '- from the iPhone')
+    expect(mergeNoteText(base, ours, theirs, 'theirs')).toBe(
+      lines('---', 'status: blocked', '---', 'Plan', '- from the Mac', '- from the iPhone'),
+    )
   })
 
-  it('declines an edit against a deletion of the same line', () => {
+  it('keeps both versions when the same line changed two different ways', () => {
+    const base = lines('# Lisbon', 'Meet Ana on Friday')
+    expect(
+      mergeNoteText(
+        base,
+        lines('# Lisbon', 'Meet Ana on Saturday'),
+        lines('# Lisbon', 'Meet Ana on Sunday, 19:00'),
+        'theirs',
+      ),
+    ).toBe(lines('# Lisbon', 'Meet Ana on Saturday', 'Meet Ana on Sunday, 19:00'))
+  })
+
+  it('keeps an edit that the other device deleted', () => {
     const base = lines('Keep', 'Edit me', 'Keep')
-    expect(mergeNoteText(base, lines('Keep', 'Edited', 'Keep'), lines('Keep', 'Keep'))).toBeNull()
+    expect(
+      mergeNoteText(base, lines('Keep', 'Keep'), lines('Keep', 'Edited', 'Keep'), 'theirs'),
+    ).toBe(lines('Keep', 'Edited', 'Keep'))
   })
 
   it('takes the same edit made on both devices once', () => {
     const base = lines('a', 'b', 'c')
     const both = lines('a', 'B', 'c')
-    expect(mergeNoteText(base, both, lines('a', 'B', 'c', 'd'))).toBe(lines('a', 'B', 'c', 'd'))
+    expect(mergeNoteText(base, both, lines('a', 'B', 'c', 'd'), 'theirs')).toBe(
+      lines('a', 'B', 'c', 'd'),
+    )
   })
 
   it('merges edits far apart in a long note', () => {
@@ -72,16 +104,20 @@ describe('mergeNoteText', () => {
     const expected = [...body]
     expected[10] = 'ours'
     expected[400] = 'theirs'
-    expect(mergeNoteText(lines(...body), lines(...ours), lines(...theirs))).toBe(lines(...expected))
+    expect(mergeNoteText(lines(...body), lines(...ours), lines(...theirs), 'theirs')).toBe(
+      lines(...expected),
+    )
   })
 
   it('leaves a note that already carries conflict markers alone', () => {
     const marked = lines('<<<<<<< this device', 'a', '=======', 'b', '>>>>>>> other device')
-    expect(mergeNoteText(lines('x'), marked, lines('x', 'y'))).toBeNull()
+    expect(mergeNoteText(lines('x'), marked, lines('x', 'y'), 'theirs')).toBeNull()
   })
 
   it('handles a note created on both devices from nothing', () => {
-    expect(mergeNoteText('', lines('mine'), lines('theirs'))).toBe(lines('mine', 'theirs'))
+    expect(mergeNoteText('', lines('mine'), lines('theirs'), 'theirs')).toBe(
+      lines('mine', 'theirs'),
+    )
   })
 
   it('reproduces one side exactly when the other did not change (random edits)', () => {
@@ -103,8 +139,8 @@ describe('mergeNoteText', () => {
       }
       const a = base.join('\n')
       const b = edited.join('\n')
-      expect(mergeNoteText(a, a, b)).toBe(b)
-      expect(mergeNoteText(a, b, a)).toBe(b)
+      expect(mergeNoteText(a, a, b, 'theirs')).toBe(b)
+      expect(mergeNoteText(a, b, a, 'theirs')).toBe(b)
     }
   })
 })

@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Outline: note outline on iPhone; Mac outline fixed (#549).
 - iPhone: clean note cards, no title gap, nested tags colored in full (#553).
 - Launch: one continuous splash to the daily note, no white frame or font
   swap (#555).

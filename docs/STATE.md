@@ -1,5 +1,10 @@
 # Kore working state
 
+## Note outline on iPhone, 2026-11-18
+
+- [x] Notion-style outline on iPhone (lines on the right edge, tap for the
+  section list); the Mac outline lists its note's sections again (#549).
+
 ## iPhone note cards, 2026-11-18
 
 - [x] Note cards: link-titles by name, wrapped long titles, no raw link paths

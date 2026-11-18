@@ -48,7 +48,9 @@ export function MobileShell(): ReactElement {
   const [searchOpen, setSearchOpen] = useState(false)
   const [newTaskRequested, setNewTaskRequested] = useState(false)
   const [lastTab, setLastTab] = useState<MobileTab>('daily')
-  const [lastDailyRoute, setLastDailyRoute] = useState<DailyRoute>({ kind: 'today' })
+  const [lastDailyRoute, setLastDailyRoute] = useState<DailyRoute>({
+    kind: 'today',
+  })
   // A tab double-tap is a capture gesture (Daily focuses today's editor; list
   // and chat tabs focus their primary inputs); a pending tap expires if the
   // route leaves the tab's root between taps — that second tap is a return,
@@ -173,7 +175,9 @@ export function MobileShell(): ReactElement {
         // double-tap: today's editor focused with the caret at the end of
         // its content, ready to append.
         onDaily={() => navigate({ kind: 'today' }, { focusEditor: true })}
-        onNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
+        // A typed line arrives as the note it just created; the empty-field
+        // shortcut opens a fresh untitled note whose H1 takes the caret.
+        onNote={(path) => navigate({ kind: 'note', path: path ?? untitledNotePath() })}
         onTask={() => {
           setNewTaskRequested(true)
           navigate({ kind: 'tasks' })

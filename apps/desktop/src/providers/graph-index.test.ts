@@ -47,7 +47,7 @@ describe('createGraphIndex', () => {
     expect(mockSync).not.toHaveBeenCalled()
   })
 
-  it('sync(generation) reconciles, then subscribes, then starts the watcher', async () => {
+  it('sync(generation) subscribes held, reconciles, releases, then starts the watcher', async () => {
     const unlisten = vi.fn()
     mockSubscribe.mockResolvedValue(unlisten)
     const onApplied = vi.fn()
@@ -67,15 +67,22 @@ describe('createGraphIndex', () => {
       onFileProgress: expect.any(Function),
       onSkippedNote: expect.any(Function),
     })
-    expect(mockSubscribe).toHaveBeenCalledWith(5, onApplied, onMoved, expect.any(Function))
+    expect(mockSubscribe).toHaveBeenCalledWith(
+      5,
+      onApplied,
+      onMoved,
+      expect.any(Function),
+      expect.any(Promise),
+    )
     // The initial reconcile is itself an index change: invalidate once there.
     expect(onApplied).toHaveBeenCalledTimes(1)
     expect(mockWatchStart).toHaveBeenCalledTimes(1)
-    // Sequenced: reconcile → subscribe → watchStart.
-    expect(mockSync.mock.invocationCallOrder[0]!).toBeLessThan(
-      mockSubscribe.mock.invocationCallOrder[0]!,
-    )
+    // Sequenced: subscribe (held) → reconcile → watchStart, so a write that
+    // lands mid-pass is queued rather than lost between pass and subscribe.
     expect(mockSubscribe.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockSync.mock.invocationCallOrder[0]!,
+    )
+    expect(mockSync.mock.invocationCallOrder[0]!).toBeLessThan(
       mockWatchStart.mock.invocationCallOrder[0]!,
     )
     expect(unlisten).not.toHaveBeenCalled() // retained as the active subscription
@@ -83,7 +90,10 @@ describe('createGraphIndex', () => {
 
   it('reports an incomplete pass and still starts live indexing', async () => {
     mockSync.mockImplementationOnce(async (options) => {
-      options.onSkippedNote?.({ path: 'notes/bad.md', message: 'permission denied' })
+      options.onSkippedNote?.({
+        path: 'notes/bad.md',
+        message: 'permission denied',
+      })
     })
     const onError = vi.fn()
     const onProgress = vi.fn()
@@ -92,7 +102,9 @@ describe('createGraphIndex', () => {
     await index.settled()
     expect(onError).toHaveBeenCalledWith(
       'sync',
-      expect.objectContaining({ message: expect.stringContaining('notes/bad.md') }),
+      expect.objectContaining({
+        message: expect.stringContaining('notes/bad.md'),
+      }),
     )
     expect(mockWatchStart).toHaveBeenCalledTimes(1)
     expect(onProgress).toHaveBeenLastCalledWith('live')
@@ -119,26 +131,55 @@ describe('createGraphIndex', () => {
     expect(onProgress.mock.calls.map(([stage]) => stage)).toEqual(['reconciling', 'idle'])
   })
 
-  it('bails after reconcile when superseded — no subscribe, no watcher', async () => {
+  it('bails after reconcile when superseded — held subscription torn down, no watcher', async () => {
+    const unlisten = vi.fn()
+    mockSubscribe.mockResolvedValue(unlisten)
     const index = createGraphIndex()
     index.sync(5, () => true) // stale immediately after reconcile
     await index.stop()
     expect(mockSync).toHaveBeenCalledTimes(1)
-    expect(mockSubscribe).not.toHaveBeenCalled()
+    expect(unlisten).toHaveBeenCalledTimes(1)
     expect(mockWatchStart).not.toHaveBeenCalled()
+  })
+
+  it('holds live changes during the pass and releases them when it ends', async () => {
+    let held: Promise<unknown> | undefined
+    mockSubscribe.mockImplementation(async (_generation, _onApplied, _onMoved, _canApply, hold) => {
+      held = hold
+      return () => {}
+    })
+    let released = false
+    let finishPass: () => void = () => {}
+    mockSync.mockImplementation(async () => {
+      void held?.then(() => {
+        released = true
+      })
+      await new Promise<void>((resolve) => {
+        finishPass = resolve
+      })
+    })
+    const index = createGraphIndex()
+    index.sync(5, () => false)
+    await vi.waitFor(() => expect(mockSync).toHaveBeenCalledTimes(1))
+    await Promise.resolve()
+    expect(released).toBe(false) // still mid-pass
+    finishPass()
+    await index.settled()
+    expect(released).toBe(true)
   })
 
   it('tears down a subscription created after supersession (no listener leak)', async () => {
     const unlisten = vi.fn()
     mockSubscribe.mockResolvedValue(unlisten)
-    // Fresh after reconcile (1st check), stale after subscribe (2nd check).
-    let checks = 0
-    const isStale = () => ++checks >= 2
+    // Fresh through reconcile and watcher start, stale before adoption.
+    let stale = false
+    mockWatchStart.mockImplementation(async () => {
+      stale = true
+    })
     const index = createGraphIndex()
-    index.sync(5, isStale)
+    index.sync(5, () => stale)
     await index.stop()
     expect(mockSubscribe).toHaveBeenCalledTimes(1)
-    expect(mockWatchStart).not.toHaveBeenCalled()
     expect(unlisten).toHaveBeenCalledTimes(1) // pending subscription cleaned up
   })
 
@@ -163,7 +204,7 @@ describe('createGraphIndex', () => {
 
     const index = createGraphIndex()
     index.sync(5, () => false)
-    expect(captured).toBeInstanceOf(AbortSignal)
+    await vi.waitFor(() => expect(captured).toBeInstanceOf(AbortSignal))
     expect(captured?.aborted).toBe(false)
 
     const stopped = index.stop()

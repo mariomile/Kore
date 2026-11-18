@@ -28,15 +28,20 @@ vi.mock('@/providers/graph-provider', () => ({
 const drain = vi.hoisted(() => vi.fn())
 vi.mock('@/providers/capture-provider', () => ({ requestCaptureDrain: drain }))
 const spool = vi.hoisted(() => vi.fn(async () => {}))
+const createNote = vi.hoisted(() =>
+  vi.fn(async (_title: string, _generation: number) => 'notes/gta-6.md'),
+)
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   captureInboxSpool: spool,
+  createNoteWithTitle: createNote,
 }))
 
 afterEach(() => {
   cleanup()
   spool.mockClear()
   drain.mockClear()
+  createNote.mockClear()
 })
 
 async function mount() {
@@ -65,8 +70,40 @@ describe('MobileCaptureDrawer', () => {
     const { onDaily, onNote } = await mount()
 
     await userEvent.click(page.getByRole('button', { name: 'Note' }))
-    expect(onNote).toHaveBeenCalledOnce()
+    // No path: the shell opens a fresh untitled note.
+    expect(onNote).toHaveBeenCalledExactlyOnceWith()
     expect(onDaily).not.toHaveBeenCalled()
+    expect(createNote).not.toHaveBeenCalled()
+  })
+
+  it('creates a real note titled by a typed line, then opens it', async () => {
+    // The "+ → Note does not really create a note" report: the typed line
+    // was dropped and an empty, unsaved placeholder opened instead.
+    const { onNote, onOpenChange } = await mount()
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Capture' }), 'GTA 6')
+    await userEvent.click(page.getByRole('button', { name: 'Note' }))
+    expect(onNote).not.toHaveBeenCalled() // with text, the chip only picks
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
+
+    expect(createNote).toHaveBeenCalledExactlyOnceWith('GTA 6', 7)
+    expect(onNote).toHaveBeenCalledExactlyOnceWith('notes/gta-6.md')
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(spool).not.toHaveBeenCalled()
+  })
+
+  it('keeps the sheet and the text when creating the note fails', async () => {
+    createNote.mockRejectedValueOnce(new Error('disk full'))
+    const { onNote, onOpenChange } = await mount()
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Capture' }), 'GTA 6')
+    await userEvent.click(page.getByRole('button', { name: 'Note' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
+
+    await expect.element(page.getByText('disk full')).toBeVisible()
+    await expect.element(page.getByRole('textbox', { name: 'Capture' })).toHaveValue('GTA 6')
+    expect(onNote).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })
 
   it('sends a typed line to today’s daily through the capture inbox and drains it', async () => {
@@ -78,7 +115,10 @@ describe('MobileCaptureDrawer', () => {
     expect(spool).toHaveBeenCalledOnce()
     const [name, json, generation] = spool.mock.calls[0] as unknown as [string, string, number]
     expect(name).toMatch(/\.json$/)
-    expect(JSON.parse(json)).toMatchObject({ kind: 'append', text: 'Idea widget' })
+    expect(JSON.parse(json)).toMatchObject({
+      kind: 'append',
+      text: 'Idea widget',
+    })
     expect(generation).toBe(7)
     expect(drain).toHaveBeenCalledOnce()
     expect(onDaily).not.toHaveBeenCalled()

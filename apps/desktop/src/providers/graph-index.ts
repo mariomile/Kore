@@ -63,10 +63,12 @@ export interface GraphIndex {
   /**
    * Background-sync the open index at `generation`: sync the whole graph
    * (hash reconcile, or a full rebuild when the stored projection version is
-   * stale — `syncIndex` decides), then subscribe to live `index:changed`
-   * events, then start the Rust watcher — sequenced so the passes never write
-   * concurrently. `isStale` is checked between steps and bails when a newer
-   * open supersedes this one. Call only after the graph row is committed.
+   * stale — `syncIndex` decides), then start the Rust watcher. The live
+   * `index:changed` subscription is made before the pass but held until it
+   * ends, so writes that land mid-pass apply right after it and the passes
+   * never write concurrently. `isStale` is checked between steps and bails
+   * when a newer open supersedes this one. Call only after the graph row is
+   * committed.
    */
   sync: (generation: number, isStale: () => boolean) => void
   /**
@@ -225,17 +227,29 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
       // A subscription created but not yet adopted (superseded mid-flight, or a
       // later step threw) is torn down in `finally` so listeners can't leak.
       let pending: (() => void) | null = null
+      // Subscribe *before* the pass and hold the queue until it ends: a
+      // write that lands mid-pass (a new note, its birth rename) is applied
+      // right after the pass instead of falling between the pass's file
+      // listing and a subscription made afterwards — the gap that left new
+      // iPhone notes out of the Notes list, or indexed under a placeholder
+      // path they had already left (a card opening an empty note).
+      let endPass: () => void = () => {}
+      const passEnded = new Promise<void>((resolve) => {
+        endPass = resolve
+      })
+      const isCurrent = (): boolean => !controller.signal.aborted && !isStale() && !isSuspended()
       try {
         if (isSuspended()) {
           return
         }
+        pending = await subscribeIndexChanges(generation, onApplied, onMoved, isCurrent, passEnded)
         await syncIndex({
           generation,
           signal: controller.signal,
           ...(onMoved !== undefined ? { onMoved } : {}),
           onSkippedNote: ({ path, message }) => {
             passSkipped += 1
-            if (!controller.signal.aborted && !isStale() && !isSuspended()) {
+            if (isCurrent()) {
               onError?.('sync', new Error(`Could not index ${path}: ${message}`))
             }
           },
@@ -245,7 +259,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
           ...(onStalePlaceholders !== undefined
             ? {
                 onStalePlaceholders: (paths: readonly string[]) => {
-                  if (!controller.signal.aborted && !isStale() && !isSuspended()) {
+                  if (isCurrent()) {
                     onStalePlaceholders(paths)
                   }
                 },
@@ -262,7 +276,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
         // Superseded passes (aborted, stale under a newer open, or suspended
         // mid-flight) resolve early with partial counters — logging them as
         // "finished" would misread as a fast healthy pass.
-        if (!controller.signal.aborted && !isStale() && !isSuspended()) {
+        if (isCurrent()) {
           console.info(
             `index: pass finished in ${Math.round(performance.now() - passStarted)}ms — read ${passWorked} of ${passTotal} files, skipped ${passSkipped}`,
           )
@@ -271,15 +285,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
           return
         }
         onApplied?.()
-        pending = await subscribeIndexChanges(
-          generation,
-          onApplied,
-          onMoved,
-          () => !controller.signal.aborted && !isStale() && !isSuspended(),
-        )
-        if (isStale() || isSuspended()) {
-          return
-        }
+        endPass()
         await watchStart()
         if (isStale() || isSuspended()) {
           return
@@ -294,6 +300,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
           onProgress?.('idle')
         }
       } finally {
+        endPass()
         pending?.()
       }
     })()

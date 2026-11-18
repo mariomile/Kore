@@ -130,8 +130,14 @@ describe('applyIndexChanges', () => {
 
     await applyIndexChanges(
       [
-        { path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a', kind: 'upsert' },
-        { path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a', kind: 'remove' },
+        {
+          path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a',
+          kind: 'upsert',
+        },
+        {
+          path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a',
+          kind: 'remove',
+        },
       ],
       3,
     )
@@ -234,6 +240,69 @@ describe('subscribeIndexChanges', () => {
     expect(removes).not.toContain('notes/latest.md')
   })
 
+  it('holds changes until heldUntil settles, then applies them coalesced by path', async () => {
+    // The reconcile-pass gap (new note missing from the iPhone Notes list,
+    // or its card opening an empty note): a note born and birth-renamed while
+    // the full pass runs must still reach the index once the pass ends.
+    const applied: string[] = []
+    const removes: string[] = []
+    const reads: string[] = []
+    const { emitChanges } = fakeBridge(async (command, args) => {
+      if (command === 'note_read') {
+        reads.push(String(args['path']))
+        return "# GTA 6\n\nIt's time\n"
+      }
+      if (command === 'index_apply_batch') {
+        applied.push(...(args['notes'] as Array<{ path: string }>).map((note) => note.path))
+      }
+      if (command === 'index_remove_batch') {
+        removes.push(...(args['paths'] as string[]))
+      }
+      if (command === 'db_query') {
+        return []
+      }
+      return null
+    })
+
+    let endPass: () => void = () => {}
+    const pass = new Promise<void>((resolve) => {
+      endPass = resolve
+    })
+    await subscribeIndexChanges(1, undefined, undefined, undefined, pass)
+    const placeholder = 'notes/01m7r5y5hah6wv8yw1863caw71.md'
+    emitChanges([{ path: placeholder, kind: 'upsert', modifiedMs: 1 }])
+    emitChanges([
+      { path: placeholder, kind: 'remove' },
+      { path: 'notes/gta-6.md', kind: 'upsert', modifiedMs: 2 },
+    ])
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(reads).toEqual([]) // held: nothing applies mid-pass
+
+    endPass()
+    await vi.waitFor(() => expect(applied).toEqual(['notes/gta-6.md']))
+    expect(removes).toEqual([placeholder])
+  })
+
+  it('releases held changes when heldUntil rejects (a failed pass)', async () => {
+    const applied: string[] = []
+    const { emitChanges } = fakeBridge(async (command, args) => {
+      if (command === 'note_read') return '# x'
+      if (command === 'index_apply_batch') {
+        applied.push(...(args['notes'] as Array<{ path: string }>).map((note) => note.path))
+      }
+      if (command === 'db_query') return []
+      return null
+    })
+    let failPass: (error: Error) => void = () => {}
+    const pass = new Promise<void>((_resolve, reject) => {
+      failPass = reject
+    })
+    await subscribeIndexChanges(1, undefined, undefined, undefined, pass)
+    emitChanges([{ path: 'notes/x.md', kind: 'upsert' }])
+    failPass(new Error('pass failed'))
+    await vi.waitFor(() => expect(applied).toEqual(['notes/x.md']))
+  })
+
   it('drops queued live writes when the lifecycle suspends and leaves replay to reconcile', async () => {
     const order: string[] = []
     let canApply = true
@@ -294,10 +363,18 @@ describe('subscribeIndexChanges', () => {
     })
     // A recordings-only batch never reaches the queue or onApplied; a mixed
     // batch applies (and reports) only its notes.
-    emitChanges([{ path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a', kind: 'upsert' }])
+    emitChanges([
+      {
+        path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a',
+        kind: 'upsert',
+      },
+    ])
     emitChanges([
       { path: 'notes/a.md', kind: 'upsert' },
-      { path: 'audio-memos/audio-memo-2026-06-12-091500-000.m4a', kind: 'upsert' },
+      {
+        path: 'audio-memos/audio-memo-2026-06-12-091500-000.m4a',
+        kind: 'upsert',
+      },
     ])
     await vi.waitFor(() => {
       expect(order).toContain('applied:notes/a.md')
@@ -346,7 +423,12 @@ describe('subscribeIndexChanges', () => {
     })
 
     await subscribeIndexChanges(1)
-    emitChanges([{ path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a', kind: 'upsert' }])
+    emitChanges([
+      {
+        path: 'audio-memos/audio-memo-2026-06-12-090000-000.m4a',
+        kind: 'upsert',
+      },
+    ])
     emitChanges([{ path: 'assets/y.png', kind: 'upsert' }]) // something to wait on
     await vi.waitFor(() => {
       expect(seen).toContain('assets/y.png')
@@ -451,7 +533,11 @@ describe('applyIndexChanges move healing (Plan 17)', () => {
       from: OLD,
       to: NEW,
       generation: 7,
-      toAddress: { pathKey: NEW.toLowerCase(), basenameKey: 'meeting-notes', dailyDate: null },
+      toAddress: {
+        pathKey: NEW.toLowerCase(),
+        basenameKey: 'meeting-notes',
+        dailyDate: null,
+      },
     })
     const apply = calls.find(([command]) => command === 'index_apply')
     expect(apply).toBeDefined()

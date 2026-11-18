@@ -6,10 +6,12 @@ import { useBlockSelection } from '@/editor/block-selection-store'
 import { MobileBlockActionBar } from '@/mobile/block-action-bar'
 import { MobileCaptureDrawer } from '@/mobile/capture-drawer'
 import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
+import { GlobalSearchSheet, PullToSearchIndicator } from '@/mobile/global-search-sheet'
 import { MobileStack } from '@/mobile/mobile-stack'
 import { MobileTabBar, tabRootFor, type MobileTab } from '@/mobile/mobile-tab-bar'
 import { EMPTY_ALL_NOTES_FILTERS, type AllNotesFilters } from '@/mobile/search-filters/filter-state'
 import { useKeyboardVisible } from '@/mobile/use-keyboard'
+import { usePullToSearch } from '@/mobile/use-pull-to-search'
 import { useWakeToToday } from '@/mobile/use-wake-to-today'
 import { routesEqual, type Route } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -18,6 +20,16 @@ type DailyRoute = Extract<Route, { kind: 'today' }> | Extract<Route, { kind: 'da
 
 function dailyRouteFrom(route: Route): DailyRoute | null {
   return route.kind === 'today' || route.kind === 'daily' ? route : null
+}
+
+/** Screens where a pull from the top opens global search. */
+function pullToSearchRoute(route: Route): boolean {
+  return (
+    route.kind === 'today' ||
+    route.kind === 'daily' ||
+    route.kind === 'tasks' ||
+    route.kind === 'note'
+  )
 }
 
 /**
@@ -33,6 +45,7 @@ export function MobileShell(): ReactElement {
   const [allQuery, setAllQuery] = useState('')
   const [allFilters, setAllFilters] = useState<AllNotesFilters>(EMPTY_ALL_NOTES_FILTERS)
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [newTaskRequested, setNewTaskRequested] = useState(false)
   const [lastTab, setLastTab] = useState<MobileTab>('daily')
   const [lastDailyRoute, setLastDailyRoute] = useState<DailyRoute>({ kind: 'today' })
@@ -45,6 +58,18 @@ export function MobileShell(): ReactElement {
   const blockSelection = useBlockSelection()
   // V1's wake-to-today: foregrounding on a new calendar date lands on today.
   useWakeToToday()
+
+  // Pull down from the top of a screen for global search. Not on the All tab
+  // (its search field is already the first thing on screen), Chat (its own
+  // composer) or Settings, and never while typing or selecting blocks.
+  const stackRef = useRef<HTMLDivElement | null>(null)
+  const pullIndicatorRef = useRef<HTMLDivElement | null>(null)
+  usePullToSearch({
+    container: stackRef,
+    indicator: pullIndicatorRef,
+    enabled: !searchOpen && !keyboardVisible && blockSelection === null && pullToSearchRoute(route),
+    onOpen: () => setSearchOpen(true),
+  })
 
   // A `search` history entry seeds the live query — once per entry, so the
   // user can keep typing without the effect snapping the text back.
@@ -112,7 +137,8 @@ export function MobileShell(): ReactElement {
       className="flex w-screen flex-col"
       style={{ height: 'calc(100dvh - var(--keyboard-height, 0px))' }}
     >
-      <div className="relative min-h-0 flex-1">
+      <div ref={stackRef} className="relative min-h-0 flex-1">
+        <PullToSearchIndicator ref={pullIndicatorRef} />
         <MobileStack
           allQuery={allQuery}
           onAllQueryChange={setAllQuery}
@@ -155,6 +181,7 @@ export function MobileShell(): ReactElement {
         onRecord={audioMemo.toggle}
         recordingAvailable={audioMemo.available}
       />
+      <GlobalSearchSheet open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   )
 }

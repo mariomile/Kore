@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Outline: note outline on iPhone; Mac outline fixed (#549).
+- iPhone: the Syncing text pill becomes a quiet icon; tap it for details in
+  Settings (#548).
+- Sync: notes edited on two devices merge automatically when both edits can be
+  kept; Needs review only for real conflicts (#561).
+- iPhone: pull down to search all notes (#552).
+- Weekly notes: Week pages, Obsidian-compatible (#562).
+- Kore Cloud: Worker, kore cloud setup and Settings button, Plan 34 slices
+  1, 2 and 4 (#364).
 - iPhone: clean note cards, no title gap, nested tags colored in full (#553).
 - Launch: one continuous splash to the daily note, no white frame or font
   swap (#555).

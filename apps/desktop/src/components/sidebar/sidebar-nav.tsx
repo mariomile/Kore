@@ -16,7 +16,6 @@ import {
 import {
   errorMessage,
   isUntitledNotePath,
-  weekFromWeeklyPath,
   moveSidebarItem,
   SIDEBAR_NAV_IDS,
   type SidebarNavItem,
@@ -30,7 +29,7 @@ import { startOperation } from '@/lib/operations'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
-import type { Route } from '@/routing/route'
+import { isWeeklyNoteRoute, type Route } from '@/routing/route'
 import { SidebarItem } from './sidebar-item'
 import { useMemoryKitActive } from '@/hooks/use-memory-kit'
 
@@ -67,9 +66,8 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
         icon: <Pencil className="size-3.5" />,
         commandId: 'nav.today',
         active:
-          (route.kind === 'today' ||
-            route.kind === 'daily' ||
-            (route.kind === 'note' && weekFromWeeklyPath(route.path) !== null)) &&
+          // A week is the daily surface zoomed out: it lights Daily notes.
+          (route.kind === 'today' || route.kind === 'daily' || isWeeklyNoteRoute(route)) &&
           !hasActivePinnedNote,
       }
     case 'newNote':
@@ -97,7 +95,7 @@ function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState
             route.filter.kind !== 'folder') ||
           (route.kind === 'note' &&
             !isUntitledNotePath(route.path) &&
-            weekFromWeeklyPath(route.path) === null &&
+            !isWeeklyNoteRoute(route) &&
             !hasActivePinnedNote),
       }
     case 'tasks':

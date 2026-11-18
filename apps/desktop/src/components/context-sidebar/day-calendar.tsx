@@ -1,16 +1,17 @@
 import { useState, type ReactElement } from 'react'
-import { isoWeekOfCalendarRow, weekStartDow, weeklyPath } from '@kore/core'
+import { isoWeekOfCalendarRow, weekStartDow } from '@kore/core'
 import { CalendarDays, ChevronLeft, ChevronRight } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDailyNoteDates } from '@/hooks/use-daily-note-dates'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
+import { useOpenWeek } from '@/hooks/use-open-week'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { formatDayLabel } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
-import { weeklyRoute } from '@/routing/route'
+import { routesEqual, weeklyRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
 
@@ -36,16 +37,17 @@ function WeekNumberButton({
   firstDay: string
   weekStartsOn: 0 | 1 | 6
 }): ReactElement {
-  const { route, navigate } = useRouter()
+  const { route } = useRouter()
+  const openWeek = useOpenWeek()
   const week = isoWeekOfCalendarRow(firstDay, weekStartsOn)
-  const open = route.kind === 'note' && route.path === weeklyPath(week)
+  const open = routesEqual(route, weeklyRoute(week))
   return (
     <button
       type="button"
       aria-label={`Week ${week.week}`}
       title={`Open week ${week.week}`}
       aria-pressed={open}
-      onClick={() => navigate(weeklyRoute(week))}
+      onClick={(event) => openWeek(week, event)}
       className={cn(
         'my-0.5 cursor-default rounded-md text-[10px] font-medium tabular-nums text-text-muted/70 transition-colors duration-100 hover:bg-surface-hover hover:text-text',
         open && 'bg-surface-active text-text',

@@ -1,25 +1,10 @@
-import type { MouseEvent, ReactElement } from 'react'
-import { isoWeekOf, weeklyNoteTitle, weeklyPath, type IsoWeek } from '@kore/core'
+import type { ReactElement } from 'react'
+import { isoWeekOf, weeklyNoteTitle, weeklyPath } from '@kore/core'
 import { Calendar, ChevronRight } from '@/components/icons'
-import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useNoteRowState } from '@/hooks/use-note-row'
-import { formatWeekRange, parseIsoDate } from '@/lib/dates'
+import { useOpenWeek } from '@/hooks/use-open-week'
+import { formatWeekRange } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { weeklyRoute } from '@/routing/route'
-import { isModEvent } from '@meowdown/core'
-
-/** Monday, the first day of an ISO week (the weekly note's first day). */
-export function isWeekStart(date: string): boolean {
-  return parseIsoDate(date).getDay() === 1
-}
-
-/** Open a week's note in place, or beside this pane on ⌘-click. */
-function useOpenWeek(): (week: IsoWeek, event: MouseEvent) => void {
-  const navigateNoteLink = useNoteLinkNavigation()
-  return (week, event) => {
-    navigateNoteLink({ target: weeklyRoute(week), openInSplit: isModEvent(event) })
-  }
-}
 
 /**
  * `Week 47 · Nov 16 – 22, 2026 ›` over Monday's subject in the daily stream:
@@ -68,7 +53,7 @@ export function WeekCard({ date, className }: { date: string; className?: string
     <div className={cn('px-4', className)}>
       <button
         type="button"
-        aria-label={`Open week ${week.week}`}
+        title={`Open week ${week.week}`}
         onClick={(event) => openWeek(week, event)}
         className="flex w-full cursor-default items-center gap-3 rounded-xl bg-surface-hover/60 px-3 py-2.5 text-left transition-colors duration-150 ease-swift hover:bg-surface-hover active:bg-surface-active"
       >

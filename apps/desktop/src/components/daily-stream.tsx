@@ -8,10 +8,10 @@ import {
   type ReactElement,
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import { dailyPath } from '@kore/core'
+import { dailyPath, isIsoWeekStart } from '@kore/core'
 import { DailyDay } from '@/components/daily-day'
 import { DailyDatePill } from '@/components/daily-date-pill'
-import { WeekEyebrow, isWeekStart } from '@/components/weekly/week-link'
+import { WeekEyebrow } from '@/components/weekly/week-entry-points'
 import { ScrollVeil } from '@/components/scroll-veil'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { formatDayLabel, todayIso } from '@/lib/dates'
@@ -408,14 +408,14 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
                   setFocusIndex(index)
                 }}
               >
+                {/* Each week opens from its first day: a quiet eyebrow over
+                  Monday's subject, the stream's only week marker. */}
+                {isIsoWeekStart(date) ? (
+                  <WeekEyebrow date={date} className={cn('mb-2', CONTENT_GUTTER)} />
+                ) : null}
                 {/* The date is the day's display-sized subject, today tinted
                   brand. The hairline under it belongs to the content column
                   (the inner span), not the pane edge. */}
-                {/* Each week opens from its first day: a quiet eyebrow over
-                  Monday's subject, the stream's only week marker. */}
-                {isWeekStart(date) ? (
-                  <WeekEyebrow date={date} className={cn('mb-2', CONTENT_GUTTER)} />
-                ) : null}
                 <h2
                   className={cn(
                     'kore-daily-subject mb-4',

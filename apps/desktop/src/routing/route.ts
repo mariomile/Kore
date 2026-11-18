@@ -11,6 +11,7 @@ import {
   dailyPath,
   dateFromDailyPath,
   isDaily,
+  weekFromWeeklyPath,
   weeklyPath,
   type IsoWeek,
   type NoteListFilter,
@@ -82,6 +83,11 @@ export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
  */
 export function weeklyRoute(week: IsoWeek): Extract<Route, { kind: 'note' }> {
   return { kind: 'note', path: weeklyPath(week) }
+}
+
+/** Does the route open a weekly note (any week)? */
+export function isWeeklyNoteRoute(route: Route): boolean {
+  return route.kind === 'note' && weekFromWeeklyPath(route.path) !== null
 }
 
 /** The Settings route for a navigator page. General omits `group`. */

@@ -5,6 +5,7 @@ import {
   isoWeekFromKey,
   isoWeekOf,
   isoWeekOfCalendarRow,
+  isIsoWeekStart,
   weekFromWeeklyPath,
   weeklyNoteTitle,
   weeklyPath,
@@ -51,6 +52,12 @@ describe('week arithmetic', () => {
     const last = isoWeekFromKey('2026-W53')!
     expect(addWeeks(last, 1).key).toBe('2027-W01')
     expect(addWeeks(addWeeks(last, 1), -1).key).toBe('2026-W53')
+  })
+
+  it('knows a week’s first day', () => {
+    expect(isIsoWeekStart('2026-11-16')).toBe(true)
+    expect(isIsoWeekStart('2026-11-17')).toBe(false)
+    expect(isIsoWeekStart('2026-11-22')).toBe(false)
   })
 
   it('lists the seven days, Monday first', () => {

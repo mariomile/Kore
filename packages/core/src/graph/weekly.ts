@@ -8,6 +8,8 @@
  * its Thursday, so `2027-01-01` (a Friday) is in `2026-W53`.
  */
 
+import { addDaysIso, isoFromParts, parseIsoUtc, weekdayIso } from '@kore/utils'
+
 /** Graph-relative folder weekly notes live in. */
 export const WEEKLY_FOLDER = 'weekly'
 
@@ -15,7 +17,7 @@ export const WEEKLY_FOLDER = 'weekly'
 export const WEEKLY_TEMPLATE = 'templates/weekly.md'
 
 const WEEK_KEY_RE = /^(\d{4})-W(\d{2})$/
-const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+const DAY_MS = 86_400_000
 
 /** An ISO week: its key (`2026-W47`), number, and Monday-to-Sunday range. */
 export interface IsoWeek {
@@ -28,41 +30,39 @@ export interface IsoWeek {
   readonly end: string
 }
 
-function utcDate(iso: string): Date {
-  const match = ISO_DATE_RE.exec(iso)
-  if (match === null) {
-    throw new Error(`expected an ISO YYYY-MM-DD date, got: ${iso}`)
-  }
-  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+/** The Monday on or before an ISO date. */
+function mondayOf(date: string): string {
+  return addDaysIso(date, -((weekdayIso(date) + 6) % 7))
 }
 
-function isoOf(date: Date): string {
-  return date.toISOString().slice(0, 10)
+/** The Monday of an ISO year's first week: the week that holds January 4th. */
+function firstMondayOfIsoYear(year: number): string {
+  return mondayOf(isoFromParts(year, 1, 4))
 }
 
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * 86_400_000)
-}
-
-function weekFromMonday(monday: Date): IsoWeek {
-  const thursday = addDays(monday, 3)
-  const year = thursday.getUTCFullYear()
-  const jan4 = new Date(Date.UTC(year, 0, 4))
-  const firstMonday = addDays(jan4, -((jan4.getUTCDay() + 6) % 7))
-  const week = Math.round((monday.getTime() - firstMonday.getTime()) / (7 * 86_400_000)) + 1
+function weekFromMonday(monday: string): IsoWeek {
+  // A week belongs to the year that holds its Thursday.
+  const year = Number(addDaysIso(monday, 3).slice(0, 4))
+  const days =
+    (parseIsoUtc(monday).getTime() - parseIsoUtc(firstMondayOfIsoYear(year)).getTime()) / DAY_MS
+  const week = Math.round(days / 7) + 1
   return {
     key: `${year}-W${String(week).padStart(2, '0')}`,
     year,
     week,
-    start: isoOf(monday),
-    end: isoOf(addDays(monday, 6)),
+    start: monday,
+    end: addDaysIso(monday, 6),
   }
 }
 
 /** The ISO week an ISO `YYYY-MM-DD` date falls in. */
 export function isoWeekOf(date: string): IsoWeek {
-  const day = utcDate(date)
-  return weekFromMonday(addDays(day, -((day.getUTCDay() + 6) % 7)))
+  return weekFromMonday(mondayOf(date))
+}
+
+/** Is an ISO date the first day (Monday) of its ISO week? */
+export function isIsoWeekStart(date: string): boolean {
+  return weekdayIso(date) === 1
 }
 
 /** The ISO week for a `2026-W47` key, or `null` when the key names no week. */
@@ -71,11 +71,9 @@ export function isoWeekFromKey(key: string): IsoWeek | null {
   if (match === null) {
     return null
   }
-  const year = Number(match[1])
-  const week = Number(match[2])
-  const jan4 = new Date(Date.UTC(year, 0, 4))
-  const firstMonday = addDays(jan4, -((jan4.getUTCDay() + 6) % 7))
-  const parsed = weekFromMonday(addDays(firstMonday, (week - 1) * 7))
+  const parsed = weekFromMonday(
+    addDaysIso(firstMondayOfIsoYear(Number(match[1])), (Number(match[2]) - 1) * 7),
+  )
   // `2026-W60` would roll into the next year: not a week of 2026.
   return parsed.key === key ? parsed : null
 }
@@ -87,19 +85,17 @@ export function isoWeekFromKey(key: string): IsoWeek | null {
  * Monday-to-Sunday note, the one holding most of the row's days.
  */
 export function isoWeekOfCalendarRow(rowStart: string, weekStartsOn: 0 | 1 | 6): IsoWeek {
-  const offsetToMonday = (8 - weekStartsOn) % 7
-  return isoWeekOf(isoOf(addDays(utcDate(rowStart), offsetToMonday)))
+  return isoWeekOf(addDaysIso(rowStart, (8 - weekStartsOn) % 7))
 }
 
 /** The week `delta` weeks from `week` (negative goes back). */
 export function addWeeks(week: IsoWeek, delta: number): IsoWeek {
-  return isoWeekOf(isoOf(addDays(utcDate(week.start), delta * 7)))
+  return weekFromMonday(addDaysIso(week.start, delta * 7))
 }
 
 /** The seven ISO dates of a week, Monday first. */
 export function daysOfWeek(week: IsoWeek): string[] {
-  const monday = utcDate(week.start)
-  return Array.from({ length: 7 }, (_, index) => isoOf(addDays(monday, index)))
+  return Array.from({ length: 7 }, (_, index) => addDaysIso(week.start, index))
 }
 
 /** A weekly note's display title, its subject everywhere it is named: `Week 47`. */

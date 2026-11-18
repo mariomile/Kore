@@ -103,7 +103,7 @@ describe('DailyContextSidebar calendar header', () => {
 describe('DailyContextSidebar week', () => {
   it('opens the day’s week from the card under the calendar', async () => {
     const view = await renderSidebar('2026-06-09')
-    const card = page.getByRole('button', { name: 'Open week 24' })
+    const card = page.getByRole('button').filter({ hasText: 'Jun 8 – 14, 2026' })
     await expect.element(card).toHaveTextContent('Week 24')
     await expect.element(card).toHaveTextContent('Jun 8 – 14, 2026 · Not started')
     await userEvent.click(card)
@@ -118,7 +118,7 @@ describe('DailyContextSidebar week', () => {
       path === 'weekly/2026-W24.md' ? noteRow({ path, title: '2026-W24', dailyDate: null }) : null,
     )
     const view = await renderSidebar('2026-06-09')
-    const card = page.getByRole('button', { name: 'Open week 24' })
+    const card = page.getByRole('button').filter({ hasText: 'Jun 8 – 14, 2026' })
     await expect.element(card).toHaveTextContent('Jun 8 – 14, 2026')
     await expect.element(card).not.toHaveTextContent('Not started')
     await view.unmount()

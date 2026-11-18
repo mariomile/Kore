@@ -7,7 +7,7 @@ import { NoteActionsSection } from './note-actions-section'
 import { NoteHistorySection } from './note-history-section'
 import { PublishedUrlSection } from './published-url-section'
 import { SimilarNotesSection } from './similar-notes-section'
-import { WeekCard } from '@/components/weekly/week-link'
+import { WeekCard } from '@/components/weekly/week-entry-points'
 import { useToday } from '@/lib/use-today'
 
 interface DailyContextSidebarProps {

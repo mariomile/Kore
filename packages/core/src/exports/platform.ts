@@ -175,6 +175,7 @@ export {
   isoWeekOf,
   isoWeekFromKey,
   isoWeekOfCalendarRow,
+  isIsoWeekStart,
   addWeeks,
   daysOfWeek,
   weeklyPath,

@@ -1,5 +1,11 @@
 # Kore working state
 
+## Smooth launch, 2026-11-18
+
+- [x] One continuous splash from the launch screen to the daily note: no white
+  frame, no font swap, no late pieces; native launch cover on iPhone (#555).
+- [x] TestFlight no longer fails when altool crashes after the upload (#550).
+
 ## Timeline view for types, 2026-11-17
 
 - [x] Collections get a Timeline view: notes are bars from start to end date,

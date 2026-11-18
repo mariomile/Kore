@@ -287,6 +287,12 @@ retry the notarized **Release** workflow.
    next Release PR re-list commits that already shipped.
    `release-please-workflow.test.mjs` fails CI when the three fall out of
    step.
+   Then say what is in the build, for the people who install it: add
+   `apps/desktop/release-notes/<version>.md` to master (a few short English
+   bullets, behavior not PR jargon). The DMG release body, the updater's
+   `latest.json` notes and TestFlight's "What to Test" all read it
+   (`apps/desktop/scripts/release-notes.mjs`); without it they fall back to
+   the version's CHANGELOG section.
 3. Point the `release/dmg` branch at current `master`. It is a pointer, not
    history — `--force` is expected when previous pointer-retrigger commits
    sit on that branch:

@@ -42,4 +42,5 @@ minimumReleaseAgeExclude:
 patchedDependencies:
   '@base-ui/react@1.8.0': patches/@base-ui__react@1.8.0.patch
   '@meowdown/core@0.74.1': patches/@meowdown__core@0.74.1.patch
+  '@meowdown/markdown@0.72.0': patches/@meowdown__markdown@0.72.0.patch
   '@meowdown/react@0.73.1': patches/@meowdown__react@0.73.1.patch

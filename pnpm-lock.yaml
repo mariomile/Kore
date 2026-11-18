@@ -12,6 +12,7 @@ overrides:
 patchedDependencies:
   '@base-ui/react@1.8.0': e8671b6715feea428e7079ef176a4ca2b6576e5c7dc196d02ef61184cf5928ad
   '@meowdown/core@0.74.1': 7c96e5748c3b3d75c90ed0233409da7aa0b3d03a349d073d70bb3c5581679ca2
+  '@meowdown/markdown@0.72.0': 2a2ffc82dc50c5f86e624d0e7cb9f6ed29089ad2c069b6d0a51b80d92d59d9a0
   '@meowdown/react@0.73.1': 1a901c9303b1a66afb5a486959ce33673069e135b5128054ce0400d59ddcc8be
 
 importers:
@@ -303,7 +304,7 @@ importers:
         version: link:../utils
       '@meowdown/markdown':
         specifier: ^0.72.0
-        version: 0.72.0(typescript@6.0.3)
+        version: 0.72.0(patch_hash=2a2ffc82dc50c5f86e624d0e7cb9f6ed29089ad2c069b6d0a51b80d92d59d9a0)(typescript@6.0.3)
       '@post-embed/exporter':
         specifier: ^0.5.0
         version: 0.5.0(typescript@6.0.3)
@@ -6261,7 +6262,7 @@ snapshots:
       '@floating-ui/dom': 1.8.0
       '@lezer/highlight': 1.2.3
       '@meowdown/embed': 0.2.0(typescript@6.0.3)
-      '@meowdown/markdown': 0.72.0(typescript@6.0.3)
+      '@meowdown/markdown': 0.72.0(patch_hash=2a2ffc82dc50c5f86e624d0e7cb9f6ed29089ad2c069b6d0a51b80d92d59d9a0)(typescript@6.0.3)
       '@ocavue/utils': 1.8.0
       '@post-embed/exporter': 0.5.0(typescript@6.0.3)
       '@post-embed/schema': 0.5.2(typescript@6.0.3)
@@ -6313,7 +6314,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@meowdown/markdown@0.72.0(typescript@6.0.3)':
+  '@meowdown/markdown@0.72.0(patch_hash=2a2ffc82dc50c5f86e624d0e7cb9f6ed29089ad2c069b6d0a51b80d92d59d9a0)(typescript@6.0.3)':
     dependencies:
       '@lezer/common': 1.5.2
       '@lezer/markdown': 1.7.2
@@ -6326,7 +6327,7 @@ snapshots:
       '@base-ui/react': 1.8.0(patch_hash=e8671b6715feea428e7079ef176a4ca2b6576e5c7dc196d02ef61184cf5928ad)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0)(react@19.3.0)
       '@meowdown/core': 0.74.1(patch_hash=7c96e5748c3b3d75c90ed0233409da7aa0b3d03a349d073d70bb3c5581679ca2)(@lezer/common@1.5.2)(@shikijs/types@4.4.3)(@types/hast@3.0.5)(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-transform@1.12.1)(prosemirror-view@1.42.5)(supports-color@7.2.0)(typescript@6.0.3)
       '@meowdown/embed': 0.2.0(typescript@6.0.3)
-      '@meowdown/markdown': 0.72.0(typescript@6.0.3)
+      '@meowdown/markdown': 0.72.0(patch_hash=2a2ffc82dc50c5f86e624d0e7cb9f6ed29089ad2c069b6d0a51b80d92d59d9a0)(typescript@6.0.3)
       '@ocavue/utils': 1.8.0
       '@post-embed/types': 0.5.0
       '@prosekit/core': 0.13.3(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-transform@1.12.1)

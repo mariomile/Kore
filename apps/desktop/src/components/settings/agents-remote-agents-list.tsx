@@ -9,7 +9,6 @@ import {
   type RemoteAgent,
   type RemoteAgentAccess,
 } from '@kore/core'
-import { Check, Copy } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { requestRemoteAccessRestart } from '@/lib/remote-access-store'
+import { CopyButton } from './copy-button'
 
 /** What each access level reads as. */
 const ACCESS_LABEL: Record<RemoteAgentAccess, string> = {
@@ -78,7 +78,6 @@ export function AgentsRemoteAgentsList(): ReactElement {
   const [agents, setAgents] = useState<RemoteAgent[]>([])
   const [name, setName] = useState('')
   const [access, setAccess] = useState<RemoteAgentAccess>(NEW_AGENT_ACCESS)
-  const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -110,16 +109,6 @@ export function AgentsRemoteAgentsList(): ReactElement {
     }
   }
 
-  async function copyKey(agent: RemoteAgent): Promise<void> {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(agent.key)
-      setCopied(agent.id)
-    } catch (caught) {
-      setError(errorMessage(caught))
-    }
-  }
-
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-medium text-text-secondary">Agents with their own key</span>
@@ -140,10 +129,7 @@ export function AgentsRemoteAgentsList(): ReactElement {
                 value={agent.access}
                 onChange={(next) => void change(() => setRemoteAgentAccess(agent.id, next))}
               />
-              <Button size="xs" variant="outline" onClick={() => void copyKey(agent)}>
-                {copied === agent.id ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied === agent.id ? 'Copied' : 'Copy key'}
-              </Button>
+              <CopyButton text={agent.key} label="Copy key" onError={setError} />
               <Button
                 size="xs"
                 variant="ghost"

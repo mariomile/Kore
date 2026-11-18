@@ -57,6 +57,9 @@ function installFakeBridge(): void {
       switch (command) {
         case 'skill_status':
           return statusPayload()
+        case 'secret_get':
+          // Kore Cloud is not set up.
+          return null
         case 'mcp_client_servers':
           return [
             {
@@ -156,11 +159,16 @@ describe('AgentsSection', () => {
     for (const [title, when] of [
       ['On this Mac', 'While this Mac is on'],
       ['In the cloud', 'While Kore is open'],
-      ['With their own computer', 'Always'],
     ] as const) {
       await expect.element(page.getByRole('heading', { name: title })).toBeVisible()
       await expect.element(page.getByText(when, { exact: true })).toBeVisible()
     }
+    // Kore Cloud and the GitHub repository both work with this Mac off.
+    await expect.element(page.getByRole('heading', { name: 'Always on' })).toBeVisible()
+    await expect
+      .element(page.getByRole('heading', { name: 'With their own computer' }))
+      .toBeVisible()
+    expect(page.getByText('Always', { exact: true }).elements()).toHaveLength(2)
     // No sync provider here: the repo path explains what it needs first.
     await expect.element(page.getByText(/Turn on GitHub sync first/)).toBeVisible()
   })

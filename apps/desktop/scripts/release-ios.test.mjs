@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { expect, test } from 'vitest'
 
 import {
+  altoolUploadOutcome,
   appStoreConnectPrivateKeySearchPaths,
   createAltoolListAppsArgs,
   createAltoolUploadArgs,
@@ -323,4 +324,31 @@ test('every app extension Info.plist has a version to sync', () => {
     const path = join(import.meta.dirname, '..', 'src-tauri', 'gen', 'apple', name, 'Info.plist')
     expect(() => withShortVersion(readFileSync(path, 'utf8'), '1.0.0')).not.toThrow()
   }
+})
+
+test('an altool crash while waiting on an accepted upload counts as uploaded', () => {
+  const crash = `Upload is in state 'PROCESSING'. Checking again in 30 seconds...
+*** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: 'Invalid type in JSON write (NSError)'`
+  expect(altoolUploadOutcome({ status: 0, signal: null, output: '', wait: true })).toBe('ok')
+  expect(altoolUploadOutcome({ status: null, signal: 'SIGABRT', output: crash, wait: true })).toBe(
+    'uploaded-wait-crashed',
+  )
+  expect(altoolUploadOutcome({ status: 134, signal: null, output: crash, wait: true })).toBe(
+    'uploaded-wait-crashed',
+  )
+  // A crash before App Store Connect accepted the upload is still a failure.
+  expect(
+    altoolUploadOutcome({
+      status: null,
+      signal: 'SIGABRT',
+      output: "*** Terminating app due to uncaught exception 'X'",
+      wait: true,
+    }),
+  ).toBe('failed')
+  expect(altoolUploadOutcome({ status: null, signal: 'SIGABRT', output: crash, wait: false })).toBe(
+    'failed',
+  )
+  expect(
+    altoolUploadOutcome({ status: 1, signal: null, output: 'ERROR ITMS-90000', wait: true }),
+  ).toBe('failed')
 })

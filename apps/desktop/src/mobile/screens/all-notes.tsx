@@ -1,16 +1,11 @@
 import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement } from 'react'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
 import {
-  displayNoteTitle,
   foldTag,
   listNoteTags,
-  parseHighlights,
-  searchWithFilters,
   sortNoteList,
   type AllNotesSort,
-  type FilteredSearchHit,
-  type HighlightSegment,
   type NoteTagFacet,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
@@ -24,12 +19,11 @@ import { FilterBar } from '@/mobile/search-filters/filter-bar'
 import {
   buildAllNotesSearch,
   pendingTagToken,
-  searchPlanFor,
   type AllNotesFilters,
 } from '@/mobile/search-filters/filter-state'
 import { NoteRowList } from '@/mobile/note-row-list'
 import { SearchInput } from '@/mobile/search-input'
-import type { NoteRowModel } from '@/mobile/swipeable-note-row'
+import { rowForHit, useNoteSearchFeed } from '@/mobile/note-search-feed'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { AllNotesSortDrawer, allNotesSortSummary } from '@/mobile/all-notes-sort-drawer'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
@@ -39,61 +33,6 @@ import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-
-/**
- * The title as a reader sees it, with the search matches still marked. A
- * title holding link syntax (`# [[Folder/Note|Note]]`) shows its display
- * text, the way the editor renders that heading; the marks are re-found in
- * the display text, since the raw title's offsets no longer line up.
- */
-export function displayTitleSegments(hit: FilteredSearchHit): HighlightSegment[] {
-  const segments = parseHighlights(hit.highlightedTitle)
-  const display = displayNoteTitle(hit.title)
-  if (display === hit.title) {
-    return segments
-  }
-  const folded = display.toLowerCase()
-  const terms = segments
-    .filter((segment) => segment.highlighted)
-    .map((segment) => segment.text.toLowerCase())
-    .filter((term) => term.trim() !== '')
-  if (terms.length === 0 || folded.length !== display.length) {
-    return [{ text: display, highlighted: false }]
-  }
-  const marked = Array.from({ length: display.length }, () => false)
-  for (const term of terms) {
-    for (let at = folded.indexOf(term); at !== -1; at = folded.indexOf(term, at + term.length)) {
-      marked.fill(true, at, at + term.length)
-    }
-  }
-  const out: HighlightSegment[] = []
-  for (let index = 0; index < display.length; index += 1) {
-    const last = out.at(-1)
-    if (last !== undefined && last.highlighted === marked[index]) {
-      last.text += display[index]
-    } else {
-      out.push({ text: display[index]!, highlighted: marked[index]! })
-    }
-  }
-  return out
-}
-
-/** A search hit resolved into the shared row shape. */
-export function rowForHit(hit: FilteredSearchHit): NoteRowModel {
-  return {
-    path: hit.path,
-    titleSegments: displayTitleSegments(hit),
-    mtime: hit.mtime,
-    isPinned: hit.isPinned,
-    canDelete: hit.dailyDate === null,
-    snippet:
-      hit.snippet !== null
-        ? parseHighlights(hit.snippet)
-        : hit.preview.trim() === ''
-          ? []
-          : [{ text: hit.preview, highlighted: false }],
-  }
-}
 
 /** The tags matching a half-typed `#…` token, by folded-substring match. */
 export function matchingTagFacets(facets: NoteTagFacet[], partial: string): NoteTagFacet[] {
@@ -134,7 +73,6 @@ export function MobileAllNotes({
   const { settings, updateSettings } = useSettings()
   const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
-  const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
 
@@ -158,21 +96,7 @@ export function MobileAllNotes({
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const {
-    data: feed,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
-    queryFn: async (): Promise<AllNotesFeed> => {
-      const plan = searchPlanFor(parsed)
-      return { hits: await searchWithFilters(parsed, plan), recall: plan.pinnedFirst === true }
-    },
-    enabled,
-    // Typing re-keys the query as the deferred value settles; holding the
-    // previous rows avoids a blank flash between keystrokes.
-    placeholderData: keepPreviousData,
-  })
+  const { feed, isError, refetch, removeDeletedRow } = useNoteSearchFeed(parsed)
   const hits = feed?.hits
 
   // The no-text feed (plain or badge-filtered) follows the persisted sort,
@@ -193,17 +117,6 @@ export function MobileAllNotes({
   const setView = (next: AllNotesLayout): void => {
     hapticImpactLight()
     updateSettings({ allNotesView: next })
-  }
-
-  const removeDeletedRow = (path: string): void => {
-    queryClient.setQueriesData<AllNotesFeed>(
-      { queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes'] },
-      (cached) => cached && { ...cached, hits: cached.hits.filter((hit) => hit.path !== path) },
-    )
-    // Do not invalidate yet: the index can still contain the deleted row and
-    // would briefly resurrect it. `deleteNote`'s local-write echo reindexes,
-    // then invalidates the full index scope (including tag facets) once the
-    // projection has caught up.
   }
 
   const addPendingTag = (facet: NoteTagFacet): void => {
@@ -332,12 +245,6 @@ function SortButton({ sort, onPress }: { sort: AllNotesSort; onPress: () => void
       </span>
     </button>
   )
-}
-
-/** One All-tab query result, tagged with whether it is the no-text recall feed. */
-interface AllNotesFeed {
-  hits: FilteredSearchHit[]
-  recall: boolean
 }
 
 /** The `#…` tag-matching mode's suggestion row (replaces the badge row). */

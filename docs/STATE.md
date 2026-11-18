@@ -1,5 +1,14 @@
 # Kore working state
 
+## Sync conflict policy, 2026-11-18
+
+- [x] When the same lines of a note changed on two devices, the merge keeps both
+  versions inline (this device first) and never shows "Needs review"; a
+  frontmatter property set two ways takes the newer commit's value, and the
+  older value stays in history (#568).
+- [x] Rename or merge a tag across the vault from its settings, Mac and iPhone,
+  with preview and Undo (#565).
+
 ## Foreground sync, 2026-11-18
 
 - [x] Sync: foreground pull every 2 min while visible and online; triggers

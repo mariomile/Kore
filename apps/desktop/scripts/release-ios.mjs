@@ -139,12 +139,18 @@ export function createAltoolUploadArgs({ authArgs, ipa, wait }) {
  */
 export function altoolUploadOutcome({ status, signal, output, wait }) {
   if (status === 0) return 'ok'
+  if (!wait) return 'failed'
   const crashed =
     signal === 'SIGABRT' ||
     status === 134 ||
     /Terminating app due to uncaught exception/.test(output)
-  const uploaded = /Upload is in state '[A-Z_]+'/.test(output) || /UPLOAD SUCCEEDED/i.test(output)
-  return wait && crashed && uploaded ? 'uploaded-wait-crashed' : 'failed'
+  // Only the last state App Store Connect reported counts: an earlier
+  // PROCESSING followed by INVALID or FAILED is a rejected build.
+  const states = [...output.matchAll(/Upload is in state '([A-Z_]+)'/g)].map((match) => match[1])
+  const last = states.at(-1)
+  return crashed && ['PROCESSING', 'VALID', 'COMPLETE'].includes(last ?? '')
+    ? 'uploaded-wait-crashed'
+    : 'failed'
 }
 
 /** Build the altool command that validates an IPA before upload. */

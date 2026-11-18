@@ -348,6 +348,23 @@ test('an altool crash while waiting on an accepted upload counts as uploaded', (
   expect(altoolUploadOutcome({ status: null, signal: 'SIGABRT', output: crash, wait: false })).toBe(
     'failed',
   )
+  // A rejected build stays a failure even if altool crashes afterwards.
+  expect(
+    altoolUploadOutcome({
+      status: null,
+      signal: 'SIGABRT',
+      output: `Upload is in state 'PROCESSING'.\nUpload is in state 'INVALID'.\n*** Terminating app due to uncaught exception 'X'`,
+      wait: true,
+    }),
+  ).toBe('failed')
+  expect(
+    altoolUploadOutcome({
+      status: null,
+      signal: 'SIGABRT',
+      output: "UPLOAD SUCCEEDED\n*** Terminating app due to uncaught exception 'X'",
+      wait: true,
+    }),
+  ).toBe('failed')
   expect(
     altoolUploadOutcome({ status: 1, signal: null, output: 'ERROR ITMS-90000', wait: true }),
   ).toBe('failed')

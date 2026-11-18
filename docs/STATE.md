@@ -1,5 +1,11 @@
 # Kore working state
 
+## iPhone note cards, 2026-11-18
+
+- [x] Note cards: link-titles by name, wrapped long titles, no raw link paths
+  in previews, no gap above the title, parent shown as a path, nested tags
+  colored in full (#553, projection 38).
+
 ## Smooth launch, 2026-11-18
 
 - [x] One continuous splash from the launch screen to the daily note: no white

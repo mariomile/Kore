@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: clean note cards, no title gap, nested tags colored in full (#553).
 - Launch: one continuous splash to the daily note, no white frame or font
   swap (#555).
 - Links: wiki links resolve by filename first in Obsidian vaults (#554).

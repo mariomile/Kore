@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Rename: retitling a note updates every link; Obsidian vaults rename the file
+  too (#576).
 - iPhone: new notes from + always land and their cards open them (#573).
 - iPhone: swipe right to left selects a block; left to right completes or
   indents (#570).

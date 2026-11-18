@@ -1,5 +1,10 @@
 # Kore working state
 
+## Rename follows links, 2026-11-18 (0.128.2)
+
+- [x] Retitling a note rewrites every link to it; in an Obsidian vault the
+  file is renamed too, and heading and block links follow (#576).
+
 ## iPhone fixes, 2026-11-18 (0.128.1)
 
 - [x] New notes from + with text always land; a new note's card opens it;

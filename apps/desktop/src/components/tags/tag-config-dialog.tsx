@@ -6,7 +6,7 @@ import {
   tagPropertyTypeSchema,
   type TagPropertyType,
 } from '@kore/core'
-import { Close, Info, Plus, Settings, Trash } from '@/components/icons'
+import { Close, Info, Pencil, Plus, Settings, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -27,7 +27,9 @@ import { isMobileSurface } from '@/lib/platform-surface'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { SaveBar } from './tag-config-save-bar'
 import { TagConfigSheet } from './tag-config-sheet'
+import { TagRenameDialog } from './tag-rename-dialog'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFolderField } from './tag-folder-field'
 import { TagParentsField } from './tag-parents-field'
@@ -42,6 +44,8 @@ interface TagConfigDialogProps {
   /** The tag being configured (display casing). */
   tag: string
   onClose: () => void
+  /** The tag was renamed: a screen showing it follows to the new name. */
+  onRenamed?: (tag: string) => void
 }
 
 /**
@@ -62,13 +66,58 @@ interface TagConfigDialogProps {
  * sheet ({@link TagConfigSheet}) instead: a centered dialog this dense does
  * not fit a 390pt screen.
  */
-export function TagConfigDialog(props: TagConfigDialogProps): ReactElement {
-  return isMobileSurface() ? <TagConfigSheet {...props} /> : <TagConfigDesktopDialog {...props} />
+export function TagConfigDialog({
+  tag: initialTag,
+  onClose,
+  onRenamed,
+}: TagConfigDialogProps): ReactElement {
+  // A rename or a rebind moves the type onto another tag; the settings reopen there.
+  const [tag, setTag] = useState(initialTag)
+  const [renaming, setRenaming] = useState(false)
+  const finishRename = (renamedTo: string | null): void => {
+    setRenaming(false)
+    if (renamedTo !== null) {
+      setTag(renamedTo)
+      onRenamed?.(renamedTo)
+    }
+  }
+  const rename = (): void => setRenaming(true)
+  const renameDialog = renaming ? <TagRenameDialog tag={tag} onClose={finishRename} /> : null
+  if (isMobileSurface()) {
+    // One sheet at a time on the phone: the rename takes the settings' place.
+    return (
+      renameDialog ?? (
+        <TagConfigSheet
+          key={foldTag(tag)}
+          tag={tag}
+          onClose={onClose}
+          onRename={rename}
+          onRebound={setTag}
+        />
+      )
+    )
+  }
+  return (
+    <>
+      <TagConfigDesktopDialog tag={tag} onClose={onClose} onRename={rename} onRebound={setTag} />
+      {renameDialog}
+    </>
+  )
 }
 
-function TagConfigDesktopDialog({ tag: initialTag, onClose }: TagConfigDialogProps): ReactElement {
-  // A rebind moves the type onto another tag; the settings reopen there.
-  const [tag, setTag] = useState(initialTag)
+interface TagConfigSurfaceProps extends TagConfigDialogProps {
+  /** Open the rename for the tag being configured. */
+  onRename: () => void
+  /** A rebind moved the type onto another tag. */
+  onRebound: (tag: string) => void
+}
+
+function TagConfigDesktopDialog({
+  tag,
+  onClose,
+  onRename,
+  onRebound,
+}: TagConfigSurfaceProps): ReactElement {
   return (
     <Dialog
       open
@@ -80,7 +129,13 @@ function TagConfigDesktopDialog({ tag: initialTag, onClose }: TagConfigDialogPro
         showCloseButton={false}
         className="flex h-[min(42rem,calc(100dvh-2rem))] w-[min(56rem,94vw)] flex-col gap-0 overflow-hidden p-0"
       >
-        <TypeSettings key={foldTag(tag)} tag={tag} onClose={onClose} onRebound={setTag} />
+        <TypeSettings
+          key={foldTag(tag)}
+          tag={tag}
+          onClose={onClose}
+          onRebound={onRebound}
+          onRename={onRename}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -93,10 +148,12 @@ function TypeSettings({
   tag,
   onClose,
   onRebound,
+  onRename,
 }: {
   tag: string
   onClose: () => void
   onRebound: (tag: string) => void
+  onRename: () => void
 }): ReactElement {
   const config = useTagConfigDraft(tag, onClose)
   const binding = useTypeTagBinding(tag)
@@ -124,6 +181,10 @@ function TypeSettings({
             </span>
           </DialogDescription>
         </div>
+        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onRename}>
+          <Pencil aria-hidden className="size-4" />
+          Rename
+        </Button>
         <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="Close" />}>
           <Close aria-hidden />
         </DialogClose>
@@ -392,72 +453,5 @@ function PropertyPane({
         </Button>
       </div>
     </div>
-  )
-}
-
-function SaveBar({
-  config,
-  onClose,
-}: {
-  config: TagConfigDraft
-  onClose: () => void
-}): ReactElement {
-  const { pendingRenames } = config
-  if (pendingRenames !== null) {
-    return (
-      <footer className="flex flex-col gap-2 bg-surface-hover px-5 py-3">
-        <p className="text-xs text-text-secondary">
-          {pendingRenames
-            .map(
-              (rename) =>
-                `${rename.from} → ${rename.to} (${rename.notes.length} ${
-                  rename.notes.length === 1 ? 'note' : 'notes'
-                })`,
-            )
-            .join(' · ')}
-          . Move the stored values to the new key, or keep them under the old one?
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={config.cancelPendingRenames}>
-            Back
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={config.saving}
-            onClick={() => {
-              void config.performSave([], false)
-            }}
-          >
-            Save without migrating
-          </Button>
-          <Button
-            type="button"
-            disabled={config.saving}
-            onClick={() => {
-              void config.performSave(pendingRenames, true)
-            }}
-          >
-            Save & migrate values
-          </Button>
-        </div>
-      </footer>
-    )
-  }
-  return (
-    <footer className="flex items-center justify-end gap-2 px-5 pb-4 pt-3">
-      <Button type="button" variant="ghost" onClick={onClose}>
-        Cancel
-      </Button>
-      <Button
-        type="button"
-        onClick={() => {
-          void config.save()
-        }}
-        disabled={config.loading || config.saving || config.hasInvalidRows}
-      >
-        {config.needsConversion ? 'Convert & save' : 'Save'}
-      </Button>
-    </footer>
   )
 }

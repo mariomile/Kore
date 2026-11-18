@@ -755,7 +755,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         onTrashed={selection.clear}
       />
       {editingSchema && tag !== null ? (
-        <TagConfigDialog tag={tag} onClose={() => setEditingSchema(false)} />
+        <TagConfigDialog
+          tag={tag}
+          onClose={() => setEditingSchema(false)}
+          onRenamed={(renamed) =>
+            navigate({ kind: 'allNotes', filter: { kind: 'tag', tag: renamed } })
+          }
+        />
       ) : null}
     </div>
   )

@@ -253,3 +253,35 @@ export interface ListNoteTagsOptions {
 export async function listNoteTags(options: ListNoteTagsOptions = {}): Promise<NoteTagFacet[]> {
   return await listUsedTagCounts(options)
 }
+
+/** One `tags` row: a note and a tag it carries, display casing. */
+export interface TagOccurrence {
+  notePath: string
+  tag: string
+}
+
+/**
+ * Every place `tags` or a tag nested under one of them occurs, in any note
+ * kind (templates and definitions included) and whether the note is a member
+ * or only mentions it in prose. A rename has to reach all of them, where a
+ * collection shows only members. Key ranges, as in `carriesTagOrNested`, so
+ * the query stays on the `tag_key` index.
+ */
+export async function listTagOccurrences(tags: readonly string[]): Promise<TagOccurrence[]> {
+  const keys = [...new Set(tags.map(foldTag))]
+  if (keys.length === 0) {
+    return []
+  }
+  return await db
+    .selectFrom('tags')
+    .select(['tags.notePath', 'tags.tag'])
+    .where((eb) =>
+      eb.or(
+        keys.flatMap((key) => [
+          eb('tags.tagKey', '=', key),
+          eb.and([eb('tags.tagKey', '>=', `${key}/`), eb('tags.tagKey', '<', `${key}0`)]),
+        ]),
+      ),
+    )
+    .execute()
+}

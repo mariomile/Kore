@@ -204,6 +204,8 @@ export {
   listNotes,
   listNoteTags,
   listRecentNotes,
+  listTagOccurrences,
+  type TagOccurrence,
   type NoteListEntry,
   type NoteListFolder,
   type NoteListOptions,

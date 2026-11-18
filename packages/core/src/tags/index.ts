@@ -46,6 +46,18 @@ export {
 export { optionRenameMap, renameOptionValue, type OptionRenameMap } from './option-renames'
 export { suggestTypeTag, tagUseCount, type TagUse, type TypeTagSuggestion } from './tag-binding'
 export {
+  normalizeTagInput,
+  planTagRename,
+  renamedTagName,
+  renameTagInSource,
+  tagRenameProblem,
+  type TagDefinitionMove,
+  type TagRename,
+  type TagRenameInput,
+  type TagRenamePlan,
+  type TagRenameWrite,
+} from './tag-rename'
+export {
   isEmailValue,
   parseRating,
   formatRating,

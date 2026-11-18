@@ -503,7 +503,15 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           onToggleField={toggleColumnHidden}
         />
       ) : null}
-      {configuring ? <TagConfigDialog tag={tag} onClose={() => setConfiguring(false)} /> : null}
+      {configuring ? (
+        <TagConfigDialog
+          tag={tag}
+          onClose={() => setConfiguring(false)}
+          onRenamed={(renamed) =>
+            navigate({ kind: 'allNotes', filter: { kind: 'tag', tag: renamed } })
+          }
+        />
+      ) : null}
     </div>
   )
 }

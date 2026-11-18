@@ -80,6 +80,17 @@ export function isoWeekFromKey(key: string): IsoWeek | null {
   return parsed.key === key ? parsed : null
 }
 
+/**
+ * The ISO week a calendar row belongs to, for any week-start setting: the
+ * week of the row's Monday (`getDay()` numbering, as `weekStartDow`
+ * returns). A Sunday- or Saturday-start row still opens one
+ * Monday-to-Sunday note, the one holding most of the row's days.
+ */
+export function isoWeekOfCalendarRow(rowStart: string, weekStartsOn: 0 | 1 | 6): IsoWeek {
+  const offsetToMonday = (8 - weekStartsOn) % 7
+  return isoWeekOf(isoOf(addDays(utcDate(rowStart), offsetToMonday)))
+}
+
 /** The week `delta` weeks from `week` (negative goes back). */
 export function addWeeks(week: IsoWeek, delta: number): IsoWeek {
   return isoWeekOf(isoOf(addDays(utcDate(week.start), delta * 7)))
@@ -89,6 +100,11 @@ export function addWeeks(week: IsoWeek, delta: number): IsoWeek {
 export function daysOfWeek(week: IsoWeek): string[] {
   const monday = utcDate(week.start)
   return Array.from({ length: 7 }, (_, index) => isoOf(addDays(monday, index)))
+}
+
+/** A weekly note's display title, its subject everywhere it is named: `Week 47`. */
+export function weeklyNoteTitle(week: IsoWeek): string {
+  return `Week ${week.week}`
 }
 
 /** Graph-relative path of a week's note. */

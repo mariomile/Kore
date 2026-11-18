@@ -174,10 +174,12 @@ export {
   WEEKLY_TEMPLATE,
   isoWeekOf,
   isoWeekFromKey,
+  isoWeekOfCalendarRow,
   addWeeks,
   daysOfWeek,
   weeklyPath,
   weekFromWeeklyPath,
+  weeklyNoteTitle,
   weeklyPathPattern,
   type IsoWeek,
 } from '../graph/weekly'

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { isUntitledNotePath } from '@kore/core'
+import { isUntitledNotePath, weekFromWeeklyPath, weeklyNoteTitle } from '@kore/core'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
@@ -26,6 +26,9 @@ export function MobileNote({ path }: { path: string }): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const untitled = isUntitledNotePath(path)
+  // A string, so the scroll effect below doesn't resubscribe every render.
+  const week = weekFromWeeklyPath(path)
+  const weekTitle = week === null ? null : weeklyNoteTitle(week)
   const mainRef = useRef<HTMLElement>(null)
   const [titleInBar, setTitleInBar] = useState(false)
   const [barTitle, setBarTitle] = useState('')
@@ -46,10 +49,13 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         const top = main.scrollTop
         const showTitle = top > 56
         if (showTitle) {
-          // The note's own H1 (what the page shows), else the file name.
+          // A week names itself; otherwise the note's own H1 (what the page
+          // shows), else the file name.
           const heading = main.querySelector('.ProseMirror h1')?.textContent?.trim()
           setBarTitle(
-            untitled ? '' : heading || (path.split('/').pop() ?? '').replace(/\.md$/i, ''),
+            untitled
+              ? ''
+              : (weekTitle ?? (heading || (path.split('/').pop() ?? '').replace(/\.md$/i, ''))),
           )
         }
         setTitleInBar(showTitle)
@@ -65,7 +71,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
       cancelAnimationFrame(frame)
       setTabBarScrolledAway(false)
     }
-  }, [path, untitled])
+  }, [path, untitled, weekTitle])
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">

@@ -1,7 +1,14 @@
 import { useState } from 'react'
-import { isDaily, isTemplatePath, isUntitledNotePath, untitledNoteSeed } from '@kore/core'
+import {
+  isDaily,
+  isTemplatePath,
+  isUntitledNotePath,
+  untitledNoteSeed,
+  weekFromWeeklyPath,
+  type IsoWeek,
+} from '@kore/core'
 import { useNoteDocument, type NoteDocument } from '@/editor/use-note-document'
-import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
+import { useDailyNoteSeed, useWeeklyNoteSeed } from '@/hooks/use-periodic-note-seed'
 
 /** What `useNotePaneDocument` hands the pane. */
 export interface NotePaneDocument {
@@ -9,13 +16,15 @@ export interface NotePaneDocument {
   document: NoteDocument
   /** Whether the pane's note is a daily note (date-titled). */
   dailyNote: boolean
+  /** The week a weekly note belongs to (week-titled), else `null`. */
+  weeklyWeek: IsoWeek | null
 }
 
 /**
  * The pane's document session plus the seeding policy around it: which paths
  * may lazily create, which seed a missing note adopts (the name-me template
- * for untitled notes, `templates/daily.md` for dailies), and which notes
- * track renames.
+ * for untitled notes, `templates/daily.md` for dailies, `templates/weekly.md`
+ * for weeklies), and which notes track renames.
  */
 export function useNotePaneDocument(
   path: string,
@@ -24,7 +33,11 @@ export function useNotePaneDocument(
   dailyDate: string | undefined,
 ): NotePaneDocument {
   const dailyNote = isDaily(path)
-  const lazyCreate = lazy && (dailyNote || isUntitledNotePath(path))
+  const weeklyWeek = weekFromWeeklyPath(path)
+  // Periodic notes are named by their period, not a title: they open lazily
+  // (the file appears on the first edit) and never track renames.
+  const periodic = dailyNote || weeklyWeek !== null
+  const lazyCreate = lazy && (periodic || isUntitledNotePath(path))
   // Templates rename via file operations only (settings, or outside the app):
   // the rename pipeline's slug targets live under `notes/`, so tracking a
   // template's title would move it out of `templates/`. The untitled `id:`
@@ -35,7 +48,7 @@ export function useNotePaneDocument(
   // Re-mint during render when the path changes — only the committed render's
   // seed reaches the session, so the transient stale render is harmless, and
   // this avoids writing a ref during render.
-  const needsSeed = lazyCreate && !dailyNote && !template
+  const needsSeed = lazyCreate && !periodic && !template
   const [seed, setSeed] = useState(() => ({ path, seed: untitledNoteSeed() }))
   if (needsSeed && seed.path !== path) {
     setSeed({ path, seed: untitledNoteSeed() })
@@ -44,16 +57,19 @@ export function useNotePaneDocument(
   // already names it. Undefined when the graph has no daily template, which
   // leaves dailies opening empty exactly as they did before.
   const dailySeed = useDailyNoteSeed(dailyDate ?? null)
-  // One value, one spread: `needsSeed` already excludes dailies, so the two
-  // sources are mutually exclusive — computed here so the object below
-  // doesn't ask the reader to prove it.
-  const missingSeed = needsSeed ? seed.seed : lazyCreate && dailyNote ? dailySeed : undefined
+  // A weekly's seed is `templates/weekly.md`, expanded for its week.
+  const weeklySeed = useWeeklyNoteSeed(lazyCreate ? weeklyWeek : null)
+  // One value, one spread: `needsSeed` already excludes periodic notes, and a
+  // path is a daily or a weekly, never both — computed here so the object
+  // below doesn't ask the reader to prove it.
+  const periodicSeed = dailyNote ? dailySeed : weeklySeed
+  const missingSeed = needsSeed ? seed.seed : lazyCreate && periodic ? periodicSeed : undefined
   const document = useNoteDocument(path, generation, {
     createIfMissing: lazyCreate,
     // Every editable regular note maintains title-addressed links and
     // title-mirroring backlink displays. The coordinator separately limits
     // title-derived file moves to Kore-managed notes.
-    trackRenames: !dailyNote && !template,
+    trackRenames: !periodic && !template,
     // A missing ordinary note opens as a name-me template (old Reflect's
     // new-note flow): the seed — `id:` frontmatter plus an empty H1 the
     // caret lands in, ghosted "Untitled" by the title placeholder — only
@@ -63,5 +79,5 @@ export function useNotePaneDocument(
     // writes nothing.
     ...(missingSeed !== undefined ? { missingSeed } : {}),
   })
-  return { document, dailyNote }
+  return { document, dailyNote, weeklyWeek }
 }

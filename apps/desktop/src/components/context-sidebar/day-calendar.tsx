@@ -1,18 +1,16 @@
-import { useMemo, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { dailyDatesInRange, isoWeekOf, weekStartDow, weeklyPath } from '@kore/core'
+import { useState, type ReactElement } from 'react'
+import { isoWeekOfCalendarRow, weekStartDow, weeklyPath } from '@kore/core'
 import { CalendarDays, ChevronLeft, ChevronRight } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useDailyNoteDates } from '@/hooks/use-daily-note-dates'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { keybindingFor } from '@/lib/commands/app-commands'
-import { addDaysIso, formatDayLabel } from '@/lib/dates'
+import { formatDayLabel } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { weeklyRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
 
@@ -39,16 +37,15 @@ function WeekNumberButton({
   weekStartsOn: 0 | 1 | 6
 }): ReactElement {
   const { route, navigate } = useRouter()
-  const week = isoWeekOf(addDaysIso(firstDay, weekStartsOn === 1 ? 0 : weekStartsOn === 0 ? 1 : 2))
-  const path = weeklyPath(week)
-  const open = route.kind === 'note' && route.path === path
+  const week = isoWeekOfCalendarRow(firstDay, weekStartsOn)
+  const open = route.kind === 'note' && route.path === weeklyPath(week)
   return (
     <button
       type="button"
       aria-label={`Week ${week.week}`}
       title={`Open week ${week.week}`}
       aria-pressed={open}
-      onClick={() => navigate({ kind: 'note', path })}
+      onClick={() => navigate(weeklyRoute(week))}
       className={cn(
         'my-0.5 cursor-default rounded-md text-[10px] font-medium tabular-nums text-text-muted/70 transition-colors duration-100 hover:bg-surface-hover hover:text-text',
         open && 'bg-surface-active text-text',
@@ -78,7 +75,6 @@ const HEADER_BUTTON_CLASS =
 export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactElement {
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
-  const { graph } = useGraph()
   const { settings } = useSettings()
   const weekStartsOn = weekStartDow(settings.weekStartDay)
 
@@ -92,16 +88,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
   }
 
   const grid = buildMonthGrid(month, weekStartsOn)
-  const bridgeReady = useBridgeReady()
-  const { data: notedDates } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'dailyDates', grid.start, grid.end],
-    queryFn: () => dailyDatesInRange(grid.start, grid.end),
-    enabled: bridgeReady && graph !== null,
-  })
-  // The sidebar re-renders as the focused day scrolls through the stream; with
-  // the query result reference-stable (structural sharing), rebuild the lookup
-  // set only when the noted dates actually change.
-  const noted = useMemo(() => new Set(notedDates ?? []), [notedDates])
+  const noted = useDailyNoteDates(grid.start, grid.end)
 
   return (
     <div aria-label="Calendar" className="group min-w-36">
@@ -159,12 +146,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
         <div className="px-4 py-2">
           {grid.weeks.map((week) => (
             <div key={week[0]!.date} className={cn(WEEK_GRID, 'text-center')}>
-              <WeekNumberButton
-                // The ISO week of the row's Monday: a Sunday- or
-                // Saturday-start row still opens one Monday-to-Sunday note.
-                firstDay={week[0]!.date}
-                weekStartsOn={weekStartsOn}
-              />
+              <WeekNumberButton firstDay={week[0]!.date} weekStartsOn={weekStartsOn} />
               {week.map((cell) => {
                 const isSelected = cell.date === selectedDate
                 const isToday = cell.date === today

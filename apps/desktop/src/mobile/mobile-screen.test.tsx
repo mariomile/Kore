@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { format } from 'date-fns'
 import { StrictMode, type ReactElement } from 'react'
-import { setBridge } from '@kore/core'
+import { isoWeekOf, setBridge, weeklyNoteTitle } from '@kore/core'
 import { clearFormattingToolbar, publishFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { RouterProvider, useRouter } from '@/routing/router'
 import type { Route } from '@/routing/route'
@@ -582,6 +582,16 @@ describe('MobileShell', () => {
       const editors = view.getByTestId('fake-editor').elements()
       expect(editors.some((editor) => editor.textContent?.includes('far future plans'))).toBe(true)
     })
+  })
+
+  it('opens the visible week’s note from the strip’s week pill', async () => {
+    const week = isoWeekOf(todayIso())
+    const view = await mount({ kind: 'today' })
+
+    await userEvent.click(view.getByRole('button', { name: `Open week ${week.week}` }))
+    await expect
+      .element(view.getByRole('heading', { name: weeklyNoteTitle(week), exact: true }))
+      .toBeVisible()
   })
 
   it('opens a note from in-screen navigation and pops back through history', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { isoWeekOf, weeklyPath } from '@kore/core'
+import { isoWeekOfCalendarRow, weekStartDow } from '@kore/core'
 import { ChevronDown, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { addDaysIso } from '@/lib/dates'
@@ -9,10 +9,11 @@ import { monthPickTarget, weekAtIndex, weekStartOf } from '@/mobile/calendar'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { MonthPickerDrawer } from '@/mobile/month-picker-drawer'
 import { MonthTitle } from '@/mobile/month-title'
-import { useDailyNoteDates } from '@/mobile/use-daily-note-dates'
+import { useDailyNoteDates } from '@/hooks/use-daily-note-dates'
 import { useWeekStrip } from '@/mobile/use-week-strip'
 import { WeekRow } from '@/mobile/week-row'
 import { useSettings } from '@/providers/settings-provider'
+import { weeklyRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
 interface CalendarStripProps {
@@ -78,16 +79,10 @@ export function CalendarStrip({
     showWeekOf(today)
   }
 
-  // ISO week of the visible row's Monday (a Sunday-start row's second day).
-  const visibleWeek = isoWeekOf(
-    addDaysIso(
-      displayedWeekStart,
-      settings.weekStartDay === 'sunday' ? 1 : settings.weekStartDay === 'saturday' ? 2 : 0,
-    ),
-  )
+  const visibleWeek = isoWeekOfCalendarRow(displayedWeekStart, weekStartDow(settings.weekStartDay))
   const openWeek = (): void => {
     hapticImpactLight()
-    navigate({ kind: 'note', path: weeklyPath(visibleWeek) })
+    navigate(weeklyRoute(visibleWeek))
   }
 
   const openSettings = (): void => {

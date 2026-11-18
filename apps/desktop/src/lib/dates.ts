@@ -56,6 +56,22 @@ export function formatMobileDayTitle(date: string, dateFormat: DateFormat): stri
 }
 
 /**
+ * A week's date range, one year and one month shown once:
+ * `Nov 16 – 22, 2026`, `Nov 30 – Dec 6, 2026`, `Dec 28, 2026 – Jan 3, 2027`.
+ */
+export function formatWeekRange(week: { readonly start: string; readonly end: string }): string {
+  const start = parseIsoDate(week.start)
+  const end = parseIsoDate(week.end)
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`
+  }
+  if (start.getMonth() !== end.getMonth()) {
+    return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`
+  }
+  return `${format(start, 'MMM d')} – ${format(end, 'd, yyyy')}`
+}
+
+/**
  * The app's one compact date, for every place a date sits in a row, a cell,
  * a chip or a pill: `Jun 9` for `mdy`, `9 Jun` for `dmy`, gaining the year
  * only away from the current one (`Dec 31, 2025` / `31 Dec 2025`); `iso`

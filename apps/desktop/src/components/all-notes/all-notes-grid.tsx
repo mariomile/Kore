@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { displayNoteTitle, type CollectionEntry, type NoteListEntry, type TagType } from '@kore/core'
+import {
+  displayNoteTitle,
+  type CollectionEntry,
+  type NoteListEntry,
+  type TagType,
+} from '@kore/core'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'

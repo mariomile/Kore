@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: new notes from + always land and their cards open them (#573).
+- iPhone: swipe right to left selects a block; left to right completes or
+  indents (#570).
+- Sync: pulled notes keep their real edit time; Notes grid reads row by row
+  (#572).
 - Sync: clashing edits keep both versions inline, never Needs review;
   properties take the newer edit (#568).
 - Tags: rename or merge a tag across the vault, with preview and Undo (#565).

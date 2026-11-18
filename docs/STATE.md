@@ -1,5 +1,14 @@
 # Kore working state
 
+## iPhone fixes, 2026-11-18 (0.128.1)
+
+- [x] New notes from + with text always land; a new note's card opens it;
+  notes created during indexing appear in the Notes list (#573).
+- [x] Block swipe flipped: right to left selects, left to right completes a
+  task or indents the block (#570).
+- [x] Pulled notes keep their real edit time; the iPhone Notes grid reads row
+  by row (#572).
+
 ## Sync conflict policy, 2026-11-18
 
 - [x] When the same lines of a note changed on two devices, the merge keeps both

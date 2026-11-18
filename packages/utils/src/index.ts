@@ -12,3 +12,4 @@ export {
   weekdayIso,
 } from './dates'
 export { lineHunks, type LineHunk } from './line-diff'
+export { forEachConcurrent } from './concurrency'

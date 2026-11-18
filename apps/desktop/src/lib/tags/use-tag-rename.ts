@@ -1,3 +1,4 @@
+import { forEachConcurrent } from '@kore/utils'
 import { useCallback, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -101,21 +102,11 @@ export function useTagRename(): TagRenameActions {
         }
       }
       const ordered = [...paths].sort()
-      const notes: { path: string; source: string }[] = []
-      let next = 0
-      await Promise.all(
-        Array.from({ length: Math.min(READ_CONCURRENCY, ordered.length) }, async () => {
-          for (;;) {
-            const path = ordered[next]
-            next += 1
-            if (path === undefined) {
-              return
-            }
-            notes.push({ path, source: await readNoteSource(path) })
-          }
-        }),
-      )
-      notes.sort((left, right) => left.path.localeCompare(right.path))
+      // Slots by index keep the plan in path order whatever order reads finish in.
+      const notes = ordered.map((path) => ({ path, source: '' }))
+      await forEachConcurrent(notes, READ_CONCURRENCY, async (note) => {
+        note.source = await readNoteSource(note.path)
+      })
       const plan = planTagRename(rename, {
         notes,
         definitions,
@@ -174,10 +165,6 @@ export function useTagRename(): TagRenameActions {
             log.moves.push(move)
           },
         })
-        if (log.writes.length > 0 || log.moves.length > 0) {
-          lastRun.current = log
-          setCanUndo(true)
-        }
         await refresh()
         return {
           changed: log.writes.length,
@@ -186,6 +173,11 @@ export function useTagRename(): TagRenameActions {
       } catch (cause) {
         return { changed: log.writes.length, failures: [errorMessage(cause)] }
       } finally {
+        // Whatever landed stays undoable, even when a later step threw.
+        if (log.writes.length > 0 || log.moves.length > 0) {
+          lastRun.current = log
+          setCanUndo(true)
+        }
         setIsBusy(false)
       }
     },

@@ -1,3 +1,4 @@
+import { forEachConcurrent } from '@kore/utils'
 import { useCallback, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -121,12 +122,7 @@ export function useVaultReplace(): VaultReplace {
         // so the preview describes what the user is actually looking at.)
         const entries = await listNotes({ tag: null })
         const slots: (NoteHits | null)[] = entries.map(() => null)
-        let nextIndex = 0
-        const scanOne = async (index: number): Promise<void> => {
-          const entry = entries[index]
-          if (entry === undefined) {
-            return
-          }
+        await forEachConcurrent(entries, SCAN_CONCURRENCY, async (entry, index) => {
           let source: string
           try {
             source = await readNoteSource(entry.path)
@@ -154,19 +150,7 @@ export function useVaultReplace(): VaultReplace {
             live,
             blocked: openSession(entry.path)?.isDirty() === true ? 'has unsaved changes' : null,
           }
-        }
-        await Promise.all(
-          Array.from({ length: Math.min(SCAN_CONCURRENCY, entries.length) }, async () => {
-            for (;;) {
-              const index = nextIndex
-              nextIndex += 1
-              if (index >= entries.length) {
-                return
-              }
-              await scanOne(index)
-            }
-          }),
-        )
+        })
         // Slots, not pushes: the pool finishes out of order, and the preview
         // must list notes in the index's deterministic order.
         const notes = slots.filter((slot): slot is NoteHits => slot !== null)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { normalizeTagInput, tagRenameProblem } from '@kore/core'
+import { errorMessage, normalizeTagInput, tagRenameProblem } from '@kore/core'
 import {
   useTagRename,
   type TagRenameOutcome,
@@ -43,6 +43,7 @@ export function useTagRenameForm(tag: string): TagRenameForm {
   const [value, setValue] = useState(tag)
   const [stored, setStored] = useState<TagRenamePreview | null>(null)
   const [result, setResult] = useState<TagRenameResult | null>(null)
+  const [readError, setReadError] = useState<string | null>(null)
   const rename = { from: tag, to: value }
   const problem = tagRenameProblem(rename)
   const preview = stored !== null && stored.rename.to === value && problem === null ? stored : null
@@ -54,9 +55,17 @@ export function useTagRenameForm(tag: string): TagRenameForm {
     }
     let active = true
     const timer = window.setTimeout(() => {
-      void readPreview({ from: tag, to: value }).then((next) => {
-        if (active) setStored(next)
-      })
+      readPreview({ from: tag, to: value }).then(
+        (next) => {
+          if (active) {
+            setStored(next)
+            setReadError(null)
+          }
+        },
+        (cause: unknown) => {
+          if (active) setReadError(`Could not read the notes: ${errorMessage(cause)}`)
+        },
+      )
     }, PREVIEW_DELAY_MS)
     return () => {
       active = false
@@ -71,7 +80,7 @@ export function useTagRenameForm(tag: string): TagRenameForm {
   return {
     value,
     setValue,
-    problem: value === tag ? null : problem,
+    problem: value === tag ? null : (problem ?? readError),
     preview,
     result,
     canSubmit,

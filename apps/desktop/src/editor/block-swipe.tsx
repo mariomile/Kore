@@ -33,7 +33,12 @@ import {
   type BlockSelectionState,
 } from './block-selection-store'
 import type { FormattingBlockKind } from './formatting-toolbar-store'
-import { classifyBlockSwipe, isHorizontalDrag } from './block-swipe-gestures'
+import {
+  classifyBlockSwipe,
+  isHorizontalDrag,
+  SELECT_DIRECTION,
+  selectTravel,
+} from './block-swipe-gestures'
 import { whenEditorMounted } from './when-editor-mounted'
 
 /** How far a selecting swipe drags the block along before it snaps back. */
@@ -112,10 +117,11 @@ function reminderDate(when: BlockReminder | Date): string {
  *
  * The gutter grip that reorders blocks is pointer-only, so `NoteEditor` pins
  * it off on the touch surface. Craft's answer is the sideways swipe: drag a
- * block right and it is selected as a whole block (it follows the finger a
+ * block left and it is selected as a whole block (it follows the finger a
  * little, then snaps back highlighted), with the action bar taking the tab
- * bar's place; drag left to outdent. While blocks are selected the keyboard
- * stays down and a tap on any block adds it to the selection or drops it.
+ * bar's place; drag right to complete a task or nest the block under the one
+ * above. While blocks are selected the keyboard stays down and a tap on any
+ * block adds it to the selection or drops it.
  *
  * On the daily carousel with the keyboard down, horizontal drags belong to
  * the day swipe, so the block swipe waits for the editor to have focus.
@@ -405,13 +411,14 @@ export function BlockSwipeGestures({
         if (pressed && event.cancelable) event.preventDefault()
         if (!claimed && swipeAllowed() && isHorizontalDrag(deltaX, touch.clientY - startY)) {
           claimed = true
-          const element = deltaX > 0 && startPosition !== null ? blockElement(startPosition) : null
+          const element =
+            selectTravel(deltaX) > 0 && startPosition !== null ? blockElement(startPosition) : null
           if (element !== null && typeof element.animate === 'function') {
             follow = element.animate(
               [
                 { transform: 'translateX(0)' },
                 {
-                  transform: `translateX(${DRAG_FOLLOW_MAX_PX}px)`,
+                  transform: `translateX(${SELECT_DIRECTION * DRAG_FOLLOW_MAX_PX}px)`,
                 },
               ],
               { duration: 1000, fill: 'both', easing: 'linear' },
@@ -426,7 +433,7 @@ export function BlockSwipeGestures({
         }
         // Keep the finger down after a selecting swipe and slide it over the
         // blocks below or above: each one it crosses joins the selection.
-        if (claimed && deltaX > 24 && Math.abs(touch.clientY - startY) > 12) {
+        if (claimed && selectTravel(deltaX) > 24 && Math.abs(touch.clientY - startY) > 12) {
           const over = view.posAtCoords({ left: touch.clientX, top: touch.clientY })?.pos
           if (over !== undefined) {
             const range = blockRangeAt(view.state.doc, over)
@@ -445,7 +452,7 @@ export function BlockSwipeGestures({
         }
         if (claimed && follow !== null) {
           const reach = DRAG_FOLLOW_MAX_PX
-          const travel = Math.max(0, Math.min(deltaX * 0.6, reach))
+          const travel = Math.max(0, Math.min(selectTravel(deltaX) * 0.6, reach))
           follow.currentTime = (travel / reach) * 1000
         }
       }
@@ -502,14 +509,14 @@ export function BlockSwipeGestures({
         if (sweptAny) return
         if (swipe === null || position === null) return
 
-        if (swipe === 'indent') {
-          // Swipe right: select the block as a block (Craft).
+        if (swipe === 'select') {
+          // Swipe left: select the block as a block.
           if (view.hasFocus()) editor.blur()
           view.dispatch(withBlockSelection(view.state.tr, { type: 'add', anchor: position }))
           return
         }
-        // Swipe left, the quick action: a task completes (or reopens), any
-        // other block steps out one level.
+        // Swipe right, the quick action: a task completes (or reopens), any
+        // other block steps in one level, under the block above it.
         const range = blockRangeAt(view.state.doc, position)
         if (range !== null && range.node.type.name === 'list') {
           const attrs = range.node.attrs as { kind?: string; checked?: boolean | null }
@@ -527,7 +534,7 @@ export function BlockSwipeGestures({
         view.dispatch(
           view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(bounded))),
         )
-        editor.commands.dedentList()
+        editor.commands.indentList()
       }
 
       // Not passive: a committed swipe must be able to cancel the scroll, and

@@ -10,8 +10,8 @@ import { PageBlocks } from './page-blocks'
 import { BlockZoom } from './block-zoom'
 
 /**
- * The swipe wired to the live editor: right selects a block (Craft), left
- * completes a task or lifts a nested item, a hold selects too, and a scroll
+ * The swipe wired to the live editor: left selects a block, right completes
+ * a task or nests an item under the one above, a hold selects too, and a scroll
  * is never taken.
  *
  * Synthesizing the gesture needs the `Touch`/`TouchEvent` constructors, so
@@ -97,7 +97,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     const { view, editable } = await renderList(onChange)
     onChange.mockClear()
 
-    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('first').element())
+    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('first').element())
     await vi.waitFor(() => {
       expect(currentBlockSelection()?.state.count).toBe(1)
     })
@@ -123,6 +123,29 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     expect(editable.getAttribute('contenteditable')).toBe('true')
   })
 
+  it('selects every block a leftward sweep crosses', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange)
+    onChange.mockClear()
+
+    const first = view.getByText('first').element().getBoundingClientRect()
+    const second = view.getByText('second').element().getBoundingClientRect()
+    // Start in the empty right end of the line, so the sweep stays over text.
+    const x = editable.getBoundingClientRect().right - 20
+    const y = first.top + first.height / 2
+    const secondY = second.top + second.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 30, y + 2))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 40, secondY))
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 40, secondY))
+
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(2)
+    })
+    expect(onChange).not.toHaveBeenCalled()
+    currentBlockSelection()?.commands.clear()
+  })
+
   it('selects a block held still, with the editor read-only during the hold', async () => {
     const { view, editable } = await renderList(vi.fn())
     const target = view.getByText('second').element()
@@ -140,27 +163,28 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     currentBlockSelection()?.commands.clear()
   })
 
-  it('completes a task swiped left', async () => {
+  it('completes a task swiped right', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange, TASK_LIST)
     onChange.mockClear()
 
-    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('first').element())
+    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('first').element())
     await vi.waitFor(() => {
       expect(onChange.mock.calls.at(-1)?.[0]).toBe('- [x] first\n- second\n')
     })
   })
 
-  it('lifts a nested item swiped left, even with the caret elsewhere', async () => {
+  it('nests an item swiped right under the one above, even with the caret elsewhere', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
-    const { view, editable } = await renderList(onChange, NESTED_LIST)
+    const { view, editable } = await renderList(onChange, BASE_LIST)
     await userEvent.click(view.getByText('first'))
     onChange.mockClear()
 
-    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('second').element())
+    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('second').element())
     await vi.waitFor(() => {
-      expect(onChange.mock.calls.at(-1)?.[0]).toBe(BASE_LIST)
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe(NESTED_LIST)
     })
+    expect(currentBlockSelection()).toBeNull()
   })
 
   it('leaves a scroll alone', async () => {
@@ -184,7 +208,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
         expect(found).not.toBeNull()
         return found!
       })
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, card)
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, card)
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.isPage).toBe(true)
       })
@@ -193,7 +217,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     it('turns a block into a page that keeps its children', async () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view, editable } = await renderList(onChange, '- Trip\n  - flight\n- after\n')
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('Trip').element())
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('Trip').element())
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.isPage).toBe(false)
       })
@@ -213,7 +237,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view, editable } = await renderList(onChange, '- Trip ^a1b2\n')
       onChange.mockClear()
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('Trip').element())
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('Trip').element())
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.count).toBe(1)
       })
@@ -226,7 +250,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     it('dates a line before its hidden id, which stays last', async () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view, editable } = await renderList(onChange, '- call ^a1b2\n')
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('call').element())
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('call').element())
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.count).toBe(1)
       })
@@ -283,7 +307,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     it('turns an open page into text without freezing, stepping out to show it', async () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view, editable } = await openPage(onChange, PAGE)
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('Trip').element())
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('Trip').element())
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.isPage).toBe(true)
       })
@@ -298,7 +322,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     it('turns a line inside an open page into text that stays in the page', async () => {
       const onChange = vi.fn<(markdown: string) => void>()
       const { view, editable } = await openPage(onChange, PAGE)
-      swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('flight').element())
+      swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('flight').element())
       await vi.waitFor(() => {
         expect(currentBlockSelection()?.state.kind).toBe('bullet')
       })

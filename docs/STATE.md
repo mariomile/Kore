@@ -10,6 +10,9 @@
   be kept; Needs review only for real conflicts (#561).
 - [x] iPhone: pull down from the top of Daily, Tasks or a note to search all
   notes (#552).
+- [x] Kore Cloud (Plan 34) slices 1, 2 and 4: Worker, `kore cloud setup`,
+  Settings button (#364).
+- [ ] Kore Cloud: first real Cloudflare run and slice 3 (app sync).
 
 ## iPhone note cards, 2026-11-18
 

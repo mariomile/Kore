@@ -6,6 +6,8 @@
   section list); the Mac outline lists its note's sections again (#549).
 - [x] iPhone: the Syncing text pill becomes a quiet icon; tap it for details in
   Settings (#548).
+- [x] Sync: notes edited on two devices merge automatically when both edits can
+  be kept; Needs review only for real conflicts (#561).
 
 ## iPhone note cards, 2026-11-18
 

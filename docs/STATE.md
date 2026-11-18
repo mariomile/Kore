@@ -8,6 +8,8 @@
   Settings (#548).
 - [x] Sync: notes edited on two devices merge automatically when both edits can
   be kept; Needs review only for real conflicts (#561).
+- [x] iPhone: pull down from the top of Daily, Tasks or a note to search all
+  notes (#552).
 
 ## iPhone note cards, 2026-11-18
 

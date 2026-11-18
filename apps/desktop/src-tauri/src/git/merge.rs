@@ -78,6 +78,21 @@ pub struct MergeOutcome {
     /// Deletions carry `modified_ms: None`; upserts carry the written file's
     /// real mtime.
     pub changed_files: Vec<ChangedFile>,
+    /// The three commits behind a conflicted merge, so the sync layer can
+    /// re-merge each conflicted note with its own rules (Markdown-aware) and
+    /// replace the markers when they can both be kept. `None` unless
+    /// `kind` is `MergedWithConflicts`.
+    pub sides: Option<MergeSides>,
+}
+
+/// Commit ids of the local side, the fetched side and their merge base
+/// (`None` for unrelated histories).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MergeSides {
+    pub ours: String,
+    pub theirs: String,
+    pub base: Option<String>,
 }
 
 /// One side of an index conflict, lifted out of the index so the borrow ends
@@ -109,6 +124,7 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
             kind: MergeKind::UpToDate,
             conflicted_paths: Vec::new(),
             changed_files: Vec::new(),
+            sides: None,
         });
     };
     let annotated = repo.find_annotated_commit(remote_oid)?;
@@ -119,6 +135,7 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
             kind: MergeKind::UpToDate,
             conflicted_paths: Vec::new(),
             changed_files: Vec::new(),
+            sides: None,
         });
     }
 
@@ -161,6 +178,7 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
             kind: MergeKind::FastForward,
             conflicted_paths: Vec::new(),
             changed_files,
+            sides: None,
         });
     }
 
@@ -171,6 +189,7 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
         .conflict_style_merge(true)
         .our_label(OUR_LABEL)
         .their_label(THEIR_LABEL);
+    let local_oid = repo.head()?.peel_to_commit()?.id();
     repo.merge(&[&annotated], Some(&mut merge_opts), Some(&mut checkout))?;
 
     // From here the repo carries MERGE_* state; a failure that leaves it
@@ -183,15 +202,24 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
     }
     let (conflicted_paths, changed_files) = result?;
 
-    let kind = if conflicted_paths.is_empty() {
-        MergeKind::Merged
+    let (kind, sides) = if conflicted_paths.is_empty() {
+        (MergeKind::Merged, None)
     } else {
-        MergeKind::MergedWithConflicts
+        let sides = MergeSides {
+            ours: local_oid.to_string(),
+            theirs: remote_oid.to_string(),
+            base: repo
+                .merge_base(local_oid, remote_oid)
+                .ok()
+                .map(|oid| oid.to_string()),
+        };
+        (MergeKind::MergedWithConflicts, Some(sides))
     };
     Ok(MergeOutcome {
         kind,
         conflicted_paths,
         changed_files,
+        sides,
     })
 }
 

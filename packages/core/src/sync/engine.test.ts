@@ -356,6 +356,101 @@ describe('createSyncEngine', () => {
     engine.stop()
   })
 
+  it('re-merges a conflicted note Markdown-aware and commits it before the push', async () => {
+    const versions: Record<string, string> = {
+      base: '- one\n',
+      local: '- one\n- from this device\n',
+      remote: '- one\n- from the other device\n',
+    }
+    const writes: Array<{ path: unknown; contents: unknown }> = []
+    const calls = fakeGit((command, recorded) => {
+      const args = recorded.at(-1)?.args ?? {}
+      switch (command) {
+        case 'git_merge_remote':
+          return {
+            kind: 'mergedWithConflicts',
+            conflictedPaths: ['daily/2026-11-18.md', 'assets/photo.png'],
+            changedFiles: [{ path: 'daily/2026-11-18.md', kind: 'upsert' }],
+            sides: { ours: 'local', theirs: 'remote', base: 'base' },
+          }
+        case 'git_note_version':
+          return versions[String(args.commit)]
+        case 'note_read':
+          return '- one\n<<<<<<< this device\n- a\n=======\n- b\n>>>>>>> other device\n'
+        case 'note_write':
+          writes.push({ path: args.path, contents: args.contents })
+          return 1
+        default:
+          return defaultResponses(command)
+      }
+    })
+    const batches: Array<Array<{ path: string }>> = []
+    const engine = createSyncEngine({
+      generation: 1,
+      getToken: async () => 'tok',
+      onRemoteChanges: (changes) => {
+        batches.push(changes)
+      },
+    })
+
+    await engine.syncNow()
+
+    expect(writes).toEqual([
+      {
+        path: 'daily/2026-11-18.md',
+        contents: '- one\n- from this device\n- from the other device\n',
+      },
+    ])
+    expect(batches.at(-1)).toEqual([{ path: 'daily/2026-11-18.md', kind: 'upsert' }])
+    const order = commandsOf(calls)
+    const merged = order.indexOf('note_write')
+    expect(order.slice(merged + 1)).toEqual(['git_commit_all', 'git_push'])
+    expect(
+      calls.find(
+        (call) =>
+          call.command === 'git_commit_all' &&
+          call.args.message === 'Merge notes edited on two devices',
+      ),
+    ).toBeDefined()
+    engine.stop()
+  })
+
+  it('keeps the markers when the same lines changed two different ways', async () => {
+    const versions: Record<string, string> = {
+      base: 'x\n',
+      local: 'mine\n',
+      remote: 'theirs\n',
+    }
+    const calls = fakeGit((command, recorded) => {
+      const args = recorded.at(-1)?.args ?? {}
+      switch (command) {
+        case 'git_merge_remote':
+          return {
+            kind: 'mergedWithConflicts',
+            conflictedPaths: ['notes/plan.md'],
+            changedFiles: [],
+            sides: { ours: 'local', theirs: 'remote', base: 'base' },
+          }
+        case 'git_note_version':
+          return versions[String(args.commit)]
+        case 'note_read':
+          return '<<<<<<< this device\nmine\n=======\ntheirs\n>>>>>>> other device\n'
+        default:
+          return defaultResponses(command)
+      }
+    })
+    const engine = createSyncEngine({
+      generation: 1,
+      getToken: async () => 'tok',
+    })
+
+    await engine.syncNow()
+
+    expect(commandsOf(calls)).not.toContain('note_write')
+    expect(commandsOf(calls).filter((command) => command === 'git_commit_all')).toHaveLength(1)
+    engine.stop()
+  })
+
   it('continues through push while remote-change handling runs, then waits before idle', async () => {
     const calls = fakeGit((command) =>
       command === 'git_merge_remote'

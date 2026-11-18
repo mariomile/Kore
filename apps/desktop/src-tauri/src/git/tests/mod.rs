@@ -9,6 +9,7 @@ use git2::{Repository, RepositoryInitOptions};
 use tempfile::{tempdir, TempDir};
 
 use super::commit::commit_all;
+use super::history::note_version_content;
 use super::merge::{merge_remote, MergeKind};
 use super::remote::{fetch, push};
 use super::{setup, status, MAX_FILE_BYTES};
@@ -675,6 +676,19 @@ fn conflicting_edits_are_committed_with_labeled_markers() {
         "{merged:?}"
     );
     assert_eq!(merged.conflicted_paths, vec!["notes/shared.md".to_string()]);
+    // The three versions behind the markers, for the sync layer's re-merge.
+    let sides = merged
+        .sides
+        .as_ref()
+        .expect("a conflicted merge names its sides");
+    let version = |commit: &str| note_version_content(root_a, commit, "notes/shared.md").unwrap();
+    assert_eq!(version(&sides.ours), "# Shared\n\nedited on a\n");
+    assert_eq!(version(&sides.theirs), "# Shared\n\nedited on b\n");
+    let base = sides
+        .base
+        .as_deref()
+        .expect("shared history has a merge base");
+    assert_eq!(version(base), "# Shared\n\noriginal line\n");
     assert!(
         merged
             .changed_files

@@ -4,6 +4,8 @@
 
 - [x] Notion-style outline on iPhone (lines on the right edge, tap for the
   section list); the Mac outline lists its note's sections again (#549).
+- [x] iPhone: the Syncing text pill becomes a quiet icon; tap it for details in
+  Settings (#548).
 
 ## iPhone note cards, 2026-11-18
 

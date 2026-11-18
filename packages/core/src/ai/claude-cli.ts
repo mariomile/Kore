@@ -9,9 +9,9 @@ import {
   noteContentSafetyRules,
   vaultEditRules,
   type AgentCliChunk,
+  vaultLayoutLine,
 } from './agent-cli'
 import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
-import { dailyPathPattern } from '../graph/paths'
 import { describeClaudeToolCall, summarizeClaudeToolResult } from './chat/agent-steps'
 
 /**
@@ -72,7 +72,7 @@ export function claudeCliSystemPrompt(options: {
     allowEdits
       ? `You are Kore’s agent, working inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files the running app picks up live.`
       : `You are Kore’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files.`,
-    `Today’s date is ${options.today}. Daily notes are ${dailyPathPattern()}; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
+    vaultLayoutLine(options.today),
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and a [[YYYY-MM-DD]] wiki link at the end of an item is its due date (a date link mid-sentence, like a source citation, is only a link). Square `- [ ]` checkboxes are plain checklists, not tasks.',
     ...agentContextPromptLines(options.agentContext ?? null, {
       canEdit: allowEdits,

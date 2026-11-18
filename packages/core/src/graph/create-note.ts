@@ -4,6 +4,7 @@ import { addFrontmatterTag } from '../markdown/note-tag'
 import { typedNoteFolder } from '../tags/type-folder'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
+import { weekFromWeeklyPath, weeklyNoteTitle } from './weekly'
 import {
   collisionStem,
   newNoteFolderPrefix,
@@ -80,6 +81,7 @@ export function isUntitledNotePath(path: string): boolean {
  * (the birth rename fires after 5s of quiet or on blur, and a refused move
  * keeps the placeholder for good), so the path alone cannot name it:
  *
+ * - a weekly note is named by its week (`Week 47`), whatever it holds;
  * - `draftTitle` — the title the open editor session last saved — wins, so
  *   the tab follows typing instead of waiting for the rename;
  * - otherwise the index title, except on a placeholder path where an
@@ -91,6 +93,10 @@ export function openNoteTabTitle(
   indexTitle: string | null | undefined,
   draftTitle: string | null | undefined,
 ): string {
+  const week = weekFromWeeklyPath(path)
+  if (week !== null) {
+    return weeklyNoteTitle(week)
+  }
   if (draftTitle !== null && draftTitle !== undefined && draftTitle.trim() !== '') {
     return draftTitle
   }

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ChevronLeft, ChevronRight } from '@/components/icons'
+import { PeriodPill } from '@/components/period-pill'
 import { addDaysIso, formatShortDate } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
 import { useFocusedDailyDate } from '@/providers/focused-daily-provider'
@@ -29,33 +29,14 @@ export function DailyDatePill(): ReactElement | null {
     return null // not a daily surface (the stream never renders one, but stay honest)
   }
   return (
-    <div className="pointer-events-auto flex items-center rounded-full border border-border bg-surface p-0.5 shadow-sm">
-      <button
-        type="button"
-        aria-label="Previous day"
-        title="Previous day"
-        onClick={() => navigate({ kind: 'daily', date: addDaysIso(date, -1) })}
-        className="app-icon-button text-text-muted hover:text-text"
-      >
-        <ChevronLeft aria-hidden className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        title="Jump to today"
-        onClick={() => navigate({ kind: 'today' })}
-        className="rounded-full px-1.5 text-xs font-medium text-text-secondary transition-colors duration-150 ease-swift hover:text-text"
-      >
-        {formatShortDate(date, settings.dateFormat)}
-      </button>
-      <button
-        type="button"
-        aria-label="Next day"
-        title="Next day"
-        onClick={() => navigate({ kind: 'daily', date: addDaysIso(date, 1) })}
-        className="app-icon-button text-text-muted hover:text-text"
-      >
-        <ChevronRight aria-hidden className="size-3.5" />
-      </button>
-    </div>
+    <PeriodPill
+      label={formatShortDate(date, settings.dateFormat)}
+      labelTitle="Jump to today"
+      onLabel={() => navigate({ kind: 'today' })}
+      previousLabel="Previous day"
+      nextLabel="Next day"
+      onPrevious={() => navigate({ kind: 'daily', date: addDaysIso(date, -1) })}
+      onNext={() => navigate({ kind: 'daily', date: addDaysIso(date, 1) })}
+    />
   )
 }

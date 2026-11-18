@@ -7,7 +7,15 @@
  * note route carries `path` — the reserved frontmatter `id` can join it later
  * without breaking the shape.
  */
-import { dailyPath, dateFromDailyPath, isDaily, type NoteListFilter } from '@kore/core'
+import {
+  dailyPath,
+  dateFromDailyPath,
+  isDaily,
+  weekFromWeeklyPath,
+  weeklyPath,
+  type IsoWeek,
+  type NoteListFilter,
+} from '@kore/core'
 import { isIsoDate } from '@/lib/dates'
 
 /**
@@ -67,6 +75,20 @@ export type Route =
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
+
+/**
+ * A week's note route. A weekly note is an ordinary note at
+ * `weekly/YYYY-Www.md` (see `@kore/core` weekly.ts); the note pane draws its
+ * week header from the path.
+ */
+export function weeklyRoute(week: IsoWeek): Extract<Route, { kind: 'note' }> {
+  return { kind: 'note', path: weeklyPath(week) }
+}
+
+/** Does the route open a weekly note (any week)? */
+export function isWeeklyNoteRoute(route: Route): boolean {
+  return route.kind === 'note' && weekFromWeeklyPath(route.path) !== null
+}
 
 /** The Settings route for a navigator page. General omits `group`. */
 export function settingsRoute(

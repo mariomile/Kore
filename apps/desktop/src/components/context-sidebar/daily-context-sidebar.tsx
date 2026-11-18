@@ -7,6 +7,7 @@ import { NoteActionsSection } from './note-actions-section'
 import { NoteHistorySection } from './note-history-section'
 import { PublishedUrlSection } from './published-url-section'
 import { SimilarNotesSection } from './similar-notes-section'
+import { WeekCard } from '@/components/weekly/week-entry-points'
 import { useToday } from '@/lib/use-today'
 
 interface DailyContextSidebarProps {
@@ -17,7 +18,7 @@ interface DailyContextSidebarProps {
 /**
  * The daily note's contextual sidebar (modeled on the old app's note context
  * sidebar): the month calendar up top — itself the day-navigation surface,
- * with a jump-to-today button — then the day's calendar events, semantic
+ * with a jump-to-today button — and the day's week note under it, then the day's calendar events, semantic
  * neighbors, history, and last the rarely used note actions. Inbound links live under the note itself
  * (the incoming-backlinks section), not here. The calendar stays on top; the
  * sections below follow the user's Details arrangement. Rendered in the AppShell's
@@ -30,6 +31,8 @@ export function DailyContextSidebar({ date }: DailyContextSidebarProps): ReactEl
   return (
     <div className="flex flex-col pt-2 text-text">
       <DayCalendar selectedDate={date} today={today} />
+      {/* The day's week, fixed under the calendar like the calendar itself. */}
+      <WeekCard date={date} className="mt-1" />
       <div className="my-4 pb-4">
         <DetailsSections
           sections={[

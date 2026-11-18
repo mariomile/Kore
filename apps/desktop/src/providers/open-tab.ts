@@ -1,15 +1,23 @@
-import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@kore/core'
+import {
+  isDaily,
+  isTemplatePath,
+  weekFromWeeklyPath,
+  type OpenTab,
+  type WorkspaceSurface,
+} from '@kore/core'
 import { isSettingsPage, routeForPath, routesEqual, type Route } from '@/routing/route'
 
 /**
  * Identity of a strip tab, stable across pin toggles and mutable route state.
- * Notes key on path, chats on conversation id, and each workspace surface has
- * at most one tab.
+ * Notes key on path (weekly notes share one key), chats on conversation id,
+ * and each workspace surface has at most one tab.
  */
 export function tabKey(tab: OpenTab): string {
   switch (tab.kind) {
     case 'note':
-      return `note:${tab.path}`
+      // Weeks share one tab, as days share the Daily surface: stepping a
+      // week page ‹ › replaces it instead of opening a tab per week.
+      return weekFromWeeklyPath(tab.path) !== null ? 'note:weekly' : `note:${tab.path}`
     case 'chat':
       return `chat:${tab.conversationId}`
     case 'base':

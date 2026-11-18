@@ -611,6 +611,11 @@ describe('isUntitledNotePath', () => {
 describe('openNoteTabTitle', () => {
   const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwx.md'
 
+  it('names a weekly note by its week, whatever its first heading says', () => {
+    expect(openNoteTabTitle('weekly/2026-W47.md', '2026-W47', 'Focus')).toBe('Week 47')
+    expect(openNoteTabTitle('weekly/2026-W47.md', undefined, undefined)).toBe('Week 47')
+  })
+
   it('names a new note by the title being typed, before its birth rename', () => {
     // Regression: the tab strip and its list menu read "Untitled" until
     // the placeholder file was renamed, seconds after the title was typed.

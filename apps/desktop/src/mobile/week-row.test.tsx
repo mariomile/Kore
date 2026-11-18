@@ -38,4 +38,27 @@ describe('WeekRow', () => {
     expect(hapticImpactLight).toHaveBeenCalledOnce()
     expect(onSelect).toHaveBeenCalledWith('2026-07-16')
   })
+
+  it('shows the selection circle in place on mount, and zooms it in only on arrival', async () => {
+    const props = {
+      weekStart: '2026-07-13',
+      todayDay: '2026-07-16',
+      dailyNoteDates: new Set<string>(),
+      onSelect: vi.fn(),
+    }
+    const view = await render(<WeekRow {...props} selectedDay="2026-07-16" />)
+
+    // Launch and every return to Daily: the circle is already there, so today
+    // never shows as a bare white number while a zoom plays.
+    const mounted = page.getByTestId('week-selection-circle').element()
+    expect(mounted.classList.contains('animate-in')).toBe(false)
+
+    // The selection leaves the week (paging away), then comes back: that
+    // arrival is a real transition and zooms in.
+    await view.rerender(<WeekRow {...props} selectedDay={null} />)
+    await expect.element(page.getByTestId('week-selection-circle')).not.toBeInTheDocument()
+    await view.rerender(<WeekRow {...props} selectedDay="2026-07-14" />)
+    const arrived = page.getByTestId('week-selection-circle').element()
+    expect(arrived.classList.contains('animate-in')).toBe(true)
+  })
 })

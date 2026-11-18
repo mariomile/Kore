@@ -1,7 +1,8 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, type ReactElement } from 'react'
 import { AppBootScreen } from '@/components/app-boot-screen'
 import { GraphChooser } from '@/components/graph-chooser'
 import { GraphWorkspace } from '@/components/graph-workspace'
+import { releaseBootSplash } from '@/lib/boot-splash'
 import { installQuitFlush } from '@/lib/quit-flush'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useGraph } from '@/providers/graph-provider'
@@ -21,6 +22,16 @@ export function App(): ReactElement {
   useEffect(() => {
     return installQuitFlush()
   }, [])
+
+  // Hand the first real screen over from index.html's boot splash: the
+  // workspace waits briefly for its first editor, the chooser shows at once.
+  const splashRelease =
+    status === 'ready' && graph ? 'shell' : status === 'choosing' ? 'screen' : null
+  useLayoutEffect(() => {
+    if (splashRelease !== null) {
+      releaseBootSplash(splashRelease)
+    }
+  }, [splashRelease])
 
   if (status === 'ready' && graph) {
     return <GraphWorkspace graph={graph} />

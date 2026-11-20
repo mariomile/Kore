@@ -1,7 +1,16 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@kore/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Chart, Check, FolderOpen, History, Locate, Settings } from '@/components/icons'
+import {
+  Chart,
+  Check,
+  Download,
+  FolderOpen,
+  History,
+  Locate,
+  Refresh,
+  Settings,
+} from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
@@ -28,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
+import { useUpdate } from '@/providers/update-provider'
 import { useRouter } from '@/routing/router'
 
 const MENU_ITEM_CLASS = 'gap-2 px-2 py-1.5 text-[13px] text-text-secondary'
@@ -225,6 +235,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <SidebarUpdateButton />
       <Tooltip>
         <TooltipTrigger
           render={
@@ -253,5 +264,89 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
         </TooltipContent>
       </Tooltip>
     </div>
+  )
+}
+
+/**
+ * Quiet sidebar download control for desktop app updates: absent while up to
+ * date, surfaces next to Settings as soon as an update is available, shows
+ * progress while downloading, and turns into a one-click restart once ready.
+ */
+function SidebarUpdateButton(): ReactElement | null {
+  const { supported, state, install, restart } = useUpdate()
+  if (!supported) {
+    return null
+  }
+
+  let label: string
+  let tooltip: string
+  let Icon = Download
+  let onClick: (() => void) | undefined
+  let tone = 'text-accent hover:bg-accent-soft hover:text-accent'
+  let pulse = false
+
+  switch (state.phase) {
+    case 'available':
+      label = `Install update ${state.version}`
+      tooltip = `Update available — install Kore ${state.version}`
+      onClick = () => {
+        void install()
+      }
+      break
+    case 'downloading':
+      label =
+        state.percent !== null
+          ? `Downloading update ${state.version} (${state.percent}%)`
+          : `Downloading update ${state.version}`
+      tooltip = label
+      pulse = true
+      break
+    case 'ready':
+      label = `Restart to update to ${state.version}`
+      tooltip = `Kore ${state.version} ready — restart to update`
+      Icon = Refresh
+      onClick = () => {
+        void restart()
+      }
+      break
+    case 'error':
+      if (state.during !== 'install') {
+        return null
+      }
+      label = 'Retry update install'
+      tooltip = 'Update failed — click to retry'
+      tone = 'text-danger hover:bg-surface-hover hover:text-danger'
+      onClick = () => {
+        void install()
+      }
+      break
+    default:
+      return null
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={label}
+            disabled={onClick === undefined}
+            onClick={onClick}
+            className={cn(
+              'size-7 shrink-0 transition-colors duration-100 disabled:opacity-70',
+              tone,
+            )}
+          >
+            <SidebarIconSlot>
+              <Icon aria-hidden className={cn('size-3.5', pulse && 'motion-safe:animate-pulse')} />
+            </SidebarIconSlot>
+          </Button>
+        }
+      />
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }

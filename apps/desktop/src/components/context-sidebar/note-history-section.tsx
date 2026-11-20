@@ -30,7 +30,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const history = useQuery({
-    queryKey: ['note-history', path],
+    queryKey: ['note-history', graph?.root, path],
     enabled: generation !== null,
     staleTime: 30_000,
     queryFn: async (): Promise<NoteVersion[]> => {

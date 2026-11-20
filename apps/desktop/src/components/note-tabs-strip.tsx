@@ -129,7 +129,12 @@ export function WorkspaceTabsStrip({
       </div>
 
       {showContextToggle ? (
-        <div className="window-drag-control ml-auto flex items-center">
+        <div
+          className={cn(
+            'window-drag-control ml-auto flex items-center',
+            contextCollapsed && 'lg:hidden',
+          )}
+        >
           <PanelToggle
             side="right"
             collapsed={contextCollapsed}

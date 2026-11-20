@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactElement } from 'react'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
+import { PageLoading } from '@/components/page-loading'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
 import { SearchRoute } from '@/components/search-route'
@@ -93,7 +94,7 @@ export function RouteContent(): ReactElement {
       surface={route.kind}
       path={'path' in route ? route.path : null}
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<PageLoading className="h-full" />}>
         <RouteView />
       </Suspense>
     </PaneErrorBoundary>

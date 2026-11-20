@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
+import { PageLoading } from '@/components/page-loading'
 import { useRouter } from '@/routing/router'
 import { ConvertToTypes } from './convert-to-types'
 import { useBaseFiles } from './use-base-view'
@@ -19,7 +20,7 @@ export function BasesIndex(): ReactElement {
           Couldn’t list the bases.
         </p>
       ) : paths === undefined ? (
-        <p className="mt-6 text-sm text-text-muted">Loading…</p>
+        <PageLoading label="Loading bases" />
       ) : paths.length === 0 ? (
         <p className="mt-6 text-sm text-text-muted">
           No .base files yet. Bases made in Obsidian show up here.

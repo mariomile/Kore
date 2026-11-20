@@ -11,6 +11,7 @@ import {
   type SittingNote,
 } from '@kore/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
+import { PageLoading } from '@/components/page-loading'
 import { UndoSittingDialog } from '@/components/activity/undo-sitting-dialog'
 import { WaitingProposals } from '@/components/activity/waiting-proposals'
 import { Button } from '@/components/ui/button'
@@ -170,7 +171,7 @@ export function ActivityScreen(): ReactElement {
       ) : null}
 
       {isPending ? (
-        <p className="mt-6 text-sm text-text-muted">Loading…</p>
+        <PageLoading label="Loading activity" />
       ) : days.length === 0 ? (
         <p className="mt-6 text-sm text-text-muted">No changes yet.</p>
       ) : (

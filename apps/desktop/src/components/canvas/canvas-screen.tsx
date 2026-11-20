@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { canvasDisplayName } from '@kore/core'
+import { PageLoading } from '@/components/page-loading'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
 import { useCanvasDocument, useCanvasFiles } from './use-canvas'
@@ -29,7 +30,7 @@ function CanvasFileScreen({ path }: { path: string }): ReactElement {
         <p className="mt-1 truncate text-xs text-text-muted">{path}</p>
       </header>
       {state.status === 'loading' ? (
-        <p className="px-6 py-6 text-sm text-text-muted">Loading…</p>
+        <PageLoading label="Loading canvas" />
       ) : state.status === 'error' ? (
         <p role="alert" className="px-6 py-6 text-sm text-text-muted">
           Couldn’t open this canvas: {state.message}
@@ -58,7 +59,7 @@ function CanvasIndex(): ReactElement {
           Couldn’t list the canvases.
         </p>
       ) : paths === undefined ? (
-        <p className="mt-6 text-sm text-text-muted">Loading…</p>
+        <PageLoading label="Loading canvases" />
       ) : paths.length === 0 ? (
         <p className="mt-6 text-sm text-text-muted">
           No .canvas files yet. Canvases made in Obsidian show up here.

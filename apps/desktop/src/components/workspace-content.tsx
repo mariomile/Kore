@@ -239,9 +239,7 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
                       pane={pane}
                       commandContext={commandContext}
                       showSidebarToggle={!collapsed && columnIndex === 0 && rowIndex === 0}
-                      showContextToggle={
-                        !contextCollapsed && columnIndex === columns.length - 1 && rowIndex === 0
-                      }
+                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
                     />
                   </Fragment>
                 ))}

@@ -7,14 +7,11 @@ import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGraphColors } from '@/hooks/use-graph-colors'
-import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
-import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/providers/sidebar-provider'
-import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { navRowSpec, useVisibleSidebarNav } from './sidebar-nav'
 
@@ -42,14 +39,9 @@ const ACTIVE_ICON_CLASS = 'bg-surface-active text-text dark:bg-surface-hover dar
  */
 export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailProps): ReactElement {
   const { route } = useRouter()
-  const today = useToday()
-  const pinned = usePinnedNotes()
   const { colorFor } = useGraphColors()
   const { toggleSidebar } = useSidebar()
   const visibleNav = useVisibleSidebarNav()
-  const currentNotePath = notePathForRoute(route, today)
-  const hasActivePinnedNote =
-    currentNotePath !== null && pinned.some((note) => note.path === currentNotePath)
   const chatActive = route.kind === 'chat'
   const settingsActive = route.kind === 'settings'
 
@@ -104,7 +96,7 @@ export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailPro
         </Tooltip>
 
         {visibleNav.map((id) => {
-          const spec = navRowSpec(id, { route, hasActivePinnedNote })
+          const spec = navRowSpec(id, { route, hasActivePinnedNote: false })
           const binding = keybindingFor(spec.commandId)
           return (
             <Tooltip key={id}>

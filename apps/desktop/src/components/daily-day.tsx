@@ -114,7 +114,10 @@ export const DailyDay = memo(function DailyDay({
     queryFn: () => readDay(path),
     enabled: wantsStatic && !live && graph !== null,
     ...(cached !== undefined ? { initialData: cached } : {}),
-    gcTime: 60_000,
+    // Drop on unmount so re-entering reads fresh from `getCachedNoteContent`
+    // (which is invalidated on external/sync writes) or disk, while mounted
+    // rows stay immune to unrelated global index invalidations.
+    gcTime: 0,
   })
   const loading = wantsStatic && !isError && data === undefined
   // Deciding parses the note, so once per content, not once per render.

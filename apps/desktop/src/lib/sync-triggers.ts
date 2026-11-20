@@ -16,17 +16,22 @@
  */
 export function installSyncTriggers(syncNow: () => Promise<void>): () => void {
   let lastResumeAt = 0
-  const onResume = (): void => {
+  const triggerResume = (dedupeMs: number): void => {
     const now = Date.now()
-    if (now - lastResumeAt < RESUME_DEDUPE_MS) {
+    if (now - lastResumeAt < dedupeMs) {
       return
     }
     lastResumeAt = now
     void syncNow()
   }
+  const onFocus = (): void => {
+    triggerResume(RESUME_DEDUPE_MS)
+  }
   const onVisibilityChange = (): void => {
+    // visibilitychange only reaches `visible` after a real hidden → visible
+    // transition (mobile foregrounding or desktop unminimize).
     if (document.visibilityState === 'visible') {
-      onResume()
+      triggerResume(VISIBILITY_RESUME_DEDUPE_MS)
     }
   }
   const onOnline = (): void => {
@@ -38,24 +43,30 @@ export function installSyncTriggers(syncNow: () => Promise<void>): () => void {
     }
   }, FOREGROUND_PULL_MS)
 
-  window.addEventListener('focus', onResume)
+  window.addEventListener('focus', onFocus)
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('online', onOnline)
   return () => {
     clearInterval(poll)
-    window.removeEventListener('focus', onResume)
+    window.removeEventListener('focus', onFocus)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('online', onOnline)
   }
 }
 
 /**
- * Resume events inside this window collapse into one cycle. Thirty seconds
- * prevents rapid window switching or dismissing an OS dialog from kicking off
- * repeated multi-second git commit/fetch runs on large vaults while still
- * pulling promptly when returning after a break.
+ * Window-focus resume events inside this window collapse into one cycle.
+ * Thirty seconds prevents rapid window switching or dismissing an OS dialog
+ * from kicking off repeated multi-second git commit/fetch runs on large vaults.
  */
 export const RESUME_DEDUPE_MS = 30_000
+
+/**
+ * Returning from `hidden` → `visible` (mobile foregrounding or desktop
+ * unminimize) uses a short dedupe window so a paired `visibilitychange` +
+ * `focus` collapses into one cycle while still replaying deferred mobile edits.
+ */
+export const VISIBILITY_RESUME_DEDUPE_MS = 1_500
 
 /** How often an app in the foreground checks for other devices' changes. */
 export const FOREGROUND_PULL_MS = 2 * 60_000

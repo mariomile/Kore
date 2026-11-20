@@ -386,24 +386,46 @@ export function BlockActionToolbar({
   const editor = useEditor<EditorExtension>()
   const [state, setState] = useState<BlockActionState | null>(null)
   const [handleMenu, setHandleMenu] = useState<HandleMenu | null>(null)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const toolbarRef = useRef<HTMLDivElement | null>(null)
+  const moreMenuOpenRef = useRef(false)
+  const interactingWithToolbarRef = useRef(false)
+  const scheduleSyncRef = useRef<(() => void) | null>(null)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const dragStarted = useRef(false)
   const openMenuRangeRef = useRef<{ from: number; to: number } | null>(null)
   const gripPressRange = useRef<{ from: number; to: number } | null>(null)
   openMenuRangeRef.current =
     handleMenu === null ? null : { from: handleMenu.state.from, to: handleMenu.state.to }
+  moreMenuOpenRef.current = moreMenuOpen
 
   useLayoutEffect(() => {
     let syncFrame: number | null = null
     let syncTimer: ReturnType<typeof setTimeout> | null = null
+    let toolbarInteractionFrame: number | null = null
     let pointerDragging = false
+
+    function isInsideToolbar(target: EventTarget | null): boolean {
+      return target instanceof Node && (toolbarRef.current?.contains(target) ?? false)
+    }
+
+    function toolbarOwnsInteraction(relatedTarget: EventTarget | null = null): boolean {
+      return (
+        interactingWithToolbarRef.current ||
+        moreMenuOpenRef.current ||
+        isInsideToolbar(relatedTarget) ||
+        isInsideToolbar(document.activeElement)
+      )
+    }
 
     function sync(): void {
       if (!editor.mounted) {
         return
       }
       if (!editor.view.hasFocus()) {
-        setState((current) => (current === null ? current : null))
+        if (!toolbarOwnsInteraction()) {
+          setState((current) => (current === null ? current : null))
+        }
         return
       }
       setState((current) => {
@@ -424,7 +446,7 @@ export function BlockActionToolbar({
     }
 
     function syncAfterFrame(): void {
-      if (pointerDragging || !editor.mounted || !editor.view.hasFocus()) {
+      if (pointerDragging || !editor.mounted) {
         return
       }
       cancelScheduled()
@@ -434,6 +456,8 @@ export function BlockActionToolbar({
       })
     }
 
+    scheduleSyncRef.current = syncAfterFrame
+
     // Keyboard selection moves (e.g. holding Shift+ArrowDown) debounce briefly
     // so we don't run six dry-run ProseMirror transactions on every key repeat.
     function syncDebounced(): void {
@@ -441,7 +465,9 @@ export function BlockActionToolbar({
         return
       }
       if (!editor.view.hasFocus()) {
-        setState((current) => (current === null ? current : null))
+        if (!toolbarOwnsInteraction()) {
+          setState((current) => (current === null ? current : null))
+        }
         return
       }
       cancelScheduled()
@@ -458,7 +484,29 @@ export function BlockActionToolbar({
       }
     }
 
+    function onEditorBlur(event: FocusEvent): void {
+      if (toolbarOwnsInteraction(event.relatedTarget)) {
+        return
+      }
+      cancelScheduled()
+      setState((current) => (current === null ? current : null))
+    }
+
     function onWindowPointerEnd(): void {
+      if (interactingWithToolbarRef.current) {
+        if (toolbarInteractionFrame !== null) {
+          cancelAnimationFrame(toolbarInteractionFrame)
+        }
+        // Release after click dispatch completes (WebKit blurs contenteditable
+        // with relatedTarget === null before firing button click).
+        toolbarInteractionFrame = requestAnimationFrame(() => {
+          toolbarInteractionFrame = null
+          interactingWithToolbarRef.current = false
+          if (!moreMenuOpenRef.current && editor.mounted && !editor.view.hasFocus()) {
+            syncAfterFrame()
+          }
+        })
+      }
       if (!pointerDragging) {
         return
       }
@@ -473,10 +521,12 @@ export function BlockActionToolbar({
       window.addEventListener('pointerup', onWindowPointerEnd)
       window.addEventListener('pointercancel', onWindowPointerEnd)
       dom.addEventListener('keyup', syncDebounced)
-      dom.addEventListener('blur', sync)
+      dom.addEventListener('focus', syncAfterFrame)
+      dom.addEventListener('blur', onEditorBlur)
       sync()
     })
     return () => {
+      scheduleSyncRef.current = null
       cancelMount()
       document.removeEventListener('selectionchange', syncDebounced)
       window.removeEventListener('pointerup', onWindowPointerEnd)
@@ -484,7 +534,11 @@ export function BlockActionToolbar({
       if (editor.mounted) {
         editor.view.dom.removeEventListener('pointerdown', onEditorPointerDown)
         editor.view.dom.removeEventListener('keyup', syncDebounced)
-        editor.view.dom.removeEventListener('blur', sync)
+        editor.view.dom.removeEventListener('focus', syncAfterFrame)
+        editor.view.dom.removeEventListener('blur', onEditorBlur)
+      }
+      if (toolbarInteractionFrame !== null) {
+        cancelAnimationFrame(toolbarInteractionFrame)
       }
       cancelScheduled()
     }
@@ -593,8 +647,22 @@ export function BlockActionToolbar({
       {state !== null && handleMenu === null ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
           <div
+            ref={toolbarRef}
             role="toolbar"
             aria-label={`Block actions for ${countLabel}`}
+            onPointerDownCapture={() => {
+              interactingWithToolbarRef.current = true
+            }}
+            onBlur={(event) => {
+              const next = event.relatedTarget
+              if (
+                moreMenuOpenRef.current ||
+                (next instanceof Node && (toolbarRef.current?.contains(next) ?? false))
+              ) {
+                return
+              }
+              scheduleSyncRef.current?.()
+            }}
             className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-popover p-1.5 shadow-pop duration-150 ease-swift"
           >
             {aiEnabled && state.hasText ? (
@@ -641,7 +709,16 @@ export function BlockActionToolbar({
                 <Checklist aria-hidden className="size-4" />
               </Button>
             ) : null}
-            <DropdownMenu>
+            <DropdownMenu
+              open={moreMenuOpen}
+              onOpenChange={(open) => {
+                moreMenuOpenRef.current = open
+                setMoreMenuOpen(open)
+                if (!open) {
+                  scheduleSyncRef.current?.()
+                }
+              }}
+            >
               <DropdownMenuTrigger
                 render={
                   <Button

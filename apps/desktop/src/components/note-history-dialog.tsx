@@ -52,7 +52,7 @@ export function NoteHistoryDialog({
   const generation = graph?.generation ?? null
 
   const history = useQuery({
-    queryKey: ['note-history', graph?.root, path],
+    queryKey: ['note-history', graph?.root, path, 'full'],
     enabled: open && generation !== null,
     queryFn: async () => (generation === null ? [] : await gitNoteHistory(path, generation)),
   })

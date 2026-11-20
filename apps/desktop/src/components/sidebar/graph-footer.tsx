@@ -267,6 +267,69 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
   )
 }
 
+interface UpdateButtonSpec {
+  readonly label: string
+  readonly tooltip: string
+  readonly icon: 'download' | 'refresh'
+  readonly onClick: (() => void) | undefined
+  readonly tone: string
+  readonly pulse: boolean
+}
+
+function updateButtonSpec(
+  state: ReturnType<typeof useUpdate>['state'],
+  actions: { readonly install: () => Promise<void>; readonly restart: () => Promise<void> },
+): UpdateButtonSpec | null {
+  const accent = 'text-accent hover:bg-accent-soft hover:text-accent'
+  switch (state.phase) {
+    case 'available':
+      return {
+        label: `Install update ${state.version}`,
+        tooltip: `Update available — install Kore ${state.version}`,
+        icon: 'download',
+        onClick: () => void actions.install(),
+        tone: accent,
+        pulse: false,
+      }
+    case 'downloading': {
+      const label =
+        state.percent !== null
+          ? `Downloading update ${state.version} (${state.percent}%)`
+          : `Downloading update ${state.version}`
+      return {
+        label,
+        tooltip: label,
+        icon: 'download',
+        onClick: undefined,
+        tone: accent,
+        pulse: true,
+      }
+    }
+    case 'ready':
+      return {
+        label: `Restart to update to ${state.version}`,
+        tooltip: `Kore ${state.version} ready — restart to update`,
+        icon: 'refresh',
+        onClick: () => void actions.restart(),
+        tone: accent,
+        pulse: false,
+      }
+    case 'error':
+      return state.during === 'install'
+        ? {
+            label: 'Retry update install',
+            tooltip: 'Update failed — click to retry',
+            icon: 'download',
+            onClick: () => void actions.install(),
+            tone: 'text-danger hover:bg-surface-hover hover:text-danger',
+            pulse: false,
+          }
+        : null
+    default:
+      return null
+  }
+}
+
 /**
  * Quiet sidebar download control for desktop app updates: absent while up to
  * date, surfaces next to Settings as soon as an update is available, shows
@@ -274,56 +337,11 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
  */
 function SidebarUpdateButton(): ReactElement | null {
   const { supported, state, install, restart } = useUpdate()
-  if (!supported) {
+  const spec = supported ? updateButtonSpec(state, { install, restart }) : null
+  if (spec === null) {
     return null
   }
-
-  let label: string
-  let tooltip: string
-  let Icon = Download
-  let onClick: (() => void) | undefined
-  let tone = 'text-accent hover:bg-accent-soft hover:text-accent'
-  let pulse = false
-
-  switch (state.phase) {
-    case 'available':
-      label = `Install update ${state.version}`
-      tooltip = `Update available — install Kore ${state.version}`
-      onClick = () => {
-        void install()
-      }
-      break
-    case 'downloading':
-      label =
-        state.percent !== null
-          ? `Downloading update ${state.version} (${state.percent}%)`
-          : `Downloading update ${state.version}`
-      tooltip = label
-      pulse = true
-      break
-    case 'ready':
-      label = `Restart to update to ${state.version}`
-      tooltip = `Kore ${state.version} ready — restart to update`
-      Icon = Refresh
-      onClick = () => {
-        void restart()
-      }
-      break
-    case 'error':
-      if (state.during !== 'install') {
-        return null
-      }
-      label = 'Retry update install'
-      tooltip = 'Update failed — click to retry'
-      tone = 'text-danger hover:bg-surface-hover hover:text-danger'
-      onClick = () => {
-        void install()
-      }
-      break
-    default:
-      return null
-  }
-
+  const iconClass = cn('size-3.5', spec.pulse && 'motion-safe:animate-pulse')
   return (
     <Tooltip>
       <TooltipTrigger
@@ -332,21 +350,25 @@ function SidebarUpdateButton(): ReactElement | null {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={label}
-            disabled={onClick === undefined}
-            onClick={onClick}
+            aria-label={spec.label}
+            disabled={spec.onClick === undefined}
+            onClick={spec.onClick}
             className={cn(
               'size-7 shrink-0 transition-colors duration-100 disabled:opacity-70',
-              tone,
+              spec.tone,
             )}
           >
             <SidebarIconSlot>
-              <Icon aria-hidden className={cn('size-3.5', pulse && 'motion-safe:animate-pulse')} />
+              {spec.icon === 'refresh' ? (
+                <Refresh aria-hidden className={iconClass} />
+              ) : (
+                <Download aria-hidden className={iconClass} />
+              )}
             </SidebarIconSlot>
           </Button>
         }
       />
-      <TooltipContent>{tooltip}</TooltipContent>
+      <TooltipContent>{spec.tooltip}</TooltipContent>
     </Tooltip>
   )
 }

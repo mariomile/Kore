@@ -70,6 +70,9 @@ vi.mock('@/components/shortcuts-dialog', () => ({ ShortcutsDialog: () => null })
 vi.mock('@/components/sidebar/sidebar', () => ({
   Sidebar: () => <div data-testid="workspace-sidebar" />,
 }))
+vi.mock('@/components/sidebar/sidebar-collapsed-rail', () => ({
+  SidebarCollapsedRail: () => <div data-testid="workspace-collapsed-rail-inner" />,
+}))
 vi.mock('@/components/templates/template-create-dialog', () => ({
   TemplateCreateDialog: () => null,
 }))
@@ -185,30 +188,36 @@ describe('WorkspaceContent', () => {
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
     expect(view.getByTestId('daily-context').element().textContent).toBe('2026-07-11')
 
-    // Hiding the left rail leaves the right one standing…
+    // Hiding the left rail swaps it for the collapsed icon strip while leaving
+    // the right rail standing…
     workspaceState.collapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
+    await expect.element(view.getByTestId('workspace-collapsed-rail')).toBeInTheDocument()
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
 
-    // …and vice versa; both hidden still leaves the sunken gutter around
-    // the note pane so the sheet does not go edge-to-edge.
+    // …and vice versa; both hidden swap to their slim icon strips.
     workspaceState.collapsed = false
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+    await expect.element(view.getByTestId('context-collapsed-rail')).toBeInTheDocument()
 
     workspaceState.collapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+    await expect.element(view.getByTestId('workspace-collapsed-rail')).toBeInTheDocument()
+    await expect.element(view.getByTestId('context-collapsed-rail')).toBeInTheDocument()
 
     workspaceState.collapsed = false
     workspaceState.contextCollapsed = false
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+    expect(view.getByTestId('workspace-collapsed-rail').query()).toBeNull()
+    expect(view.getByTestId('context-collapsed-rail').query()).toBeNull()
   })
 
   it('collapsing the context rail hides ordinary note context too', async () => {
@@ -219,6 +228,7 @@ describe('WorkspaceContent', () => {
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+    expect(view.getByTestId('note-context').query()).toBeNull()
   })
 
   it('keeps the context rail available on every route, chat and Graph included', async () => {
@@ -246,19 +256,21 @@ describe('WorkspaceContent', () => {
     expect(setContextRailAvailable).toHaveBeenLastCalledWith(false)
   })
 
-  it('keeps the sunken gutter around the note pane when both rails collapse', async () => {
+  it('keeps balanced sunken gutters beside the collapsed icon rails', async () => {
     workspaceState.collapsed = true
     workspaceState.contextCollapsed = true
     const view = await render(<WorkspaceContent graph={GRAPH} />)
 
-    // The gap is what matters, not which element pays for it: the row holds
-    // the window's right edge open and each pane its own left gutter, so
-    // asserting one element's padding would just pin today's arrangement.
     const card = view.getByTestId('note-pane-gutter').element().firstElementChild
-    const rect = card!.getBoundingClientRect()
-    expect(Math.round(rect.left)).toBe(8)
-    expect(Math.round(window.innerWidth - rect.right)).toBe(8)
-    expect(Math.round(window.innerHeight - rect.bottom)).toBe(8)
+    const leftRail = view.getByTestId('workspace-collapsed-rail').element()
+    const rightRail = view.getByTestId('context-collapsed-rail').element()
+    const cardRect = card!.getBoundingClientRect()
+    const leftRect = leftRail.getBoundingClientRect()
+    const rightRect = rightRail.getBoundingClientRect()
+    expect(Math.round(cardRect.left - leftRect.right)).toBe(8)
+    expect(Math.round(rightRect.left - cardRect.right)).toBe(0)
+    expect(Math.round(window.innerWidth - rightRect.right)).toBe(8)
+    expect(Math.round(window.innerHeight - cardRect.bottom)).toBe(8)
   })
 
   it('reserves the traffic-light band only while the lights occupy the top', async () => {

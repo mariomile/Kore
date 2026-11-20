@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type ReactElement 
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { subscribeBrowserNavigated, type GraphInfo } from '@kore/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
+import { ContextCollapsedRail } from '@/components/context-sidebar/context-collapsed-rail'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { RemoteAccessRunner } from '@/components/remote-access-runner'
@@ -12,6 +13,7 @@ import { VaultCompatNotice } from '@/components/vault-compat/vault-compat-notice
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
 import { Sidebar } from '@/components/sidebar/sidebar'
+import { SidebarCollapsedRail } from '@/components/sidebar/sidebar-collapsed-rail'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
@@ -193,7 +195,15 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
     // business alone. The workspace rail keeps no gutter: it is flat
     // sunken ground, not a card.
     <div className="workspace-frame flex min-h-0 flex-1 pr-2">
-      {collapsed ? undefined : (
+      {collapsed ? (
+        <nav
+          aria-label="Workspace rail"
+          data-testid="workspace-collapsed-rail"
+          className="app-window-chrome flex w-11 shrink-0 flex-col bg-surface-sunken"
+        >
+          <SidebarCollapsedRail graph={graph} context={commandContext} />
+        </nav>
+      ) : (
         <aside
           id="workspace-sidebar"
           aria-label="Workspace"
@@ -233,7 +243,15 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
         </PaneDragContext>
       </DndContext>
 
-      {contextCollapsed ? undefined : (
+      {contextCollapsed ? (
+        <nav
+          aria-label="Context rail"
+          data-testid="context-collapsed-rail"
+          className="app-window-chrome hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
+        >
+          <ContextCollapsedRail showDetails routeKind={route.kind} />
+        </nav>
+      ) : (
         <aside
           id="context-sidebar"
           aria-label="Context"

@@ -34,14 +34,14 @@ import { SidebarItem } from './sidebar-item'
 import { useMemoryKitActive } from '@/hooks/use-memory-kit'
 
 /** What one navigation row needs to render: everything but its position. */
-interface NavRowSpec {
+export interface NavRowSpec {
   label: string
   icon: ReactNode
   commandId: string
   active: boolean
 }
 
-interface NavRowState {
+export interface NavRowState {
   route: Route
   /** A pinned note is open, so its Pinned row owns the highlight. */
   hasActivePinnedNote: boolean
@@ -57,7 +57,10 @@ export const SIDEBAR_NAV_LABELS: Record<SidebarNavItem, string> = {
   memory: 'Memory',
 }
 
-function rowSpec(id: SidebarNavItem, { route, hasActivePinnedNote }: NavRowState): NavRowSpec {
+export function navRowSpec(
+  id: SidebarNavItem,
+  { route, hasActivePinnedNote }: NavRowState,
+): NavRowSpec {
   const label = SIDEBAR_NAV_LABELS[id]
   switch (id) {
     case 'daily':
@@ -137,16 +140,25 @@ interface SidebarNavProps extends NavRowState {
  * rows come back from the "hidden" menu at the foot of the shelves. Order and
  * hidden set persist in the `sidebarNav` / `hiddenSidebarItems` settings.
  */
-export function SidebarNav({ context, route, hasActivePinnedNote }: SidebarNavProps): ReactElement {
-  const { settings, updateSettingsWith } = useSettings()
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+/**
+ * The visible primary navigation items in the user's configured order,
+ * excluding hidden entries and gating `memory` on an active memory kit.
+ */
+export function useVisibleSidebarNav(): SidebarNavItem[] {
+  const { settings } = useSettings()
   const hidden = settings.hiddenSidebarItems
   const memoryKit = useMemoryKitActive()
-  const visible = useMemo(
+  return useMemo(
     () =>
       settings.sidebarNav.filter((id) => !hidden.includes(id) && (id !== 'memory' || memoryKit)),
     [settings.sidebarNav, hidden, memoryKit],
   )
+}
+
+export function SidebarNav({ context, route, hasActivePinnedNote }: SidebarNavProps): ReactElement {
+  const { updateSettingsWith } = useSettings()
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const visible = useVisibleSidebarNav()
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
@@ -209,7 +221,7 @@ export function SidebarNav({ context, route, hasActivePinnedNote }: SidebarNavPr
             <SortableNavRow
               key={id}
               id={id}
-              spec={rowSpec(id, { route, hasActivePinnedNote })}
+              spec={navRowSpec(id, { route, hasActivePinnedNote })}
               onRun={(commandId) => void runCommand(commandId, context)}
               onContextMenu={(event) => {
                 event.preventDefault()

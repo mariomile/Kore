@@ -10,6 +10,7 @@ mod asset_identity;
 pub mod asset_protocol;
 pub mod assets;
 pub mod chat_attachments;
+pub mod folders;
 mod io;
 mod legacy_descriptions;
 mod resolve;
@@ -741,12 +742,12 @@ fn export_write_sync(path: String, contents: String) -> AppResult<()> {
 }
 
 #[cfg(target_os = "ios")]
-fn reveal_asset_path(_app: &tauri::AppHandle, _path: &Path) -> AppResult<()> {
+pub(super) fn reveal_asset_path(_app: &tauri::AppHandle, _path: &Path) -> AppResult<()> {
     Err(AppError::io("revealing files is not supported on iOS"))
 }
 
 #[cfg(not(target_os = "ios"))]
-fn reveal_asset_path(app: &tauri::AppHandle, path: &Path) -> AppResult<()> {
+pub(super) fn reveal_asset_path(app: &tauri::AppHandle, path: &Path) -> AppResult<()> {
     app.opener()
         .reveal_item_in_dir(path)
         .map_err(|err| AppError::io(err.to_string()))
@@ -937,7 +938,7 @@ pub async fn graph_delete<R: tauri::Runtime>(
 /// network volume. The NsFileManager path needs no Automation permission, makes
 /// no sound, and still lands the file in the system Trash for recovery.
 #[cfg(desktop)]
-fn os_trash_delete(abs: &Path) -> AppResult<()> {
+pub(super) fn os_trash_delete(abs: &Path) -> AppResult<()> {
     #[cfg(target_os = "macos")]
     let ctx = {
         use trash::macos::{DeleteMethod, TrashContextExtMacos};
@@ -955,7 +956,7 @@ fn os_trash_delete(abs: &Path) -> AppResult<()> {
 /// with epoch millis — and a counter beyond that — until the name is free
 /// (repeat deletes of `a.md`, even within one millisecond).
 #[cfg(mobile)]
-fn move_to_graph_trash(root: &Path, abs: &Path) -> AppResult<()> {
+pub(super) fn move_to_graph_trash(root: &Path, abs: &Path) -> AppResult<()> {
     let trash_dir = root.join(".kore").join("trash");
     fs::create_dir_all(&trash_dir)?;
     let name = abs

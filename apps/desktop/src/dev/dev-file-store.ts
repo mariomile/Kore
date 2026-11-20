@@ -29,6 +29,14 @@ export interface DevFileStore {
   remove: (path: string) => void
   /** Rename a file; refuses (returns false) when the destination exists. */
   move: (from: string, to: string) => boolean
+  /** List visible folders (derived from files + explicitly created empty folders). */
+  listFolders: () => string[]
+  /** Create an empty folder; returns false when it already exists. */
+  createFolder: (path: string) => boolean
+  /** Move/rename a folder and every file inside it; returns false on missing/collision. */
+  moveFolder: (from: string, to: string) => boolean
+  /** Delete a folder and every file inside it; returns false when missing. */
+  removeFolder: (path: string) => boolean
 }
 
 /** UTF-8 byte length — `FileMeta.size` parity with the Rust listing. */
@@ -43,11 +51,44 @@ function byteSize(contents: string): number {
  */
 export function createDevFileStore(seed: Record<string, string>): DevFileStore {
   const files = new Map<string, DevFile>()
+  const emptyFolders = new Set<string>()
   const seedEntries = Object.entries(seed)
   for (const [position, [path, contents]] of seedEntries.entries()) {
     // Older seeds get older stamps, one minute apart, ending "now".
     const modifiedMs = Date.now() - (seedEntries.length - position) * 60_000
     files.set(path, { contents, modifiedMs })
+  }
+
+  const allFolders = (): Set<string> => {
+    const folders = new Set<string>()
+    const addAncestors = (folderPath: string): void => {
+      const parts = folderPath.split('/').filter((part) => part !== '')
+      if (parts.length === 0) {
+        return
+      }
+      if (
+        parts[0] === 'assets' ||
+        parts[0] === 'audio-memos' ||
+        parts.some((part) => part.startsWith('.'))
+      ) {
+        return
+      }
+      let current = ''
+      for (const part of parts) {
+        current = current === '' ? part : `${current}/${part}`
+        folders.add(current)
+      }
+    }
+    for (const dir of emptyFolders) {
+      addAncestors(dir)
+    }
+    for (const filePath of files.keys()) {
+      const slash = filePath.lastIndexOf('/')
+      if (slash > 0) {
+        addAncestors(filePath.slice(0, slash))
+      }
+    }
+    return folders
   }
 
   const toMeta = ([path, file]: [string, DevFile]): FileMeta => ({
@@ -87,6 +128,74 @@ export function createDevFileStore(seed: Record<string, string>): DevFileStore {
       }
       files.delete(from)
       files.set(to, file)
+      return true
+    },
+    listFolders: () => [...allFolders()].sort(),
+    createFolder: (path) => {
+      if (allFolders().has(path)) {
+        return false
+      }
+      emptyFolders.add(path)
+      return true
+    },
+    moveFolder: (from, to) => {
+      const folders = allFolders()
+      if (!folders.has(from) || to === from || to.startsWith(`${from}/`)) {
+        return false
+      }
+      if (folders.has(to) && from.toLowerCase() !== to.toLowerCase()) {
+        return false
+      }
+      const prefix = `${from}/`
+      const movedFiles: [string, DevFile][] = []
+      for (const [path, file] of files) {
+        if (path.startsWith(prefix)) {
+          movedFiles.push([`${to}/${path.slice(prefix.length)}`, file])
+        }
+      }
+      for (const [oldPath] of files) {
+        if (oldPath.startsWith(prefix)) {
+          files.delete(oldPath)
+        }
+      }
+      for (const [path, file] of movedFiles) {
+        files.set(path, file)
+      }
+      const movedDirs: string[] = []
+      for (const dir of emptyFolders) {
+        if (dir === from || dir.startsWith(prefix)) {
+          movedDirs.push(dir === from ? to : `${to}/${dir.slice(prefix.length)}`)
+        }
+      }
+      for (const dir of emptyFolders) {
+        if (dir === from || dir.startsWith(prefix)) {
+          emptyFolders.delete(dir)
+        }
+      }
+      for (const dir of movedDirs) {
+        emptyFolders.add(dir)
+      }
+      if (movedFiles.length === 0) {
+        emptyFolders.add(to)
+      }
+      return true
+    },
+    removeFolder: (path) => {
+      const folders = allFolders()
+      if (!folders.has(path)) {
+        return false
+      }
+      const prefix = `${path}/`
+      for (const filePath of files.keys()) {
+        if (filePath.startsWith(prefix)) {
+          files.delete(filePath)
+        }
+      }
+      for (const dir of emptyFolders) {
+        if (dir === path || dir.startsWith(prefix)) {
+          emptyFolders.delete(dir)
+        }
+      }
       return true
     },
   }

@@ -8,6 +8,7 @@ export {
   applyIndexedNotes,
   removeFromIndex,
   removeFromIndexBatch,
+  moveIndexedRows,
   moveNoteIndexed,
   clearIndex,
   setIndexMeta,
@@ -236,11 +237,14 @@ export {
 } from './tag-tree'
 export {
   buildFolderTree,
+  collectFolderNotePaths,
   getFolderTree,
   findFolder,
   folderTreeAffectedBy,
   folderDisplayName,
   hasOwnFolders,
+  isProtectedFolder,
+  validateFolderName,
   type FolderTreeFolder,
   type FolderTreeNote,
 } from './folder-tree'

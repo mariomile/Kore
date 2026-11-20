@@ -105,7 +105,7 @@ export function NoteListContextMenu({ children }: NoteListContextMenuProps): Rea
  * date and the app recreates them, so trashing one is offered nowhere (the
  * delete helper refuses it too — this is the UI-layer half of that pair).
  */
-function NoteContextMenuItems({ path }: { path: string }): ReactElement {
+export function NoteContextMenuItems({ path }: { path: string }): ReactElement {
   const { graph } = useGraph()
   const isPinned = usePinnedNotes().some((note) => note.path === path)
   const isPrivate = useNoteRow(path)?.isPrivate ?? false

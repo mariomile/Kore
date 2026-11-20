@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Folders: right-click context menu on Folders (create note/subfolder, rename, move, reveal, copy path, trash) with disk/session/link consistency and bulk-move path-link rewriting (#581).
+- Sidebars: collapsing either sidebar keeps a slim 44px icon rail with centered toggles and open-only right-rail tabs (#580).
+- Performance: capped live editors during daily scroll, zero redundant daily queries, 120ms static dwell gate, bounded link previews, and 4-connection SQLite WAL read pool (#582).
+- UI & updates: opaque sticky table headers, sidebar footer download button when an update is available, and per-vault bounded inline note history (#579).
 - Rename: retitling a note updates every link; Obsidian vaults rename the file
   too (#576).
 - iPhone: new notes from + always land and their cards open them (#573).

@@ -6,6 +6,7 @@ import type { NoteListEntry, TagType } from '@kore/core'
 import { AllNotesBulkBar } from './all-notes-bulk-bar'
 
 const writeNote = vi.hoisted(() => vi.fn(async () => {}))
+const getPathLinkSources = vi.hoisted(() => vi.fn(async () => []))
 const readNoteSource = vi.hoisted(() => vi.fn(async () => 'Some prose.\n'))
 const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => {}))
@@ -18,6 +19,7 @@ const startOperation = vi.hoisted(() =>
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
+  getPathLinkSources,
   writeNote,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ readNoteSource, commitNoteFrontmatter }))

@@ -4,6 +4,7 @@ import { addFrontmatterTag, writeNote } from '@kore/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'
+import { rewriteMovedNotePathLinks } from '@/lib/notes/rewrite-moved-path-links'
 import { useGraph } from '@/providers/graph-provider'
 import { runNoteBatch } from './note-batch'
 
@@ -137,6 +138,7 @@ export function useNoteBulkActions(): NoteBulkActions {
           }
           const to = target === '' ? basename(path) : `${target}/${basename(path)}`
           await moveNoteCarryingSession(path, to, generation)
+          await rewriteMovedNotePathLinks([{ from: path, to }], generation)
           return 'changed'
         },
       )

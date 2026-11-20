@@ -2,19 +2,16 @@ import { join } from '@tauri-apps/api/path'
 import {
   deleteFolder,
   errorMessage,
-  getPathLinkSources,
   isDaily,
   isProtectedFolder,
   moveFolder,
   moveIndexedRows,
-  readNote,
   removeFromIndexBatch,
-  rewritePathLinksForMove,
-  writeNote,
 } from '@kore/core'
 import type { NoteSession } from '@/editor/note-session'
 import { openSession, retargetOpenDocument } from '@/editor/open-documents'
 import { emitNoteMoved } from '@/lib/note-moves'
+import { rewriteMovedNotePathLinks } from '@/lib/notes/rewrite-moved-path-links'
 import { startOperation } from '@/lib/operations'
 import { invalidateIndexQueries } from '@/lib/query-client'
 import type { Route } from '@/routing/route'
@@ -89,23 +86,7 @@ export async function moveFolderCarryingSessions({
 
   // Rewrite explicit `[[OldFolder/...]]` links after index rows moved so
   // intra-folder links resolve to their new source paths.
-  const io = {
-    pathLinkSources: getPathLinkSources,
-    read: (path: string) => readNote(path, generation),
-    write: async (path: string, content: string) => {
-      if (openSession(path)?.isDirty() === true) {
-        return
-      }
-      await writeNote(path, content, generation)
-    },
-  }
-  for (const { from: oldPath, to: newPath } of movedNotes) {
-    try {
-      await rewritePathLinksForMove(oldPath, newPath, io)
-    } catch (cause) {
-      console.warn(`folder move: path-link rewrite skipped for ${oldPath}:`, cause)
-    }
-  }
+  await rewriteMovedNotePathLinks(movedNotes, generation)
 
   for (const { from: oldPath, to: newPath } of movedNotes) {
     emitNoteMoved(oldPath, newPath)

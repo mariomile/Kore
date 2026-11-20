@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactElement } from 'react'
+import { useMemo, useState, type FormEvent, type ReactElement, type ReactNode } from 'react'
 import {
   collectFolderNotePaths,
   createFolder,
@@ -78,6 +78,99 @@ function availableMoveTargets(tree: FolderTreeFolder, excludePath: string): stri
   return out
 }
 
+interface FolderTextDialogProps {
+  title: string
+  description: ReactNode
+  inputLabel: string
+  placeholder?: string
+  initialValue?: string
+  submitLabel: string
+  busyLabel: string
+  validate?: (value: string) => string | null
+  onSubmit: (trimmedValue: string) => Promise<void>
+  onClose: () => void
+}
+
+/** Shared single-input modal backing New note, New subfolder, and Rename folder. */
+function FolderTextDialog({
+  title,
+  description,
+  inputLabel,
+  placeholder,
+  initialValue = '',
+  submitLabel,
+  busyLabel,
+  validate,
+  onSubmit,
+  onClose,
+}: FolderTextDialogProps): ReactElement {
+  const [value, setValue] = useState(initialValue)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const handleSubmit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault()
+    if (busy) {
+      return
+    }
+    const problem = validate?.(value) ?? null
+    if (problem !== null) {
+      setError(problem)
+      return
+    }
+    const trimmed = value.trim()
+    if (trimmed === '') {
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await onSubmit(trimmed)
+      onClose()
+    } catch (cause) {
+      setError(errorMessage(cause))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
+          <Input
+            autoFocus
+            aria-label={inputLabel}
+            placeholder={placeholder}
+            value={value}
+            disabled={busy}
+            onChange={(event) => {
+              setValue(event.target.value)
+              setError(null)
+            }}
+          />
+          {error !== null ? (
+            <p role="alert" className="text-xs text-danger">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>
+              Cancel
+            </DialogClose>
+            <Button type="submit" disabled={value.trim() === '' || busy}>
+              {busy ? busyLabel : submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /**
  * Dialogs backing the Folders sidebar context menu: New note, New subfolder,
  * Rename folder, Move folder, and Move to Trash. Each operates on the real
@@ -90,303 +183,120 @@ export function SidebarFolderDialogs({
   onClose,
   onEnsureExpanded,
 }: SidebarFolderDialogsProps): ReactElement | null {
+  const { graph, indexGeneration } = useGraph()
+  const { route, navigate } = useRouter()
+
   if (dialog === null) {
     return null
   }
-  // Keyed on `(kind, folderPath)` so each open starts from a fresh draft.
-  const key = `${dialog.kind}:${dialog.folderPath}`
+  const { folderPath } = dialog
+  const folderName = folderDisplayName(folderPath)
+  const key = `${dialog.kind}:${folderPath}`
+
   switch (dialog.kind) {
     case 'newNote':
       return (
-        <NewNoteInFolderDialog
+        <FolderTextDialog
           key={key}
-          folderPath={dialog.folderPath}
+          title={`New note in ${folderName}`}
+          description={
+            <>
+              Creates a Markdown note directly inside <code>{folderPath}</code>.
+            </>
+          }
+          inputLabel="Note title"
+          placeholder="Note title"
+          submitLabel="Create"
+          busyLabel="Creating…"
           onClose={onClose}
-          onEnsureExpanded={onEnsureExpanded}
+          onSubmit={async (title) => {
+            if (graph === null) {
+              return
+            }
+            const path = await createNoteWithSource(
+              title,
+              newNoteSource(title),
+              graph.generation,
+              folderPath,
+            )
+            onEnsureExpanded(folderPath)
+            invalidateIndexQueries()
+            navigate(routeForPath(path))
+          }}
         />
       )
     case 'newSubfolder':
       return (
-        <NewSubfolderDialog
+        <FolderTextDialog
           key={key}
-          folderPath={dialog.folderPath}
+          title={`New subfolder in ${folderName}`}
+          description={
+            <>
+              Creates a subfolder inside <code>{folderPath}</code> on disk.
+            </>
+          }
+          inputLabel="Subfolder name"
+          placeholder="Folder name"
+          submitLabel="Create"
+          busyLabel="Creating…"
+          validate={validateFolderName}
           onClose={onClose}
-          onEnsureExpanded={onEnsureExpanded}
+          onSubmit={async (name) => {
+            if (graph === null) {
+              return
+            }
+            const nextPath = `${folderPath}/${name}`
+            await createFolder(nextPath, graph.generation)
+            onEnsureExpanded(folderPath)
+            invalidateIndexQueries()
+            startOperation(`Created ${folderDisplayName(nextPath)}`).done()
+          }}
         />
       )
     case 'rename':
       return (
-        <RenameFolderDialog
+        <FolderTextDialog
           key={key}
-          folderPath={dialog.folderPath}
-          tree={tree}
+          title="Rename folder"
+          description={
+            <>
+              Renames <code>{folderPath}</code> on disk and updates open notes and path links.
+            </>
+          }
+          inputLabel="Folder name"
+          initialValue={folderName}
+          submitLabel="Rename"
+          busyLabel="Renaming…"
+          validate={validateFolderName}
           onClose={onClose}
+          onSubmit={async (nextName) => {
+            if (graph === null || nextName === folderName) {
+              return
+            }
+            const parent = parentOf(folderPath)
+            const nextPath = parent === '' ? nextName : `${parent}/${nextName}`
+            const folderNode = findFolder(tree, folderPath)
+            const notePaths = folderNode === null ? [] : collectFolderNotePaths(folderNode)
+            await moveFolderCarryingSessions({
+              from: folderPath,
+              to: nextPath,
+              notePaths,
+              generation: graph.generation,
+              indexGeneration,
+            })
+            const nextRoute = retargetFolderRoute(route, folderPath, nextPath)
+            if (nextRoute !== null) {
+              navigate(nextRoute)
+            }
+            startOperation(`Renamed folder to ${nextName}`).done()
+          }}
         />
       )
     case 'move':
-      return (
-        <MoveFolderDialog key={key} folderPath={dialog.folderPath} tree={tree} onClose={onClose} />
-      )
+      return <MoveFolderDialog key={key} folderPath={folderPath} tree={tree} onClose={onClose} />
     case 'trash':
-      return (
-        <TrashFolderDialog key={key} folderPath={dialog.folderPath} tree={tree} onClose={onClose} />
-      )
+      return <TrashFolderDialog key={key} folderPath={folderPath} tree={tree} onClose={onClose} />
   }
-}
-
-function NewNoteInFolderDialog({
-  folderPath,
-  onClose,
-  onEnsureExpanded,
-}: {
-  folderPath: string
-  onClose: () => void
-  onEnsureExpanded: (path: string) => void
-}): ReactElement {
-  const { graph } = useGraph()
-  const { navigate } = useRouter()
-  const [title, setTitle] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    const trimmed = title.trim()
-    if (trimmed === '' || busy || graph === null) {
-      return
-    }
-    setBusy(true)
-    setError(null)
-    try {
-      const path = await createNoteWithSource(
-        trimmed,
-        newNoteSource(trimmed),
-        graph.generation,
-        folderPath,
-      )
-      onEnsureExpanded(folderPath)
-      invalidateIndexQueries()
-      onClose()
-      navigate(routeForPath(path))
-    } catch (cause) {
-      setError(errorMessage(cause))
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>New note in {folderDisplayName(folderPath)}</DialogTitle>
-          <DialogDescription>
-            Creates a Markdown note directly inside <code>{folderPath}</code>.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
-          <Input
-            autoFocus
-            aria-label="Note title"
-            placeholder="Note title"
-            value={title}
-            disabled={busy}
-            onChange={(event) => {
-              setTitle(event.target.value)
-              setError(null)
-            }}
-          />
-          {error !== null ? (
-            <p role="alert" className="text-xs text-danger">
-              {error}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={title.trim() === '' || busy}>
-              {busy ? 'Creating…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function NewSubfolderDialog({
-  folderPath,
-  onClose,
-  onEnsureExpanded,
-}: {
-  folderPath: string
-  onClose: () => void
-  onEnsureExpanded: (path: string) => void
-}): ReactElement {
-  const { graph } = useGraph()
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    if (busy || graph === null) {
-      return
-    }
-    const problem = validateFolderName(name)
-    if (problem !== null) {
-      setError(problem)
-      return
-    }
-    const nextPath = `${folderPath}/${name.trim()}`
-    setBusy(true)
-    setError(null)
-    try {
-      await createFolder(nextPath, graph.generation)
-      onEnsureExpanded(folderPath)
-      invalidateIndexQueries()
-      startOperation(`Created ${folderDisplayName(nextPath)}`).done()
-      onClose()
-    } catch (cause) {
-      setError(errorMessage(cause))
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>New subfolder in {folderDisplayName(folderPath)}</DialogTitle>
-          <DialogDescription>
-            Creates a subfolder inside <code>{folderPath}</code> on disk.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
-          <Input
-            autoFocus
-            aria-label="Subfolder name"
-            placeholder="Folder name"
-            value={name}
-            disabled={busy}
-            onChange={(event) => {
-              setName(event.target.value)
-              setError(null)
-            }}
-          />
-          {error !== null ? (
-            <p role="alert" className="text-xs text-danger">
-              {error}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={name.trim() === '' || busy}>
-              {busy ? 'Creating…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function RenameFolderDialog({
-  folderPath,
-  tree,
-  onClose,
-}: {
-  folderPath: string
-  tree: FolderTreeFolder
-  onClose: () => void
-}): ReactElement {
-  const { graph, indexGeneration } = useGraph()
-  const { route, navigate } = useRouter()
-  const currentName = folderDisplayName(folderPath)
-  const [name, setName] = useState(currentName)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    if (busy || graph === null) {
-      return
-    }
-    const problem = validateFolderName(name)
-    if (problem !== null) {
-      setError(problem)
-      return
-    }
-    const trimmed = name.trim()
-    if (trimmed === currentName) {
-      onClose()
-      return
-    }
-    const parent = parentOf(folderPath)
-    const nextPath = parent === '' ? trimmed : `${parent}/${trimmed}`
-    const folderNode = findFolder(tree, folderPath)
-    const notePaths = folderNode === null ? [] : collectFolderNotePaths(folderNode)
-    setBusy(true)
-    setError(null)
-    try {
-      await moveFolderCarryingSessions({
-        from: folderPath,
-        to: nextPath,
-        notePaths,
-        generation: graph.generation,
-        indexGeneration,
-      })
-      const nextRoute = retargetFolderRoute(route, folderPath, nextPath)
-      if (nextRoute !== null) {
-        navigate(nextRoute)
-      }
-      startOperation(`Renamed folder to ${trimmed}`).done()
-      onClose()
-    } catch (cause) {
-      setError(errorMessage(cause))
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Rename folder</DialogTitle>
-          <DialogDescription>
-            Renames <code>{folderPath}</code> on disk and updates open notes and path links.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
-          <Input
-            autoFocus
-            aria-label="Folder name"
-            value={name}
-            disabled={busy}
-            onChange={(event) => {
-              setName(event.target.value)
-              setError(null)
-            }}
-          />
-          {error !== null ? (
-            <p role="alert" className="text-xs text-danger">
-              {error}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={name.trim() === '' || busy}>
-              {busy ? 'Renaming…' : 'Rename'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
 }
 
 function MoveFolderDialog({

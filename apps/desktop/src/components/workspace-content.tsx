@@ -25,6 +25,7 @@ import { dropTab, resolveTabDrop } from '@/lib/tab-drop'
 import { tabDropCollision } from '@/lib/tab-drop-collision'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
+import { cn } from '@/lib/utils'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { usePanes } from '@/providers/panes-provider'
@@ -194,7 +195,12 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
     // the `lg` breakpoint the context rail appears at stays the rail's
     // business alone. The workspace rail keeps no gutter: it is flat
     // sunken ground, not a card.
-    <div className="workspace-frame flex min-h-0 flex-1 pr-2">
+    <div
+      className={cn(
+        'workspace-frame flex min-h-0 flex-1',
+        contextCollapsed ? 'pr-2 lg:pr-0' : 'pr-2',
+      )}
+    >
       {collapsed ? (
         <nav
           aria-label="Workspace rail"
@@ -232,8 +238,10 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
                     <WorkspacePane
                       pane={pane}
                       commandContext={commandContext}
-                      showSidebarToggle={columnIndex === 0 && rowIndex === 0}
-                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                      showSidebarToggle={!collapsed && columnIndex === 0 && rowIndex === 0}
+                      showContextToggle={
+                        !contextCollapsed && columnIndex === columns.length - 1 && rowIndex === 0
+                      }
                     />
                   </Fragment>
                 ))}
@@ -247,7 +255,7 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
         <nav
           aria-label="Context rail"
           data-testid="context-collapsed-rail"
-          className="app-window-chrome hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
+          className="app-window-chrome ml-2 hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
         >
           <ContextCollapsedRail showDetails routeKind={route.kind} />
         </nav>

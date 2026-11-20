@@ -74,6 +74,17 @@ describe('SidebarCollapsedRail', () => {
       .toHaveAttribute('aria-current', 'page')
     expect(view.getByRole('button', { name: 'Graph' }).query()).toBeNull()
 
+    // Every icon button on the rail shares one horizontal center axis.
+    const buttons = [...view.container.querySelectorAll('button')]
+    const centers = buttons.map((button) => {
+      const rect = button.getBoundingClientRect()
+      return Math.round((rect.left + rect.right) * 2) / 4
+    })
+    expect(new Set(centers).size).toBe(1)
+
+    await view.getByRole('button', { name: 'Toggle sidebar' }).click()
+    expect(toggleSidebar).toHaveBeenCalledTimes(1)
+
     await view.getByRole('button', { name: 'Search' }).click()
     expect(openPalette).toHaveBeenCalledTimes(1)
 
@@ -81,6 +92,6 @@ describe('SidebarCollapsedRail', () => {
     expect(navigate).toHaveBeenCalledWith({ kind: 'tasks' })
 
     await view.getByRole('button', { name: 'Expand sidebar (Notes)' }).click()
-    expect(toggleSidebar).toHaveBeenCalledTimes(1)
+    expect(toggleSidebar).toHaveBeenCalledTimes(2)
   })
 })

@@ -267,9 +267,10 @@ describe('WorkspaceContent', () => {
     const cardRect = card!.getBoundingClientRect()
     const leftRect = leftRail.getBoundingClientRect()
     const rightRect = rightRail.getBoundingClientRect()
+    expect(Math.round(leftRect.left)).toBe(0)
     expect(Math.round(cardRect.left - leftRect.right)).toBe(8)
-    expect(Math.round(rightRect.left - cardRect.right)).toBe(0)
-    expect(Math.round(window.innerWidth - rightRect.right)).toBe(8)
+    expect(Math.round(rightRect.left - cardRect.right)).toBe(8)
+    expect(Math.round(window.innerWidth - rightRect.right)).toBe(0)
     expect(Math.round(window.innerHeight - cardRect.bottom)).toBe(8)
   })
 

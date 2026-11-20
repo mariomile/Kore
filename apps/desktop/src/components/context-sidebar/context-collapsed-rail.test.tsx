@@ -40,15 +40,19 @@ describe('ContextCollapsedRail', () => {
       </div>,
     )
 
+    await expect.element(view.getByRole('button', { name: 'Toggle context panel' })).toBeVisible()
     await expect.element(view.getByRole('button', { name: 'Open Details' })).toBeVisible()
     await expect.element(view.getByRole('button', { name: 'Open Chat' })).toBeVisible()
     await expect.element(view.getByRole('button', { name: 'Open Terminal' })).toBeVisible()
     expect(view.getByRole('button', { name: 'Open Calendar' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'Open Browser' }).query()).toBeNull()
 
+    await view.getByRole('button', { name: 'Toggle context panel' }).click()
+    expect(toggleContextSidebar).toHaveBeenCalledTimes(1)
+
     await view.getByRole('button', { name: 'Open Terminal' }).click()
     expect(openContextPanel).toHaveBeenCalledWith('terminal')
-    expect(toggleContextSidebar).toHaveBeenCalledTimes(1)
+    expect(toggleContextSidebar).toHaveBeenCalledTimes(2)
   })
 
   it('opens an unadded panel from the + menu and expands the rail onto it', async () => {

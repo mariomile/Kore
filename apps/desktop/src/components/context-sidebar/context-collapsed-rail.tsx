@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
-import { Plus } from '@/components/icons'
+import { PanelRight, Plus } from '@/components/icons'
+import { ShortcutKeys } from '@/components/shortcut-keys'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { keybindingFor } from '@/lib/commands/app-commands'
 import { haptic } from '@/lib/haptics'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -20,14 +22,17 @@ interface ContextCollapsedRailProps {
   routeKind?: Route['kind'] | undefined
 }
 
+const TOGGLE_CONTEXT_BINDING = keybindingFor('contextSidebar.toggle')
+
 const ICON_BUTTON_CLASS =
   'flex size-8 items-center justify-center rounded-lg text-text-muted transition-colors duration-100 hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
 
 /**
- * The collapsed right context rail: shows only the icons of the panels
- * currently open on the rail (Details plus any tabs added via "+"), along with
- * the "+" menu to open another. Clicking any icon expands the rail straight
- * onto that panel while keeping every heavy panel unmounted while collapsed.
+ * The collapsed right context rail: its top band owns the expand toggle, and
+ * below it sit only the icons of panels currently open on the rail (Details
+ * plus any tabs added via "+"), along with the "+" menu to open another.
+ * Clicking any icon expands the rail straight onto that panel while keeping
+ * every heavy panel unmounted while collapsed.
  */
 export function ContextCollapsedRail({
   showDetails,
@@ -49,10 +54,37 @@ export function ContextCollapsedRail({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col items-center pl-2">
-      <div data-tauri-drag-region className="h-11 w-full flex-none" />
+    <div className="flex h-full min-h-0 w-full flex-col items-center">
+      <div
+        data-tauri-drag-region
+        className="flex h-11 w-full flex-none items-center justify-center"
+      >
+        <div className="window-drag-control flex items-center justify-center">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Toggle context panel"
+                  aria-pressed={false}
+                  onClick={toggleContextSidebar}
+                  className={ICON_BUTTON_CLASS}
+                >
+                  <PanelRight aria-hidden className="size-3.5" />
+                </button>
+              }
+            />
+            <TooltipContent side="left">
+              Expand context panel{' '}
+              {TOGGLE_CONTEXT_BINDING !== null ? (
+                <ShortcutKeys binding={TOGGLE_CONTEXT_BINDING} />
+              ) : null}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
 
-      <div className="mt-3 flex flex-col items-center gap-1">
+      <div className="mt-3 flex w-full flex-col items-center gap-1">
         {segments.map(({ id, label, Glyph }) => {
           const isLastActive = active?.id === id
           return (

@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import type { GraphInfo } from '@kore/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { GraphSwatch } from '@/components/graph-swatch'
-import { Chat, Settings } from '@/components/icons'
+import { Chat, PanelLeft, Search, Settings } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -17,7 +17,6 @@ import { useSidebar } from '@/providers/sidebar-provider'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { navRowSpec, useVisibleSidebarNav } from './sidebar-nav'
-import { SidebarSearch } from './sidebar-search'
 
 interface SidebarCollapsedRailProps {
   graph: GraphInfo
@@ -25,6 +24,7 @@ interface SidebarCollapsedRailProps {
   context: CommandContext
 }
 
+const PALETTE_BINDING = keybindingFor('palette.open')
 const CHAT_BINDING = keybindingFor('chat.open')
 const SETTINGS_BINDING = keybindingFor('settings.open')
 const TOGGLE_SIDEBAR_BINDING = keybindingFor('sidebar.toggle')
@@ -35,9 +35,10 @@ const ICON_BUTTON_CLASS =
 const ACTIVE_ICON_CLASS = 'bg-surface-active text-text dark:bg-surface-hover dark:text-accent'
 
 /**
- * The collapsed left workspace rail: a slim vertical strip that keeps primary
- * navigation, search, chat, audio capture, vault expand, and settings one click
- * away without spending width on the full shelf tree.
+ * The collapsed left workspace rail: a slim vertical strip whose top band
+ * owns the sidebar expand toggle, followed by search, primary navigation,
+ * chat, audio capture, vault swatch, and settings — all centered on one
+ * vertical axis.
  */
 export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailProps): ReactElement {
   const { route } = useRouter()
@@ -53,17 +54,55 @@ export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailPro
   const settingsActive = route.kind === 'settings'
 
   return (
-    <div className="flex h-full min-h-0 flex-col items-center">
+    <div className="flex h-full min-h-0 w-full flex-col items-center">
       <div
         data-tauri-drag-region
         className="flex h-11 w-full flex-none items-center justify-center"
       >
         <div className="window-drag-control flex items-center justify-center">
-          <SidebarSearch onOpen={() => context.openPalette()} />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Toggle sidebar"
+                  aria-pressed={false}
+                  onClick={toggleSidebar}
+                  className={ICON_BUTTON_CLASS}
+                >
+                  <PanelLeft aria-hidden className="size-3.5" />
+                </button>
+              }
+            />
+            <TooltipContent side="right">
+              Expand sidebar{' '}
+              {TOGGLE_SIDEBAR_BINDING !== null ? (
+                <ShortcutKeys binding={TOGGLE_SIDEBAR_BINDING} />
+              ) : null}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-1 flex-col items-center gap-1 overflow-y-auto px-1.5">
+      <div className="mt-3 flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label="Search"
+                onClick={() => context.openPalette()}
+                className={ICON_BUTTON_CLASS}
+              >
+                <Search aria-hidden className="size-3.5" />
+              </button>
+            }
+          />
+          <TooltipContent side="right">
+            Search {PALETTE_BINDING !== null ? <ShortcutKeys binding={PALETTE_BINDING} /> : null}
+          </TooltipContent>
+        </Tooltip>
+
         {visibleNav.map((id) => {
           const spec = navRowSpec(id, { route, hasActivePinnedNote })
           const binding = keybindingFor(spec.commandId)
@@ -112,10 +151,12 @@ export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailPro
           </TooltipContent>
         </Tooltip>
 
-        <AudioMemoButton />
+        <div className="flex size-8 items-center justify-center">
+          <AudioMemoButton />
+        </div>
       </div>
 
-      <div className="mt-auto flex flex-none flex-col items-center gap-1 py-3">
+      <div className="mt-auto flex w-full flex-none flex-col items-center gap-1 py-3">
         <Tooltip>
           <TooltipTrigger
             render={
@@ -127,7 +168,7 @@ export function SidebarCollapsedRail({ graph, context }: SidebarCollapsedRailPro
                 onClick={toggleSidebar}
                 className="size-8 rounded-lg hover:bg-surface-hover"
               >
-                <GraphSwatch color={colorFor(graph.root)} className="size-4.5 rounded-sm" />
+                <GraphSwatch color={colorFor(graph.root)} className="size-4 rounded-sm" />
               </Button>
             }
           />

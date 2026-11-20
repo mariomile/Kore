@@ -151,18 +151,44 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
 /** One in-flight or settled lookup per URL, for the life of the session. */
 const previews = new Map<string, Promise<LinkPreview | null>>()
 
+/** Bound concurrent outbound fetches + DOMParser parses during link-heavy scroll. */
+const MAX_CONCURRENT_PREVIEWS = 3
+let activePreviewFetches = 0
+const previewQueue: (() => void)[] = []
+
+function enqueuePreviewFetch<T>(run: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const start = (): void => {
+      activePreviewFetches += 1
+      run()
+        .then(resolve, reject)
+        .finally(() => {
+          activePreviewFetches -= 1
+          previewQueue.shift()?.()
+        })
+    }
+    if (activePreviewFetches < MAX_CONCURRENT_PREVIEWS) {
+      start()
+    } else {
+      previewQueue.push(start)
+    }
+  })
+}
+
 /**
  * The preview for one link, or `null` when the page cannot describe itself
  * (unreachable, blocked, or untitled). Every outcome — the failures included —
  * is remembered per URL for the session, so a note full of the same link
- * fetches once and a dead host is not retried on every keystroke.
+ * fetches once and a dead host is not retried on every keystroke. Concurrent
+ * fetches are capped so scrolling through link-heavy daily notes never saturates
+ * IPC or main-thread HTML parsing.
  */
 export function loadLinkPreview(url: string): Promise<LinkPreview | null> {
   const cached = previews.get(url)
   if (cached !== undefined) {
     return cached
   }
-  const pending = fetchLinkPreview(url).catch(() => null)
+  const pending = enqueuePreviewFetch(() => fetchLinkPreview(url)).catch(() => null)
   previews.set(url, pending)
   return pending
 }

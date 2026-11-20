@@ -532,7 +532,7 @@ export function NotePaneComponent({
           <>
             <NoteChildrenPanel key={path} path={path} />
             <BacklinksPanel path={path} />
-            <UnlinkedMentionsPanel path={path} />
+            {!dailyNote ? <UnlinkedMentionsPanel path={path} /> : null}
           </>
         ) : null}
       </div>
@@ -551,7 +551,11 @@ export function NotePaneComponent({
   return (
     <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
-        {weeklyWeek !== null ? <WeekHeader week={weeklyWeek} /> : <NoteBreadcrumb path={path} />}
+        {weeklyWeek !== null ? (
+          <WeekHeader week={weeklyWeek} />
+        ) : !dailyNote ? (
+          <NoteBreadcrumb path={path} />
+        ) : null}
 
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
@@ -729,7 +733,7 @@ export function NotePaneComponent({
         <div className={gutterClassName}>
           <NoteChildrenPanel key={path} path={path} />
           <BacklinksPanel path={path} />
-          <UnlinkedMentionsPanel path={path} />
+          {!dailyNote ? <UnlinkedMentionsPanel path={path} /> : null}
         </div>
       ) : null}
 

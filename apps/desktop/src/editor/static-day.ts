@@ -27,6 +27,28 @@ import { checkRoundTrip } from './roundtrip'
  *
  * Returns the body to draw, or null when the day needs its editor.
  */
+/** Bounded LRU cache of `checkRoundTrip(body) !== 'lossy'` to avoid re-parsing on scroll revisits. */
+const ROUNDTRIP_CACHE_CAP = 128
+const roundTripCache = new Map<string, boolean>()
+
+function isLosslessBody(body: string): boolean {
+  const cached = roundTripCache.get(body)
+  if (cached !== undefined) {
+    roundTripCache.delete(body)
+    roundTripCache.set(body, cached)
+    return cached
+  }
+  const ok = checkRoundTrip(body) !== 'lossy'
+  roundTripCache.set(body, ok)
+  if (roundTripCache.size > ROUNDTRIP_CACHE_CAP) {
+    const oldest = roundTripCache.keys().next().value
+    if (oldest !== undefined) {
+      roundTripCache.delete(oldest)
+    }
+  }
+  return ok
+}
+
 export function staticDayBody(source: string): string | null {
   const { raw, body } = splitFrontmatter(source)
   if (raw !== null) {
@@ -45,7 +67,7 @@ export function staticDayBody(source: string): string | null {
     return null
   }
   // The same gate the session applies before it lets the editor own a note.
-  if (body.trim() !== '' && checkRoundTrip(body) === 'lossy') {
+  if (body.trim() !== '' && !isLosslessBody(body)) {
     return null
   }
   return body

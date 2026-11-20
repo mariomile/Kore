@@ -149,7 +149,10 @@ function setPointerOverRoot(view: EditorView, over: boolean): void {
  */
 function markPointerOverRoot(view: EditorView, event: MouseEvent): boolean {
   const target = zoomTarget(view.state)
-  if (target?.kind !== 'list' || !(event.target instanceof Element)) {
+  if (target?.kind !== 'list') {
+    return false
+  }
+  if (!(event.target instanceof Element)) {
     setPointerOverRoot(view, false)
     return false
   }

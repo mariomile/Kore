@@ -49,8 +49,13 @@ export function installSyncTriggers(syncNow: () => Promise<void>): () => void {
   }
 }
 
-/** Resume events inside this window collapse into one cycle. */
-export const RESUME_DEDUPE_MS = 1500
+/**
+ * Resume events inside this window collapse into one cycle. Thirty seconds
+ * prevents rapid window switching or dismissing an OS dialog from kicking off
+ * repeated multi-second git commit/fetch runs on large vaults while still
+ * pulling promptly when returning after a break.
+ */
+export const RESUME_DEDUPE_MS = 30_000
 
 /** How often an app in the foreground checks for other devices' changes. */
 export const FOREGROUND_PULL_MS = 2 * 60_000

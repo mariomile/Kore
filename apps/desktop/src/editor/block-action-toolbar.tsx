@@ -394,11 +394,16 @@ export function BlockActionToolbar({
     handleMenu === null ? null : { from: handleMenu.state.from, to: handleMenu.state.to }
 
   useLayoutEffect(() => {
-    let observer: MutationObserver | null = null
     let syncFrame: number | null = null
+    let syncTimer: ReturnType<typeof setTimeout> | null = null
+    let pointerDragging = false
 
     function sync(): void {
       if (!editor.mounted) {
+        return
+      }
+      if (!editor.view.hasFocus()) {
+        setState((current) => (current === null ? current : null))
         return
       }
       setState((current) => {
@@ -407,36 +412,81 @@ export function BlockActionToolbar({
       })
     }
 
-    function syncAfterEditor(): void {
+    function cancelScheduled(): void {
       if (syncFrame !== null) {
         cancelAnimationFrame(syncFrame)
+        syncFrame = null
       }
+      if (syncTimer !== null) {
+        clearTimeout(syncTimer)
+        syncTimer = null
+      }
+    }
+
+    function syncAfterFrame(): void {
+      if (pointerDragging || !editor.mounted || !editor.view.hasFocus()) {
+        return
+      }
+      cancelScheduled()
       syncFrame = requestAnimationFrame(() => {
         syncFrame = null
         sync()
       })
     }
 
+    // Keyboard selection moves (e.g. holding Shift+ArrowDown) debounce briefly
+    // so we don't run six dry-run ProseMirror transactions on every key repeat.
+    function syncDebounced(): void {
+      if (pointerDragging || !editor.mounted) {
+        return
+      }
+      if (!editor.view.hasFocus()) {
+        setState((current) => (current === null ? current : null))
+        return
+      }
+      cancelScheduled()
+      syncTimer = setTimeout(() => {
+        syncTimer = null
+        sync()
+      }, 80)
+    }
+
+    function onEditorPointerDown(event: PointerEvent): void {
+      if (event.button === 0) {
+        pointerDragging = true
+        cancelScheduled()
+      }
+    }
+
+    function onWindowPointerEnd(): void {
+      if (!pointerDragging) {
+        return
+      }
+      pointerDragging = false
+      syncAfterFrame()
+    }
+
     const cancelMount = whenEditorMounted(editor, () => {
       const dom = editor.view.dom
-      document.addEventListener('selectionchange', syncAfterEditor)
-      dom.addEventListener('keyup', syncAfterEditor)
-      dom.addEventListener('pointerup', syncAfterEditor)
-      observer = new MutationObserver(syncAfterEditor)
-      observer.observe(dom, { attributeFilter: ['class'], attributes: true, subtree: true })
+      document.addEventListener('selectionchange', syncDebounced)
+      dom.addEventListener('pointerdown', onEditorPointerDown)
+      window.addEventListener('pointerup', onWindowPointerEnd)
+      window.addEventListener('pointercancel', onWindowPointerEnd)
+      dom.addEventListener('keyup', syncDebounced)
+      dom.addEventListener('blur', sync)
       sync()
     })
     return () => {
       cancelMount()
-      document.removeEventListener('selectionchange', syncAfterEditor)
+      document.removeEventListener('selectionchange', syncDebounced)
+      window.removeEventListener('pointerup', onWindowPointerEnd)
+      window.removeEventListener('pointercancel', onWindowPointerEnd)
       if (editor.mounted) {
-        editor.view.dom.removeEventListener('keyup', syncAfterEditor)
-        editor.view.dom.removeEventListener('pointerup', syncAfterEditor)
+        editor.view.dom.removeEventListener('pointerdown', onEditorPointerDown)
+        editor.view.dom.removeEventListener('keyup', syncDebounced)
+        editor.view.dom.removeEventListener('blur', sync)
       }
-      observer?.disconnect()
-      if (syncFrame !== null) {
-        cancelAnimationFrame(syncFrame)
-      }
+      cancelScheduled()
     }
   }, [editor])
 

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { subscribeBrowserNavigated, type GraphInfo } from '@kore/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
@@ -131,18 +131,47 @@ interface WorkspaceFrameProps {
 }
 
 /**
- * The two-rail workspace around the note pane. Settings is a modal over this
- * frame, not a tab inside it.
+ * Isolates the right context rail's subscriptions (`useRouter`,
+ * `useDailyContextTarget`) from `WorkspaceFrame`, so moving focus between
+ * days in the daily stream or switching routes never re-renders the left
+ * sidebar (Folders/Tags trees), `DndContext`, or workspace panes.
  */
-function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactElement {
-  const { collapsed, contextCollapsed, setContextRailAvailable } = useSidebar()
+function ContextRailSlot({ collapsed }: { collapsed: boolean }): ReactElement {
   const { route } = useRouter()
-  // Daily routes get the day's contextual panel and note routes the note's.
-  // In the daily stream the route stays put while focus moves between days,
-  // so the panel follows the focused day and snaps back on navigation. Read
-  // here, beneath the Settings modal's pin, so opening Settings leaves the
-  // rail as it was.
   const contextTarget = useDailyContextTarget()
+  if (collapsed) {
+    return (
+      <nav
+        aria-label="Context rail"
+        data-testid="context-collapsed-rail"
+        className="app-window-chrome ml-2 hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
+      >
+        <ContextCollapsedRail showDetails routeKind={route.kind} />
+      </nav>
+    )
+  }
+  return (
+    <aside
+      id="context-sidebar"
+      aria-label="Context"
+      className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
+    >
+      <SidebarResizeHandle panel="context" />
+      <ContextSidebar target={contextTarget} showDetails routeKind={route.kind} />
+    </aside>
+  )
+}
+
+/**
+ * The two-rail workspace around the note pane. Settings is a modal over this
+ * frame, not a tab inside it. Memoized so modal/shortcut state updates in
+ * `WorkspaceContent` never cascade across the entire workspace tree.
+ */
+const WorkspaceFrame = memo(function WorkspaceFrame({
+  graph,
+  commandContext,
+}: WorkspaceFrameProps): ReactElement {
+  const { collapsed, contextCollapsed, setContextRailAvailable } = useSidebar()
   // The rail is available on every route (Mario, 2026-11-17: "la right
   // sidebar deve essere sempre disponibile"). Details describes the note,
   // the day, the peeked row or the chat's context, and offers the other
@@ -249,24 +278,7 @@ function WorkspaceFrame({ graph, commandContext }: WorkspaceFrameProps): ReactEl
         </PaneDragContext>
       </DndContext>
 
-      {contextCollapsed ? (
-        <nav
-          aria-label="Context rail"
-          data-testid="context-collapsed-rail"
-          className="app-window-chrome ml-2 hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
-        >
-          <ContextCollapsedRail showDetails routeKind={route.kind} />
-        </nav>
-      ) : (
-        <aside
-          id="context-sidebar"
-          aria-label="Context"
-          className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
-        >
-          <SidebarResizeHandle panel="context" />
-          <ContextSidebar target={contextTarget} showDetails routeKind={route.kind} />
-        </aside>
-      )}
+      <ContextRailSlot collapsed={contextCollapsed} />
     </div>
   )
-}
+})

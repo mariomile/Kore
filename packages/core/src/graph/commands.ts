@@ -527,3 +527,32 @@ export async function assetContentIdentity(path: string, generation: number): Pr
     z.string().regex(/^[a-f0-9]{64}$/),
   )
 }
+
+/** List visible graph-relative folder paths (including empty folders). */
+export async function listFolders(generation?: number): Promise<string[]> {
+  return await call(
+    'list_folders',
+    generation === undefined ? {} : { generation },
+    z.array(z.string()),
+  )
+}
+
+/** Create a visible folder inside the vault, pinned to `generation`. */
+export async function createFolder(path: string, generation: number): Promise<void> {
+  await call('folder_create', { path, generation }, voidSchema)
+}
+
+/** Rename or move a visible folder on disk, pinned to `generation`. */
+export async function moveFolder(from: string, to: string, generation: number): Promise<void> {
+  await call('folder_move', { from, to, generation }, voidSchema)
+}
+
+/** Move a visible folder to the OS trash (or `.kore/trash/` on mobile), pinned to `generation`. */
+export async function deleteFolder(path: string, generation: number): Promise<void> {
+  await call('folder_delete', { path, generation }, voidSchema)
+}
+
+/** Reveal a visible vault folder in Finder / the OS file manager. */
+export async function revealFolder(path: string, generation: number): Promise<void> {
+  await call('folder_reveal', { path, generation }, voidSchema)
+}

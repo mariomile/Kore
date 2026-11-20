@@ -311,6 +311,31 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       }
       case 'list_files':
         return files.list()
+      case 'list_folders':
+        return files.listFolders()
+      case 'folder_create': {
+        const { path } = pathArgsSchema.parse(args)
+        if (!files.createFolder(path)) {
+          throw new KoreError('io', `cannot create folder: ${path} already exists`)
+        }
+        return null
+      }
+      case 'folder_move': {
+        const { from, to } = z.object({ from: z.string(), to: z.string() }).parse(args)
+        if (!files.moveFolder(from, to)) {
+          throw new KoreError('io', `cannot move folder: ${from} -> ${to}`)
+        }
+        return null
+      }
+      case 'folder_delete': {
+        const { path } = pathArgsSchema.parse(args)
+        if (!files.removeFolder(path)) {
+          throw new KoreError('notFound', `folder not found: ${path}`)
+        }
+        return null
+      }
+      case 'folder_reveal':
+        return null
       case 'dir_list':
         return files.listDir(z.object({ dir: z.string() }).parse(args).dir)
       case 'note_move_indexed': {

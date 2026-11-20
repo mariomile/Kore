@@ -17,8 +17,8 @@ use std::time::UNIX_EPOCH;
 use ignore::WalkBuilder;
 
 use crate::{
-    classify, evicted_logical_path, icloud_placeholder_target, is_dataless, wire_path,
-    GraphPathKind, ObsidianExclusions,
+    classify, evicted_logical_path, icloud_placeholder_target, is_dataless, may_contain_notes,
+    wire_path, GraphPathKind, ObsidianExclusions,
 };
 
 /// Per-directory ignore file for user-configured exclusions, same syntax and
@@ -56,11 +56,13 @@ pub struct FileEntry {
     pub placeholder: bool,
 }
 
-/// One snapshot of every eligible note and supported attachment.
+/// One snapshot of every eligible note, supported attachment, and visible folder.
 #[derive(Debug, Clone, Default)]
 pub struct FileCatalog {
     pub notes: Vec<FileEntry>,
     pub attachments: Vec<FileEntry>,
+    /// Visible graph-relative folder paths (excluding `assets/` and Obsidian-ignored folders).
+    pub dirs: Vec<String>,
     /// Entries the walk refused or failed to list: unreadable directories,
     /// unreadable metadata, symlinks, and default-pruned trees. Surfaced so
     /// "why isn't my file showing up" is always diagnosable.
@@ -120,6 +122,18 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
             skipped.fetch_add(1, Ordering::Relaxed);
             continue;
         };
+        if entry.file_type().is_some_and(|kind| kind.is_dir()) {
+            if entry.depth() > 0 {
+                if let Ok(rel) = entry.path().strip_prefix(root) {
+                    if let Some(wire) = wire_path(rel) {
+                        if may_contain_notes(&wire) && !exclusions.excludes(&wire) {
+                            catalog.dirs.push(wire);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         if !entry.file_type().is_some_and(|kind| kind.is_file()) {
             continue;
         }
@@ -181,6 +195,7 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
     catalog
         .attachments
         .sort_by(|left, right| left.path.cmp(&right.path));
+    catalog.dirs.sort();
     catalog.skipped = skipped.load(Ordering::Relaxed);
     catalog
 }

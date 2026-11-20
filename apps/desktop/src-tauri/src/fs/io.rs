@@ -20,11 +20,12 @@ use crate::graph_gitignore;
 
 use super::FileMeta;
 
-/// One walk's worth of notes and attachments, in desktop `FileMeta` form.
+/// One walk's worth of notes, attachments, and visible folders, in desktop `FileMeta` form.
 #[derive(Clone, Default)]
 pub(super) struct FileCatalog {
     pub notes: Vec<FileMeta>,
     pub attachments: Vec<FileMeta>,
+    pub dirs: Vec<String>,
     /// Entries the walk refused or failed to list (unreadable directories,
     /// symlinks, default-pruned trees) — see `kore_graph_paths::walk_catalog`.
     pub skipped: u32,
@@ -545,6 +546,7 @@ pub(super) fn collect_file_catalog(root: &Path) -> FileCatalog {
             .into_iter()
             .map(FileMeta::from)
             .collect(),
+        dirs: catalog.dirs,
         skipped: catalog.skipped,
     }
 }

@@ -1,4 +1,6 @@
+import { listFolders } from '../graph/commands'
 import { DAILY_DIR, NOTES_DIR, TAGS_DIR, TEMPLATES_DIR } from '../graph/paths'
+import { getVaultLayout } from '../graph/vault-layout'
 import { db } from './db'
 import type { FileChange } from './file-changes'
 import { inClauseChunks } from './query-utils'
@@ -61,19 +63,23 @@ function freeze(folder: MutableFolder): FolderTreeFolder {
   return { path: folder.path, name: folder.name, folders, notes, noteCount }
 }
 
-/** Group graph-relative note paths into their folder tree, rooted at the vault. */
-export function buildFolderTree(notes: readonly FolderTreeNote[]): FolderTreeFolder {
+/** Group graph-relative note paths (and optional empty folders on disk) into a folder tree. */
+export function buildFolderTree(
+  notes: readonly FolderTreeNote[],
+  extraFolders: readonly string[] = [],
+): FolderTreeFolder {
   const root: MutableFolder = {
     path: '',
     name: '',
     folders: new Map(),
     notes: [],
   }
-  for (const note of notes) {
-    const segments = note.path.split('/')
-    segments.pop()
+  const ensureFolder = (segments: readonly string[]): MutableFolder => {
     let folder = root
     for (const segment of segments) {
+      if (segment === '') {
+        continue
+      }
       let child = folder.folders.get(segment)
       if (child === undefined) {
         const path = folder.path === '' ? segment : `${folder.path}/${segment}`
@@ -82,9 +88,69 @@ export function buildFolderTree(notes: readonly FolderTreeNote[]): FolderTreeFol
       }
       folder = child
     }
-    folder.notes.push(note)
+    return folder
+  }
+  for (const dir of extraFolders) {
+    ensureFolder(dir.split('/'))
+  }
+  for (const note of notes) {
+    const segments = note.path.split('/')
+    segments.pop()
+    ensureFolder(segments).notes.push(note)
   }
   return freeze(root)
+}
+
+/**
+ * Whether `path` is a structural vault folder (`daily`, `weekly`, `tags`,
+ * `templates`, `notes`, or the configured Obsidian daily/templates folder)
+ * that should not be renamed, moved, or trashed from the Folders menu.
+ */
+export function isProtectedFolder(path: string): boolean {
+  const layout = getVaultLayout()
+  const protectedRoots = new Set([
+    DAILY_DIR,
+    'weekly',
+    NOTES_DIR,
+    TAGS_DIR,
+    TEMPLATES_DIR,
+    layout.dailyFolder,
+    layout.templatesFolder,
+  ])
+  return protectedRoots.has(path)
+}
+
+/**
+ * Validate a single new folder name (no path separators, hidden dot prefix,
+ * or traversal segments). Returns a user-facing reason on failure, else `null`.
+ */
+export function validateFolderName(raw: string): string | null {
+  const name = raw.trim()
+  if (name === '') {
+    return 'Enter a folder name.'
+  }
+  if (name === '.' || name === '..' || name.startsWith('.')) {
+    return 'Folder names cannot start with a dot.'
+  }
+  if (name.includes('\0') || /[/\\:]/.test(name)) {
+    return String.raw`Folder names cannot contain /, \, or :.`
+  }
+  return null
+}
+
+/** Every indexed note path inside `folder` and its subfolders, depth-first. */
+export function collectFolderNotePaths(folder: FolderTreeFolder): string[] {
+  const paths: string[] = []
+  const walk = (node: FolderTreeFolder): void => {
+    for (const note of node.notes) {
+      paths.push(note.path)
+    }
+    for (const child of node.folders) {
+      walk(child)
+    }
+  }
+  walk(folder)
+  return paths
 }
 
 /**
@@ -115,10 +181,13 @@ export function findFolder(tree: FolderTreeFolder, path: string): FolderTreeFold
   return folder
 }
 
-/** Every indexed note grouped into the vault's folder tree. */
+/** Every indexed note (plus any empty visible folders on disk) grouped into the vault's folder tree. */
 export async function getFolderTree(): Promise<FolderTreeFolder> {
-  const rows = await db.selectFrom('notes').select(['notes.path', 'notes.title']).execute()
-  return buildFolderTree(rows)
+  const [rows, dirs] = await Promise.all([
+    db.selectFrom('notes').select(['notes.path', 'notes.title']).execute(),
+    listFolders().catch(() => [] as string[]),
+  ])
+  return buildFolderTree(rows, dirs)
 }
 
 /**

@@ -1,0 +1,65 @@
+/* Custom rounded, glyph-height text selection overlay for desktop WebKit/Chromium.
+   WebKit paints native `::selection` across the full `line-height: 1.7` slab,
+   causing consecutive wrapped lines to fuse into chunky stair-stepped blocks
+   that collide with descenders above. `editor/selection-shape.ts` paints tight
+   rounded line pills behind `.ProseMirror` (zero DOM mutations inside
+   `contenteditable`) and sets `data-kore-custom-selection` while active. */
+
+.kore-selection-host {
+  position: relative;
+  isolation: isolate;
+}
+
+.kore-selection-host > .ProseMirror {
+  position: relative;
+  z-index: 1;
+}
+
+.kore-selection-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.kore-selection-rect {
+  position: absolute;
+  border-radius: 5px;
+  background: var(--kore-selection-bg, var(--meowdown-selection));
+}
+
+/* On desaturated slate dark mode, tint the highlight with a cleaner cool slate-blue
+   wash rather than a flat muddy gray slab. */
+:root.dark[data-accent='slate'] {
+  --kore-selection-bg: rgba(148, 174, 212, 0.24);
+}
+
+.ProseMirror[data-kore-custom-selection] ::selection {
+  background: transparent;
+}
+
+/* Polish Meowdown's floating AI selection affordance (`✨`) so it reads as an
+   intentional elevated pill rather than a raw bordered square sitting over the
+   line below. */
+[data-testid='selection-menu-affordance'] button {
+  border-radius: 9999px;
+  padding: 0.375rem;
+  background: var(--popover);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-pop);
+  color: var(--accent);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+[data-testid='selection-menu-affordance'] button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+[data-testid='selection-menu-affordance'] button:active {
+  transform: scale(0.95);
+}

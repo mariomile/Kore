@@ -1,7 +1,7 @@
 import { markdownToDoc } from '@meowdown/core'
 import { AllSelection, NodeSelection, TextSelection } from '@prosekit/pm/state'
 import { describe, expect, it } from 'vitest'
-import { SELECTION_BLOCK_CLASS, selectionBlockDecorations } from './selection-shape'
+import { mergeLineRects, SELECTION_BLOCK_CLASS, selectionBlockDecorations } from './selection-shape'
 
 const doc = markdownToDoc(
   [
@@ -64,5 +64,21 @@ describe('selectionBlockDecorations', () => {
   it('leaves a node selection to its own outline', () => {
     const listPos = doc.resolve(blocks[1]!).before(1)
     expect(decoratedTexts(NodeSelection.create(doc, listPos))).toEqual([])
+  })
+})
+
+describe('mergeLineRects', () => {
+  it('merges adjacent inline segments on the same visual line and keeps separate lines distinct', () => {
+    expect(
+      mergeLineRects([
+        { left: 10, top: 20, width: 60, height: 18 },
+        { left: 70, top: 20.5, width: 45, height: 18 },
+        { left: 10, top: 46, width: 90, height: 18 },
+        { left: 10, top: 46, width: 0, height: 18 },
+      ]),
+    ).toEqual([
+      { left: 10, top: 20, width: 105, height: 18.5 },
+      { left: 10, top: 46, width: 90, height: 18 },
+    ])
   })
 })

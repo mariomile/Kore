@@ -1,5 +1,12 @@
 # Kore working state
 
+## Folders menu, collapsed icon rails, and daily scroll perf, 2026-11-20 (0.129.0)
+
+- [x] Folders sidebar context menu with real disk operations (New note, New subfolder, Rename, Move, Reveal in Finder, Copy path, Move to Trash), empty-folder visibility, session/shadow/link consistency, and bulk-move path-link rewriting (#581).
+- [x] Collapsed left and right sidebars keep slim 44px icon rails with top-aligned toggles; right rail shows only currently opened tabs plus `+` (#580).
+- [x] Daily Notes & SQLite performance: cap live editors on scroll rest, drop redundant daily queries, 120ms dwell gate, round-trip LRU, bounded link-preview concurrency, and a 4-connection WAL read pool in Rust (#582).
+- [x] Opaque sticky table headers (`bg-surface`), sidebar footer update download icon next to Settings, and per-vault bounded inline note history (#579).
+
 ## Rename follows links, 2026-11-18 (0.128.2)
 
 - [x] Retitling a note rewrites every link to it; in an Obsidian vault the

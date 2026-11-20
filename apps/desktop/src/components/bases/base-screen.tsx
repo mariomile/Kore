@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
+import { PageLoading } from '@/components/page-loading'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
 import { routeForPath } from '@/routing/route'
@@ -66,7 +67,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
         ) : null}
       </header>
       {state.status === 'loading' ? (
-        <p className="px-12 py-6 text-sm text-text-muted">Loading…</p>
+        <PageLoading label="Loading base" />
       ) : state.status === 'error' ? (
         <p role="alert" className="px-12 py-6 text-sm text-text-muted">
           Couldn’t open this base: {state.message}

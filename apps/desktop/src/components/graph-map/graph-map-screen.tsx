@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { displayNoteTitle, foldTag, getGraphMap, noteFileStem, type GraphMapNode } from '@kore/core'
+import { PageLoading } from '@/components/page-loading'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { tagColorCss } from '@/lib/graph-colors'
@@ -106,7 +107,7 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
     )
   }
   if (view === null || shown === null) {
-    return <p className="px-6 py-8 text-sm text-text-muted">Loading…</p>
+    return <PageLoading label="Loading graph" className="h-full" />
   }
 
   return (

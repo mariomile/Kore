@@ -2,6 +2,7 @@ import { useMemo, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { addDays, format, subDays } from 'date-fns'
 import { loadGraphInsights, weekStartDow, type GraphInsights } from '@kore/core'
+import { PageLoading } from '@/components/page-loading'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
@@ -57,7 +58,7 @@ export function InsightsScreen(): ReactElement {
     )
   }
   if (data === undefined) {
-    return <p className="px-6 py-8 text-sm text-text-muted">Loading…</p>
+    return <PageLoading label="Loading insights" className="h-full" />
   }
 
   const openNote = (path: string): void => navigate(routeForPath(path))

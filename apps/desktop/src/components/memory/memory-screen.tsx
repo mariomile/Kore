@@ -9,6 +9,7 @@ import {
   type MemoryOverview,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
+import { PageLoading } from '@/components/page-loading'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -31,7 +32,7 @@ export function MemoryScreen(): ReactElement {
     enabled: bridgeReady && graph !== null,
   })
   if (isPending) {
-    return <p className="px-6 py-8 text-sm text-text-muted">Loading…</p>
+    return <PageLoading label="Loading memory" className="h-full" />
   }
   if (config == null) {
     return (
@@ -66,7 +67,7 @@ function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElem
     )
   }
   if (data === undefined) {
-    return <p className="px-6 py-8 text-sm text-text-muted">Loading…</p>
+    return <PageLoading label="Loading memory" className="h-full" />
   }
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">

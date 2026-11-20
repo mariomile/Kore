@@ -115,7 +115,7 @@ interface DeleteFolderOptions {
 
 /**
  * Move a folder to the OS trash (or `.kore/trash/` on mobile) and drop its
- * indexed notes from SQLite immediately so the tree and lists reflect the
+ * indexed notes from SQLite immediately so the tree and lists show the
  * deletion without waiting on the watcher debounce.
  */
 export async function deleteFolderCarryingIndex({

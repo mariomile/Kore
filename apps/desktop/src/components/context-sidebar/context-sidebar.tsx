@@ -1,14 +1,5 @@
 import { lazy, Suspense, type ReactElement, type ReactNode } from 'react'
-import {
-  CalendarDays,
-  Chat,
-  Close,
-  Globe,
-  Info,
-  Plus,
-  Terminal,
-  type Icon,
-} from '@/components/icons'
+import { Close, Plus } from '@/components/icons'
 import { ChatContextOverview } from '@/components/chat/chat-context-overview'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
@@ -42,7 +33,13 @@ import { NotePeek } from './note-peek'
 import { SidebarSection } from './sidebar-section'
 import { usePeekPath } from '@/lib/selection/peek-store'
 import { useSidebar } from '@/providers/sidebar-provider'
-import { DEFAULT_CONTEXT_PANEL as DEFAULT_PANEL, type ContextPanel } from './context-panel'
+import {
+  contextPanelsBeside,
+  DEFAULT_CONTEXT_PANEL as DEFAULT_PANEL,
+  visibleContextPanels,
+  type ContextPanel,
+  type ContextPanelMeta,
+} from './context-panel'
 import type { Route } from '@/routing/route'
 import type { ContextSidebarTarget } from './sidebar-route'
 
@@ -60,29 +57,23 @@ interface PanelContext {
   openPanel: (id: ContextPanel) => void
 }
 
-interface ContextPanelSpec {
-  id: ContextPanel
-  label: string
-  Glyph: Icon
+interface ContextPanelBody {
   /**
    * True when the panel scrolls its own content — the chat's turn list,
    * xterm, the embedded webview covering its host. Those get the raw flex
    * column; everything else gets the rail's scroller.
    */
-  ownsScrolling: boolean
-  render: (context: PanelContext) => ReactNode
+  readonly ownsScrolling: boolean
+  readonly render: (context: PanelContext) => ReactNode
 }
 
 /**
- * Every panel the rail can show, in switcher order. One row is the whole
- * definition — its tab and its body — so the two can never disagree about
- * which panels exist. Tags are the left rail's section and appear only there.
+ * Body renderers keyed by panel id. Panel metadata (order, labels, icons) and
+ * tab filtering live in `context-panel.ts` so the expanded switcher and the
+ * collapsed icon rail share one single definition.
  */
-const PANELS: ContextPanelSpec[] = [
-  {
-    id: 'details',
-    label: 'Details',
-    Glyph: Info,
+const PANEL_BODIES: Record<ContextPanel, ContextPanelBody> = {
+  details: {
     ownsScrolling: false,
     render: ({ target, peekPath, routeKind, openPanel }) =>
       target === null ? (
@@ -106,20 +97,14 @@ const PANELS: ContextPanelSpec[] = [
         <NoteContextSidebar path={target.path} />
       ),
   },
-  {
-    id: 'chat',
-    label: 'Chat',
-    Glyph: Chat,
+  chat: {
     ownsScrolling: true,
     // The same graph-grounded session as the chat route, so the conversation
     // follows you between both surfaces. It does not take focus here: the
     // rail is auxiliary and the caret belongs to whatever you were editing.
     render: () => <ChatScreen autoFocus={false} />,
   },
-  {
-    id: 'calendar',
-    label: 'Calendar',
-    Glyph: CalendarDays,
+  calendar: {
     ownsScrolling: false,
     render: ({ calendarDate, today }) => (
       <div className="flex flex-col pt-2 text-text">
@@ -130,10 +115,7 @@ const PANELS: ContextPanelSpec[] = [
       </div>
     ),
   },
-  {
-    id: 'browser',
-    label: 'Browser',
-    Glyph: Globe,
+  browser: {
     ownsScrolling: true,
     // Shares its session with the browser tab.
     render: () => (
@@ -142,10 +124,7 @@ const PANELS: ContextPanelSpec[] = [
       </Suspense>
     ),
   },
-  {
-    id: 'terminal',
-    label: 'Terminal',
-    Glyph: Terminal,
+  terminal: {
     ownsScrolling: true,
     // The same PTY as the terminal route's.
     render: () => (
@@ -154,17 +133,6 @@ const PANELS: ContextPanelSpec[] = [
       </Suspense>
     ),
   },
-]
-
-/** The panels the "+" menu offers — everything the rail does not start with. */
-const OPTIONAL_PANELS = PANELS.filter((spec) => spec.id !== DEFAULT_PANEL)
-
-/**
- * The panels worth offering beside `routeKind`: the chat route already is
- * the conversation, so a Chat panel beside it would only mirror it.
- */
-function panelsBeside(routeKind: Route['kind'] | undefined): ContextPanelSpec[] {
-  return OPTIONAL_PANELS.filter((spec) => !(spec.id === 'chat' && routeKind === 'chat'))
 }
 
 /** One line on what each optional panel is for, shown where Details offers them. */
@@ -192,7 +160,7 @@ function DetailsEmpty({
     <div className="py-2">
       <SidebarSection storageKey="open-beside" title="Open beside this page">
         <ul className="flex flex-col">
-          {panelsBeside(routeKind).map(({ id, label, Glyph }) => (
+          {contextPanelsBeside(routeKind).map(({ id, label, Glyph }) => (
             <li key={id}>
               <button
                 type="button"
@@ -238,9 +206,9 @@ interface ContextSidebarProps {
 /**
  * The right-hand workspace sidebar: a switcher band over a floating card,
  * the same two-part shape as the content column's tab strip over the
- * note-pane card. A liquid-glass icon switcher picks which of {@link PANELS}
- * fills the card, and starts as Details alone plus the "+" that adds the
- * rest. What the "+" opens is a real tab: it stays on the band until you
+ * note-pane card. A liquid-glass icon switcher picks which of the context
+ * panels fills the card, and starts as Details alone plus the "+" that adds
+ * the rest. What the "+" opens is a real tab: it stays on the band until you
  * close it, and only Details cannot be closed. Both the open set and the
  * choice are per-window session state ({@link useSidebar}), not persisted.
  */
@@ -255,20 +223,15 @@ export function ContextSidebar({
   // The calendar panel anchors on the described day when there is one, so it
   // matches what the Details panel would show on a daily route.
   const calendarDate = target?.kind === 'daily' ? target.date : today
-  // Segments keep `PANELS` order however the panels were opened, so the band
-  // never reshuffles itself around the glyph you are aiming at.
-  const offered = panelsBeside(routeKind)
-  const segments = PANELS.filter((spec) =>
-    spec.id === DEFAULT_PANEL
-      ? showDetails
-      : contextPanels.opened.includes(spec.id) && offered.includes(spec),
-  )
+  const offered = contextPanelsBeside(routeKind)
+  const segments = visibleContextPanels(showDetails, contextPanels.opened, routeKind)
   // The stored choice can name a panel this route does not show (Details on
   // Graph); the band then leads with its first tab.
   const active = segments.find((spec) => spec.id === contextPanels.active) ?? segments[0]
   if (active === undefined) {
     return null
   }
+  const activeBody = PANEL_BODIES[active.id]
 
   /** Picking a tab, or a panel in the "+" menu, shows it — opening it first if needed. */
   const showPanel = (id: ContextPanel): void => {
@@ -336,10 +299,10 @@ export function ContextSidebar({
           <div
             className={cn(
               'min-h-0 flex-1',
-              active.ownsScrolling ? 'flex flex-col' : 'overflow-y-auto',
+              activeBody.ownsScrolling ? 'flex flex-col' : 'overflow-y-auto',
             )}
           >
-            {active.render({
+            {activeBody.render({
               target,
               peekPath,
               calendarDate,
@@ -355,7 +318,7 @@ export function ContextSidebar({
 }
 
 interface PanelTabProps {
-  spec: ContextPanelSpec
+  spec: ContextPanelMeta
   active: boolean
   onSelect: (id: ContextPanel) => void
   /** Left out for Details, the tab the rail always carries. */
@@ -424,7 +387,7 @@ function PanelTab({
 }
 
 interface ContextPanelsPlusMenuProps {
-  panels: readonly ContextPanelSpec[]
+  panels: readonly ContextPanelMeta[]
   onOpen: (id: ContextPanel) => void
 }
 

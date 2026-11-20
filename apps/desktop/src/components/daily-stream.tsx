@@ -24,16 +24,8 @@ import { usePaneIsActive } from '@/providers/panes-provider'
 import { useRouter } from '@/routing/router'
 import { clamp } from '@ocavue/utils'
 
-/**
- * How long the scroll must rest before the days on screen become editors.
- * Long enough that a wheel or trackpad gesture (events every few
- * milliseconds, momentum included) never trips it, short enough that the
- * editors are there before a hand reaches the keyboard.
- */
+/** Days are promoted to live editors once scroll rests (at most one primary day). */
 const LIVE_AFTER_REST_MS = 150
-
-/** Days this close to the viewport go live with the ones inside it. */
-const LIVE_MARGIN_PX = 200
 
 /** Where a focus lands in a day: a document edge, or a pressed point. */
 type DayFocusPosition = 'start' | 'end' | { x: number; y: number }
@@ -302,9 +294,11 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     return Array.from(keepMounted).sort((left, right) => left - right)
   }, [focusIndex, dayWindow.count])
 
-  // Once the scroll rests, the days on screen go live. A day already live
-  // stays live while its row is mounted: taking an editor away from a row
-  // that is still there would be work with nothing to show for it.
+  // Once the scroll rests, promote at most ONE primary visible day (the day
+  // spanning the viewport's upper reading anchor) instead of mounting 3–5 full
+  // ProseMirror editors simultaneously. Every other visible day stays static
+  // until clicked/focused (`wakeDay`), and off-screen days drop out of `live`
+  // so editors never pile up during long scroll sessions.
   const restTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const promoteVisible = useCallback(() => {
     const scroller = scrollElementRef.current
@@ -312,16 +306,28 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       return
     }
     const view = scroller.getBoundingClientRect()
+    const anchorY = view.top + Math.min(view.height * 0.3, 180)
+    let primary: number | null = null
+    let bestDistance = Infinity
+    for (const row of scroller.querySelectorAll<HTMLElement>('section[data-index]')) {
+      const index = Number(row.dataset.index)
+      const box = row.getBoundingClientRect()
+      if (box.bottom <= view.top || box.top >= view.bottom) {
+        continue
+      }
+      const distance =
+        box.top <= anchorY && box.bottom >= anchorY
+          ? 0
+          : Math.min(Math.abs(box.top - anchorY), Math.abs(box.bottom - anchorY))
+      if (distance < bestDistance) {
+        bestDistance = distance
+        primary = index
+      }
+    }
     setLive((current) => {
       const next = new Set<number>()
-      for (const row of scroller.querySelectorAll<HTMLElement>('section[data-index]')) {
-        const index = Number(row.dataset.index)
-        const box = row.getBoundingClientRect()
-        const near =
-          box.bottom > view.top - LIVE_MARGIN_PX && box.top < view.bottom + LIVE_MARGIN_PX
-        if (near || current.has(index)) {
-          next.add(index)
-        }
+      if (primary !== null) {
+        next.add(primary)
       }
       return next.size === current.size && [...next].every((index) => current.has(index))
         ? current

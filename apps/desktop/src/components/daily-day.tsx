@@ -7,13 +7,13 @@ import {
   useRef,
   useState,
   type ReactElement,
+  type RefObject,
 } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAppError, loadLinkPreview, readNote } from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane, type NotePaneProps } from '@/components/note-pane'
-import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
 import { linkCardElement } from '@/editor/link-card-dom'
 import { MarkdownPreview } from '@/editor/markdown-preview'
@@ -22,7 +22,7 @@ import { cacheNoteContent, getCachedNoteContent } from '@/editor/note-content-ca
 import { editorImageSize, staticDayBody } from '@/editor/static-day'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useNoteRow } from '@/hooks/use-note-row'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { useFileChanges } from '@/lib/use-file-changes'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -66,6 +66,9 @@ const HANDOVER_LIMIT_MS = 400
  * note read, its link cards in). A swap would show the editor's loading and
  * card-less frames, and their shorter rows would move every day below.
  */
+/** Dwell before a static day loads backlinks/link cards — skipped when scrolled past. */
+const STATIC_DWELL_MS = 120
+
 export const DailyDay = memo(function DailyDay({
   live,
   onActivate,
@@ -74,6 +77,7 @@ export const DailyDay = memo(function DailyDay({
 }: DailyDayProps): ReactElement {
   const { graph } = useGraph()
   const { settings } = useSettings()
+  const queryClient = useQueryClient()
   const { path, dailyDate } = pane
   // With markdown syntax always shown the editor prints the marks the static
   // view hides, so those users keep the editor on every day.
@@ -85,15 +89,34 @@ export const DailyDay = memo(function DailyDay({
     setSettled(false)
   }
   const wantsStatic = staticAllowed && !(live && settled)
+  // Scoped outside INDEX_QUERY_SCOPE so unrelated autosaves and sync batches
+  // never re-read every mounted static day from disk; only changes to this
+  // exact path refresh its query.
+  const staticQueryKey = useMemo(
+    () => ['daily-static', graph?.root, path] as const,
+    [graph?.root, path],
+  )
+  useFileChanges(
+    useCallback(
+      (changes) => {
+        if (changes.some((change) => change.path === path)) {
+          void queryClient.invalidateQueries({ queryKey: staticQueryKey, exact: true })
+        }
+      },
+      [path, queryClient, staticQueryKey],
+    ),
+  )
   // The session's own cache first: it holds what an editor on this day last
   // read or wrote, so a day leaving its editor redraws its latest text.
   const cached = wantsStatic ? getCachedNoteContent(path) : undefined
   const { data, isError } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'daily-static', path],
+    queryKey: staticQueryKey,
     queryFn: () => readDay(path),
     enabled: wantsStatic && !live && graph !== null,
     ...(cached !== undefined ? { initialData: cached } : {}),
-    // Nothing outlives the row: the next mount asks the content cache again.
+    // Drop on unmount so re-entering reads fresh from `getCachedNoteContent`
+    // (which is invalidated on external/sync writes) or disk, while mounted
+    // rows stay immune to unrelated global index invalidations.
     gcTime: 0,
   })
   const loading = wantsStatic && !isError && data === undefined
@@ -241,33 +264,13 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
   const { graph } = useGraph()
   const { resolveImageUrl } = useAssetPersistence(graph?.generation ?? null, path)
   const hostRef = useRef<HTMLDivElement>(null)
-  // The editor draws a line holding only a URL as a preview card
-  // (link-card-plugin). Same rule here, from the same session cache, and only
-  // for a note known to be public: a preview reaches the linked host.
-  const cardsAllowed = useNoteRow(path)?.isPrivate === false
-  useLayoutEffect(() => {
-    const host = hostRef.current
-    if (host === null || !cardsAllowed) {
-      return
-    }
-    let current = true
-    for (const paragraph of host.querySelectorAll<HTMLElement>('.kore-editor > p')) {
-      const url = (paragraph.textContent ?? '').trim()
-      if (!BARE_URL.test(url) || paragraph.classList.contains('kore-link-card-source')) {
-        continue
-      }
-      void loadLinkPreview(url).then((preview) => {
-        if (!current || preview === null || !paragraph.isConnected) {
-          return
-        }
-        paragraph.before(linkCardElement(preview))
-        paragraph.classList.add('kore-link-card-source')
-      })
-    }
-    return () => {
-      current = false
-    }
-  }, [cardsAllowed, body])
+  // A day scrolled past in <120ms skips note-row, backlink, children, and
+  // link-preview work entirely, avoiding a SQLite/disk/HTTP burst mid-scroll.
+  const [dwelt, setDwelt] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setDwelt(true), STATIC_DWELL_MS)
+    return () => clearTimeout(timer)
+  }, [])
   // The editor sizes an image once it loads (`editorImageSize`); the static
   // picture takes the same box. `load` and `error` do not bubble: capture.
   useLayoutEffect(() => {
@@ -301,11 +304,61 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
         interactive={false}
         className={cn('kore-note-surface', gutterClassName, editorClassName)}
       />
-      <div className={gutterClassName}>
-        <NoteChildrenPanel key={path} path={path} />
-        <BacklinksPanel path={path} />
-        <UnlinkedMentionsPanel path={path} />
-      </div>
+      {dwelt ? (
+        <StaticDayExtras
+          path={path}
+          body={body}
+          hostRef={hostRef}
+          gutterClassName={gutterClassName}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function StaticDayExtras({
+  path,
+  body,
+  hostRef,
+  gutterClassName,
+}: {
+  path: string
+  body: string
+  hostRef: RefObject<HTMLDivElement | null>
+  gutterClassName: string | undefined
+}): ReactElement {
+  // The editor draws a line holding only a URL as a preview card
+  // (link-card-plugin). Same rule here, from the same session cache, and only
+  // for a note known to be public: a preview reaches the linked host.
+  const cardsAllowed = useNoteRow(path)?.isPrivate === false
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    if (host === null || !cardsAllowed) {
+      return
+    }
+    let current = true
+    for (const paragraph of host.querySelectorAll<HTMLElement>('.kore-editor > p')) {
+      const url = (paragraph.textContent ?? '').trim()
+      if (!BARE_URL.test(url) || paragraph.classList.contains('kore-link-card-source')) {
+        continue
+      }
+      void loadLinkPreview(url).then((preview) => {
+        if (!current || preview === null || !paragraph.isConnected) {
+          return
+        }
+        paragraph.before(linkCardElement(preview))
+        paragraph.classList.add('kore-link-card-source')
+      })
+    }
+    return () => {
+      current = false
+    }
+  }, [cardsAllowed, body, hostRef])
+
+  return (
+    <div className={gutterClassName}>
+      <NoteChildrenPanel key={path} path={path} />
+      <BacklinksPanel path={path} />
     </div>
   )
 }

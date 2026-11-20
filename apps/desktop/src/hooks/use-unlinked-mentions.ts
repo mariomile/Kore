@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getUnlinkedMentions, linkUnlinkedMention, type UnlinkedMention } from '@kore/core'
+import { getUnlinkedMentions, isDaily, linkUnlinkedMention, type UnlinkedMention } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE, invalidateIndexQueries } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -37,7 +37,7 @@ export function useUnlinkedMentions(path: string): UnlinkedMentions {
   const { data, isPending } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'unlinked-mentions', path],
     queryFn: () => getUnlinkedMentions(path),
-    enabled: bridgeReady && graph !== null,
+    enabled: bridgeReady && graph !== null && !isDaily(path),
   })
 
   const generation = graph?.generation

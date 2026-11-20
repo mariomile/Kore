@@ -85,4 +85,11 @@ describe('UnlinkedMentionsPanel', () => {
       .toHaveTextContent('Couldn’t link this mention — try again.')
     await view.unmount()
   })
+
+  it('skips querying unlinked mentions for daily notes', async () => {
+    const view = await renderPanel('daily/2026-11-20.md')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(getUnlinkedMentions).not.toHaveBeenCalled()
+    await view.unmount()
+  })
 })

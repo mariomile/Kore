@@ -14,6 +14,7 @@
 pub mod backup;
 mod chat_write;
 mod migrations;
+mod read_pool;
 #[cfg(test)]
 mod tests;
 
@@ -57,25 +58,13 @@ struct IndexInner {
     root: Option<std::path::PathBuf>,
 }
 
-/// The `db_query` reader: a second, **read-only** connection under its own
-/// lock. Reads and writes both hop to the blocking pool; if they shared one
-/// mutex, a long FTS scan would stall the next `index_apply` for the read's
-/// duration. Under WAL the reader sees the last committed state, so a query
-/// after an awaited write still reads its result; it just never contends with
-/// one. Rebound (with its own generation copy, so the pair swaps atomically
-/// for readers of *this* lock) by `index_open` while the writer lock is held
-/// — lock order is always writer → reader, nothing locks the reverse way.
-#[derive(Default)]
-struct ReadInner {
-    generation: u64,
-    conn: Option<Connection>,
-}
-
-/// The active graph's index state (`conn`s are `None` until `index_open`).
+/// The active graph's index state (`conn` is `None` until `index_open`).
 #[derive(Default)]
 pub struct IndexState {
     inner: Mutex<IndexInner>,
-    read: Mutex<ReadInner>,
+    /// Fixed pool of read-only WAL connections for parallel `db_query` reads,
+    /// kept separate from the writer mutex (lock order: writer -> read pool).
+    read: read_pool::ReadPool,
     /// The generation of the open writer connection, or 0 while none is
     /// open (generations start at 1). Published by `open_index_for` so
     /// [`current_generation`] never takes the writer lock: a backup or a long
@@ -90,13 +79,6 @@ fn lock_state(index: &IndexState) -> AppResult<MutexGuard<'_, IndexInner>> {
         // itself is the bug; this context points at the blast radius.
         tracing::error!(?err, "index state lock poisoned by an earlier panic");
         AppError::io("index state lock poisoned")
-    })
-}
-
-fn lock_read(index: &IndexState) -> AppResult<MutexGuard<'_, ReadInner>> {
-    index.read.lock().map_err(|err| {
-        tracing::error!(?err, "index read lock poisoned by an earlier panic");
-        AppError::io("index read lock poisoned")
     })
 }
 
@@ -166,15 +148,10 @@ pub(super) fn open_index_for(graph: &GraphState, index: &IndexState) -> AppResul
     state.conn = None;
     state.root = None;
     index.published.store(0, Ordering::Release);
-    {
-        let mut read = lock_read(index)?;
-        read.conn = None;
-    }
+    index.read.clear()?;
     state.conn = Some(migrations::open_index_at(&root)?);
     index.published.store(state.generation, Ordering::Release);
-    let mut read = lock_read(index)?;
-    read.conn = Some(query::open_read_connection(&root)?);
-    read.generation = state.generation;
+    index.read.rebind(&root, state.generation)?;
     state.root = Some(root);
     Ok(state.generation)
 }
@@ -728,36 +705,22 @@ pub async fn embed_remove<R: tauri::Runtime>(
 /// Execute a read query (compiled by Kysely on the frontend) and return rows.
 ///
 /// Async on purpose: sync commands run on the main thread, which on iOS also
-/// owns touch delivery — a long FTS scan there reads as a frozen app. Runs
-/// on the dedicated read-only connection ([`ReadInner`]) so it never holds
-/// the writer lock a sync write command would block the main thread waiting
-/// for.
+/// owns touch delivery — a long FTS scan there reads as a frozen app. Checks
+/// out a read-only WAL connection from [`read_pool::ReadPool`] so concurrent
+/// reads execute in parallel and never contend with the writer lock.
 #[tauri::command]
 pub async fn db_query<R: tauri::Runtime>(
     sql: String,
     params: Vec<Value>,
     app: tauri::AppHandle<R>,
 ) -> AppResult<Vec<Map<String, Value>>> {
-    // Pin the index session before the hop: with no main-thread FIFO, a
-    // graph switch can rebind the index between invoke and execution, and a
-    // query issued for graph A must not return graph B's rows — the frontend
-    // caches results under root-scoped keys with `staleTime: Infinity`, so
-    // one crossed response would be served as fresh forever. An erroring
-    // superseded query is honest instead: its observers unmounted with the
-    // switch, so nothing retries it against the wrong graph.
-    let requested = {
-        let index = app.state::<IndexState>();
-        let generation = lock_read(&index)?.generation;
-        generation
-    };
+    // Pin the index session before the hop so a query issued for graph A can
+    // never return graph B's rows after a graph switch.
+    let requested = app.state::<IndexState>().read.generation()?;
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
-        let read = lock_read(&index)?;
-        if read.generation != requested {
-            return Err(AppError::io("index reopened during query"));
-        }
-        let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
-        Ok(query::run_query(conn, &sql, &params)?)
+        let lease = index.read.checkout(requested)?;
+        Ok(query::run_query(lease.conn(), &sql, &params)?)
     })
     .await
 }
@@ -773,7 +736,7 @@ pub struct QuerySpec {
     params: Vec<Value>,
 }
 
-/// Run many read queries on the dedicated read connection in one IPC hop.
+/// Run many read queries on a pooled read connection in one IPC hop.
 /// Same generation pin and authorizer as [`db_query`].
 #[tauri::command]
 pub async fn db_query_batch<R: tauri::Runtime>(
@@ -785,21 +748,13 @@ pub async fn db_query_batch<R: tauri::Runtime>(
             "db_query_batch is capped at {DB_QUERY_BATCH_MAX} queries"
         )));
     }
-    let requested = {
-        let index = app.state::<IndexState>();
-        let generation = lock_read(&index)?.generation;
-        generation
-    };
+    let requested = app.state::<IndexState>().read.generation()?;
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
-        let read = lock_read(&index)?;
-        if read.generation != requested {
-            return Err(AppError::io("index reopened during query"));
-        }
-        let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
+        let lease = index.read.checkout(requested)?;
         let mut out = Vec::with_capacity(queries.len());
         for query in &queries {
-            out.push(query::run_query(conn, &query.sql, &query.params)?);
+            out.push(query::run_query(lease.conn(), &query.sql, &query.params)?);
         }
         Ok(out)
     })

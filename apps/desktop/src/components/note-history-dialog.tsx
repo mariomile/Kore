@@ -52,7 +52,7 @@ export function NoteHistoryDialog({
   const generation = graph?.generation ?? null
 
   const history = useQuery({
-    queryKey: ['note-history', path],
+    queryKey: ['note-history', graph?.root, path, 'full'],
     enabled: open && generation !== null,
     queryFn: async () => (generation === null ? [] : await gitNoteHistory(path, generation)),
   })
@@ -80,7 +80,7 @@ export function NoteHistoryDialog({
   const previousCommit = selectedIndex >= 0 ? (versions[selectedIndex + 1]?.commit ?? null) : null
 
   const selectedContent = useQuery({
-    queryKey: ['note-version', path, selectedCommit],
+    queryKey: ['note-version', graph?.root, path, selectedCommit],
     enabled: open && generation !== null && selectedCommit !== null,
     queryFn: async () =>
       generation === null || selectedCommit === null
@@ -88,7 +88,7 @@ export function NoteHistoryDialog({
         : await gitNoteVersion(selectedCommit, path, generation),
   })
   const previousContent = useQuery({
-    queryKey: ['note-version', path, previousCommit],
+    queryKey: ['note-version', graph?.root, path, previousCommit],
     enabled: open && generation !== null && previousCommit !== null && view === 'changes',
     queryFn: async () =>
       generation === null || previousCommit === null
@@ -123,7 +123,7 @@ export function NoteHistoryDialog({
       }
       emitFileChanges([{ path, kind: 'upsert' }])
       invalidateIndexQueries()
-      await queryClient.invalidateQueries({ queryKey: ['note-history', path] })
+      await queryClient.invalidateQueries({ queryKey: ['note-history', graph?.root, path] })
       onOpenChange(false)
     } catch (caught: unknown) {
       setError(errorMessage(caught))

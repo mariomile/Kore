@@ -1,7 +1,16 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@kore/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Chart, Check, FolderOpen, History, Locate, Settings } from '@/components/icons'
+import {
+  Chart,
+  Check,
+  Download,
+  FolderOpen,
+  History,
+  Locate,
+  Refresh,
+  Settings,
+} from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
@@ -28,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
+import { useUpdate } from '@/providers/update-provider'
 import { useRouter } from '@/routing/router'
 
 const MENU_ITEM_CLASS = 'gap-2 px-2 py-1.5 text-[13px] text-text-secondary'
@@ -225,6 +235,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <SidebarUpdateButton />
       <Tooltip>
         <TooltipTrigger
           render={
@@ -253,5 +264,111 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
         </TooltipContent>
       </Tooltip>
     </div>
+  )
+}
+
+interface UpdateButtonSpec {
+  readonly label: string
+  readonly tooltip: string
+  readonly icon: 'download' | 'refresh'
+  readonly onClick: (() => void) | undefined
+  readonly tone: string
+  readonly pulse: boolean
+}
+
+function updateButtonSpec(
+  state: ReturnType<typeof useUpdate>['state'],
+  actions: { readonly install: () => Promise<void>; readonly restart: () => Promise<void> },
+): UpdateButtonSpec | null {
+  const accent = 'text-accent hover:bg-accent-soft hover:text-accent'
+  switch (state.phase) {
+    case 'available':
+      return {
+        label: `Install update ${state.version}`,
+        tooltip: `Update available — install Kore ${state.version}`,
+        icon: 'download',
+        onClick: () => void actions.install(),
+        tone: accent,
+        pulse: false,
+      }
+    case 'downloading': {
+      const label =
+        state.percent !== null
+          ? `Downloading update ${state.version} (${state.percent}%)`
+          : `Downloading update ${state.version}`
+      return {
+        label,
+        tooltip: label,
+        icon: 'download',
+        onClick: undefined,
+        tone: accent,
+        pulse: true,
+      }
+    }
+    case 'ready':
+      return {
+        label: `Restart to update to ${state.version}`,
+        tooltip: `Kore ${state.version} ready — restart to update`,
+        icon: 'refresh',
+        onClick: () => void actions.restart(),
+        tone: accent,
+        pulse: false,
+      }
+    case 'error':
+      return state.during === 'install'
+        ? {
+            label: 'Retry update install',
+            tooltip: 'Update failed — click to retry',
+            icon: 'download',
+            onClick: () => void actions.install(),
+            tone: 'text-danger hover:bg-surface-hover hover:text-danger',
+            pulse: false,
+          }
+        : null
+    default:
+      return null
+  }
+}
+
+/**
+ * Quiet sidebar download control for desktop app updates: absent while up to
+ * date, surfaces next to Settings as soon as an update is available, shows
+ * progress while downloading, and turns into a one-click restart once ready.
+ */
+function SidebarUpdateButton(): ReactElement | null {
+  const { supported, state, install, restart } = useUpdate()
+  const spec = supported ? updateButtonSpec(state, { install, restart }) : null
+  if (spec === null) {
+    return null
+  }
+  const iconClass = cn('size-3.5', spec.pulse && 'motion-safe:animate-pulse')
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={spec.label}
+            disabled={spec.onClick === undefined}
+            onClick={spec.onClick}
+            className={cn(
+              'size-7 shrink-0 transition-colors duration-100 disabled:opacity-70',
+              spec.tone,
+            )}
+          >
+            <SidebarIconSlot>
+              {spec.icon === 'refresh' ? (
+                <Refresh aria-hidden className={iconClass} />
+              ) : (
+                <Download aria-hidden className={iconClass} />
+              )}
+            </SidebarIconSlot>
+          </Button>
+        }
+      />
+      <TooltipContent>{spec.tooltip}</TooltipContent>
+    </Tooltip>
   )
 }

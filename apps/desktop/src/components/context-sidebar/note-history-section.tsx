@@ -14,6 +14,8 @@ interface NoteHistorySectionProps {
 
 /** Timeline rows shown inline; the dialog holds the full list. */
 const INLINE_VERSIONS = 5
+/** Cap the sidebar's libgit2 walk; the dialog loads the full timeline on demand. */
+const INLINE_HISTORY_LIMIT = 20
 
 /**
  * "History" as a context-sidebar section: the note's most recent versions
@@ -30,7 +32,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const history = useQuery({
-    queryKey: ['note-history', path],
+    queryKey: ['note-history', graph?.root, path, 'inline'],
     enabled: generation !== null,
     staleTime: 30_000,
     queryFn: async (): Promise<NoteVersion[]> => {
@@ -38,7 +40,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
         return []
       }
       try {
-        return await gitNoteHistory(path, generation)
+        return await gitNoteHistory(path, generation, INLINE_HISTORY_LIMIT)
       } catch {
         return []
       }
@@ -84,7 +86,9 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
                 }}
                 className="w-full rounded-md px-2 py-1 text-left text-xs text-text-secondary transition-colors duration-100 hover:bg-surface-hover"
               >
-                All {versions.length} versions…
+                {versions.length >= INLINE_HISTORY_LIMIT
+                  ? 'All versions…'
+                  : `All ${versions.length} versions…`}
               </button>
             </li>
           ) : null}

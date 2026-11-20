@@ -129,7 +129,9 @@ export function useNoteBulkActions(): NoteBulkActions {
   const move = useCallback(
     async (paths: readonly string[], folder: string): Promise<BulkOutcome> => {
       const target = folder.replaceAll(/^\/+|\/+$/g, '')
-      return await run(
+      const moved: { from: string; to: string }[] = []
+      let moveGeneration: number | null = null
+      const outcome = await run(
         `Moving notes to ${target === '' ? 'the vault root' : target}`,
         paths,
         async (path, generation) => {
@@ -138,10 +140,18 @@ export function useNoteBulkActions(): NoteBulkActions {
           }
           const to = target === '' ? basename(path) : `${target}/${basename(path)}`
           await moveNoteCarryingSession(path, to, generation)
-          await rewriteMovedNotePathLinks([{ from: path, to }], generation)
+          moved.push({ from: path, to })
+          moveGeneration = generation
           return 'changed'
         },
       )
+      // Rewrite inbound path links only after every note in the batch has
+      // flushed and moved, so a later note's session flush cannot overwrite
+      // an earlier rewrite touching that same file.
+      if (moveGeneration !== null && moved.length > 0) {
+        await rewriteMovedNotePathLinks(moved, moveGeneration)
+      }
+      return outcome
     },
     [run],
   )

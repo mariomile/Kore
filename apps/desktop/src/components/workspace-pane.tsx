@@ -1,4 +1,4 @@
-import { useCallback, type ReactElement } from 'react'
+import { memo, useCallback, type ReactElement } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
@@ -28,7 +28,7 @@ interface WorkspacePaneProps {
  * makes it the active pane, which is what the chrome (sidebar, palette,
  * context rail) follows.
  */
-export function WorkspacePane({
+export const WorkspacePane = memo(function WorkspacePane({
   pane,
   commandContext,
   showSidebarToggle,
@@ -99,4 +99,4 @@ export function WorkspacePane({
       </RouterProvider>
     </PaneScope>
   )
-}
+})

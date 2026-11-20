@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { memo, useState, type ReactElement } from 'react'
 import type { GraphInfo } from '@kore/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
@@ -36,7 +36,7 @@ interface SidebarProps {
  * it opens as a tab from the tab strip's "+" menu (or the palette).
  * (Sidebar collapse stays on `Mod-\` via the command registry.)
  */
-export function Sidebar({ graph, context }: SidebarProps): ReactElement {
+export const Sidebar = memo(function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const { route } = useRouter()
   const today = useToday()
   const pinned = usePinnedNotes()
@@ -103,4 +103,4 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
       <GraphFooter graph={graph} context={context} />
     </div>
   )
-}
+})

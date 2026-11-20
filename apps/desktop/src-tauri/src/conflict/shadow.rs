@@ -122,6 +122,31 @@ impl ShadowStore {
         }
     }
 
+    /// Drop every shadow base beneath a deleted folder. Best-effort.
+    pub fn forget_folder(&self, rel: &str) {
+        if let Some(path) = self.entry_path(rel, "") {
+            if path.is_dir() {
+                let _ = fs::remove_dir_all(path);
+            }
+        }
+    }
+
+    /// Carry a moved/renamed folder's shadow subtree alongside the folder move.
+    /// Best-effort: a miss only degrades one future merge.
+    pub fn record_folder_move(&self, from: &str, to: &str) {
+        let (Some(source), Some(target)) = (self.entry_path(from, ""), self.entry_path(to, ""))
+        else {
+            return;
+        };
+        if !source.is_dir() {
+            return;
+        }
+        if let Some(parent) = target.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let _ = fs::rename(source, target);
+    }
+
     /// The unordered content-hash pair of the last auto-merge, if recorded.
     pub fn merge_pair(&self, rel: &str) -> Option<(String, String)> {
         let path = self.entry_path(rel, ".pair")?;

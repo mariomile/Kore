@@ -548,8 +548,8 @@ function TrashFolderDialog({
           <DialogTitle>Move “{folderDisplayName(folderPath)}” to Trash?</DialogTitle>
           <DialogDescription>
             {count === 0
-              ? `Moves the empty folder "${folderPath}" to the system Trash.`
-              : `Moves "${folderPath}" and its ${count} ${count === 1 ? 'note' : 'notes'} to the system Trash. You can restore it from there.`}
+              ? `Moves "${folderPath}" and any files inside it to the system Trash. You can restore it from there.`
+              : `Moves "${folderPath}" and its ${count} ${count === 1 ? 'note' : 'notes'} (plus any other files inside) to the system Trash. You can restore it from there.`}
           </DialogDescription>
         </DialogHeader>
         {error !== null ? (

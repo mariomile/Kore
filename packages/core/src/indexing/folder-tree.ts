@@ -1,5 +1,5 @@
 import { listFolders } from '../graph/commands'
-import { DAILY_DIR, NOTES_DIR, TAGS_DIR, TEMPLATES_DIR } from '../graph/paths'
+import { DAILY_DIR, foldGraphPath, NOTES_DIR, TAGS_DIR, TEMPLATES_DIR } from '../graph/paths'
 import { getVaultLayout } from '../graph/vault-layout'
 import { db } from './db'
 import type { FileChange } from './file-changes'
@@ -104,11 +104,13 @@ export function buildFolderTree(
 /**
  * Whether `path` is a structural vault folder (`daily`, `weekly`, `tags`,
  * `templates`, `notes`, or the configured Obsidian daily/templates folder)
- * that should not be renamed, moved, or trashed from the Folders menu.
+ * — or an ancestor containing one — matched case-insensitively so APFS
+ * casing variants (e.g. `Daily`) stay protected from rename, move, or trash.
  */
 export function isProtectedFolder(path: string): boolean {
+  const folded = foldGraphPath(path)
   const layout = getVaultLayout()
-  const protectedRoots = new Set([
+  const protectedPaths = [
     DAILY_DIR,
     'weekly',
     NOTES_DIR,
@@ -116,8 +118,11 @@ export function isProtectedFolder(path: string): boolean {
     TEMPLATES_DIR,
     layout.dailyFolder,
     layout.templatesFolder,
-  ])
-  return protectedRoots.has(path)
+  ]
+    .filter((entry) => entry !== '')
+    .map(foldGraphPath)
+  const prefix = `${folded}/`
+  return protectedPaths.some((target) => target === folded || target.startsWith(prefix))
 }
 
 /**

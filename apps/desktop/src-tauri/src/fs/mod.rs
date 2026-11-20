@@ -1153,6 +1153,7 @@ fn move_folder_at(root: &Path, from: &str, to: &str) -> AppResult<()> {
         fs::create_dir_all(parent)?;
     }
     fs::rename(&from_abs, &to_abs)?;
+    crate::conflict::shadow::ShadowStore::new(root).record_folder_move(from, to);
     Ok(())
 }
 
@@ -1211,6 +1212,7 @@ pub async fn folder_delete<R: tauri::Runtime>(
         os_trash_delete(&abs)?;
         #[cfg(mobile)]
         move_to_graph_trash(&root, &abs)?;
+        crate::conflict::shadow::ShadowStore::new(&root).forget_folder(&path);
         invalidate_file_catalog(&state, &root);
         Ok(())
     })

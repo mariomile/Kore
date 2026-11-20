@@ -3,6 +3,8 @@ import {
   deleteFolder,
   errorMessage,
   getPathLinkSources,
+  isDaily,
+  isProtectedFolder,
   moveFolder,
   moveIndexedRows,
   readNote,
@@ -49,21 +51,26 @@ export async function moveFolderCarryingSessions({
       to: `${to}/${oldPath.slice(prefix.length)}`,
     }))
 
-  const carried: { from: string; to: string; session: NoteSession }[] = []
+  // Flush every open session before retargeting any of them so a flush
+  // failure never leaves earlier sessions pointing at the destination path.
+  const openSessions: { from: string; to: string; session: NoteSession }[] = []
   for (const { from: oldPath, to: newPath } of movedNotes) {
     const session = openSession(oldPath)
     if (session !== null) {
       await session.flush()
-      session.retarget(newPath)
-      retargetOpenDocument(oldPath, newPath, session)
-      carried.push({ from: oldPath, to: newPath, session })
+      openSessions.push({ from: oldPath, to: newPath, session })
     }
+  }
+
+  for (const item of openSessions) {
+    item.session.retarget(item.to)
+    retargetOpenDocument(item.from, item.to, item.session)
   }
 
   try {
     await moveFolder(from, to, generation)
   } catch (cause) {
-    for (const item of carried) {
+    for (const item of openSessions) {
       item.session.retarget(item.from)
       retargetOpenDocument(item.to, item.from, item.session)
     }
@@ -124,7 +131,15 @@ export async function deleteFolderCarryingIndex({
   generation,
   indexGeneration,
 }: DeleteFolderOptions): Promise<void> {
+  if (isProtectedFolder(path) || notePaths.some(isDaily)) {
+    throw new Error('Protected and daily-note folders cannot be moved to Trash.')
+  }
   await deleteFolder(path, generation)
+  // Discard open editor sessions inside the trashed folder AFTER the trash
+  // succeeds so unmounting panes never flush and recreate deleted files.
+  for (const notePath of notePaths) {
+    openSession(notePath)?.discard()
+  }
   if (indexGeneration !== null && notePaths.length > 0) {
     try {
       await removeFromIndexBatch(notePaths, indexGeneration)

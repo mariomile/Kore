@@ -23,6 +23,8 @@ export interface NoteBatchOptions<T> {
    * what failed.
    */
   each: (item: T, generation: number) => Promise<void>
+  /** Optional post-loop step run before caches invalidate and the toast settles. */
+  after?: (generation: number) => Promise<void>
 }
 
 export interface NoteBatchResult {
@@ -56,6 +58,7 @@ export async function runNoteBatch<T>({
   items,
   describe,
   each,
+  after,
 }: NoteBatchOptions<T>): Promise<NoteBatchResult> {
   if (items.length === 0) {
     return { failures: [], ok: true }
@@ -73,6 +76,9 @@ export async function runNoteBatch<T>({
     } catch (cause) {
       failures.push(`${describe(item)}: ${errorMessage(cause)}`)
     }
+  }
+  if (after !== undefined) {
+    await after(graph.generation)
   }
   await queryClient.invalidateQueries({ queryKey: allNotesListPrefix(graph.root) })
   if (failures.length === 0) {

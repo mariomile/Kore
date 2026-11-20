@@ -70,6 +70,7 @@ export function useNoteBulkActions(): NoteBulkActions {
       label: string,
       paths: readonly string[],
       each: (path: string, generation: number) => Promise<'changed' | 'skipped'>,
+      after?: (generation: number) => Promise<void>,
     ): Promise<BulkOutcome> => {
       // The loop itself — sequencing, per-note failure collection, cache
       // invalidation, toast wiring — is the shared `runNoteBatch`; this only
@@ -93,6 +94,7 @@ export function useNoteBulkActions(): NoteBulkActions {
               outcome.skipped += 1
             }
           },
+          ...(after !== undefined ? { after } : {}),
         })
         outcome.blocked = failures
         outcome.ok = ok
@@ -130,8 +132,7 @@ export function useNoteBulkActions(): NoteBulkActions {
     async (paths: readonly string[], folder: string): Promise<BulkOutcome> => {
       const target = folder.replaceAll(/^\/+|\/+$/g, '')
       const moved: { from: string; to: string }[] = []
-      let moveGeneration: number | null = null
-      const outcome = await run(
+      return await run(
         `Moving notes to ${target === '' ? 'the vault root' : target}`,
         paths,
         async (path, generation) => {
@@ -141,17 +142,14 @@ export function useNoteBulkActions(): NoteBulkActions {
           const to = target === '' ? basename(path) : `${target}/${basename(path)}`
           await moveNoteCarryingSession(path, to, generation)
           moved.push({ from: path, to })
-          moveGeneration = generation
           return 'changed'
         },
+        // Rewrite inbound path links after every note in the batch has flushed
+        // and moved, while `isRunning` and the operations toast are still active.
+        async (generation) => {
+          await rewriteMovedNotePathLinks(moved, generation)
+        },
       )
-      // Rewrite inbound path links only after every note in the batch has
-      // flushed and moved, so a later note's session flush cannot overwrite
-      // an earlier rewrite touching that same file.
-      if (moveGeneration !== null && moved.length > 0) {
-        await rewriteMovedNotePathLinks(moved, moveGeneration)
-      }
-      return outcome
     },
     [run],
   )

@@ -160,7 +160,8 @@ function enqueuePreviewFetch<T>(run: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const start = (): void => {
       activePreviewFetches += 1
-      run()
+      Promise.resolve()
+        .then(run)
         .then(resolve, reject)
         .finally(() => {
           activePreviewFetches -= 1

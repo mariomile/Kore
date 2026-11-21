@@ -125,16 +125,15 @@ export async function queueCyberBrainMemory(
   if (args.since !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(args.since)) {
     refuse('`since` must be YYYY-MM-DD')
   }
-  const secret = findCyberBrainSecret(
-    `${args.text} ${args.source} ${args.replaces ?? ''} ${args.target ?? ''}`,
-  )
+  const payload = `${args.text} ${args.source} ${args.replaces ?? ''} ${args.target ?? ''}`
+  const secret = findCyberBrainSecret(payload)
   if (secret !== null) {
     refuse(`Refused: looks like a secret (${secret}). Secrets are never stored in memory.`)
   }
   const exclusionsNote = await store.get(`${system}/memory/exclusions.md`)
   if (exclusionsNote !== null) {
     const exclusions = parseMemoryExclusions(splitFrontmatter(exclusionsNote.source).body)
-    const matched = matchMemoryExclusion(`${args.text} ${args.target ?? ''}`, exclusions)
+    const matched = matchMemoryExclusion(payload, exclusions)
     if (matched !== null) {
       refuse(`Refused: matches exclusion "${matched.topic}" in ${system}/memory/exclusions.md.`)
     }

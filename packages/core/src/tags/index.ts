@@ -81,7 +81,7 @@ export {
   type TagIconResolution,
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
-export { resolveTagTypes, tagDescendants } from './tag-inheritance'
+export { resolveTagTypes, tagAncestors, tagDescendants } from './tag-inheritance'
 export { TAG_VIEWS_KEY, parseTagViews, tagViewsToYaml } from './tag-views'
 export { localCalendarDate } from './timestamps'
 export {

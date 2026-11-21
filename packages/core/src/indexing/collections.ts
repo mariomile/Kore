@@ -1,6 +1,11 @@
 import { sql } from 'kysely'
 import { foldTag } from '../markdown'
-import { COLLECTION_DEFINITION_MARKER_KEY, decodeStoredList, type TagType } from '../tags'
+import {
+  COLLECTION_DEFINITION_MARKER_KEY,
+  decodeStoredList,
+  tagAncestors,
+  type TagType,
+} from '../tags'
 import { db } from './db'
 import {
   collectionTagKeys,
@@ -171,22 +176,62 @@ export function collectionValue(row: {
 }
 
 /**
- * The parsed type of one tag, or `null` when the tag has no definition (or a
- * mangled `schema_json` column — tolerated as untyped, never a broken UI).
- * Inherited fields are merged in: the index stores each tag's effective
- * schema (Plan 33 B2, `refreshTagTypeResolutions`). `excludePrivate` reads
- * the outbound view, where a private definition is untyped.
+ * The schema a sub-tag without its own definition inherits from its nearest
+ * defined ancestor: properties (already resolved through higher ancestors) and
+ * icon, never the ancestor's own saved views, template, or home folder.
+ */
+function inheritedFromAncestor(ancestor: TagType): TagType {
+  return {
+    properties: ancestor.properties,
+    ...(ancestor.icon !== undefined ? { icon: ancestor.icon } : {}),
+  }
+}
+
+/**
+ * The parsed type of one tag, or `null` when neither the tag nor any `/`
+ * ancestor has a definition (or a mangled `schema_json` column — tolerated as
+ * untyped, never a broken UI). Inherited properties are merged in: the index
+ * stores each tag's effective schema (Plan 33 B2; TDR 0005 Amendment I,
+ * `refreshTagTypeResolutions`). `excludePrivate` reads the outbound view,
+ * where a private definition is untyped.
  */
 export async function getTagType(
   tag: string,
   options: TagTypeReadOptions = {},
 ): Promise<TagType | null> {
-  const row = await db
+  const key = foldTag(tag)
+  const ancestors = tagAncestors(key)
+  if (ancestors.length === 0) {
+    const row = await db
+      .selectFrom('tagTypes')
+      .where('tagKey', '=', key)
+      .select(TAG_TYPE_COLUMNS)
+      .executeTakeFirst()
+    return row === undefined ? null : decodeStoredTagType(row, options)
+  }
+  const rows = await db
     .selectFrom('tagTypes')
-    .where('tagKey', '=', foldTag(tag))
-    .select(TAG_TYPE_COLUMNS)
-    .executeTakeFirst()
-  return row === undefined ? null : decodeStoredTagType(row, options)
+    .where('tagKey', 'in', [key, ...ancestors])
+    .select(['tagTypes.tagKey', ...TAG_TYPE_COLUMNS])
+    .execute()
+  const byKey = new Map(rows.map((row) => [row.tagKey, row]))
+  const direct = byKey.get(key)
+  if (direct !== undefined) {
+    return decodeStoredTagType(direct, options)
+  }
+  // Walk nearest ancestor first; its resolved schema already includes higher
+  // ancestors and explicit `extends`.
+  for (let index = ancestors.length - 1; index >= 0; index -= 1) {
+    const ancestorRow = byKey.get(ancestors[index]!)
+    if (ancestorRow === undefined) {
+      continue
+    }
+    const ancestorType = decodeStoredTagType(ancestorRow, options)
+    if (ancestorType !== null) {
+      return inheritedFromAncestor(ancestorType)
+    }
+  }
+  return null
 }
 
 /** The `tag_types` columns every typed read decodes ({@link decodeStoredTagType}). */
@@ -241,29 +286,69 @@ export async function listTagTypes(options: ListTagTypesOptions = {}): Promise<T
 }
 
 /**
+ * Resolve ancestor tag definitions in one batched query for sub-tags that carry
+ * no definition note of their own (TDR 0005 Amendment I). Returns an empty map
+ * without touching SQLite when no sub-tag needs a lookup.
+ */
+async function loadAncestorTagTypeRows(
+  missingTagKeys: readonly string[],
+): Promise<Map<string, StoredTagTypeColumns & { tagKey: string; notePath: string }>> {
+  const ancestorKeys = new Set<string>()
+  for (const tagKey of missingTagKeys) {
+    for (const ancestor of tagAncestors(tagKey)) {
+      ancestorKeys.add(ancestor)
+    }
+  }
+  if (ancestorKeys.size === 0) {
+    return new Map()
+  }
+  const rows = await db
+    .selectFrom('tagTypes')
+    .where('tagKey', 'in', [...ancestorKeys])
+    .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
+    .execute()
+  return new Map(rows.map((row) => [row.tagKey, row]))
+}
+
+function resolveInheritedSubtag(
+  tagKey: string,
+  ancestorRows: ReadonlyMap<string, StoredTagTypeColumns & { tagKey: string; notePath: string }>,
+): { type: TagType; notePath: string } | null {
+  const ancestors = tagAncestors(tagKey)
+  for (let index = ancestors.length - 1; index >= 0; index -= 1) {
+    const ancestorRow = ancestorRows.get(ancestors[index]!)
+    if (ancestorRow === undefined) {
+      continue
+    }
+    const ancestorType = decodeStoredTagType(ancestorRow)
+    if (ancestorType !== null) {
+      return { type: inheritedFromAncestor(ancestorType), notePath: ancestorRow.notePath }
+    }
+  }
+  return null
+}
+
+/**
  * The typed tags one note carries — its `tags` rows joined against
- * `tag_types` — in key order. Feeds the note's properties panel, whose
- * fields are the union of these schemas.
+ * `tag_types` (including sub-tags inheriting from defined `/` ancestors) — in
+ * key order. Feeds the note's properties panel, whose fields are the union of
+ * these schemas.
  */
 export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
-  const rows = await db
-    .selectFrom('tags')
-    .innerJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
-    .where('tags.notePath', '=', path)
-    .where('tags.member', '=', 1)
-    .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
-    .orderBy('tagTypes.tagKey')
-    .execute()
-  return decodeTagTypeRows(rows)
+  const tags = await listTagsOnNote(path)
+  return tags.flatMap<TagTypeEntry>((entry) =>
+    entry.type === null || entry.definitionPath === null
+      ? []
+      : [{ tagKey: entry.tagKey, notePath: entry.definitionPath, type: entry.type }],
+  )
 }
 
 /**
  * Every tag one note is a member of (not the ones its prose only mentions),
- * schema-bearing or not, in key order. Since
- * TDR 0005 Amendment A a tag *is* a collection whether or not a definition
- * note declares properties, so the note's Type field lists them all; the
- * property union above still comes from {@link listNoteTagTypes}, because an
- * untyped tag declares nothing to union.
+ * schema-bearing or not, in key order. Since TDR 0005 Amendment A a tag *is* a
+ * collection whether or not a definition note declares properties; since
+ * Amendment I a sub-tag without its own definition inherits properties from
+ * its nearest defined `/` ancestor.
  *
  * A definition the inheritance pass skipped (a `schema_json` that fails to
  * parse) degrades to `type: null`
@@ -279,14 +364,27 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tags.tagKey')
     .execute()
+  const missingSubtags = rows
+    .filter((row) => row.notePath === null && row.tagKey.includes('/'))
+    .map((row) => row.tagKey)
+  const ancestorRows = await loadAncestorTagTypeRows(missingSubtags)
+
   return rows.map((row) => {
-    // No `tag_types` row (the left join found none) is an untyped tag.
-    const type = row.notePath === null ? null : decodeStoredTagType(row)
+    if (row.notePath !== null) {
+      const type = decodeStoredTagType(row)
+      return {
+        tag: row.tag,
+        tagKey: row.tagKey,
+        type,
+        definitionPath: type === null ? null : row.notePath,
+      }
+    }
+    const inherited = resolveInheritedSubtag(row.tagKey, ancestorRows)
     return {
       tag: row.tag,
       tagKey: row.tagKey,
-      type,
-      definitionPath: type === null ? null : row.notePath,
+      type: inherited?.type ?? null,
+      definitionPath: inherited?.notePath ?? null,
     }
   })
 }

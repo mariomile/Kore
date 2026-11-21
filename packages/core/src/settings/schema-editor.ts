@@ -167,10 +167,10 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
  * the app; this key only records the arrangement the user dragged them into.
  */
 // There is no "open" shelf any more: it repeated the tab strip row for row.
-// A stored `open` entry is simply dropped by the normalization below.
-// `types` (tags with a definition) sits above `tags` (topics); folders come
-// after both, so what a note is and is about leads and where it lives follows.
-const sidebarSectionEnum = z.enum(['pinned', 'types', 'tags', 'folders', 'library'])
+// `types` merged back into `tags` (TDR 0005 Amendment I): configured tags sit
+// at the top of `tags` above a divider, and any legacy `types` entry in stored
+// settings is dropped by the normalization below.
+const sidebarSectionEnum = z.enum(['pinned', 'tags', 'folders', 'library'])
 
 export type SidebarSection = z.infer<typeof sidebarSectionEnum>
 
@@ -194,13 +194,6 @@ export const sidebarSectionsSchema = z
       if (parsed.success && !ordered.includes(parsed.data)) {
         ordered.push(parsed.data)
       }
-    }
-    // The Types shelf split out of the old Types-and-tags shelf: an
-    // arrangement saved before it existed gets it right above Tags, where
-    // those rows used to be, instead of at the bottom.
-    const tagsAt = ordered.indexOf('tags')
-    if (!ordered.includes('types') && tagsAt !== -1) {
-      ordered.splice(tagsAt, 0, 'types')
     }
     return [...ordered, ...SIDEBAR_SECTION_IDS.filter((id) => !ordered.includes(id))]
   })

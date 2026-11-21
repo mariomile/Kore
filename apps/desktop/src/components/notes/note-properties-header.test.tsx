@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
 import type { CollectionValue, NoteTagEntry, TagSuggestion, TagTypeEntry } from '@kore/core'
+import { setPlatformSurface } from '@/lib/platform-surface'
 import { NotePropertiesHeader } from './note-properties-header'
 
 const data = vi.hoisted(() => ({
@@ -69,12 +70,22 @@ beforeEach(() => {
 })
 
 describe('NotePropertiesHeader', () => {
-  it('shows no rows on a note with neither tags nor properties, only "Add a type"', async () => {
+  it('shows no rows on a note with neither tags nor properties, only "Add tag"', async () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByRole('button', { name: 'Add a type' })).toBeInTheDocument()
-    expect(header.getByText('Type', { exact: true }).elements()).toHaveLength(0)
+    await expect.element(header.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
+    expect(header.getByText('Tags', { exact: true }).elements()).toHaveLength(0)
+  })
+
+  it('stays completely empty on mobile when a note has neither tags nor properties', async () => {
+    setPlatformSurface({ mobileApp: true })
+    try {
+      const view = await render(<Subject />)
+      await expect.poll(() => view.container.textContent).toBe('')
+    } finally {
+      setPlatformSurface({ mobileApp: false })
+    }
   })
 
   it('renders nothing on a template', async () => {
@@ -82,7 +93,7 @@ describe('NotePropertiesHeader', () => {
     await expect.poll(() => view.container.textContent).toBe('')
   })
 
-  it('renders and edits a note-owned property alongside the Type row', async () => {
+  it('renders and edits a note-owned property alongside the Tags row', async () => {
     data.values = {
       follow_up: { value: 'Call Ada', valueType: 'string', valueNumber: null },
     }
@@ -91,7 +102,7 @@ describe('NotePropertiesHeader', () => {
     const header = view.getByRole('region', { name: 'Properties' })
     await expect.element(header.getByText('follow_up')).toBeInTheDocument()
     await expect.element(header.getByText('Call Ada')).toBeInTheDocument()
-    await expect.element(header.getByText('Type')).toBeInTheDocument()
+    await expect.element(header.getByText('Tags')).toBeInTheDocument()
   })
 
   it('presents the row fields and commits an edit in place', async () => {
@@ -167,7 +178,7 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('Type')).toBeInTheDocument()
+    await expect.element(header.getByText('Tags')).toBeInTheDocument()
     await expect.element(header.getByText('Project', { exact: true })).toBeInTheDocument()
     await expect.element(header.getByText('Person', { exact: true })).toBeInTheDocument()
 
@@ -175,7 +186,7 @@ describe('NotePropertiesHeader', () => {
     expect(removeTag).toHaveBeenCalledWith('notes/dispossessed.md', 'project')
   })
 
-  it('sets the type the picker chooses, schema-bearing tags first', async () => {
+  it('adds the tag the picker chooses, configured tags first', async () => {
     data.tagTypes = [{ tagKey: 'book', notePath: 'tags/book.md', type: { properties: [] } }]
     data.suggestions = [
       { tag: 'idea', count: 9 },
@@ -183,10 +194,10 @@ describe('NotePropertiesHeader', () => {
     ]
     const view = await render(<Subject />)
 
-    await view.getByRole('button', { name: 'Add a type' }).click()
-    await expect.element(view.getByText('Types', { exact: true })).toBeInTheDocument()
-    await expect.element(view.getByText('Tags', { exact: true })).toBeInTheDocument()
-    // `book` is typed, so it appears once, above the untyped suggestions.
+    await view.getByRole('button', { name: 'Add tag' }).click()
+    await expect.element(view.getByText('Configured', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Other tags', { exact: true })).toBeInTheDocument()
+    // `book` is configured, so it appears once, above the unconfigured suggestions.
     await expect.element(view.getByText('#idea')).toBeInTheDocument()
     expect(view.getByText('#book').elements()).toHaveLength(1)
 
@@ -199,13 +210,13 @@ describe('NotePropertiesHeader', () => {
     data.suggestions = [{ tag: 'idea', count: 9 }]
     const view = await render(<Subject />)
 
-    await view.getByRole('button', { name: 'Add a type' }).click()
+    await view.getByRole('button', { name: 'Add tag' }).click()
     await view.getByRole('combobox').fill('recipe')
-    await expect.element(view.getByText('Use #recipe')).toBeInTheDocument()
+    await expect.element(view.getByText('Create #recipe')).toBeInTheDocument()
 
     await view.getByRole('combobox').fill('idea')
-    // Carried already: neither the list nor the "use it" row offers it again.
-    await expect.element(view.getByText('No matching type.')).toBeInTheDocument()
+    // Carried already: neither the list nor the "create" row offers it again.
+    await expect.element(view.getByText('No matching tag.')).toBeInTheDocument()
   })
 
   it('shows each field type on its label and changes it in the owning type', async () => {

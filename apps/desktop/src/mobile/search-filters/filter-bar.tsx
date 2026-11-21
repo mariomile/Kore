@@ -25,7 +25,7 @@ interface FilterBarProps {
 /** The Tags chip's label: the first selected tag's display casing, plus count. */
 function tagsLabel(selected: string[], facets: NoteTagFacet[]): string {
   if (selected.length === 0) {
-    return 'Types'
+    return 'Tags'
   }
   const first = facets.find((facet) => foldTag(facet.tag) === selected[0])?.tag ?? selected[0]!
   return selected.length === 1 ? `#${first}` : `#${first} +${selected.length - 1}`

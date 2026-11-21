@@ -73,7 +73,7 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
     await expect.element(view.getByRole('button', { name: /^Website/ })).toBeVisible()
     expect(view.getByRole('textbox', { name: 'Property name' }).query()).toBeNull()
 
-    await view.getByRole('button', { name: 'Add field' }).click()
+    await view.getByRole('button', { name: 'Add property' }).click()
     await view.getByRole('textbox', { name: 'Field name' }).fill('Deal value')
     await view.getByRole('radio', { name: 'Number' }).click()
     await expect
@@ -111,7 +111,7 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
     await view.getByRole('button', { name: /^Website/ }).click()
     await view.getByRole('button', { name: 'Delete field' }).click()
 
-    await expect.element(view.getByRole('button', { name: 'Add field' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Add property' })).toBeVisible()
     expect(view.getByRole('button', { name: /^Website/ }).query()).toBeNull()
     await view.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => saveTagType.mock.calls.length).toBe(1)

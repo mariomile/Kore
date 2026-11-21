@@ -383,6 +383,31 @@ the note. The view also lists the checkbox rows of its tag (Amendment G) that
 sit in the note or link to it. Outside a note (a base, a preview) `this`
 matches nothing.
 
+## Amendment I (2026-11-21) — One Tag concept in UI, automatic sub-tag inheritance, orthogonal Folders
+
+Every tag is already a collection under Amendment A; exposing a separate
+"Type" vocabulary in the UI created an artificial two-tier model (`Types` vs
+`Tags`, `+ Add a type`, `Fields` vs `Properties`). See root `GLOSSARY.md`.
+
+- **One `#Tag` concept in UI.** User-facing surfaces drop "Type" and unify on
+  **Tag** and **Property** (reserving **Collection** for reusable multi-tag
+  queries). The sidebar merges `Types` and `Tags` into one `Tags` section with
+  configured tags (those carrying a definition note) pinned in a flat list at
+  the top above a subtle divider, followed by the remaining tag tree.
+- **Automatic sub-tag inheritance.** A sub-tag nested with `/` (such as
+  `#book/sci-fi`) automatically inherits properties from every defined ancestor
+  tag (`#book`), whether or not the sub-tag has its own `tags/<path>.md`
+  definition note. Explicit `extends:` remains supported under an `Advanced`
+  section in tag settings for flat-tag inheritance.
+- **Folders stay orthogonal.** A folder is where a note's Markdown file lives
+  on disk; a tag is what the note is. A tag's optional `Default folder` stays
+  the creation-time bridge without coupling disk moves to tag membership.
+- **Mobile note ergonomics.** A phone note with no tags and no properties
+  renders as a clean sheet (no hover-style `+ Add a type` control under the
+  title). Adding tags on mobile opens a native bottom sheet from the keyboard
+  toolbar's `#` button on regular notes (while `#` on daily notes keeps
+  inserting inline `#` for tagged tasks) and from `⋯ → Tags`.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move

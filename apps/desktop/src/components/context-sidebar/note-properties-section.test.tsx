@@ -68,7 +68,7 @@ describe('NotePropertiesSection', () => {
 
     await expect.element(view.getByText('Status')).toBeInTheDocument()
     await expect.element(view.getByText('waiting')).toBeInTheDocument()
-    await expect.element(view.getByRole('button', { name: 'Set the type' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
   })
 
   it('renders the union of the tags’ schemas with current values, once per key', async () => {

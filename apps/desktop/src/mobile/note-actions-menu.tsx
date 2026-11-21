@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
-import { Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
-import { errorMessage } from '@kore/core'
+import { Hash, Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
+import { errorMessage, isTemplatePath } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { useNoteRowState } from '@/hooks/use-note-row'
@@ -17,6 +17,8 @@ interface NoteActionsMenuProps {
   path: string
   /** Called after the note is deleted, so the screen can navigate away. */
   onDeleted: () => void
+  /** Open the note's native Add tag sheet (omitted on template notes). */
+  onOpenTagPicker?: () => void
 }
 
 /**
@@ -29,7 +31,11 @@ interface NoteActionsMenuProps {
  * destructive, even if recoverable from `.kore/trash/`) and routes through
  * {@link deleteOpenNote} so the open session is discarded rather than flushed.
  */
-export function NoteActionsMenu({ path, onDeleted }: NoteActionsMenuProps): ReactElement {
+export function NoteActionsMenu({
+  path,
+  onDeleted,
+  onOpenTagPicker,
+}: NoteActionsMenuProps): ReactElement {
   const { graph } = useGraph()
   const isPinned = usePinnedNotes().some((note) => note.path === path)
   const { row: noteRow, settled: privacyReady } = useNoteRowState(path)
@@ -74,6 +80,20 @@ export function NoteActionsMenu({ path, onDeleted }: NoteActionsMenuProps): Reac
         <DrawerContent>
           <DrawerTitle className="sr-only">Note actions</DrawerTitle>
           <div className="flex flex-col gap-1 p-4">
+            {onOpenTagPicker !== undefined && !isTemplatePath(path) ? (
+              <Button
+                variant="ghost"
+                size="lg"
+                className="h-12 justify-start gap-3 text-base"
+                onClick={() => {
+                  setActionsOpen(false)
+                  onOpenTagPicker()
+                }}
+              >
+                <Hash />
+                Add tag
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="lg"

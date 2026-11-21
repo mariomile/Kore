@@ -66,7 +66,7 @@ describe('MobileFormattingToolbar', () => {
       'Cycle list style',
       'Cycle checklist and task',
       'Link note',
-      'Add type',
+      'Add tag',
       'Outdent',
       'Indent',
       'Move up',
@@ -104,7 +104,7 @@ describe('MobileFormattingToolbar', () => {
     fireEvent.click(page.getByRole('button', { name: 'Link note' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('[[')
 
-    fireEvent.click(page.getByRole('button', { name: 'Add type' }))
+    fireEvent.click(page.getByRole('button', { name: 'Add tag' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('#')
 
     fireEvent.click(page.getByRole('button', { name: 'Slash command' }))
@@ -112,6 +112,18 @@ describe('MobileFormattingToolbar', () => {
 
     fireEvent.click(page.getByRole('button', { name: 'Hide keyboard' }))
     expect(toolbar.commands.dismissKeyboard).toHaveBeenCalledOnce()
+  })
+
+  it('opens the native tag picker instead of inserting # when a regular note supplies openTagPicker', async () => {
+    const openTagPicker = vi.fn()
+    const toolbar = makeToolbar()
+    toolbar.commands.openTagPicker = openTagPicker
+    await render(<MobileFormattingToolbar />)
+    await act(() => publishFormattingToolbar(owner, toolbar))
+
+    fireEvent.click(page.getByRole('button', { name: 'Add tag' }))
+    expect(openTagPicker).toHaveBeenCalledOnce()
+    expect(toolbar.commands.insertTrigger).not.toHaveBeenCalled()
   })
 
   it('hides the image button for an editor that cannot persist files', async () => {

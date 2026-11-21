@@ -97,7 +97,7 @@ export function AllNotesSection(): ReactElement {
             }}
             aria-label="Add filter type"
             aria-invalid={draftError !== null}
-            placeholder="Add a type (e.g. book)"
+            placeholder="Add a tag (e.g. book)"
             className="max-w-60"
           />
           <Button type="submit" variant="outline">

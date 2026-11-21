@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { isUntitledNotePath, weekFromWeeklyPath, weeklyNoteTitle } from '@kore/core'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { isTemplatePath, isUntitledNotePath, weekFromWeeklyPath, weeklyNoteTitle } from '@kore/core'
 import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
+import { NoteTagPickerDrawer } from '@/components/notes/note-type-picker'
+import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
+import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
@@ -24,6 +27,29 @@ import { useRouter } from '@/routing/router'
  * up mid-slide. Back pops the history stack; a cold entry (nothing to pop)
  * lands on today instead.
  */
+function MobileNoteTagSheet({
+  path,
+  onClose,
+}: {
+  path: string
+  onClose: () => void
+}): ReactElement {
+  const addTag = useAddNoteTag()
+  const { tags } = useNoteTypedProperties(path)
+  return (
+    <NoteTagPickerDrawer
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      carried={tags.map((entry) => entry.tagKey)}
+      onChoose={(tag) => {
+        void addTag(path, tag)
+      }}
+    />
+  )
+}
+
 export function MobileNote({ path }: { path: string }): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
@@ -34,6 +60,11 @@ export function MobileNote({ path }: { path: string }): ReactElement {
   const mainRef = useRef<HTMLElement>(null)
   const [titleInBar, setTitleInBar] = useState(false)
   const [barTitle, setBarTitle] = useState('')
+  const [tagPickerOpen, setTagPickerOpen] = useState(false)
+  const canTagNote = !isTemplatePath(path)
+  const openTagPicker = useCallback(() => {
+    setTagPickerOpen(true)
+  }, [])
 
   // iPhone design pass (2026-11): the note's own title is the
   // page heading, so the bar stays empty until it scrolls away and then shows
@@ -86,6 +117,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
           <NoteActionsMenu
             path={path}
             onDeleted={() => (canBack ? back() : navigate({ kind: 'today' }))}
+            {...(canTagNote ? { onOpenTagPicker: openTagPicker } : {})}
           />
         }
       />
@@ -110,6 +142,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
           lazy
           autoFocus={untitled}
           showBacklinks={false}
+          {...(canTagNote ? { onOpenTagPicker: openTagPicker } : {})}
           // The daily surface gets its top inset from the date header; a
           // plain note has no chrome between the header bar and the body,
           // so the pane carries the vertical breathing room itself.
@@ -126,6 +159,9 @@ export function MobileNote({ path }: { path: string }): ReactElement {
       {/* The Mac's outline, sized for the phone's margin: a tap opens the
           jump list, and it steps aside while the keyboard is up. */}
       <NoteOutlineRail scope={mainRef} className="right-0" onOpen={hapticImpactLight} />
+      {canTagNote && tagPickerOpen ? (
+        <MobileNoteTagSheet path={path} onClose={() => setTagPickerOpen(false)} />
+      ) : null}
     </div>
   )
 }

@@ -26,32 +26,29 @@ interface TagTreeContext {
 }
 
 /**
- * The sidebar's Tags section: what notes are *about*. Every tag a non-daily
- * note is a member of, minus the ones with a definition (those are Types, the
- * shelf above), alphabetical and nested on `/` the way Obsidian nests
- * `#domain/ai` under `#domain`. A child shows its last segment; a parent's
- * count and its page cover its whole subtree, and the chevron beside it
- * expands it (remembered for the session). A row opens All Notes filtered to
- * that tag. Hidden while no topic tag is left. Hovering a row reveals its
- * configure button (TDR 0005): saving it writes `tags/<key>.md`, which makes
- * the tag a type and moves it up to the Types shelf.
+ * The sidebar's unified Tags section (TDR 0005 Amendment I): tags carrying a
+ * definition (`tags/<key>.md`) sit in a flat list at the top so structured
+ * tags stay within reach even in large vaults, followed by a subtle divider
+ * and every other tag nested on `/` (when the vault uses nested tags).
+ * Hovering any row reveals its configure button.
  */
 export function SidebarTags(): ReactElement | null {
-  const { tags: tree } = useTypeShelves()
+  const { types: configured, tags: tree } = useTypeShelves()
   const icons = useTagIcons()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const [expanded, toggle] = useSessionExpanded(EXPANDED_KEY)
 
-  if (tree.length === 0) {
+  if (configured.length === 0 && tree.length === 0) {
     return null
   }
 
+  const activeKey =
+    route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null
   const context: TagTreeContext = {
     expanded,
     toggle,
-    activeKey:
-      route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null,
+    activeKey,
     nested: hasNestedTags(tree),
     icons,
     open: (tag) => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } }),
@@ -59,11 +56,60 @@ export function SidebarTags(): ReactElement | null {
   }
   return (
     <SidebarSortableSection id="tags" title="Tags" label="Tags">
-      <ul className="mt-2 flex flex-col space-y-1">
-        {tree.map((node) => (
-          <TagRow key={node.key} node={node} depth={0} context={context} />
-        ))}
-      </ul>
+      {configured.length > 0 ? (
+        <ul className="mt-2 flex flex-col space-y-1">
+          {configured.map((entry) => (
+            <li key={entry.key}>
+              <div
+                className={cn(
+                  'group relative flex w-full items-center rounded-md pl-2.5 leading-5 transition-colors duration-[50ms]',
+                  entry.key === activeKey
+                    ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
+                    : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => context.open(entry.tag)}
+                  className="flex min-w-0 flex-1 items-center text-left"
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1">
+                    <TagIcon
+                      icon={icons.get(entry.key)}
+                      className="size-3.5"
+                      emojiClassName="text-xs"
+                    />
+                    <span className="min-w-0 truncate text-xs font-medium">
+                      {tagDisplayName(entry.name)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
+                    {entry.count}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Configure #${entry.key}`}
+                  onClick={() => setConfiguring(entry.tag)}
+                  className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
+                >
+                  <Settings aria-hidden className="size-3" />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {configured.length > 0 && tree.length > 0 ? (
+        <div role="separator" className="mx-2.5 my-1.5 border-t border-border/60" />
+      ) : null}
+      {tree.length > 0 ? (
+        <ul className={cn('flex flex-col space-y-1', configured.length === 0 && 'mt-2')}>
+          {tree.map((node) => (
+            <TagRow key={node.key} node={node} depth={0} context={context} />
+          ))}
+        </ul>
+      ) : null}
       {configuring !== null ? (
         <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
       ) : null}

@@ -46,7 +46,7 @@ export function NoteTypeField({
   return (
     <li className="flex min-h-7 items-center gap-2">
       <span className={cn('shrink-0 truncate text-[13px] text-text-muted', labelClassName)}>
-        Type
+        Tags
       </span>
       <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
         {tags.map((entry) => (
@@ -54,11 +54,11 @@ export function NoteTypeField({
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">
               {/* The icon already says "tag" (the `#` glyph when none is
                   chosen), so the name reads plain, the way the sidebar's
-                  Types list shows it: `# Meeting`, never `# #meeting`. */}
+                  Tags list shows it: `# Meeting`, never `# #meeting`. */}
               <button
                 type="button"
                 aria-label={`Configure #${entry.tagKey}`}
-                title={`Edit the #${entry.tagKey} fields`}
+                title={`Edit the #${entry.tagKey} properties`}
                 className="flex min-w-0 items-center rounded-full transition-colors hover:text-text"
                 onClick={() => setConfiguring(entry.tag)}
               >
@@ -88,16 +88,13 @@ export function NoteTypeField({
             onChoose={(tag) => {
               void addTag(path, tag)
             }}
-            triggerLabel={tags.length === 0 ? 'Set the type' : 'Add a type'}
-            // Empty, the trigger *is* the field's value, so it reads as the
-            // placeholder Notion-style pickers show; alongside chips it
-            // shrinks to a quiet `+` that does not compete with them.
+            triggerLabel="Add tag"
             triggerClassName={cn(
               'flex min-h-5 items-center gap-1 rounded-full text-[13px] text-text-muted transition-colors hover:text-text focus-visible:outline-none',
               tags.length === 0 ? 'px-0.5' : 'size-5 justify-center hover:bg-surface-hover',
             )}
           >
-            {tags.length === 0 ? <span>Empty</span> : <Plus aria-hidden className="size-3.5" />}
+            {tags.length === 0 ? <span>Add tag</span> : <Plus aria-hidden className="size-3.5" />}
           </NoteTypePicker>
         </li>
       </ul>

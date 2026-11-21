@@ -41,6 +41,12 @@ export interface FormattingToolbarCommands {
   moveDown: () => void
   /** Type an autocomplete trigger at the caret, opening its menu. */
   insertTrigger: (text: FormattingTriggerText) => void
+  /**
+   * Open the note's native Add tag sheet instead of inserting an inline `#`
+   * (regular notes on touch surfaces; daily notes leave this undefined so `#`
+   * keeps inserting inline tags for tasks).
+   */
+  openTagPicker?: () => void
   /** Blur the editor, dropping the software keyboard (and this toolbar). */
   dismissKeyboard: () => void
   /**

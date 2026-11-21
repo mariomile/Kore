@@ -77,9 +77,9 @@ describe('AllNotesBulkBar', () => {
 
   it('tags every selected note and clears the selection', async () => {
     await renderBar(['notes/a.md', 'inbox/b.md'])
-    await userEvent.click(page.getByRole('button', { name: 'Add type (2)' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag (2)' }))
     await userEvent.fill(page.getByLabelText('Type name'), 'reading')
-    await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(writeNote).toHaveBeenCalledTimes(2))
     // The type goes to the Type field (frontmatter), not a body tag line the
@@ -93,21 +93,21 @@ describe('AllNotesBulkBar', () => {
   it('leaves a note that already has the type byte-identical', async () => {
     readNoteSource.mockResolvedValue('---\ntags: [reading]\n---\nSome prose.\n')
     await renderBar(['notes/a.md'])
-    await userEvent.click(page.getByRole('button', { name: 'Add type (1)' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
     await userEvent.fill(page.getByLabelText('Type name'), 'reading')
-    await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(writeNote).not.toHaveBeenCalled()
   })
 
   it('types a note that only mentions the tag in prose', async () => {
-    // A mention is not membership (#401), so Add type must still type it.
+    // A mention is not membership (#401), so Add tag must still type it.
     readNoteSource.mockResolvedValue('Some prose. #reading\n')
     await renderBar(['notes/a.md'])
-    await userEvent.click(page.getByRole('button', { name: 'Add type (1)' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
     await userEvent.fill(page.getByLabelText('Type name'), 'reading')
-    await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() =>
       expect(writeNote).toHaveBeenCalledWith(
@@ -123,9 +123,9 @@ describe('AllNotesBulkBar', () => {
     // external edit and park a conflict the user never asked for.
     openSession.mockReturnValue({ isDirty: () => true })
     await renderBar(['notes/a.md'])
-    await userEvent.click(page.getByRole('button', { name: 'Add type (1)' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
     await userEvent.fill(page.getByLabelText('Type name'), 'reading')
-    await userEvent.click(page.getByRole('button', { name: 'Add type', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(operationFail).toHaveBeenCalled())
     expect(writeNote).not.toHaveBeenCalled()

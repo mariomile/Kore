@@ -216,7 +216,7 @@ export function AllNotesBulkBar({
           <Button
             type="button"
             variant="ghost"
-            aria-label={`Add type (${paths.length})`}
+            aria-label={`Add tag (${paths.length})`}
             disabled={isRunning}
             onClick={openTagging}
             className="text-text-secondary"
@@ -273,7 +273,7 @@ export function AllNotesBulkBar({
       <Dialog open={tagging} onOpenChange={isRunning ? () => {} : setTagging}>
         <DialogContent>
           <DialogTitle>
-            Add a type to {pending.current.length} {pending.current.length === 1 ? 'note' : 'notes'}
+            Add a tag to {pending.current.length} {pending.current.length === 1 ? 'note' : 'notes'}
           </DialogTitle>
           <DialogDescription>
             The type is added to each note that doesn&rsquo;t already have it. Notes with unsaved
@@ -303,7 +303,7 @@ export function AllNotesBulkBar({
                 }
               />
               <Button type="submit" disabled={isRunning || tagValue.trim() === ''}>
-                Add type
+                Add tag
               </Button>
             </DialogFooter>
           </form>

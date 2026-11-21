@@ -65,9 +65,15 @@ export function MobileFormattingToolbar(): ReactElement | null {
           onPress={() => commands.insertTrigger('[[')}
         />
         <ToolbarButton
-          label="Add type"
+          label="Add tag"
           icon={<Hash className="size-5" />}
-          onPress={() => commands.insertTrigger('#')}
+          onPress={() => {
+            if (commands.openTagPicker !== undefined) {
+              commands.openTagPicker()
+            } else {
+              commands.insertTrigger('#')
+            }
+          }}
         />
         <ToolbarButton
           label="Outdent"

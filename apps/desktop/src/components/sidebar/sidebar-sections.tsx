@@ -40,12 +40,10 @@ import {
   type SidebarShelfArrangement,
 } from './sidebar-sortable-section'
 import { SidebarTags } from './sidebar-tags'
-import { SidebarTypes } from './sidebar-types'
 
 /** Each shelf's component, keyed by the id the stored order is written in. */
 const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
   pinned: SidebarPinned,
-  types: SidebarTypes,
   folders: SidebarFolders,
   tags: SidebarTags,
   library: SidebarLibrary,
@@ -54,7 +52,6 @@ const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
 /** Each shelf's header title, also its name in the "hidden" menu. */
 const SECTION_TITLES: Record<SidebarSection, string> = {
   pinned: 'Pinned notes',
-  types: 'Types',
   folders: 'Folders',
   tags: 'Tags',
   library: 'Library',
@@ -138,16 +135,13 @@ export function SidebarSections(): ReactElement {
     const shown: Record<SidebarSection, boolean> = {
       pinned: pinned.length > 0,
       folders: folderTree !== null && hasOwnFolders(folderTree),
-      // Types shows (with its how-to line) whenever the vault has tags.
-      types: shelves.types.length > 0 || tagTree.length > 0,
-      tags: shelves.tags.length > 0,
+      tags: shelves.types.length > 0 || shelves.tags.length > 0,
       library: libraryRoots.length > 0,
     }
     return SIDEBAR_SECTION_IDS.filter((id) => shown[id] && !hidden.includes(id))
   }, [
     pinned.length,
     folderTree,
-    tagTree.length,
     shelves.types.length,
     shelves.tags.length,
     libraryRoots.length,

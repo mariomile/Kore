@@ -9,6 +9,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent } from '@/components/ui/popover'
+import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { cn } from '@/lib/utils'
 import { EditorTrigger, editorSeedList, type PropertyEditorProps } from './property-editor-shared'
 
@@ -19,6 +20,7 @@ export function SelectPropertyEditor({
   onCommit,
   children,
   align,
+  variant = 'default',
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const commandRef = useRef<HTMLDivElement | null>(null)
@@ -57,10 +59,12 @@ export function SelectPropertyEditor({
         setLocalSelected(next ? editorSeedList(value) : null)
       }}
     >
-      <EditorTrigger name={property.name}>{children}</EditorTrigger>
+      <EditorTrigger name={property.name} variant={variant}>
+        {children}
+      </EditorTrigger>
       <PopoverContent
         align={align ?? 'start'}
-        sideOffset={4}
+        sideOffset={variant === 'table-cell' ? 2 : 4}
         className="w-56 p-0"
         initialFocus={searchable ? true : commandRef}
       >
@@ -77,7 +81,16 @@ export function SelectPropertyEditor({
                     value={option}
                     onSelect={() => (multiple ? toggleMultiple(option) : chooseSingle(option))}
                   >
-                    <span className="min-w-0 flex-1 truncate">{option}</span>
+                    <span className="flex min-w-0 flex-1 items-center">
+                      <span
+                        className={cn(
+                          'truncate rounded-[5px] px-2 py-0.5 text-xs font-medium leading-tight',
+                          selectOptionBadgeClass(option, property),
+                        )}
+                      >
+                        {option}
+                      </span>
+                    </span>
                     <Check
                       aria-hidden
                       className={cn('size-3.5 shrink-0', active ? 'opacity-100' : 'opacity-0')}

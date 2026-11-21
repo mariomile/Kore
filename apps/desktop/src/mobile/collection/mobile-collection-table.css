@@ -1,7 +1,7 @@
 /*
- * The frozen columns' edge (Craft draws no divider lines): a soft shadow the
- * scrolling columns slide under, shown only once the table is scrolled
- * sideways so a resting table stays a clean sheet.
+ * Frozen Title column elevation on mobile CollectionTable: a crisp border
+ * always frames the Title column, and a soft depth shadow fades in as soon as
+ * property columns slide under it.
  */
 .mobile-table-frozen-edge {
   position: sticky;
@@ -14,13 +14,13 @@
   right: -10px;
   width: 10px;
   pointer-events: none;
-  background: linear-gradient(to right, rgb(0 0 0 / 0.08), transparent);
+  background: linear-gradient(to right, rgb(0 0 0 / 0.1), transparent);
   opacity: 0;
-  transition: opacity 160ms ease;
+  transition: opacity 150ms ease;
 }
 
 .dark .mobile-table-frozen-edge::after {
-  background: linear-gradient(to right, rgb(0 0 0 / 0.3), transparent);
+  background: linear-gradient(to right, rgb(0 0 0 / 0.36), transparent);
 }
 
 .mobile-collection-table[data-scrolled-x] .mobile-table-frozen-edge::after {

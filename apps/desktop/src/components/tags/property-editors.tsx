@@ -34,7 +34,11 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
     // mtime — read-only faces, like the derived columns above.
     case 'created':
     case 'updated':
-      return <>{props.children}</>
+      return props.variant === 'table-cell' ? (
+        <span className="flex h-full w-full min-w-0 items-center px-2.5">{props.children}</span>
+      ) : (
+        <>{props.children}</>
+      )
     default:
       return <InputPropertyEditor {...props} />
   }

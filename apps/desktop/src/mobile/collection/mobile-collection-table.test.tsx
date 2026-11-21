@@ -5,6 +5,7 @@ import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@ko
 import { MobileCollectionTable } from './mobile-collection-table'
 
 const commitProperty = vi.hoisted(() => vi.fn())
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
   useCommitNoteProperties: () => () => {},
@@ -113,5 +114,61 @@ describe('MobileCollectionTable', () => {
     )
     await expect.element(view.getByRole('rowheader', { name: 'Kitchen shelves' })).toBeVisible()
     expect(view.getByRole('button', { name: 'New', exact: true }).query()).toBeNull()
+  })
+
+  it('cycles column sort when tapping a column header', async () => {
+    const onSortChange = vi.fn()
+    const view = await render(
+      <div style={{ height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={ENTRIES}
+          type={PROJECT}
+          sorts={[]}
+          onSortChange={onSortChange}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await userEvent.click(view.getByRole('button', { name: 'Status' }))
+    expect(onSortChange).toHaveBeenCalledWith([{ key: 'status', direction: 'asc' }])
+  })
+
+  it('toggles a checkbox cell in place without opening the drawer', async () => {
+    const DONE: TagProperty = { name: 'Done', key: 'done', type: 'checkbox' }
+    const view = await render(
+      <div style={{ height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={[
+            entry('notes/kitchen.md', 'Kitchen shelves', {
+              done: { value: 'false', valueType: 'boolean', valueNumber: null },
+            }),
+          ]}
+          type={{ properties: [DONE] }}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await userEvent.click(view.getByRole('checkbox', { name: 'Done' }))
+    expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'done', true)
+  })
+
+  it('commits an edited text draft when tapping Done in the drawer header', async () => {
+    const OWNER: TagProperty = { name: 'Owner', key: 'owner', type: 'text' }
+    const view = await render(
+      <div style={{ height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={[entry('notes/kitchen.md', 'Kitchen shelves', { owner: text('Ada') })]}
+          type={{ properties: [OWNER] }}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await userEvent.click(view.getByRole('button', { name: 'Edit Owner' }))
+    await view.getByRole('textbox', { name: 'Owner' }).fill('Grace')
+    await userEvent.click(view.getByRole('button', { name: 'Done' }))
+    expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'owner', 'Grace')
   })
 })

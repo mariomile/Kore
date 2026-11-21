@@ -19,6 +19,7 @@ import {
   type WikiLinkSuggestion,
 } from '@kore/core'
 import { PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -42,6 +43,13 @@ export interface PropertyEditorProps {
   /** The read-only display the editor opens from. */
   children: ReactNode
   align?: 'start' | 'end'
+  /**
+   * `'table-cell'` fills the bordered table cell, paints cell hover and active
+   * focus frames, and edits scalar inputs directly inline in the cell.
+   */
+  variant?: 'default' | 'table-cell'
+  /** Move to the adjacent editable cell on Tab / Shift+Tab (table cells). */
+  onStepCell?: (direction: 'next' | 'prev') => void
 }
 
 /** The stored value's text form for an input seed ('' when unset). */
@@ -87,15 +95,25 @@ export function typedValueForText(property: TagProperty, text: string): unknown 
 export interface EditorTriggerProps {
   name: string
   children: ReactNode
+  variant?: 'default' | 'table-cell'
 }
 
 /** The one read-only trigger every popover editor opens from: cell-sized
  * even when empty, and click-transparent to the row's select/open gestures. */
-export function EditorTrigger({ name, children }: EditorTriggerProps): ReactElement {
+export function EditorTrigger({
+  name,
+  children,
+  variant = 'default',
+}: EditorTriggerProps): ReactElement {
   return (
     <PopoverTrigger
       aria-label={`Edit ${name}`}
-      className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
+      className={cn(
+        'flex w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none',
+        variant === 'table-cell'
+          ? 'h-full px-2.5 transition-colors hover:bg-surface-hover/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent data-[popup-open]:bg-surface data-[popup-open]:ring-2 data-[popup-open]:ring-inset data-[popup-open]:ring-accent'
+          : 'min-h-5',
+      )}
       onClick={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
     >

@@ -95,9 +95,9 @@ export function AddPropertyPopover({ onAdd, onEditSchema }: AddPropertyPopoverPr
       <PopoverTrigger
         aria-label="Add property"
         title="Add a property"
-        className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-muted hover:text-text-secondary"
+        className="flex h-full w-full min-h-6 min-w-6 shrink-0 items-center justify-center rounded-sm text-text-muted transition-colors hover:text-text"
       >
-        <Plus aria-hidden className="size-3" />
+        <Plus aria-hidden className="size-3.5" />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-64 p-2">
         <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-1.5">

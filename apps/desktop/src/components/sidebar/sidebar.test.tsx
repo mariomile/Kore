@@ -367,6 +367,26 @@ describe('Sidebar', () => {
     await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes:type/project')
   })
 
+  it('nests unconfigured sub-tags under their pinned configured parent without duplicating the parent', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'book', tag: 'book', count: 5 },
+        { key: 'book/sci-fi', tag: 'book/sci-fi', count: 2 },
+        { key: 'idea', tag: 'idea', count: 1 },
+      ]),
+    )
+    listTagTypes.mockResolvedValue([
+      { tagKey: 'book', notePath: 'tags/book.md', type: { properties: [] } },
+    ])
+    const { view } = await renderSidebar()
+
+    const tags = view.getByRole('region', { name: 'Tags' })
+    await expect.element(tags.getByRole('button', { name: /^Book\s*5$/ })).toBeVisible()
+    expect(tags.getByRole('button', { name: /^Book\s*5$/ }).elements()).toHaveLength(1)
+    await tags.getByRole('button', { name: 'Expand #book' }).click()
+    await expect.element(tags.getByRole('button', { name: /^Sci-fi\s*2$/i })).toBeVisible()
+  })
+
   it('browses the vault by folder and opens a note from the tree', async () => {
     getFolderTree.mockResolvedValue(
       buildFolderTree([

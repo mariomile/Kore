@@ -189,8 +189,8 @@ function TypePage({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)
-  const [advancedOpen, setAdvancedOpen] = useState(() => config.parents.length > 0)
-  const showAdvanced = advancedOpen || config.parents.length > 0
+  const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null)
+  const showAdvanced = advancedOpen ?? config.parents.length > 0
 
   return (
     <>
@@ -365,7 +365,7 @@ function TypePage({
             <button
               type="button"
               aria-expanded={showAdvanced}
-              onClick={() => setAdvancedOpen((open) => !open)}
+              onClick={() => setAdvancedOpen(!showAdvanced)}
               className="text-xs font-medium text-text-muted active:text-text"
             >
               {showAdvanced ? 'Hide advanced' : 'Advanced'}

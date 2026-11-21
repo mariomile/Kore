@@ -78,7 +78,7 @@ describe('AllNotesBulkBar', () => {
   it('tags every selected note and clears the selection', async () => {
     await renderBar(['notes/a.md', 'inbox/b.md'])
     await userEvent.click(page.getByRole('button', { name: 'Add tag (2)' }))
-    await userEvent.fill(page.getByLabelText('Type name'), 'reading')
+    await userEvent.fill(page.getByLabelText('Tag name'), 'reading')
     await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(writeNote).toHaveBeenCalledTimes(2))
@@ -94,7 +94,7 @@ describe('AllNotesBulkBar', () => {
     readNoteSource.mockResolvedValue('---\ntags: [reading]\n---\nSome prose.\n')
     await renderBar(['notes/a.md'])
     await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
-    await userEvent.fill(page.getByLabelText('Type name'), 'reading')
+    await userEvent.fill(page.getByLabelText('Tag name'), 'reading')
     await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
@@ -106,7 +106,7 @@ describe('AllNotesBulkBar', () => {
     readNoteSource.mockResolvedValue('Some prose. #reading\n')
     await renderBar(['notes/a.md'])
     await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
-    await userEvent.fill(page.getByLabelText('Type name'), 'reading')
+    await userEvent.fill(page.getByLabelText('Tag name'), 'reading')
     await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() =>
@@ -124,7 +124,7 @@ describe('AllNotesBulkBar', () => {
     openSession.mockReturnValue({ isDirty: () => true })
     await renderBar(['notes/a.md'])
     await userEvent.click(page.getByRole('button', { name: 'Add tag (1)' }))
-    await userEvent.fill(page.getByLabelText('Type name'), 'reading')
+    await userEvent.fill(page.getByLabelText('Tag name'), 'reading')
     await userEvent.click(page.getByRole('button', { name: 'Add tag', exact: true }))
 
     await vi.waitFor(() => expect(operationFail).toHaveBeenCalled())

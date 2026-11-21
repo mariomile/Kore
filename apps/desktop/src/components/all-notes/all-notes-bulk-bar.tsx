@@ -222,7 +222,7 @@ export function AllNotesBulkBar({
             className="text-text-secondary"
           >
             <Hash aria-hidden className="size-3.5" />
-            <span>Type</span>
+            <span>Tag</span>
           </Button>
           <Button
             type="button"
@@ -276,7 +276,7 @@ export function AllNotesBulkBar({
             Add a tag to {pending.current.length} {pending.current.length === 1 ? 'note' : 'notes'}
           </DialogTitle>
           <DialogDescription>
-            The type is added to each note that doesn&rsquo;t already have it. Notes with unsaved
+            The tag is added to each note that doesn&rsquo;t already have it. Notes with unsaved
             changes are left alone.
           </DialogDescription>
           <form
@@ -289,7 +289,7 @@ export function AllNotesBulkBar({
           >
             <Input
               autoFocus
-              aria-label="Type name"
+              aria-label="Tag name"
               placeholder="reading"
               value={tagValue}
               onChange={(event) => setTagValue(event.target.value)}

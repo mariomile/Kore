@@ -303,11 +303,11 @@ function TypePane({
   config: TagConfigDraft
   onPicked: () => void
 }): ReactElement {
-  const [advancedOpen, setAdvancedOpen] = useState(() => config.parents.length > 0)
+  const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null)
   if (config.loading) {
     return <div aria-busy className="h-40" />
   }
-  const showAdvanced = advancedOpen || config.parents.length > 0
+  const showAdvanced = advancedOpen ?? config.parents.length > 0
   return (
     <div className="flex flex-col gap-3">
       <PaneHeading>Tag</PaneHeading>
@@ -368,7 +368,7 @@ function TypePane({
         <button
           type="button"
           aria-expanded={showAdvanced}
-          onClick={() => setAdvancedOpen((open) => !open)}
+          onClick={() => setAdvancedOpen(!showAdvanced)}
           className="text-xs font-medium text-text-muted transition-colors hover:text-text"
         >
           {showAdvanced ? 'Hide advanced' : 'Advanced'}

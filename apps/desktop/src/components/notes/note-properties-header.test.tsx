@@ -241,6 +241,25 @@ describe('NotePropertiesHeader', () => {
     )
   })
 
+  it('attributes inherited sub-tag properties to the defining ancestor tag', async () => {
+    data.tags = [
+      {
+        tag: 'book/sci-fi',
+        tagKey: 'book/sci-fi',
+        definitionPath: 'tags/book.md',
+        type: { properties: [{ name: 'Author', key: 'author', type: 'text' }] },
+      },
+    ]
+    const view = await render(<Subject />)
+
+    await view.getByRole('button', { name: 'Author (Text)' }).click()
+    await expect.element(view.getByText('Type, for every #book note')).toBeInTheDocument()
+    await view.getByRole('menuitemradio', { name: 'Number', exact: true }).click()
+    await vi.waitFor(() =>
+      expect(setTagPropertyType).toHaveBeenCalledWith('book', 1, 'author', 'number'),
+    )
+  })
+
   it('names a loose field type without offering a change', async () => {
     data.values = { follow_up: { value: 'Call Ada', valueType: 'string', valueNumber: null } }
     const view = await render(<Subject />)

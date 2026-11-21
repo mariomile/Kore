@@ -1,5 +1,11 @@
-import { useState, type ReactElement } from 'react'
-import { foldTag, hasNestedTags, tagDisplayName, type TagTreeNode } from '@kore/core'
+import { useMemo, useState, type ReactElement } from 'react'
+import {
+  foldTag,
+  hasNestedTags,
+  tagDisplayName,
+  type TagTreeNode,
+  type TypeShelfEntry,
+} from '@kore/core'
 import { ChevronDown, ChevronRight, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'
@@ -18,7 +24,7 @@ interface TagTreeContext {
   expanded: ReadonlySet<string>
   toggle: (key: string) => void
   activeKey: string | null
-  /** Whether any tag nests — only then do rows reserve a chevron column. */
+  /** Whether any tag in this group nests — only then do rows reserve a chevron column. */
   nested: boolean
   icons: ReadonlyMap<string, string>
   open: (tag: string) => void
@@ -26,10 +32,51 @@ interface TagTreeContext {
 }
 
 /**
+ * When a configured tag (e.g. `#book`) also has unconfigured sub-tags
+ * (`#book/sci-fi`), `splitTypesFromTags` keeps a parent node in `tags` so the
+ * sub-tags stay reachable. Inside one unified Tags shelf that would show
+ * `#book` twice: attach those unconfigured children directly under the pinned
+ * `#book` row and omit the duplicate wrapper from the lower tree.
+ */
+function foldConfiguredChildren(
+  configured: readonly TypeShelfEntry[],
+  tree: readonly TagTreeNode[],
+): { pinnedNodes: TagTreeNode[]; remainingTree: TagTreeNode[] } {
+  const configuredKeys = new Set(configured.map((entry) => entry.key))
+  const childrenByKey = new Map<string, TagTreeNode[]>()
+  const strip = (nodes: readonly TagTreeNode[]): TagTreeNode[] => {
+    const kept: TagTreeNode[] = []
+    for (const node of nodes) {
+      const children = strip(node.children)
+      if (configuredKeys.has(node.key)) {
+        if (children.length > 0) {
+          childrenByKey.set(node.key, children)
+        }
+        continue
+      }
+      const emptiedWrapper = node.children.length > 0 && children.length === 0
+      if (!emptiedWrapper) {
+        kept.push({ ...node, children })
+      }
+    }
+    return kept
+  }
+  const remainingTree = strip(tree)
+  const pinnedNodes: TagTreeNode[] = configured.map((entry) => ({
+    key: entry.key,
+    tag: entry.tag,
+    name: entry.name,
+    count: entry.count,
+    children: childrenByKey.get(entry.key) ?? [],
+  }))
+  return { pinnedNodes, remainingTree }
+}
+
+/**
  * The sidebar's unified Tags section (TDR 0005 Amendment I): tags carrying a
- * definition (`tags/<key>.md`) sit in a flat list at the top so structured
- * tags stay within reach even in large vaults, followed by a subtle divider
- * and every other tag nested on `/` (when the vault uses nested tags).
+ * definition (`tags/<key>.md`) sit at the top (with any unconfigured sub-tags
+ * nested directly beneath them so no tag appears twice), followed by a subtle
+ * divider and every remaining tag nested on `/`.
  * Hovering any row reveals its configure button.
  */
 export function SidebarTags(): ReactElement | null {
@@ -39,74 +86,53 @@ export function SidebarTags(): ReactElement | null {
   const [configuring, setConfiguring] = useState<string | null>(null)
   const [expanded, toggle] = useSessionExpanded(EXPANDED_KEY)
 
-  if (configured.length === 0 && tree.length === 0) {
+  const { pinnedNodes, remainingTree } = useMemo(
+    () => foldConfiguredChildren(configured, tree),
+    [configured, tree],
+  )
+
+  if (pinnedNodes.length === 0 && remainingTree.length === 0) {
     return null
   }
 
   const activeKey =
     route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null
-  const context: TagTreeContext = {
+  const open = (tag: string): void => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
+  const pinnedContext: TagTreeContext = {
     expanded,
     toggle,
     activeKey,
-    nested: hasNestedTags(tree),
+    nested: hasNestedTags(pinnedNodes),
     icons,
-    open: (tag) => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } }),
+    open,
     configure: setConfiguring,
   }
+  const remainingContext: TagTreeContext = {
+    expanded,
+    toggle,
+    activeKey,
+    nested: hasNestedTags(remainingTree),
+    icons,
+    open,
+    configure: setConfiguring,
+  }
+
   return (
     <SidebarSortableSection id="tags" title="Tags" label="Tags">
-      {configured.length > 0 ? (
+      {pinnedNodes.length > 0 ? (
         <ul className="mt-2 flex flex-col space-y-1">
-          {configured.map((entry) => (
-            <li key={entry.key}>
-              <div
-                className={cn(
-                  'group relative flex w-full items-center rounded-md pl-2.5 leading-5 transition-colors duration-[50ms]',
-                  entry.key === activeKey
-                    ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
-                    : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => context.open(entry.tag)}
-                  className="flex min-w-0 flex-1 items-center text-left"
-                >
-                  <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1">
-                    <TagIcon
-                      icon={icons.get(entry.key)}
-                      className="size-3.5"
-                      emojiClassName="text-xs"
-                    />
-                    <span className="min-w-0 truncate text-xs font-medium">
-                      {tagDisplayName(entry.name)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
-                    {entry.count}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Configure #${entry.key}`}
-                  onClick={() => setConfiguring(entry.tag)}
-                  className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
-                >
-                  <Settings aria-hidden className="size-3" />
-                </button>
-              </div>
-            </li>
+          {pinnedNodes.map((node) => (
+            <TagRow key={node.key} node={node} depth={0} context={pinnedContext} />
           ))}
         </ul>
       ) : null}
-      {configured.length > 0 && tree.length > 0 ? (
+      {pinnedNodes.length > 0 && remainingTree.length > 0 ? (
         <div role="separator" className="mx-2.5 my-1.5 border-t border-border/60" />
       ) : null}
-      {tree.length > 0 ? (
-        <ul className={cn('flex flex-col space-y-1', configured.length === 0 && 'mt-2')}>
-          {tree.map((node) => (
-            <TagRow key={node.key} node={node} depth={0} context={context} />
+      {remainingTree.length > 0 ? (
+        <ul className={cn('flex flex-col space-y-1', pinnedNodes.length === 0 && 'mt-2')}>
+          {remainingTree.map((node) => (
+            <TagRow key={node.key} node={node} depth={0} context={remainingContext} />
           ))}
         </ul>
       ) : null}

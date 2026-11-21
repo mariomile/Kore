@@ -209,6 +209,7 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
     case 'read_web_page':
       return { tool: 'readPage', toolCallId: part.toolCallId }
     case 'remember':
+    case 'forget':
     case 'open_loop':
     case 'update_loop':
     case 'close_loop':
@@ -440,6 +441,7 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
           }
     }
     case 'remember':
+    case 'forget':
     case 'open_loop':
     case 'update_loop':
     case 'close_loop':

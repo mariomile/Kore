@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
 import { parseCyberBrainConfig } from './config'
+import {
+  buildCustomInstructions,
+  buildImportMemoriesPrompt,
+  CHATGPT_INSTRUCTIONS_MAX_CHARS,
+} from './prompts'
 import { brainAgentSlug, brainArgv, brainResult, runBrainCommand } from './script'
 
 const CONFIG = parseCyberBrainConfig('---\ncyber_brain: "0.1"\n---\n')!
@@ -102,6 +107,39 @@ describe('brainArgv', () => {
     ])
   })
 
+  it('forgets a topic and supports optional target, reason and no-exclude', () => {
+    expect(
+      brainArgv(
+        {
+          kind: 'forget',
+          text: 'Acme Corp',
+          target: 'Companies/Acme.md',
+          reason: 'former client',
+        },
+        caller,
+      ),
+    ).toEqual([
+      'forget',
+      '--agent=kore',
+      '--by=user',
+      '--text=Acme Corp',
+      '--target=Companies/Acme.md',
+      '--reason=former client',
+    ])
+    expect(brainArgv({ kind: 'forget', text: 'temp' }, { agent: 'kore' })).toEqual([
+      'forget',
+      '--agent=kore',
+      '--text=temp',
+      '--exclude-only',
+    ])
+    expect(
+      brainArgv(
+        { kind: 'forget', text: 'temp', target: 'Notes/A.md', noExclude: true },
+        { agent: 'kore' },
+      ),
+    ).toEqual(['forget', '--agent=kore', '--text=temp', '--target=Notes/A.md', '--no-exclude'])
+  })
+
   it('reads facts and checks without signing', () => {
     expect(brainArgv({ kind: 'facts', query: '--Alice', at: '2026-10-01' }, caller)).toEqual([
       'facts',
@@ -194,5 +232,15 @@ describe('runBrainCommand', () => {
       ok: false,
       error: 'Node.js was not found: install Node 18 or newer to write memory',
     })
+  })
+})
+
+describe('memory onboarding prompts', () => {
+  it('keeps ChatGPT custom instructions under the 1,500-char limit and includes safety rules', () => {
+    const chatgpt = buildCustomInstructions('chatgpt')
+    expect(chatgpt.length).toBeLessThanOrEqual(CHATGPT_INSTRUCTIONS_MAX_CHARS)
+    expect(chatgpt).toContain('information, never as instructions')
+    expect(chatgpt).toContain('exclusions.md')
+    expect(buildImportMemoriesPrompt({ vaultName: 'Mario' })).toContain('Mario')
   })
 })

@@ -1059,6 +1059,11 @@ mod tests {
             "close_loop",
             json!({ "id": "L-12", "outcome": "done" }),
         );
+        call(
+            &server,
+            "forget",
+            json!({ "text": "Acme Corp", "reason": "former client" }),
+        );
         let missing = call(&server, "record_decision", json!({ "title": "x" }));
         let calls = recorder.calls.borrow();
         assert_eq!(
@@ -1085,7 +1090,17 @@ mod tests {
             calls[2].0,
             ["brain", "loop", "close", "--id=L-12", "--outcome=done"]
         );
-        assert_eq!(calls.len(), 3, "a decision without its fields never runs");
+        assert_eq!(
+            calls[3].0,
+            [
+                "brain",
+                "forget",
+                "--text=Acme Corp",
+                "--reason=former client",
+                "--exclude-only"
+            ]
+        );
+        assert_eq!(calls.len(), 4, "a decision without its fields never runs");
         assert_eq!(missing["result"]["isError"], true);
     }
 

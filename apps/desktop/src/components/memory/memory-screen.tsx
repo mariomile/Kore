@@ -8,6 +8,11 @@ import {
   type MemoryHealth,
   type MemoryOverview,
 } from '@kore/core'
+import {
+  MemoryPromptsDialog,
+  type MemoryPromptTab,
+} from '@/components/memory/memory-prompts-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageLoading } from '@/components/page-loading'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -52,6 +57,10 @@ function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElem
   const { graph } = useGraph()
   const { navigate } = useRouter()
   const bridgeReady = useBridgeReady()
+  const [promptDialog, setPromptDialog] = useState<{ open: boolean; tab: MemoryPromptTab }>({
+    open: false,
+    tab: 'import',
+  })
   const { data, isError } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'memory-overview'],
     queryFn: () => loadMemoryOverview(config),
@@ -71,15 +80,67 @@ function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElem
   }
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">Memory</h1>
-      <p className="mt-1 text-xs text-text-muted">
-        cyber-brain {config.version} · written by every agent through the vault’s own script
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-text">Memory</h1>
+          <p className="mt-1 text-xs text-text-muted">
+            cyber-brain {config.version} · written by every agent through the vault’s own script
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => setPromptDialog({ open: true, tab: 'import' })}
+          >
+            Import memories
+          </Button>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => setPromptDialog({ open: true, tab: 'instructions' })}
+          >
+            Agent instructions
+          </Button>
+        </div>
+      </div>
+      {data.userPath !== null || data.soulPath !== null ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-text-muted">
+          {data.userPath !== null ? (
+            <button
+              type="button"
+              onClick={() => open(data.userPath!)}
+              className="underline-offset-2 hover:text-text hover:underline"
+            >
+              Open USER.md
+            </button>
+          ) : null}
+          {data.soulPath !== null ? (
+            <button
+              type="button"
+              onClick={() => open(data.soulPath!)}
+              className="underline-offset-2 hover:text-text hover:underline"
+            >
+              Open SOUL.md
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <NowSection data={data} open={open} />
+      {data.transit.length > 0 ? <TransitSection data={data} open={open} /> : null}
       <LoopsSection data={data} open={open} />
       <DecisionsSection data={data} open={open} />
+      {data.exclusions.length > 0 ? <ExclusionsSection data={data} open={open} /> : null}
       <RunsSection data={data} open={open} />
       <HealthSection config={config} />
+      <MemoryPromptsDialog
+        open={promptDialog.open}
+        tab={promptDialog.tab}
+        onTabChange={(tab) => setPromptDialog((prev) => ({ ...prev, tab }))}
+        onOpenChange={(isOpen) => setPromptDialog((prev) => ({ ...prev, open: isOpen }))}
+        vaultName={graph?.name ?? 'Kore'}
+        systemPath={config.systemPath}
+      />
     </div>
   )
 }
@@ -126,6 +187,58 @@ function NowSection({ data, open }: SectionProps): ReactElement {
           </span>
         </Row>
       )}
+    </Section>
+  )
+}
+
+function TransitSection({ data, open }: SectionProps): ReactElement {
+  return (
+    <Section label={`In transit (${data.transit.length})`}>
+      <ul className="mt-2 flex flex-col">
+        {data.transit.slice(0, 20).map((entry, index) => (
+          <li key={`${entry.path}-${index}`}>
+            <Row onClick={() => open(entry.path)}>
+              <Badge variant="secondary" className="mt-0.5 shrink-0">
+                {entry.kind}
+              </Badge>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-text">{entry.text}</span>
+                <span className="block truncate text-xs text-text-muted">
+                  {entry.agent}
+                  {entry.target !== '?' ? ` → ${entry.target}` : ''}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-text-muted">
+                {entry.since ?? ''}
+              </span>
+            </Row>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  )
+}
+
+function ExclusionsSection({ data, open }: SectionProps): ReactElement {
+  return (
+    <Section label={`Exclusions (${data.exclusions.length})`}>
+      <ul className="mt-2 flex flex-col">
+        {data.exclusions.map((exclusion) => (
+          <li key={exclusion.topic}>
+            <Row onClick={() => open(data.exclusionsPath)}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-text">{exclusion.topic}</span>
+                {exclusion.reason !== null ? (
+                  <span className="block truncate text-xs text-text-muted">{exclusion.reason}</span>
+                ) : null}
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-text-muted">
+                {exclusion.since ?? ''}
+              </span>
+            </Row>
+          </li>
+        ))}
+      </ul>
     </Section>
   )
 }

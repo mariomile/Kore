@@ -2,6 +2,8 @@ import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addRemoteAgent,
+  buildCustomInstructions,
+  buildImportMemoriesPrompt,
   connectMcpClient,
   errorMessage,
   MCP_CLIENTS,
@@ -277,6 +279,26 @@ function CloudSteps({
       </Step>
       <Step n={3} text={`When Kore asks for a key, paste the one made for ${app.agentName}.`}>
         <CopyButton text={keyValue} label="Copy key" onError={onCopyError} />
+      </Step>
+      <Step
+        n={4}
+        text={`Paste these custom instructions into ${app.agentName} so every new chat checks your vault.`}
+      >
+        <CopyButton
+          text={buildCustomInstructions(app.id === 'chatgpt' ? 'chatgpt' : 'claude')}
+          label="Copy instructions"
+          onError={onCopyError}
+        />
+      </Step>
+      <Step
+        n={5}
+        text={`Optional: migrate your existing ${app.agentName} memories in one message.`}
+      >
+        <CopyButton
+          text={buildImportMemoriesPrompt()}
+          label="Copy import prompt"
+          onError={onCopyError}
+        />
       </Step>
     </ol>
   )

@@ -4,6 +4,7 @@ import type { NoteStore } from './store'
 import {
   INSTRUCTIONS,
   INSTRUCTIONS_CONTRACT_MAX_CHARS,
+  cyberBrainSystemPath,
   toolsFor,
   callTool,
   vaultContract,
@@ -89,16 +90,20 @@ async function answer(
     case 'ping':
       result = {}
       break
-    case 'tools/list':
+    case 'tools/list': {
+      const cyberBrain = (await cyberBrainSystemPath(store)) !== null
       result = {
-        tools: toolsFor(caller).map(({ name, description, inputSchema, annotations }) => ({
-          name,
-          description,
-          inputSchema,
-          annotations,
-        })),
+        tools: toolsFor(caller, cyberBrain).map(
+          ({ name, description, inputSchema, annotations }) => ({
+            name,
+            description,
+            inputSchema,
+            annotations,
+          }),
+        ),
       }
       break
+    }
     case 'tools/call': {
       const call = toolCallSchema.safeParse(params)
       if (!call.success) {

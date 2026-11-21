@@ -31,6 +31,14 @@ export type BrainCommand =
       readonly now?: boolean
     }
   | {
+      readonly kind: 'forget'
+      /** Topic or phrase to archive and exclude from future remembers/imports. */
+      readonly text: string
+      readonly target?: string
+      readonly reason?: string
+      readonly noExclude?: boolean
+    }
+  | {
       readonly kind: 'loop-open'
       readonly title: string
       readonly owner?: string
@@ -114,6 +122,18 @@ export function brainArgv(command: BrainCommand, caller: BrainCaller): string[] 
         ...option('since', command.since),
         ...flag('now', command.now),
       ]
+    case 'forget': {
+      const hasTarget = command.target !== undefined && command.target.trim() !== ''
+      return [
+        'forget',
+        ...signed,
+        ...option('text', command.text),
+        ...option('target', hasTarget ? command.target : undefined),
+        ...option('reason', command.reason),
+        ...flag('exclude-only', !hasTarget),
+        ...flag('no-exclude', hasTarget ? command.noExclude : undefined),
+      ]
+    }
     case 'loop-open':
       return [
         'loop',

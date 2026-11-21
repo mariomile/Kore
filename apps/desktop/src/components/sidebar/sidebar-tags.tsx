@@ -54,8 +54,15 @@ function foldConfiguredChildren(
         }
         continue
       }
-      const emptiedWrapper = node.children.length > 0 && children.length === 0
-      if (!emptiedWrapper) {
+      const removedChildCount = node.children
+        .filter((child) => configuredKeys.has(child.key))
+        .reduce((sum, child) => sum + child.count, 0)
+      // Drop a pure wrapper prefix only when every note it counted belonged to
+      // the configured child(ren) hoisted above; keep an unconfigured parent
+      // that still carries notes of its own.
+      const emptiedPureWrapper =
+        node.children.length > 0 && children.length === 0 && removedChildCount >= node.count
+      if (!emptiedPureWrapper) {
         kept.push({ ...node, children })
       }
     }

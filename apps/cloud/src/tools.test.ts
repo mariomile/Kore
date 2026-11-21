@@ -115,4 +115,53 @@ describe('agent tools', () => {
     })
     expect((await call('search', { query: 'x', limit: 0 })).error).toBe(true)
   })
+
+  it('queues cyber-brain memories in transit with original since date and honors secrets and exclusions', async () => {
+    // Refused when the vault has no cyber-brain contract.
+    expect((await call('remember', { text: 'Prefers Italian', source: 'ChatGPT' })).error).toBe(
+      true,
+    )
+
+    await store.write({
+      path: 'AGENTS.md',
+      source: '---\ncyber_brain: "0.2"\npaths:\n  system: System\n---\n# Brain\n',
+      baseVersion: 0,
+    })
+    await store.write({
+      path: 'System/memory/exclusions.md',
+      source: '---\ndescription: exclusions\n---\n# Exclusions\n- Acme Corp [since: 2026-11-21]\n',
+      baseVersion: 0,
+    })
+
+    const saved = await call('remember', {
+      kind: 'observation',
+      text: 'Prefers Italian in chat',
+      source: 'ChatGPT export',
+      since: '2025-03-14',
+    })
+    expect(saved.error).toBe(false)
+    expect(saved.value).toMatchObject({ queued: true, since: '2025-03-14' })
+    const transitPath = (saved.value as { path: string }).path
+    expect((await store.get(transitPath))?.source).toContain(
+      '- [observation] Prefers Italian in chat -> ? [source: ChatGPT export; since: 2025-03-14]',
+    )
+
+    const month = new Date().toISOString().slice(0, 7)
+    expect((await store.get(`System/runs/${month}.md`))?.source).toContain(
+      `- write: ${transitPath} | (none) | - [observation] Prefers Italian in chat`,
+    )
+
+    // Refuses excluded topics and secrets.
+    expect((await call('remember', { text: 'Acme Corp renewed', source: 'ChatGPT' })).error).toBe(
+      true,
+    )
+    expect(
+      (
+        await call('remember', {
+          text: 'token sk-abcdefghijklmnopqrstuvwxyz12',
+          source: 'ChatGPT',
+        })
+      ).error,
+    ).toBe(true)
+  })
 })

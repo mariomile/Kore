@@ -16,7 +16,8 @@
     "./graph/vault-layout": "./src/graph/vault-layout.ts",
     "./cloud": "./src/cloud/index.ts",
     "./cloud/note-rules": "./src/cloud/note-rules.ts",
-    "./cloud/upload": "./src/cloud/upload.ts"
+    "./cloud/upload": "./src/cloud/upload.ts",
+    "./cyber-brain/format": "./src/cyber-brain/format.ts"
   },
   "scripts": {
     "test": "vitest run --config ../../vitest.config.ts --project core-browser --project core-node",

@@ -57,6 +57,7 @@ function assetName(path: string): string {
 /** What each memory tool did, for the chip's sentence once it landed. */
 const MEMORY_ACTION_DONE: Record<MemoryToolName, string> = {
   remember: 'Remembered',
+  forget: 'Forgot',
   open_loop: 'Opened loop',
   update_loop: 'Updated loop',
   close_loop: 'Closed loop',

@@ -28,6 +28,16 @@ export const rememberMemoryInput = z.object({
   since: optional('YYYY-MM-DD the fact holds from (default today)'),
 })
 
+export const forgetMemoryInput = z.object({
+  text: text('Topic or phrase to archive and exclude from future remembers or imports'),
+  target: optional('Optional note path to limit archiving to'),
+  reason: optional('Optional short reason for forgetting'),
+  noExclude: z
+    .boolean()
+    .optional()
+    .describe('Archive matching lines without recording an exclusion'),
+})
+
 export const openLoopInput = z.object({
   title: text('What has to happen, one line'),
   owner: optional('Who owes it (default the user)'),
@@ -68,6 +78,7 @@ export type MemoryWriteOutput =
 /** The memory tools' names, for the engine's active-tool list. */
 export const MEMORY_TOOL_NAMES = [
   'remember',
+  'forget',
   'open_loop',
   'update_loop',
   'close_loop',
@@ -90,6 +101,7 @@ export interface MemoryToolDeps {
 
 export type MemoryTools = {
   remember: Tool<z.infer<typeof rememberMemoryInput>, MemoryWriteOutput>
+  forget: Tool<z.infer<typeof forgetMemoryInput>, MemoryWriteOutput>
   open_loop: Tool<z.infer<typeof openLoopInput>, MemoryWriteOutput>
   update_loop: Tool<z.infer<typeof updateLoopInput>, MemoryWriteOutput>
   close_loop: Tool<z.infer<typeof closeLoopInput>, MemoryWriteOutput>
@@ -103,7 +115,7 @@ function given<T extends object>(input: T): { [K in keyof T]: Exclude<T[K], unde
   }
 }
 
-/** Build the five memory tools over `deps`. */
+/** Build the six memory tools over `deps`. */
 export function buildMemoryTools(deps: MemoryToolDeps): MemoryTools {
   const write = async (command: BrainCommand): Promise<MemoryWriteOutput> => {
     if (!deps.allowEdits) return { ok: false, error: MEMORY_EDITS_DISABLED_ERROR }
@@ -117,6 +129,13 @@ export function buildMemoryTools(deps: MemoryToolDeps): MemoryTools {
       inputSchema: rememberMemoryInput,
       execute: async ({ kind, ...input }): Promise<MemoryWriteOutput> =>
         await write({ ...given(input), kind: 'remember', memory: kind ?? 'fact' }),
+    }),
+    forget: tool({
+      description:
+        "Forget a topic or fact with the vault's cyber-brain kit: archives matching lines into System/archive/ and records an exclusion in System/memory/exclusions.md so it is never re-imported.",
+      inputSchema: forgetMemoryInput,
+      execute: async (input): Promise<MemoryWriteOutput> =>
+        await write({ ...given(input), kind: 'forget' }),
     }),
     open_loop: tool({
       description:
@@ -153,6 +172,7 @@ export function memoryToolLabel(name: MemoryToolName, input: Record<string, unkn
   const field = (key: string): string => (typeof input[key] === 'string' ? input[key] : '')
   switch (name) {
     case 'remember':
+    case 'forget':
       return field('text')
     case 'open_loop':
       return field('title')

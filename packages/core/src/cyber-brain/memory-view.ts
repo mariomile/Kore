@@ -2,6 +2,12 @@ import { z } from 'zod'
 import { listFiles, readNote } from '../graph/commands'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { CyberBrainConfig } from './config'
+import {
+  parseMemoryExclusions,
+  parseMemoryTransitFile,
+  type MemoryExclusion,
+  type MemoryTransitEntry,
+} from './format'
 import { runBrainCommand } from './script'
 
 /**
@@ -54,6 +60,14 @@ export interface MemoryRun {
 export interface MemoryOverview {
   /** `identity/NOW.md`, body only; null when missing or private. */
   readonly now: { readonly path: string; readonly body: string } | null
+  /** Paths to `USER.md` and `SOUL.md` when present in the vault. */
+  readonly userPath: string | null
+  readonly soulPath: string | null
+  /** Queued transit entries waiting for `dream` (`memory/inbox/<agent>/*.md`). */
+  readonly transit: readonly MemoryTransitEntry[]
+  /** Active exclusions from `memory/exclusions.md` (topics never stored/re-imported). */
+  readonly exclusions: readonly MemoryExclusion[]
+  readonly exclusionsPath: string
   /** Loops not closed, the ones to resurface first. */
   readonly openLoops: readonly MemoryLoop[]
   readonly closedLoops: number
@@ -148,14 +162,24 @@ async function readBody(path: string): Promise<string | null> {
 export async function loadMemoryOverview(config: CyberBrainConfig): Promise<MemoryOverview> {
   const system = config.systemPath
   const nowPath = `${system}/identity/NOW.md`
+  const userPath = `${system}/identity/USER.md`
+  const soulPath = `${system}/identity/SOUL.md`
   const loopsPath = `${system}/memory/loops.md`
+  const exclusionsPath = `${system}/memory/exclusions.md`
+  const inboxDir = `${system}/memory/inbox/`
   const decisionsDir = `${system}/memory/decisions/`
   const runsDir = `${system}/runs/`
   const files = await listFiles().catch(() => [])
   const paths = files.map((file) => file.path)
+  const pathSet = new Set(paths)
   const decisionPaths = paths
     .filter((path) => path.startsWith(decisionsDir) && path.endsWith('.md'))
     .filter((path) => !path.slice(decisionsDir.length).includes('/'))
+  const transitPaths = paths
+    .filter((path) => path.startsWith(inboxDir) && path.endsWith('.md'))
+    .sort()
+    .reverse()
+    .slice(0, 20)
   const runPaths = paths
     .filter(
       (path) => /^\d{4}-\d{2}\.md$/.test(path.slice(runsDir.length)) && path.startsWith(runsDir),
@@ -164,32 +188,42 @@ export async function loadMemoryOverview(config: CyberBrainConfig): Promise<Memo
     .reverse()
     .slice(0, RUN_MONTHS)
 
-  const [nowBody, loopsBody, decisions, runTexts] = await Promise.all([
-    readBody(nowPath),
-    readBody(loopsPath),
-    Promise.all(
-      decisionPaths.map(async (path): Promise<MemoryDecision | null> => {
-        let source: string
-        try {
-          source = await readNote(path)
-        } catch {
-          return null
-        }
-        const split = splitFrontmatter(source)
-        const data = parseFrontmatter(split.raw).data
-        if (data.private) return null
-        const name = path.slice(decisionsDir.length, -'.md'.length)
-        const date = /^(\d{4}-\d{2}-\d{2})/.exec(name)?.[1] ?? null
-        return {
-          path,
-          title: firstHeading(split.body) ?? name,
-          description: typeof data['description'] === 'string' ? data['description'].trim() : '',
-          date,
-        }
-      }),
-    ),
-    Promise.all(runPaths.map(readBody)),
-  ])
+  const [nowBody, loopsBody, exclusionsBody, transitEntries, decisions, runTexts] =
+    await Promise.all([
+      readBody(nowPath),
+      readBody(loopsPath),
+      readBody(exclusionsPath),
+      Promise.all(
+        transitPaths.map(async (path): Promise<MemoryTransitEntry[]> => {
+          const text = await readBody(path)
+          if (text === null) return []
+          const agent = path.slice(inboxDir.length).split('/')[0] ?? 'agent'
+          return parseMemoryTransitFile(path, agent, text)
+        }),
+      ),
+      Promise.all(
+        decisionPaths.map(async (path): Promise<MemoryDecision | null> => {
+          let source: string
+          try {
+            source = await readNote(path)
+          } catch {
+            return null
+          }
+          const split = splitFrontmatter(source)
+          const data = parseFrontmatter(split.raw).data
+          if (data.private) return null
+          const name = path.slice(decisionsDir.length, -'.md'.length)
+          const date = /^(\d{4}-\d{2}-\d{2})/.exec(name)?.[1] ?? null
+          return {
+            path,
+            title: firstHeading(split.body) ?? name,
+            description: typeof data['description'] === 'string' ? data['description'].trim() : '',
+            date,
+          }
+        }),
+      ),
+      Promise.all(runPaths.map(readBody)),
+    ])
 
   const loops = loopsBody === null ? [] : parseMemoryLoops(loopsBody)
   const openLoops = loops
@@ -202,6 +236,11 @@ export async function loadMemoryOverview(config: CyberBrainConfig): Promise<Memo
 
   return {
     now: nowBody === null || nowBody.trim() === '' ? null : { path: nowPath, body: nowBody.trim() },
+    userPath: pathSet.has(userPath) ? userPath : null,
+    soulPath: pathSet.has(soulPath) ? soulPath : null,
+    transit: transitEntries.flat(),
+    exclusions: exclusionsBody === null ? [] : parseMemoryExclusions(exclusionsBody),
+    exclusionsPath,
     openLoops,
     closedLoops: loops.length - openLoops.length,
     loopsPath,

@@ -38,3 +38,24 @@ export {
   type MemoryRun,
   type MemoryRunWrite,
 } from './memory-view'
+export {
+  collapseOneLine,
+  CYBER_BRAIN_SECRET_PATTERNS,
+  CYBER_BRAIN_TRANSIT_KINDS,
+  findCyberBrainSecret,
+  formatCyberBrainRunRecord,
+  formatCyberBrainTransit,
+  matchMemoryExclusion,
+  parseMemoryExclusions,
+  parseMemoryTransitFile,
+  type CyberBrainTransitKind,
+  type MemoryExclusion,
+  type MemoryTransitEntry,
+} from './format'
+export {
+  buildCustomInstructions,
+  buildImportMemoriesPrompt,
+  CHATGPT_INSTRUCTIONS_MAX_CHARS,
+  type AgentInstructionPlatform,
+  type MemoryPromptOptions,
+} from './prompts'

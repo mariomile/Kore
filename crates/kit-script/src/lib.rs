@@ -51,6 +51,7 @@ pub const MAX_ARG_BYTES: usize = 16 * 1024;
 /// private ones included, and Kore's own read paths already gate privacy.
 pub const KIT_COMMANDS: &[&[&str]] = &[
     &["remember"],
+    &["forget"],
     &["loop", "open"],
     &["loop", "update"],
     &["loop", "close"],

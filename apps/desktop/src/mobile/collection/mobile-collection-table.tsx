@@ -47,6 +47,8 @@ const TITLE_WIDTH = 166
 const PAN_THRESHOLD_PX = 8
 /** Velocity sampling window (ms) for post-release pan inertia. */
 const VELOCITY_WINDOW_MS = 30
+/** A velocity sample older than this at release means the finger stopped. */
+const VELOCITY_STALE_MS = 4 * VELOCITY_WINDOW_MS
 /** Minimum release speed (px/ms) to coast after finger lift. */
 const MIN_INERTIA_VELOCITY = 0.15
 
@@ -64,6 +66,7 @@ type PanGesture =
       startX: number
       startScrollX: number
       lastX: number
+      lastMoveTime: number
       sampleX: number
       sampleTime: number
       velocity: number
@@ -274,6 +277,7 @@ export function MobileCollectionTable({
         startX: gesture.startX,
         startScrollX: gesture.startScrollX,
         lastX: nextX,
+        lastMoveTime: now,
         sampleX: nextX,
         sampleTime: now,
         velocity: 0,
@@ -289,11 +293,12 @@ export function MobileCollectionTable({
         ? {
             ...gesture,
             lastX: nextX,
+            lastMoveTime: now,
             velocity: (nextX - gesture.sampleX) / elapsed,
             sampleX: nextX,
             sampleTime: now,
           }
-        : { ...gesture, lastX: nextX }
+        : { ...gesture, lastX: nextX, lastMoveTime: now }
   }
 
   const releasePan = (event: ReactPointerEvent<HTMLDivElement>, cancelled: boolean): void => {
@@ -313,7 +318,19 @@ export function MobileCollectionTable({
       // Synthetic test events have no live pointer capture.
     }
     if (!cancelled) {
-      startInertia(gesture.velocity)
+      const now = performance.now()
+      const idleMs = now - gesture.lastMoveTime
+      const sampleAge = now - gesture.sampleTime
+      let releaseVelocity = 0
+      if (idleMs <= VELOCITY_STALE_MS && sampleAge <= VELOCITY_STALE_MS) {
+        releaseVelocity =
+          gesture.velocity !== 0
+            ? gesture.velocity
+            : sampleAge > 0
+              ? (gesture.lastX - gesture.sampleX) / sampleAge
+              : 0
+      }
+      startInertia(releaseVelocity)
     }
   }
 
@@ -401,7 +418,7 @@ export function MobileCollectionTable({
             <span className="truncate">{entry.title}</span>
           </button>
         </div>
-        <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
+        <div role="presentation" className="h-full min-w-0 flex-1 overflow-clip">
           <div
             role="presentation"
             className="mobile-table-pan-track flex h-full"
@@ -491,7 +508,7 @@ export function MobileCollectionTable({
         className={cn(
           'mobile-collection-table',
           embedded
-            ? 'overflow-hidden'
+            ? 'overflow-clip'
             : 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none',
         )}
         style={
@@ -528,7 +545,7 @@ export function MobileCollectionTable({
             >
               Title
             </HeaderCell>
-            <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
+            <div role="presentation" className="h-full min-w-0 flex-1 overflow-clip">
               <div
                 role="presentation"
                 className="mobile-table-pan-track flex h-full"
@@ -579,7 +596,7 @@ export function MobileCollectionTable({
           {!embedded && entries.length > 0 ? (
             <div
               role="row"
-              className="flex h-9 w-full items-center border-b border-border bg-background text-[12px] tabular-nums text-text-muted"
+              className="flex h-9 w-full items-stretch border-b border-border bg-background text-[12px] tabular-nums text-text-muted"
             >
               <div
                 className="mobile-table-frozen-edge z-10 flex h-full shrink-0 items-center border-r border-border-strong/70 bg-background pr-2 pl-3"
@@ -587,7 +604,7 @@ export function MobileCollectionTable({
               >
                 {`${entries.length} ${entries.length === 1 ? 'note' : 'notes'}`}
               </div>
-              <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
+              <div role="presentation" className="h-full min-w-0 flex-1 overflow-clip">
                 <div
                   role="presentation"
                   className="mobile-table-pan-track flex h-full"

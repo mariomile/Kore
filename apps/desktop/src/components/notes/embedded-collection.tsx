@@ -388,7 +388,7 @@ function EmbeddedTagCollection({
       ) : null}
       <div
         className={cn(
-          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto',
+          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto overscroll-x-none',
           view === 'table' ? 'min-h-52' : 'pt-3 [&>div]:px-3 [&>div]:pb-3',
         )}
       >
@@ -702,7 +702,7 @@ function EmbeddedReusableCollection({
       </header>
       <div
         className={cn(
-          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto',
+          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto overscroll-x-none',
           view === 'table' && 'min-h-52',
         )}
       >

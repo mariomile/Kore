@@ -627,7 +627,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             ref={setScrollElement}
             data-testid="all-notes-scroll"
             onScroll={onScroll}
-            className="h-full overflow-auto"
+            className="h-full overflow-auto overscroll-x-none"
           >
             {inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>

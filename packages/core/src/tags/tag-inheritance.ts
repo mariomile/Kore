@@ -1,9 +1,27 @@
 import type { TagProperty, TagType } from './tag-type'
 
 /**
- * Tags that build on other tags (Plan 33 B2). A definition's `extends:`
- * names parent tags; its effective schema is the parents' fields followed by
- * its own, and the parent's collection also lists the children's notes.
+ * Ancestor tag keys of a nested tag, outermost first (`a/b/c` → `['a', 'a/b']`).
+ * Flat tags have no ancestors.
+ */
+export function tagAncestors(key: string): string[] {
+  const parts = key.split('/')
+  if (parts.length <= 1) {
+    return []
+  }
+  const ancestors: string[] = []
+  for (let index = 1; index < parts.length; index += 1) {
+    ancestors.push(parts.slice(0, index).join('/'))
+  }
+  return ancestors
+}
+
+/**
+ * Tags that build on other tags (Plan 33 B2; TDR 0005 Amendment I). A tag
+ * inherits properties automatically from its `/` ancestors (`#book/sci-fi`
+ * inherits `#book`) and from any parents named in its definition's `extends:`
+ * list; its effective schema is the inherited properties followed by its own,
+ * and the parent's collection also lists the children's notes.
  *
  * Inheritance is resolved here, over the per-tag schemas, never written
  * into member notes or into the child's definition: the index pass
@@ -60,7 +78,18 @@ function resolveOne(
   const inherited: TagProperty[] = []
   const claimed = new Set<string>()
   let cut = false
+  const parents: string[] = []
+  for (const ancestor of tagAncestors(key)) {
+    if (!parents.includes(ancestor)) {
+      parents.push(ancestor)
+    }
+  }
   for (const parent of own.extends ?? []) {
+    if (!parents.includes(parent)) {
+      parents.push(parent)
+    }
+  }
+  for (const parent of parents) {
     if (trail.includes(parent)) {
       cut = true
       continue

@@ -76,13 +76,13 @@ describe('listTagTypes', () => {
 describe('listNoteTagTypes', () => {
   it('joins the note’s tags against tag_types, skipping mangled schemas', async () => {
     mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookSchema },
-      { tag_key: 'broken', note_path: 'tags/broken.md', resolved_json: '?' },
+      { tag: 'Book', tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookSchema },
+      { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', resolved_json: '?' },
     ])
     const entries = await listNoteTagTypes('notes/a.md')
     expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
     const [, args] = mockInvoke.mock.calls[0]!
-    expect(String(args['sql'])).toContain('inner join "tag_types"')
+    expect(String(args['sql'])).toContain('left join "tag_types"')
     expect(args['params']).toEqual(['notes/a.md', 1])
   })
 })
@@ -332,5 +332,32 @@ describe('listTagsOnNote', () => {
     const [, args] = mockInvoke.mock.calls[0]!
     expect(String(args['sql'])).toContain('left join "tag_types"')
     expect(args['params']).toEqual(['notes/a.md', 1])
+  })
+
+  it('inherits ancestor properties for an undefined sub-tag without leaking parent views', async () => {
+    const bookWithViews = JSON.stringify({
+      icon: '📖',
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      views: [{ name: 'Reading', mode: 'table' }],
+      folder: 'Books',
+    })
+    mockInvoke.mockResolvedValueOnce([
+      { tag: 'book/sci-fi', tag_key: 'book/sci-fi', note_path: null, resolved_json: null },
+    ])
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'book', note_path: 'tags/book.md', resolved_json: bookWithViews },
+    ])
+    const entries = await listTagsOnNote('notes/dune.md')
+    expect(entries).toEqual([
+      {
+        tag: 'book/sci-fi',
+        tagKey: 'book/sci-fi',
+        definitionPath: 'tags/book.md',
+        type: {
+          icon: '📖',
+          properties: [{ name: 'Author', key: 'author', type: 'text' }],
+        },
+      },
+    ])
   })
 })

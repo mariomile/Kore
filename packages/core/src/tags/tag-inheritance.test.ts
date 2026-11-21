@@ -87,6 +87,17 @@ describe('resolveTagTypes', () => {
     resolveTagTypes(types({ contact: { properties: [text('email')] }, client }))
     expect(keys(client)).toEqual(['contract'])
   })
+
+  it('automatically inherits ancestor properties for nested sub-tags', () => {
+    const resolved = resolveTagTypes(
+      types({
+        book: { properties: [text('author'), text('rating')] },
+        'book/sci-fi': { properties: [text('subgenre'), text('rating', 'Sci-Fi Rating')] },
+      }),
+    )
+    expect(keys(resolved.get('book/sci-fi'))).toEqual(['author', 'rating', 'subgenre'])
+    expect(resolved.get('book/sci-fi')?.properties[1]?.name).toBe('Sci-Fi Rating')
+  })
 })
 
 describe('tagDescendants', () => {

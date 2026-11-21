@@ -108,7 +108,7 @@ describe('FilterBar', () => {
       },
     })
 
-    await userEvent.click(view.getByRole('button', { name: 'Types' }))
+    await userEvent.click(view.getByRole('button', { name: 'Tags' }))
     await userEvent.click(view.getByRole('button', { name: 'Filter notes by #book' }))
     await userEvent.click(view.getByRole('button', { name: 'Filter notes by #work' }))
 
@@ -124,7 +124,7 @@ describe('FilterBar', () => {
       },
     })
 
-    await userEvent.click(view.getByRole('button', { name: 'Types' }))
+    await userEvent.click(view.getByRole('button', { name: 'Tags' }))
     await userEvent.click(view.getByRole('button', { name: /^Book/ }))
 
     expect(mockNavigate).toHaveBeenCalledWith({

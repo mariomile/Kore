@@ -1,6 +1,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { foldTag, isTagName, listTagTypes, suggestTags, type TagType } from '@kore/core'
+import { foldTag, isTagName, suggestTags, tagDisplayName, type TagType } from '@kore/core'
+import { Plus, Search } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 import {
   Command,
@@ -10,63 +11,38 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { tagTypesQueryKey } from '@/hooks/use-tag-icons'
+import { useTagTypes } from '@/hooks/use-tag-icons'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 
 /** One offered tag: what would be written, with its schema when it has one. */
-interface TypeOption {
+interface TagOption {
   /** The exact string `addNoteTag` would write. */
   tag: string
   tagKey: string
   type: TagType | null
 }
 
-interface NoteTypePickerProps {
-  /** Folded keys the note already carries — never offered twice. */
-  carried: readonly string[]
-  onChoose: (tag: string) => void
-  /** Accessible name of the control that opens the popover. */
-  triggerLabel: string
-  triggerClassName?: string
-  /** What the trigger shows. */
-  children: ReactNode
+interface TagPickerOptions {
+  configured: TagOption[]
+  others: TagOption[]
+  fresh: string | null
 }
 
-/**
- * The picker behind the Type field: choose what a note *is* instead of typing
- * the hashtag into its prose.
- *
- * Types (tags with a definition, the sidebar's Types shelf) come first,
- * because those bring fields and a database with them; every other tag in the
- * vault follows under "Tags", ranked most-used-first by the same
- * `suggestTags` the editor's `#` menu uses. Both groups write the same
- * membership (TDR 0005 Amendment E), and a tag becomes a type the moment its
- * definition is saved.
- *
- * A query naming no existing tag offers itself, since in Kore a tag exists
- * because a note carries it — there is nothing to create first.
- */
-export function NoteTypePicker({
-  carried,
-  onChoose,
-  triggerLabel,
-  triggerClassName,
-  children,
-}: NoteTypePickerProps): ReactElement {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
+function useTagPickerOptions(
+  open: boolean,
+  query: string,
+  carried: readonly string[],
+): TagPickerOptions {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const enabled = open && bridgeReady && graph !== null
+  const typed = useTagTypes(open)
 
-  const { data: typed } = useQuery({
-    queryKey: tagTypesQueryKey(graph?.root),
-    queryFn: () => listTagTypes(),
-    enabled,
-  })
   const { data: suggested } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-suggestions', query],
     queryFn: () => suggestTags(query, 12),
@@ -76,26 +52,194 @@ export function NoteTypePicker({
 
   const taken = new Set(carried)
   const needle = foldTag(query.trim())
-  const types: TypeOption[] = (typed ?? [])
+  const configured: TagOption[] = typed
     .filter((entry) => !taken.has(entry.tagKey) && entry.tagKey.includes(needle))
-    .map((entry) => ({
-      tag: entry.tagKey,
-      tagKey: entry.tagKey,
-      type: entry.type,
-    }))
-  const typeKeys = new Set(types.map((option) => option.tagKey))
-  const others: TypeOption[] = (suggested ?? [])
-    .map((suggestion) => ({
-      tag: suggestion.tag,
-      tagKey: foldTag(suggestion.tag),
-      type: null,
-    }))
-    .filter((option) => !taken.has(option.tagKey) && !typeKeys.has(option.tagKey))
-  const fresh =
-    needle !== '' && isTagName(needle) && !taken.has(needle) && !typeKeys.has(needle)
+    .map((entry) => ({ tag: entry.tagKey, tagKey: entry.tagKey, type: entry.type }))
+  const configuredKeys = new Set(configured.map((option) => option.tagKey))
+  const others: TagOption[] = (suggested ?? [])
+    .map((suggestion) => ({ tag: suggestion.tag, tagKey: foldTag(suggestion.tag), type: null }))
+    .filter((option) => !taken.has(option.tagKey) && !configuredKeys.has(option.tagKey))
+  const freshCandidate =
+    needle !== '' && isTagName(needle) && !taken.has(needle) && !configuredKeys.has(needle)
       ? needle
       : null
-  const canUseFresh = fresh !== null && !others.some((option) => option.tagKey === fresh)
+  const fresh =
+    freshCandidate !== null && !others.some((option) => option.tagKey === freshCandidate)
+      ? freshCandidate
+      : null
+
+  return { configured, others, fresh }
+}
+
+function DrawerTagRow({
+  option,
+  onChoose,
+}: {
+  option: TagOption
+  onChoose: (tag: string) => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={() => onChoose(option.tag)}
+      className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
+    >
+      <span className="flex size-6 shrink-0 items-center justify-center">
+        <TagIcon
+          icon={option.type?.icon}
+          className="size-[18px] text-text-muted"
+          emojiClassName="text-[18px]"
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{tagDisplayName(option.tag)}</span>
+    </button>
+  )
+}
+
+export interface NoteTagPickerDrawerProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Folded keys the note already carries — never offered twice. */
+  carried: readonly string[]
+  onChoose: (tag: string) => void
+}
+
+/**
+ * Native bottom sheet for picking or creating a `#tag` on mobile
+ * (TDR 0005 Amendment I). Shared by the note header's `+` button, the keyboard
+ * toolbar's `#` action on regular notes, and `⋯ → Add tag`.
+ */
+export function NoteTagPickerDrawer({
+  open,
+  onOpenChange,
+  carried,
+  onChoose,
+}: NoteTagPickerDrawerProps): ReactElement {
+  const [query, setQuery] = useState('')
+  const { configured, others, fresh } = useTagPickerOptions(open, query, carried)
+
+  const handleOpenChange = (next: boolean): void => {
+    onOpenChange(next)
+    if (!next) {
+      setQuery('')
+    }
+  }
+
+  const choose = (tag: string): void => {
+    handleOpenChange(false)
+    onChoose(tag)
+  }
+
+  const hasResults = configured.length > 0 || others.length > 0 || fresh !== null
+
+  return (
+    <Drawer open={open} onOpenChange={handleOpenChange}>
+      <DrawerContent>
+        <DrawerTitle className="px-4 pt-3">Add tag</DrawerTitle>
+        <div className="px-4 pb-2 pt-3">
+          <div className="flex h-11 items-center gap-2 rounded-xl border border-border bg-surface px-3">
+            <Search aria-hidden className="size-4 shrink-0 text-text-muted" />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search or create tag…"
+              aria-label="Search or create tag"
+              autoFocus
+              className="min-w-0 flex-1 bg-transparent text-base text-text placeholder:text-text-muted focus:outline-none"
+            />
+          </div>
+        </div>
+        <DrawerBody className="px-4 pb-4 pt-2">
+          {!hasResults ? (
+            <p className="py-6 text-center text-sm text-text-muted">No matching tag.</p>
+          ) : null}
+          {configured.length > 0 ? (
+            <div className="flex flex-col">
+              {configured.map((option) => (
+                <DrawerTagRow key={option.tagKey} option={option} onChoose={choose} />
+              ))}
+            </div>
+          ) : null}
+          {configured.length > 0 && others.length > 0 ? (
+            <div role="separator" className="my-2 border-t border-border/60" />
+          ) : null}
+          {others.length > 0 ? (
+            <div className="flex flex-col">
+              {others.map((option) => (
+                <DrawerTagRow key={option.tagKey} option={option} onChoose={choose} />
+              ))}
+            </div>
+          ) : null}
+          {fresh !== null ? (
+            <div className="mt-1 flex flex-col">
+              <button
+                type="button"
+                onClick={() => choose(fresh)}
+                className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base font-medium text-accent active:bg-surface-hover"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center">
+                  <Plus aria-hidden className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1 truncate">Create #{fresh}</span>
+              </button>
+            </div>
+          ) : null}
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
+interface NoteTypePickerProps {
+  /** Folded keys the note already carries — never offered twice. */
+  carried: readonly string[]
+  onChoose: (tag: string) => void
+  /** Accessible name of the control that opens the picker. */
+  triggerLabel: string
+  triggerClassName?: string
+  /** What the trigger shows. */
+  children: ReactNode
+}
+
+function MobileTagPickerTrigger({
+  carried,
+  onChoose,
+  triggerLabel,
+  triggerClassName,
+  children,
+}: NoteTypePickerProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={triggerLabel}
+        className={triggerClassName}
+        onClick={() => setOpen(true)}
+      >
+        {children}
+      </button>
+      <NoteTagPickerDrawer
+        open={open}
+        onOpenChange={setOpen}
+        carried={carried}
+        onChoose={onChoose}
+      />
+    </>
+  )
+}
+
+function DesktopTagPickerPopover({
+  carried,
+  onChoose,
+  triggerLabel,
+  triggerClassName,
+  children,
+}: NoteTypePickerProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const { configured, others, fresh } = useTagPickerOptions(open, query, carried)
 
   const choose = (tag: string): void => {
     setOpen(false)
@@ -118,18 +262,13 @@ export function NoteTypePicker({
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={4} className="w-64 p-0">
         {/* The index already ranked these; cmdk must not re-sort them. */}
-        <Command label="Set the note's type" shouldFilter={false}>
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Set a type…"
-            autoFocus
-          />
+        <Command label="Add a tag" shouldFilter={false}>
+          <CommandInput value={query} onValueChange={setQuery} placeholder="Add a tag…" autoFocus />
           <CommandList>
-            <CommandEmpty>No matching type.</CommandEmpty>
-            {types.length > 0 ? (
-              <CommandGroup heading="Types">
-                {types.map((option) => (
+            <CommandEmpty>No matching tag.</CommandEmpty>
+            {configured.length > 0 ? (
+              <CommandGroup heading={others.length > 0 ? 'Configured' : undefined}>
+                {configured.map((option) => (
                   <CommandItem
                     key={option.tagKey}
                     value={option.tagKey}
@@ -144,7 +283,7 @@ export function NoteTypePicker({
               </CommandGroup>
             ) : null}
             {others.length > 0 ? (
-              <CommandGroup heading="Tags">
+              <CommandGroup heading={configured.length > 0 ? 'Other tags' : undefined}>
                 {others.map((option) => (
                   <CommandItem
                     key={option.tagKey}
@@ -156,10 +295,10 @@ export function NoteTypePicker({
                 ))}
               </CommandGroup>
             ) : null}
-            {canUseFresh ? (
+            {fresh !== null ? (
               <CommandGroup>
                 <CommandItem value="__fresh" onSelect={() => choose(fresh)}>
-                  <span className="min-w-0 flex-1 truncate">Use #{fresh}</span>
+                  <span className="min-w-0 flex-1 truncate">Create #{fresh}</span>
                 </CommandItem>
               </CommandGroup>
             ) : null}
@@ -167,5 +306,19 @@ export function NoteTypePicker({
         </Command>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * The picker behind the note's Tags row: choose or create a `#tag` for the
+ * note instead of typing the hashtag into prose. Configured tags (those with a
+ * definition note) come first, followed by every other tag ranked most-used
+ * first. Renders a popover on desktop and a native bottom sheet on mobile.
+ */
+export function NoteTypePicker(props: NoteTypePickerProps): ReactElement {
+  return isMobileSurface() ? (
+    <MobileTagPickerTrigger {...props} />
+  ) : (
+    <DesktopTagPickerPopover {...props} />
   )
 }

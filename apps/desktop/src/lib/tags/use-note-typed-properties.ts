@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import {
   deriveCollectionPropertySchema,
   evaluateFormula,
+  foldTag,
   getNote,
   getNoteProperties,
   listTagsOnNote,
   localCalendarDate,
+  tagNameForDefinitionPath,
   type CollectionValue,
   type NoteTagEntry,
   type TagProperty,
@@ -146,9 +148,24 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
   }, [values, properties, mtime])
 
   const ownerTagOf = useCallback(
-    (key: string): string | null =>
-      (tags ?? []).find((entry) => entry.type?.properties.some((property) => property.key === key))
-        ?.tag ?? null,
+    (key: string): string | null => {
+      const owner = (tags ?? []).find((entry) =>
+        entry.type?.properties.some((property) => property.key === key),
+      )
+      if (owner === undefined) {
+        return null
+      }
+      // Sub-tags without their own definition inherit properties from an
+      // ancestor `tags/<ancestor>.md`: return that defining tag so in-place
+      // schema edits write to the real definition instead of no-oping.
+      if (owner.definitionPath !== null) {
+        const definedTag = tagNameForDefinitionPath(owner.definitionPath)
+        if (definedTag !== null && foldTag(definedTag) !== owner.tagKey) {
+          return definedTag
+        }
+      }
+      return owner.tag
+    },
     [tags],
   )
 

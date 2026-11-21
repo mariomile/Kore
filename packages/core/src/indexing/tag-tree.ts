@@ -18,6 +18,8 @@ export interface TagTreeCount {
   readonly tag: string
   /** Non-daily notes carrying this tag or any tag below it. */
   readonly count: number
+  /** True when at least one note carries this exact tag (not only a descendant). */
+  readonly direct?: boolean
 }
 
 /** One node of the tag tree. */
@@ -30,6 +32,8 @@ export interface TagTreeNode {
   readonly name: string
   /** Non-daily notes carrying this tag or any descendant, each counted once. */
   readonly count: number
+  /** True when at least one note carries this exact tag (not only a descendant). */
+  readonly direct?: boolean
   /** Child tags, ordered by key like the flat facet list. */
   readonly children: readonly TagTreeNode[]
 }
@@ -39,6 +43,7 @@ interface MutableNode {
   tag: string
   name: string
   count: number
+  direct?: boolean
   children: MutableNode[]
 }
 
@@ -67,7 +72,14 @@ export function buildTagTree(rows: readonly TagTreeCount[]): TagTreeNode[] {
     if (name === '' || byKey.has(row.key)) {
       continue
     }
-    const node: MutableNode = { key: row.key, tag: row.tag, name, count: row.count, children: [] }
+    const node: MutableNode = {
+      key: row.key,
+      tag: row.tag,
+      name,
+      count: row.count,
+      ...(row.direct !== undefined ? { direct: row.direct } : {}),
+      children: [],
+    }
     byKey.set(row.key, node)
     let parent: MutableNode | undefined
     for (
@@ -94,43 +106,41 @@ export function hasNestedTags(tree: readonly TagTreeNode[]): boolean {
   return tree.some((node) => node.children.length > 0)
 }
 
-/** One row of the sidebar's Types shelf: a tag with a definition note. */
-export interface TypeShelfEntry {
-  /** Folded key — what icons, the route and the definition compare on. */
-  readonly key: string
-  /** Display tag a row navigates to (the tree's casing when notes carry it). */
-  readonly tag: string
-  /** Last segment in display casing. */
-  readonly name: string
-  /** Non-daily member notes, the tree's count; 0 for a type nothing uses yet. */
-  readonly count: number
-}
+/**
+ * One row of the sidebar's configured-tags group: a tag with a definition note,
+ * carrying any unconfigured sub-tags nested beneath it so no tag appears twice.
+ */
+export type TypeShelfEntry = TagTreeNode
 
 /**
- * Splits the tag tree into what notes *are* and what they are *about*: tags
- * with a definition (`typeKeys`, from `tag_types`) become the flat Types list,
- * sorted by name, and the rest stay in the tree as topic tags. A type leaves
- * the tree; a type that still parents topic tags keeps its node so those
- * children stay reachable, and a parent whose children were all types goes
- * too (`#type` over `#type/project`, `#type/person`). A defined type no note
- * carries yet still gets a row, with count 0.
+ * Splits the tag tree into configured tags (those with a definition in
+ * `typeKeys`) and remaining unconfigured tags in one pass (TDR 0005
+ * Amendment I):
+ * - Every configured tag is hoisted into `types`, sorted by display name,
+ *   carrying its pruned unconfigured sub-tags directly beneath it (so `#book`
+ *   with `#book/sci-fi` never appears twice). A configured tag no note carries
+ *   yet still gets a row with count 0.
+ * - Pure structural wrapper prefixes (`direct !== true`) whose children were
+ *   all hoisted drop cleanly at every depth, while any unconfigured parent
+ *   that notes directly carry (`direct === true`) stays reachable in `tags`.
  */
 export function splitTypesFromTags(
   tree: readonly TagTreeNode[],
   typeKeys: readonly string[],
-): { types: TypeShelfEntry[]; tags: TagTreeNode[] } {
+): { types: TagTreeNode[]; tags: TagTreeNode[] } {
   const wanted = new Set(typeKeys)
   const found = new Map<string, TagTreeNode>()
   const prune = (nodes: readonly TagTreeNode[]): TagTreeNode[] => {
     const kept: TagTreeNode[] = []
     for (const node of nodes) {
-      const isType = wanted.has(node.key)
-      if (isType) {
-        found.set(node.key, node)
-      }
       const children = prune(node.children)
-      const emptiedParent = node.children.length > 0 && children.length === 0
-      if (children.length > 0 || (!isType && !emptiedParent)) {
+      if (wanted.has(node.key)) {
+        found.set(node.key, { ...node, children })
+        continue
+      }
+      const emptiedWrapper =
+        node.direct !== true && node.children.length > 0 && children.length === 0
+      if (!emptiedWrapper) {
         kept.push({ ...node, children })
       }
     }
@@ -138,11 +148,17 @@ export function splitTypesFromTags(
   }
   const tags = prune(tree)
   const types = [...wanted]
-    .map((key): TypeShelfEntry => {
+    .map((key): TagTreeNode => {
       const node = found.get(key)
-      return node === undefined
-        ? { key, tag: key, name: key.slice(key.lastIndexOf('/') + 1), count: 0 }
-        : { key, tag: node.tag, name: node.name, count: node.count }
+      return (
+        node ?? {
+          key,
+          tag: key,
+          name: key.slice(key.lastIndexOf('/') + 1),
+          count: 0,
+          children: [],
+        }
+      )
     })
     .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }))
   return { types, tags }
@@ -197,7 +213,12 @@ async function listTagPrefixes(options: ListNoteTagsOptions): Promise<TagPrefixR
 export async function listTagTreeCounts(
   options: ListNoteTagsOptions = {},
 ): Promise<TagTreeCount[]> {
-  return (await listTagPrefixes(options)).map(({ key, tag, count }) => ({ key, tag, count }))
+  return (await listTagPrefixes(options)).map(({ key, tag, count, used }) => ({
+    key,
+    tag,
+    count,
+    direct: used !== 0,
+  }))
 }
 
 /**

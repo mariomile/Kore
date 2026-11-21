@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import {
   Select,
@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { FIELD_LABEL_CLASS } from './tag-config-drafts'
 
 interface TagParentsFieldProps {
@@ -89,10 +90,48 @@ export function TagParentsField({
       </div>
       {parents.length > 0 ? (
         <p className="pl-30 text-xs text-text-muted">
-          Notes tagged #{tag} also get the fields of{' '}
+          Notes tagged #{tag} also get the properties of{' '}
           {parents.map((parent) => `#${parent}`).join(', ')}, and they show in{' '}
-          {parents.length === 1 ? 'its' : 'their'} collection.
+          {parents.length === 1 ? 'its' : 'their'} view.
         </p>
+      ) : null}
+    </div>
+  )
+}
+
+interface TagAdvancedSectionProps extends TagParentsFieldProps {
+  className?: string
+}
+
+/**
+ * Collapsible `Advanced` disclosure housing `Builds on` (`extends:`) for both
+ * the desktop dialog and mobile sheet. Renders nothing when no parent tags are
+ * set or available to pick, so the toggle never opens an empty box.
+ */
+export function TagAdvancedSection({
+  className,
+  ...props
+}: TagAdvancedSectionProps): ReactElement | null {
+  const [open, setOpen] = useState<boolean | null>(null)
+  const addable = props.candidates.filter((candidate) => !props.parents.includes(candidate))
+  if (props.parents.length === 0 && addable.length === 0) {
+    return null
+  }
+  const expanded = open ?? props.parents.length > 0
+  return (
+    <div className={cn('pt-1', className)}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setOpen(!expanded)}
+        className="text-xs font-medium text-text-muted transition-colors hover:text-text active:text-text"
+      >
+        {expanded ? 'Hide advanced' : 'Advanced'}
+      </button>
+      {expanded ? (
+        <div className="mt-2.5">
+          <TagParentsField {...props} />
+        </div>
       ) : null}
     </div>
   )

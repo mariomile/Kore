@@ -154,3 +154,28 @@ export function useFormattingToolbar(): FormattingToolbar | null {
 export function focusedEditorCommands(): FormattingToolbarCommands | null {
   return active?.commands ?? null
 }
+
+interface MobileTagPickerRegistration {
+  readonly owner: symbol
+  readonly open: (() => void) | null
+}
+
+let tagPickerStack: MobileTagPickerRegistration[] = []
+
+/**
+ * Register the active mobile screen's Add tag sheet handler while that screen
+ * is the top route (LIFO by owner token, mirroring the toolbar ownership
+ * pattern above). Passing `null` suppresses any underlying screen's handler
+ * (e.g. a template note pushed over a regular note). Returns the unregisterer.
+ */
+export function registerMobileTagPicker(owner: symbol, open: (() => void) | null): () => void {
+  tagPickerStack = [...tagPickerStack.filter((entry) => entry.owner !== owner), { owner, open }]
+  return () => {
+    tagPickerStack = tagPickerStack.filter((entry) => entry.owner !== owner)
+  }
+}
+
+/** The active mobile note's Add tag sheet opener, or `null` on daily/template screens. */
+export function activeMobileTagPicker(): (() => void) | null {
+  return tagPickerStack.at(-1)?.open ?? null
+}

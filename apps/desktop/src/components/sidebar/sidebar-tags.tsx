@@ -18,7 +18,7 @@ interface TagTreeContext {
   expanded: ReadonlySet<string>
   toggle: (key: string) => void
   activeKey: string | null
-  /** Whether any tag nests — only then do rows reserve a chevron column. */
+  /** Whether any tag in this group nests — only then do rows reserve a chevron column. */
   nested: boolean
   icons: ReadonlyMap<string, string>
   open: (tag: string) => void
@@ -26,44 +26,54 @@ interface TagTreeContext {
 }
 
 /**
- * The sidebar's Tags section: what notes are *about*. Every tag a non-daily
- * note is a member of, minus the ones with a definition (those are Types, the
- * shelf above), alphabetical and nested on `/` the way Obsidian nests
- * `#domain/ai` under `#domain`. A child shows its last segment; a parent's
- * count and its page cover its whole subtree, and the chevron beside it
- * expands it (remembered for the session). A row opens All Notes filtered to
- * that tag. Hidden while no topic tag is left. Hovering a row reveals its
- * configure button (TDR 0005): saving it writes `tags/<key>.md`, which makes
- * the tag a type and moves it up to the Types shelf.
+ * The sidebar's unified Tags section (TDR 0005 Amendment I): configured tags
+ * sit pinned at the top (carrying any unconfigured sub-tags beneath them via
+ * `splitTypesFromTags`), followed by a subtle divider and every remaining tag.
+ * Hovering any row reveals its configure button.
  */
 export function SidebarTags(): ReactElement | null {
-  const { tags: tree } = useTypeShelves()
+  const { types: pinnedNodes, tags: remainingTree } = useTypeShelves()
   const icons = useTagIcons()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const [expanded, toggle] = useSessionExpanded(EXPANDED_KEY)
 
-  if (tree.length === 0) {
+  if (pinnedNodes.length === 0 && remainingTree.length === 0) {
     return null
   }
 
-  const context: TagTreeContext = {
+  const activeKey =
+    route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null
+  const shared = {
     expanded,
     toggle,
-    activeKey:
-      route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null,
-    nested: hasNestedTags(tree),
+    activeKey,
     icons,
-    open: (tag) => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } }),
+    open: (tag: string) => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } }),
     configure: setConfiguring,
   }
+  const pinnedContext: TagTreeContext = { ...shared, nested: hasNestedTags(pinnedNodes) }
+  const remainingContext: TagTreeContext = { ...shared, nested: hasNestedTags(remainingTree) }
+
   return (
     <SidebarSortableSection id="tags" title="Tags" label="Tags">
-      <ul className="mt-2 flex flex-col space-y-1">
-        {tree.map((node) => (
-          <TagRow key={node.key} node={node} depth={0} context={context} />
-        ))}
-      </ul>
+      {pinnedNodes.length > 0 ? (
+        <ul className="mt-2 flex flex-col space-y-1">
+          {pinnedNodes.map((node) => (
+            <TagRow key={node.key} node={node} depth={0} context={pinnedContext} />
+          ))}
+        </ul>
+      ) : null}
+      {pinnedNodes.length > 0 && remainingTree.length > 0 ? (
+        <div role="separator" className="mx-2.5 my-1.5 border-t border-border/60" />
+      ) : null}
+      {remainingTree.length > 0 ? (
+        <ul className={cn('flex flex-col space-y-1', pinnedNodes.length === 0 && 'mt-2')}>
+          {remainingTree.map((node) => (
+            <TagRow key={node.key} node={node} depth={0} context={remainingContext} />
+          ))}
+        </ul>
+      ) : null}
       {configuring !== null ? (
         <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
       ) : null}

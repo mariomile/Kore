@@ -365,7 +365,7 @@ describe('TagConfigDialog', () => {
     // deleted default is one click from coming back on any tag.
     await view.getByRole('button', { name: /^Project Status/ }).click()
 
-    const nav = view.getByRole('navigation', { name: 'Type settings' })
+    const nav = view.getByRole('navigation', { name: 'Tag settings' })
     await expect.element(nav.getByRole('button', { name: 'Status', exact: true })).toBeVisible()
     await expect.element(nav.getByRole('button', { name: 'Priority', exact: true })).toBeVisible()
     // The preset carries a status and a date, so Board and Calendar light

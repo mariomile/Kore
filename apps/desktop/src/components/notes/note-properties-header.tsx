@@ -39,9 +39,13 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
   }
 
   if (tags.length === 0 && properties.length === 0) {
-    // Revealed by index.css while the title is hovered or the control is
-    // focused or open; it keeps its height either way so the body never
-    // shifts under the pointer.
+    // On a phone a plain note stays a clean sheet (title + body): tags are
+    // added via the keyboard toolbar's `#` button or `⋯ → Tags` (TDR 0005
+    // Amendment I). On desktop a quiet hover-only "Add tag" sits under the
+    // title while keeping its height so the body never shifts.
+    if (isMobileSurface()) {
+      return null
+    }
     return (
       <section aria-label="Properties" data-bare-properties="" className="mb-0">
         <NoteTypePicker
@@ -49,11 +53,11 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
           onChoose={(tag) => {
             void addTag(path, tag)
           }}
-          triggerLabel="Add a type"
+          triggerLabel="Add tag"
           triggerClassName="kore-note-add-type flex min-h-6 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted transition-[opacity,color,background-color] duration-150 hover:bg-surface-hover hover:text-text"
         >
           <Plus aria-hidden className="size-3.5" />
-          <span>Add a type</span>
+          <span>Add tag</span>
         </NoteTypePicker>
       </section>
     )

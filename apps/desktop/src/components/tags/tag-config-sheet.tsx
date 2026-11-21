@@ -20,7 +20,7 @@ import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagFolderField } from './tag-folder-field'
-import { TagParentsField } from './tag-parents-field'
+import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
@@ -200,8 +200,7 @@ function TypePage({
               <span className="font-medium">
                 {binding.suggestion.count} notes use #{binding.suggestion.tag}.
               </span>{' '}
-              Bind this type to that tag so they show up as its rows. Their folders stay as they
-              are.
+              Bind this tag to that tag so they show up as its rows. Their folders stay as they are.
             </span>
           </p>
           <Button
@@ -231,11 +230,11 @@ function TypePage({
       {config.needsConversion ? (
         <p className="rounded-xl bg-surface-hover px-3 py-2 text-sm text-text-secondary">
           A note already exists at <code className="font-mono text-xs">tags/{tagKey}.md</code>.
-          Saving turns it into this type's definition; its text is kept.
+          Saving turns it into this tag's definition; its text is kept.
         </p>
       ) : null}
 
-      <Section title="Type">
+      <Section title="Tag">
         <button
           type="button"
           onClick={onRename}
@@ -252,8 +251,10 @@ function TypePage({
       </Section>
 
       <Section
-        title="Fields"
-        footer={drafts.length > 1 ? 'Drag a field by its handle to change the order.' : undefined}
+        title="Properties"
+        footer={
+          drafts.length > 1 ? 'Drag a property by its handle to change the order.' : undefined
+        }
       >
         <div aria-busy={loading || undefined}>
           <DndContext
@@ -291,7 +292,7 @@ function TypePage({
             className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-base text-primary active:bg-surface-hover"
           >
             <Plus aria-hidden className="size-5" />
-            Add field
+            Add property
           </button>
         </div>
       </Section>
@@ -325,12 +326,6 @@ function TypePage({
 
       {loading ? null : (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 [--field-label-w:6rem]">
-          <TagParentsField
-            tag={tagKey}
-            parents={config.parents}
-            candidates={config.parentCandidates}
-            onChange={config.setParents}
-          />
           <TagViewsStrip properties={config.liveSchema} />
           <label className="flex items-center gap-2">
             <span className="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary">
@@ -363,6 +358,13 @@ function TypePage({
             onChange={config.setFolder}
             labelClassName="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary"
             triggerClassName="min-w-0 flex-1"
+          />
+          <TagAdvancedSection
+            tag={tagKey}
+            parents={config.parents}
+            candidates={config.parentCandidates}
+            onChange={config.setParents}
+            className="border-t border-border/60 pt-2"
           />
         </div>
       )}

@@ -32,7 +32,7 @@ import { TagConfigSheet } from './tag-config-sheet'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFolderField } from './tag-folder-field'
-import { TagParentsField } from './tag-parents-field'
+import { TagAdvancedSection } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertySettings } from './tag-property-settings'
 import { TagViewsStrip } from './tag-views-strip'
@@ -197,7 +197,7 @@ function TypeSettings({
             <span className="font-medium">
               {binding.suggestion.count} notes use #{binding.suggestion.tag}.
             </span>{' '}
-            Bind this type to that tag so they show up as its rows. Their folders stay as they are.
+            Bind this tag to that tag so they show up as its rows. Their folders stay as they are.
           </p>
           <Button
             type="button"
@@ -220,7 +220,7 @@ function TypeSettings({
 
       <div className="grid min-h-0 flex-1 grid-cols-[15rem_1fr]">
         <nav
-          aria-label="Type settings"
+          aria-label="Tag settings"
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3 pb-3"
           aria-busy={config.loading || undefined}
         >
@@ -229,7 +229,7 @@ function TypeSettings({
             onClick={() => setSelection({ kind: 'type' })}
           >
             <Settings aria-hidden className="size-4 shrink-0 text-text-muted" />
-            <span className="flex-1 truncate">Type</span>
+            <span className="flex-1 truncate">Tag</span>
           </NavButton>
           <p className="px-2 pb-1 pt-4 text-2xs font-medium text-text-muted">Properties</p>
           <PropertyNavList
@@ -251,7 +251,7 @@ function TypeSettings({
           {config.needsConversion ? (
             <p className="mb-4 rounded-lg bg-surface-hover px-3 py-2 text-xs text-text-secondary">
               A note already exists at <code className="font-mono">tags/{key}.md</code>. Saving
-              converts it into this type's definition (adds the type marker to its frontmatter); its
+              converts it into this tag's definition (adds the tag marker to its frontmatter); its
               body is kept.
             </p>
           ) : null}
@@ -308,7 +308,7 @@ function TypePane({
   }
   return (
     <div className="flex flex-col gap-3">
-      <PaneHeading>Type</PaneHeading>
+      <PaneHeading>Tag</PaneHeading>
       {config.drafts.length === 0 ? (
         <div className="flex flex-col gap-1 rounded-lg bg-surface-hover p-2">
           <p className="px-1 pb-1 text-xs text-text-secondary">
@@ -362,7 +362,7 @@ function TypePane({
         onChange={config.setFolder}
         labelClassName={FIELD_LABEL_CLASS}
       />
-      <TagParentsField
+      <TagAdvancedSection
         tag={tagKey}
         parents={config.parents}
         candidates={config.parentCandidates}

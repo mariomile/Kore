@@ -113,7 +113,7 @@ vi.mock('@/providers/graph-provider', () => ({
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
 const sidebarSections = vi.hoisted(() => ({
-  order: ['pinned', 'types', 'tags', 'folders', 'library'],
+  order: ['pinned', 'tags', 'folders', 'library'],
   nav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
   hidden: [] as string[],
 }))
@@ -180,7 +180,7 @@ beforeEach(() => {
   newChat.mockClear()
   getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
-  sidebarSections.order = ['pinned', 'types', 'tags', 'folders', 'library']
+  sidebarSections.order = ['pinned', 'tags', 'folders', 'library']
   listTagTypes.mockReset().mockResolvedValue([])
   sidebarSections.nav = ['daily', 'newNote', 'allNotes', 'tasks', 'graph']
   sidebarSections.hidden = []
@@ -323,7 +323,7 @@ describe('Sidebar', () => {
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
     getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
-    sidebarSections.order = ['tags', 'pinned', 'types', 'folders']
+    sidebarSections.order = ['tags', 'pinned', 'folders']
     const { view } = await renderSidebar()
 
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
@@ -332,17 +332,17 @@ describe('Sidebar', () => {
     )
     // The vault has no folders of its own here, so Folders renders nothing
     // while still holding its place in the stored order.
-    expect(shelves).toEqual(['Tags', 'Pinned notes', 'Types'])
+    expect(shelves).toEqual(['Tags', 'Pinned notes'])
   })
 
-  it('hides the Types and Tags sections while the graph has no tags', async () => {
+  it('hides the Tags section while the graph has no tags', async () => {
     const { view } = await renderSidebar()
     await vi.waitFor(() => expect(getTagTree).toHaveBeenCalled())
     expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
     expect(view.container.querySelector('[aria-label="Tags"]')).toBeNull()
   })
 
-  it('lists tags with a definition under Types and the rest under Tags', async () => {
+  it('pins configured tags at the top of Tags above a separator before remaining tags', async () => {
     getTagTree.mockResolvedValue(
       buildTagTree([
         { key: 'type', tag: 'type', count: 4 },
@@ -355,21 +355,54 @@ describe('Sidebar', () => {
     ])
     const { view } = await renderSidebar()
 
-    const types = view.getByRole('region', { name: 'Types' })
+    expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
     const tags = view.getByRole('region', { name: 'Tags' })
-    await expect.element(types.getByRole('button', { name: /^Project\s*4$/ })).toBeVisible()
+    await expect.element(tags.getByRole('button', { name: /^Project\s*4$/ })).toBeVisible()
     await expect.element(tags.getByRole('button', { name: /^Book\s*3$/ })).toBeVisible()
-    // `type` only parented the type, so it leaves the Tags shelf with it.
+    await expect.element(tags.getByRole('separator')).toBeVisible()
+    // `type` only parented the configured tag, so it does not linger as an empty wrapper.
     await expectLocatorToHaveCount(tags.getByRole('button', { name: /^Type\s*4$/ }), 0)
 
-    await types.getByRole('button', { name: /^Project\s*4$/ }).click()
+    await tags.getByRole('button', { name: /^Project\s*4$/ }).click()
     await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes:type/project')
   })
 
-  it('says how to make a type while the vault has only tags', async () => {
-    getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
+  it('nests unconfigured sub-tags under their pinned configured parent without duplicating the parent', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'book', tag: 'book', count: 5 },
+        { key: 'book/sci-fi', tag: 'book/sci-fi', count: 2 },
+        { key: 'idea', tag: 'idea', count: 1 },
+      ]),
+    )
+    listTagTypes.mockResolvedValue([
+      { tagKey: 'book', notePath: 'tags/book.md', type: { properties: [] } },
+    ])
     const { view } = await renderSidebar()
-    await expect.element(view.getByText(/No types yet/)).toBeVisible()
+
+    const tags = view.getByRole('region', { name: 'Tags' })
+    await expect.element(tags.getByRole('button', { name: /^Book\s*5$/ })).toBeVisible()
+    expect(tags.getByRole('button', { name: /^Book\s*5$/ }).elements()).toHaveLength(1)
+    await tags.getByRole('button', { name: 'Expand #book' }).click()
+    await expect.element(tags.getByRole('button', { name: /^Sci-fi\s*2$/i })).toBeVisible()
+  })
+
+  it('keeps a directly used unconfigured parent when its configured child is hoisted', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'work', tag: 'work', count: 5, direct: true },
+        { key: 'work/project', tag: 'work/project', count: 2, direct: true },
+        { key: 'work/project/active', tag: 'work/project/active', count: 1, direct: true },
+      ]),
+    )
+    listTagTypes.mockResolvedValue([
+      { tagKey: 'work/project', notePath: 'tags/work/project.md', type: { properties: [] } },
+    ])
+    const { view } = await renderSidebar()
+
+    const tags = view.getByRole('region', { name: 'Tags' })
+    await expect.element(tags.getByRole('button', { name: /^Project\s*2$/ })).toBeVisible()
+    await expect.element(tags.getByRole('button', { name: /^Work\s*5$/ })).toBeVisible()
   })
 
   it('browses the vault by folder and opens a note from the tree', async () => {
@@ -546,11 +579,11 @@ describe('Sidebar', () => {
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
 
     await view.getByRole('button', { name: 'Tags options' }).click()
-    // One step up passes the Types shelf right above it.
+    // One step up passes the Pinned notes shelf right above it.
     await page.getByRole('menuitem', { name: 'Move up' }).click()
     const update = updateSettingsWith.mock.lastCall?.[0]
     expect(update?.(DEFAULT_SETTINGS)).toEqual({
-      sidebarSections: ['pinned', 'tags', 'types', 'folders', 'library'],
+      sidebarSections: ['tags', 'pinned', 'folders', 'library'],
     })
   })
 

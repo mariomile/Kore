@@ -501,7 +501,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     expect(createRow).toHaveBeenCalledTimes(1)
   })
 
-  it('applies a manual column width to the grid template', async () => {
+  it('applies manual column widths (including Title) to the grid template', async () => {
     const view = await render(
       <CollectionTable
         entries={ENTRIES}
@@ -509,7 +509,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sorts={[]}
-        columnWidths={{ author: 20 }}
+        columnWidths={{ $title: 22, author: 20 }}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
         onAddProperty={addProperty}
@@ -521,9 +521,42 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         registerScrollToIndex={() => {}}
       />,
     )
-    const header = view.getByRole('button', { name: 'Sort by Title' }).element()
-      .parentElement as HTMLElement
+    const header = view
+      .getByRole('button', { name: 'Sort by Title' })
+      .element()
+      .closest('[style*="grid-template-columns"]') as HTMLElement
+    // Title track includes the 3rem left selection gutter + 22rem content width.
+    expect(header.style.gridTemplateColumns).toContain('25rem')
     expect(header.style.gridTemplateColumns).toContain('20rem')
+  })
+
+  it('steps between inline table cells on Tab after committing', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await view.getByText('Le Guin').click()
+    const authorInput = view.getByRole('textbox', { name: 'Author' })
+    await authorInput.fill('U. K. Le Guin')
+    await userEvent.keyboard('{Tab}')
+
+    expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'author', 'U. K. Le Guin')
+    await expect.element(view.getByRole('spinbutton', { name: 'Rating' })).toBeInTheDocument()
   })
 
   it('renders shelf headers with counts between the grouped rows (Plan 29 V1b)', async () => {

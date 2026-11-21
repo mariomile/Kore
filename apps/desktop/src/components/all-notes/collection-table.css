@@ -1,0 +1,35 @@
+/*
+ * Sticky Title column elevation on desktop CollectionTable: a crisp divider
+ * always separates the frozen Title column from the scrollable properties,
+ * and a soft shadow fades in once the table scrolls sideways.
+ */
+.collection-sticky-col {
+  position: sticky;
+  left: 0;
+}
+
+.collection-sticky-col::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  right: -10px;
+  width: 10px;
+  pointer-events: none;
+  background: linear-gradient(to right, rgb(0 0 0 / 0.08), transparent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.dark .collection-sticky-col::after {
+  background: linear-gradient(to right, rgb(0 0 0 / 0.34), transparent);
+}
+
+[data-collection-scrolled-x] .collection-sticky-col::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collection-sticky-col::after {
+    transition: none;
+  }
+}

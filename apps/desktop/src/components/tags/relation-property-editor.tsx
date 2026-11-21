@@ -36,6 +36,7 @@ export function RelationPropertyEditor({
   onOpenRelation,
   children,
   align,
+  variant = 'default',
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -64,8 +65,14 @@ export function RelationPropertyEditor({
         }
       }}
     >
-      <EditorTrigger name={property.name}>{children}</EditorTrigger>
-      <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-64 p-0">
+      <EditorTrigger name={property.name} variant={variant}>
+        {children}
+      </EditorTrigger>
+      <PopoverContent
+        align={align ?? 'start'}
+        sideOffset={variant === 'table-cell' ? 2 : 4}
+        className="w-64 p-0"
+      >
         {/* The DB already filtered; cmdk must not second-guess the ranking. */}
         <Command label={`Link ${property.name}`} shouldFilter={false}>
           <CommandInput

@@ -12,7 +12,7 @@ import {
   type RelationLink,
   type TagProperty,
 } from '@kore/core'
-import { Check } from '@/components/icons'
+import { Check, Note } from '@/components/icons'
 import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -135,11 +135,55 @@ export function readCellValue(
 /** The checkbox property's read-only face, shared with the note properties
  * panel so a styling or a11y fix reaches both surfaces at once. */
 export function CheckboxFace({ checked }: { checked: boolean }): ReactElement {
-  return checked ? (
-    <Check aria-hidden className="size-3.5 text-text-secondary" />
-  ) : (
-    <span aria-hidden className="size-3.5 rounded-sm border border-border" />
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors',
+        checked
+          ? 'border-accent bg-accent-fill text-text-on-brand'
+          : 'border-border-strong bg-transparent',
+      )}
+    >
+      {checked ? <Check aria-hidden className="size-3" /> : null}
+    </span>
   )
+}
+
+function readMultiselectItems(value: CollectionValue | undefined): string[] | null {
+  if (value === undefined) {
+    return null
+  }
+  if (value.valueType === 'list') {
+    const entries = decodeStoredList(value.value)
+    return entries !== null && entries.length > 0 ? entries : null
+  }
+  return value.value === '' ? null : [value.value]
+}
+
+function readRelationLabels(
+  property: TagProperty,
+  value: CollectionValue | undefined,
+): string[] | null {
+  if (value === undefined) {
+    return null
+  }
+  if (property.type === 'relation') {
+    if (value.valueType !== 'string' || value.value === '') {
+      return null
+    }
+    return [relationDisplay(value.value) ?? value.value]
+  }
+  if (property.type === 'relations' || property.type === 'reverse') {
+    if (value.valueType === 'string') {
+      return value.value === '' ? null : [relationDisplay(value.value) ?? value.value]
+    }
+    const entries = value.valueType === 'list' ? decodeStoredList(value.value) : null
+    return entries !== null && entries.length > 0
+      ? entries.map((entry) => relationDisplay(entry) ?? entry)
+      : null
+  }
+  return null
 }
 
 interface CollectionCellProps {
@@ -182,7 +226,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       <span className="flex min-w-0 items-center">
         <span
           className={cn(
-            'truncate rounded-sm px-1.5 py-px text-xs font-medium',
+            'truncate rounded-[5px] px-2 py-0.5 text-xs font-medium leading-tight',
             selectOptionBadgeClass(reading.text, property),
           )}
         >
@@ -190,6 +234,51 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         </span>
       </span>
     )
+  }
+  // Multiselect renders each value as its own colored pill, like Notion's tags.
+  if (property.type === 'multiselect' && !reading.mismatch) {
+    const items = readMultiselectItems(value)
+    if (items !== null) {
+      return (
+        <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+          {items.map((item) => (
+            <span
+              key={item}
+              className={cn(
+                'shrink-0 rounded-[5px] px-2 py-0.5 text-xs font-medium leading-tight',
+                selectOptionBadgeClass(item, property),
+              )}
+            >
+              {item}
+            </span>
+          ))}
+        </span>
+      )
+    }
+  }
+  // Relations read as subtle note chips so links stand out from plain text.
+  if (
+    (property.type === 'relation' ||
+      property.type === 'relations' ||
+      property.type === 'reverse') &&
+    !reading.mismatch
+  ) {
+    const labels = readRelationLabels(property, value)
+    if (labels !== null) {
+      return (
+        <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+          {labels.map((label, index) => (
+            <span
+              key={`${label}:${index}`}
+              className="inline-flex max-w-full min-w-0 shrink-0 items-center gap-1 rounded-[4px] bg-surface-hover px-1.5 py-0.5 text-xs font-medium text-text"
+            >
+              <Note aria-hidden className="size-3 shrink-0 text-text-muted" />
+              <span className="truncate">{label}</span>
+            </span>
+          ))}
+        </span>
+      )
+    }
   }
   // A person reads as who it is: an initials disc in the accent wash, the
   // same face wherever the value shows.
@@ -211,7 +300,11 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         'truncate text-[13px]',
         (property.type === 'number' || property.type === 'rating') &&
           !reading.mismatch &&
-          'text-right tabular-nums',
+          'w-full text-right tabular-nums',
+        property.type === 'url' &&
+          !reading.mismatch &&
+          text !== '' &&
+          'underline decoration-border-strong underline-offset-2',
         reading.mismatch ? 'text-warning' : selected ? 'text-accent' : 'text-text-secondary',
       )}
       title={reading.mismatch ? 'Value does not match the property type' : undefined}

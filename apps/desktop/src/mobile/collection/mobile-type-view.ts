@@ -74,28 +74,28 @@ function foldForSearch(text: string): string {
     .toLocaleLowerCase()
 }
 
-/** Table column widths (px) by property type: a phone shows two at a glance. */
+/** Table column widths (px) by property type: tight enough to show a peek of the next column on iPhone. */
 export function mobileColumnWidth(property: TagProperty): number {
   switch (property.type) {
     case 'checkbox':
-      return 76
+      return 68
     case 'number':
     case 'rating':
-      return 96
+      return 92
+    case 'select':
+    case 'status':
+      return 120
     case 'date':
     case 'created':
     case 'updated':
-      return 140
-    case 'select':
-    case 'status':
-      return 136
+      return 124
     case 'text':
     case 'multiselect':
     case 'relations':
     case 'reverse':
     case 'files':
-      return 184
+      return 172
     default:
-      return 156
+      return 144
   }
 }

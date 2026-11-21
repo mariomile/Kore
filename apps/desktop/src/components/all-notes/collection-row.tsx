@@ -1,5 +1,6 @@
 import { memo, type CSSProperties, type MouseEvent, type ReactElement, type ReactNode } from 'react'
 import { displayNoteTitle, type CollectionEntry } from '@kore/core'
+import { Check } from '@/components/icons'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -11,9 +12,15 @@ interface CollectionRowProps {
   entry: CollectionEntry
   /** The table's shared data-driven column template. */
   gridStyle: CSSProperties
+  /** Fixed pixel height synchronized with the virtualizer's `itemSize`. */
+  rowHeight: number
   selected: boolean
   /** Open tasks belonging to this row's note (0 renders nothing). */
   openTasks: number
+  /** Compact left selection gutter for embedded tables inside a note. */
+  embedded: boolean
+  /** Reserves the trailing "+" column cell so the grid stays aligned. */
+  showAddColumn: boolean
   onSelect: (path: string, event: Pick<MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>) => void
   onToggle: (path: string, event: Pick<MouseEvent, 'shiftKey'>) => void
   onOpen: (path: string, event?: ModClickEvent) => void
@@ -22,15 +29,18 @@ interface CollectionRowProps {
 }
 
 /**
- * One note in a Collection table: the All Notes row's selection contract
- * (body selects, gutter toggles, subject or double-click opens) around
- * schema-driven property cells.
+ * One note in a Collection table: a bordered Notion-style database row with
+ * a sticky Title column, hover Open badge, left-gutter checkbox selection,
+ * and schema-driven property cells.
  */
 export const CollectionRow = memo(function CollectionRow({
   entry,
   gridStyle,
+  rowHeight,
   selected,
   openTasks,
+  embedded,
+  showAddColumn,
   onSelect,
   onToggle,
   onOpen,
@@ -40,7 +50,8 @@ export const CollectionRow = memo(function CollectionRow({
   return (
     <div
       data-note-path={entry.path}
-      style={gridStyle}
+      data-collection-row
+      style={{ ...gridStyle, height: rowHeight }}
       onClick={(event) => {
         if (event.shiftKey) {
           event.preventDefault()
@@ -49,56 +60,86 @@ export const CollectionRow = memo(function CollectionRow({
       }}
       onDoubleClick={(event) => onOpen(entry.path, event)}
       className={cn(
-        'group/row relative h-(--row-height) cursor-default select-none transition-colors duration-100',
+        'group/row relative cursor-default select-none border-b border-border transition-colors duration-75',
         COLLECTION_GRID_CLASS,
-        selected
-          ? 'border-y border-accent/20 bg-accent-soft text-text dark:border-accent/10 dark:text-text'
-          : 'shadow-[var(--border-hairline)] hover:bg-surface-hover',
+        selected ? 'bg-accent-soft text-text' : 'bg-surface hover:bg-surface-hover/55',
       )}
     >
-      <button
-        type="button"
-        aria-label={selected ? 'Deselect note' : 'Select note'}
-        aria-pressed={selected}
-        onClick={(event) => {
-          event.stopPropagation()
-          onToggle(entry.path, event)
-        }}
+      <div
         className={cn(
-          'group absolute inset-y-0 left-0 flex w-12 items-center justify-center opacity-0 transition-opacity duration-100 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none',
-          selected ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
+          'collection-sticky-col z-10 flex h-full min-w-0 items-center border-r border-border bg-surface pr-2',
+          embedded ? 'pl-8' : 'pl-12',
         )}
       >
         <span
           aria-hidden
           className={cn(
-            'size-2 rounded-full transition-transform duration-150 group-hover:scale-110',
-            selected ? 'bg-accent' : 'ring-1 ring-accent',
+            'pointer-events-none absolute inset-0 transition-colors duration-75',
+            selected ? 'bg-accent-soft' : 'group-hover/row:bg-surface-hover/55',
           )}
         />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          if (event.detail > 1) {
-            return
-          }
-          onOpen(entry.path, event)
-        }}
-        onDoubleClick={(event) => event.stopPropagation()}
-        className={cn(
-          'flex min-w-0 items-center gap-1.5 text-left text-[13px] font-medium focus-visible:outline-none',
-          selected ? 'text-accent' : 'text-text',
-        )}
-      >
-        <span className="min-w-0 truncate">{displayNoteTitle(entry.title)}</span>
-        {openTasks > 0 ? <CollectionTaskBadge count={openTasks} /> : null}
-      </button>
+        <button
+          type="button"
+          aria-label={selected ? 'Deselect note' : 'Select note'}
+          aria-pressed={selected}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggle(entry.path, event)
+          }}
+          className={cn(
+            'group/check absolute inset-y-0 left-0 z-10 flex items-center justify-center transition-opacity duration-100 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none',
+            embedded ? 'w-8' : 'w-12',
+            selected ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'flex size-3.5 items-center justify-center rounded-[4px] border transition-colors',
+              selected
+                ? 'border-accent bg-accent-fill text-text-on-brand'
+                : 'border-border-strong bg-surface group-hover/check:border-accent',
+            )}
+          >
+            {selected ? <Check className="size-2.5" /> : null}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            if (event.detail > 1) {
+              return
+            }
+            onOpen(entry.path, event)
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          className={cn(
+            'relative z-10 flex h-full min-w-0 flex-1 items-center gap-1.5 text-left text-[13px] font-medium focus-visible:outline-none',
+            selected ? 'text-accent' : 'text-text',
+          )}
+        >
+          <span className="min-w-0 truncate">{displayNoteTitle(entry.title)}</span>
+          {openTasks > 0 ? <CollectionTaskBadge count={openTasks} /> : null}
+        </button>
+        <span
+          aria-hidden
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen(entry.path, event)
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          className="relative z-10 ml-1 shrink-0 cursor-pointer rounded-[4px] border border-border bg-surface px-1.5 py-0.5 text-[11px] font-medium leading-none text-text-secondary opacity-0 transition-opacity duration-100 hover:border-border-strong hover:text-text group-hover/row:opacity-100"
+        >
+          Open
+        </span>
+      </div>
       {children}
-      <span className="whitespace-nowrap text-right text-[13px] tabular-nums text-text-secondary">
+      <span className="flex h-full items-center justify-end whitespace-nowrap border-r border-border px-2.5 text-right text-[12px] tabular-nums text-text-muted">
         {entry.mtime > 0 ? formatRecencyLabel(entry.mtime, settings) : '—'}
       </span>
+      {showAddColumn ? <span aria-hidden className="h-full" /> : null}
+      <span aria-hidden className="h-full" />
     </div>
   )
 })

@@ -424,6 +424,8 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           entries={rows}
           type={visibleTagType}
           groupProperty={tableGroupProperty}
+          sorts={collectionSorts}
+          onSortChange={setCollectionSorts}
           label={name}
           onOpen={open}
           onCreate={createRow}

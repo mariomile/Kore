@@ -15,7 +15,7 @@ import {
   type SavedCollectionView,
   type TagPropertyType,
 } from '@kore/core'
-import { Check, Sliders } from '@/components/icons'
+import { Check, Settings, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
@@ -49,13 +49,7 @@ import {
   type CollectionFilter,
   type CollectionFilterMatch,
 } from './collection-filter-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { CollectionGroupMenu } from './collection-group-menu'
 import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
 import { CollectionTimeline } from './collection-timeline'
@@ -488,7 +482,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         ) : tag === null ? (
           <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (
-          <TagPageTitle tag={tag} icon={tagType?.icon} onConfigure={() => setEditingSchema(true)} />
+          <TagPageTitle tag={tag} icon={tagType?.icon} />
         )}
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
@@ -539,58 +533,26 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             onMove={moveSavedView}
             onShift={shiftSavedView}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1">
             {(view === 'table' || view === 'timeline') && tableGroupProperties.length > 0 ? (
-              <Select
-                value={tableGroupProperty?.key ?? '__none'}
-                items={{
-                  __none: 'No grouping',
-                  ...Object.fromEntries(
-                    tableGroupProperties.map((property) => [property.key, property.name]),
-                  ),
-                }}
-                onValueChange={(value) => {
-                  if (typeof value === 'string' && value !== '') {
-                    setTableGroup(value === '__none' ? null : value)
-                  }
-                }}
-              >
-                <SelectTrigger aria-label="Group by" data-size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">No grouping</SelectItem>
-                  {tableGroupProperties.map((property) => (
-                    <SelectItem key={property.key} value={property.key}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CollectionGroupMenu
+                properties={tableGroupProperties}
+                value={tableGroupProperty?.key ?? null}
+                allowNone
+                onChange={setTableGroup}
+              />
             ) : null}
             {view === 'board' && boardProperties.length > 1 ? (
-              <Select
-                value={boardGroupProperty?.key ?? ''}
-                items={Object.fromEntries(
-                  boardProperties.map((property) => [property.key, property.name]),
-                )}
-                onValueChange={(value) => {
-                  if (typeof value === 'string' && value !== '') {
-                    setCollectionGroup(value)
+              <CollectionGroupMenu
+                properties={boardProperties}
+                value={boardGroupProperty?.key ?? null}
+                allowNone={false}
+                onChange={(key) => {
+                  if (key !== null) {
+                    setCollectionGroup(key)
                   }
                 }}
-              >
-                <SelectTrigger aria-label="Group by" data-size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {boardProperties.map((property) => (
-                    <SelectItem key={property.key} value={property.key}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             ) : null}
             <TagChildrenFilter
               tag={tag}
@@ -638,6 +600,15 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 </PopoverContent>
               </Popover>
             ) : null}
+            <button
+              type="button"
+              aria-label={`Configure #${tag}`}
+              title="Tag settings"
+              onClick={() => setEditingSchema(true)}
+              className="app-icon-button text-text-muted hover:text-text"
+            >
+              <Settings aria-hidden className="size-3.5" />
+            </button>
             <CollectionOptionsMenu tag={tag} type={tagType} entries={filteredCollection ?? []} />
             <NewNoteButton tag={tag} />
           </div>

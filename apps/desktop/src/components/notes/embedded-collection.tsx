@@ -36,6 +36,7 @@ import {
   applyCollectionFilters,
   CollectionFilterMenu,
 } from '@/components/all-notes/collection-filter-menu'
+import { CollectionGroupMenu } from '@/components/all-notes/collection-group-menu'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -371,41 +372,24 @@ function EmbeddedTagCollection({
             host={host}
           />
           {(view === 'table' || view === 'board') && groupProperties.length > 0 ? (
-            <Select
+            <CollectionGroupMenu
+              properties={groupProperties}
               value={
                 view === 'board'
-                  ? boardProperty?.key
-                  : (groupProperties.find((property) => property.key === embed.group)?.key ??
-                    '__none')
+                  ? (boardProperty?.key ?? null)
+                  : (groupProperties.find((property) => property.key === embed.group)?.key ?? null)
               }
-              items={Object.fromEntries([
-                ...(view === 'board' ? [] : [['__none', 'No grouping']]),
-                ...groupProperties.map((property) => [property.key, property.name]),
-              ])}
-              onValueChange={(next) => {
-                if (typeof next === 'string')
-                  onChange({ ...embed, group: next === '__none' ? null : next })
-              }}
-            >
-              <SelectTrigger aria-label="Group collection" size="sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {view === 'board' ? null : <SelectItem value="__none">No grouping</SelectItem>}
-                {groupProperties.map((property) => (
-                  <SelectItem key={property.key} value={property.key}>
-                    {property.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              allowNone={view !== 'board'}
+              ariaLabel="Group collection"
+              onChange={(key) => onChange({ ...embed, group: key })}
+            />
           ) : null}
         </div>
       ) : null}
       <div
         className={cn(
-          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto pt-3',
-          view === 'table' ? 'min-h-52' : '[&>div]:px-3 [&>div]:pb-3',
+          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto',
+          view === 'table' ? 'min-h-52' : 'pt-3 [&>div]:px-3 [&>div]:pb-3',
         )}
       >
         {tagType === undefined || visibleTagType === undefined ? (
@@ -465,6 +449,7 @@ function EmbeddedTagCollection({
             }}
             onCreateRow={createRow}
             groups={groups}
+            embedded
             onOpen={openNote}
             registerScrollToIndex={() => {}}
           />
@@ -671,30 +656,15 @@ function EmbeddedReusableCollection({
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={view === 'board' ? (boardProperty?.key ?? '__none') : (embed.group ?? '__none')}
-          items={Object.fromEntries([
-            ...(view === 'board' ? [] : [['__none', 'No grouping']]),
-            ...groupable.map((property) => [property.key, property.name]),
-          ])}
-          onValueChange={(next) => {
-            if (typeof next === 'string') {
-              onChange?.({ ...embed, group: next === '__none' ? null : next })
-            }
-          }}
-        >
-          <SelectTrigger aria-label="Group collection" size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {view === 'board' ? null : <SelectItem value="__none">No grouping</SelectItem>}
-            {groupable.map((property) => (
-              <SelectItem key={property.key} value={property.key}>
-                {property.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {groupable.length > 0 ? (
+          <CollectionGroupMenu
+            properties={groupable}
+            value={view === 'board' ? (boardProperty?.key ?? null) : embed.group}
+            allowNone={view !== 'board'}
+            ariaLabel="Group collection"
+            onChange={(key) => onChange?.({ ...embed, group: key })}
+          />
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Collection columns"
@@ -826,6 +796,7 @@ function EmbeddedReusableCollection({
               }
             }}
             groups={groups}
+            embedded
             onOpen={openNote}
             registerScrollToIndex={() => {}}
           />

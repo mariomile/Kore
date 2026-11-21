@@ -242,6 +242,12 @@ export function MobileCollectionEmbed({
             entries={preview}
             type={visibleType}
             groupProperty={tableGroup}
+            sorts={embed.sorts}
+            onSortChange={
+              onChange === undefined
+                ? undefined
+                : (sorts) => onChange({ ...embed, sorts: [...sorts] })
+            }
             label={title}
             onOpen={onOpen}
             onCreate={more > 0 ? undefined : onCreate}

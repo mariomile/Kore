@@ -38,24 +38,18 @@ import {
  */
 export function FormattingToolbarBridge({
   saveFile,
-  onOpenTagPicker,
 }: {
   /** Persist a file and resolve its markdown destination (undefined declines). */
   saveFile?: (file: File) => Promise<string | undefined>
-  /** Open the note's native tag picker when the mobile `#` button is tapped. */
-  onOpenTagPicker?: () => void
 }): null {
   const editor = useEditor<EditorExtension>()
   // Read through a ref like the editor's other host callbacks: a changing
   // identity must not tear down and re-attach the published toolbar.
   const saveFileRef = useRef(saveFile)
-  const openTagPickerRef = useRef(onOpenTagPicker)
   useLayoutEffect(() => {
     saveFileRef.current = saveFile
-    openTagPickerRef.current = onOpenTagPicker
-  }, [saveFile, onOpenTagPicker])
+  }, [saveFile])
   const canAttachFiles = saveFile !== undefined
-  const hasTagPicker = onOpenTagPicker !== undefined
 
   useEffect(() => {
     if (!isTouchEditorSurface()) {
@@ -97,13 +91,6 @@ export function FormattingToolbarBridge({
         moveDown: () => run(() => editor.commands.moveList('down')),
         insertTrigger: (text: FormattingTriggerText) =>
           run(() => editor.commands.insertTrigger(text)),
-        ...(hasTagPicker
-          ? {
-              openTagPicker: () => {
-                openTagPickerRef.current?.()
-              },
-            }
-          : {}),
         dismissKeyboard: () => editor.blur(),
         attachFiles: async (files: File[]) => {
           const save = saveFileRef.current
@@ -193,9 +180,10 @@ export function FormattingToolbarBridge({
       cancel()
       teardown?.()
     }
-    // `canAttachFiles` and `hasTagPicker` are fixed per editor in practice, so
-    // re-attaching on a flip costs nothing and keeps the published toolbar honest.
-  }, [editor, canAttachFiles, hasTagPicker])
+    // `canAttachFiles` is fixed per editor in practice (a pane either has a
+    // saveFile or does not), so re-attaching on a flip costs nothing and
+    // keeps the published capability honest.
+  }, [editor, canAttachFiles])
 
   return null
 }

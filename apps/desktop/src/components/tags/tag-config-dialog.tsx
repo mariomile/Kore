@@ -32,7 +32,7 @@ import { TagConfigSheet } from './tag-config-sheet'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFolderField } from './tag-folder-field'
-import { TagParentsField } from './tag-parents-field'
+import { TagAdvancedSection } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertySettings } from './tag-property-settings'
 import { TagViewsStrip } from './tag-views-strip'
@@ -303,11 +303,9 @@ function TypePane({
   config: TagConfigDraft
   onPicked: () => void
 }): ReactElement {
-  const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null)
   if (config.loading) {
     return <div aria-busy className="h-40" />
   }
-  const showAdvanced = advancedOpen ?? config.parents.length > 0
   return (
     <div className="flex flex-col gap-3">
       <PaneHeading>Tag</PaneHeading>
@@ -364,26 +362,12 @@ function TypePane({
         onChange={config.setFolder}
         labelClassName={FIELD_LABEL_CLASS}
       />
-      <div className="pt-1">
-        <button
-          type="button"
-          aria-expanded={showAdvanced}
-          onClick={() => setAdvancedOpen(!showAdvanced)}
-          className="text-xs font-medium text-text-muted transition-colors hover:text-text"
-        >
-          {showAdvanced ? 'Hide advanced' : 'Advanced'}
-        </button>
-        {showAdvanced ? (
-          <div className="mt-2.5">
-            <TagParentsField
-              tag={tagKey}
-              parents={config.parents}
-              candidates={config.parentCandidates}
-              onChange={config.setParents}
-            />
-          </div>
-        ) : null}
-      </div>
+      <TagAdvancedSection
+        tag={tagKey}
+        parents={config.parents}
+        candidates={config.parentCandidates}
+        onChange={config.setParents}
+      />
       <p className="pt-2 text-xs text-text-muted">
         Stored in <code className="font-mono">tags/{tagKey}.md</code>, a note that syncs with the
         vault, so agents read the same schema.

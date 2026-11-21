@@ -1,13 +1,10 @@
 import { useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { foldTag, listTagTypes, tagDisplayName, type NoteTagFacet } from '@kore/core'
+import { foldTag, tagDisplayName, type NoteTagFacet } from '@kore/core'
 import { Check, ChevronRight, Search } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { tagTypesQueryKey, useTagIcons } from '@/hooks/use-tag-icons'
+import { useTagIcons, useTagTypes } from '@/hooks/use-tag-icons'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 
 interface TagFilterDrawerProps {
   open: boolean
@@ -38,14 +35,8 @@ export function TagFilterDrawer({
 }: TagFilterDrawerProps): ReactElement {
   const [query, setQuery] = useState('')
   const icons = useTagIcons()
-  const { graph } = useGraph()
-  const bridgeReady = useBridgeReady()
-  const { data: configuredTypes } = useQuery({
-    queryKey: tagTypesQueryKey(graph?.root),
-    queryFn: () => listTagTypes(),
-    enabled: open && bridgeReady && graph !== null,
-  })
-  const configuredKeys = new Set((configuredTypes ?? []).map((entry) => entry.tagKey))
+  const configuredTypes = useTagTypes(open)
+  const configuredKeys = new Set(configuredTypes.map((entry) => entry.tagKey))
   const needle = foldTag(query.trim())
 
   const filtered = facets.filter((facet) => {

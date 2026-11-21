@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clearFormattingToolbar,
   publishFormattingToolbar,
+  registerMobileTagPicker,
   type FormattingToolbar,
 } from '@/editor/formatting-toolbar-store'
 import { pickFiles } from '@/lib/pick-files'
@@ -114,16 +115,20 @@ describe('MobileFormattingToolbar', () => {
     expect(toolbar.commands.dismissKeyboard).toHaveBeenCalledOnce()
   })
 
-  it('opens the native tag picker instead of inserting # when a regular note supplies openTagPicker', async () => {
+  it('opens the native tag picker instead of inserting # when an active note registers one', async () => {
     const openTagPicker = vi.fn()
     const toolbar = makeToolbar()
-    toolbar.commands.openTagPicker = openTagPicker
-    await render(<MobileFormattingToolbar />)
-    await act(() => publishFormattingToolbar(owner, toolbar))
+    const unregister = registerMobileTagPicker(Symbol('note'), openTagPicker)
+    try {
+      await render(<MobileFormattingToolbar />)
+      await act(() => publishFormattingToolbar(owner, toolbar))
 
-    fireEvent.click(page.getByRole('button', { name: 'Add tag' }))
-    expect(openTagPicker).toHaveBeenCalledOnce()
-    expect(toolbar.commands.insertTrigger).not.toHaveBeenCalled()
+      fireEvent.click(page.getByRole('button', { name: 'Add tag' }))
+      expect(openTagPicker).toHaveBeenCalledOnce()
+      expect(toolbar.commands.insertTrigger).not.toHaveBeenCalled()
+    } finally {
+      unregister()
+    }
   })
 
   it('hides the image button for an editor that cannot persist files', async () => {

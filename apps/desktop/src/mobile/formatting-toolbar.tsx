@@ -12,7 +12,7 @@ import {
   Slash,
   WikiLink,
 } from '@/components/icons'
-import { useFormattingToolbar } from '@/editor/formatting-toolbar-store'
+import { activeMobileTagPicker, useFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { pickFiles } from '@/lib/pick-files'
 import { hapticImpactLight } from '@/mobile/haptics'
 
@@ -68,8 +68,9 @@ export function MobileFormattingToolbar(): ReactElement | null {
           label="Add tag"
           icon={<Hash className="size-5" />}
           onPress={() => {
-            if (commands.openTagPicker !== undefined) {
-              commands.openTagPicker()
+            const openTagPicker = activeMobileTagPicker()
+            if (openTagPicker !== null) {
+              openTagPicker()
             } else {
               commands.insertTrigger('#')
             }

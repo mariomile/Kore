@@ -167,11 +167,6 @@ export interface NotePaneProps {
    * place (the phone's daily carousel, whose day chrome a zoom would keep).
    */
   openPagesOnNoteScreen?: boolean
-  /**
-   * Open the note's native Add tag sheet when the mobile keyboard toolbar's
-   * `#` button is tapped on a regular note.
-   */
-  onOpenTagPicker?: () => void
 }
 
 function NoteLoadingSkeleton(): ReactElement {
@@ -218,7 +213,6 @@ export function NotePaneComponent({
   registerHandle,
   onExitBoundary,
   openPagesOnNoteScreen = false,
-  onOpenTagPicker,
 }: NotePaneProps): ReactElement {
   const { graph } = useGraph()
   const { settings } = useSettings()
@@ -639,7 +633,6 @@ export function NotePaneComponent({
         onTagClick={onTagClick}
         onWikilinkSearch={onWikilinkSearch}
         onTagSearch={onTagSearch}
-        {...(onOpenTagPicker !== undefined ? { onOpenTagPicker } : {})}
         {...(aiMenu.onSelectionMenuSearch !== undefined
           ? { onSelectionMenuSearch: aiMenu.onSelectionMenuSearch }
           : {})}

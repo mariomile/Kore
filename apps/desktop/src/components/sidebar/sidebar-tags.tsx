@@ -1,11 +1,5 @@
-import { useMemo, useState, type ReactElement } from 'react'
-import {
-  foldTag,
-  hasNestedTags,
-  tagDisplayName,
-  type TagTreeNode,
-  type TypeShelfEntry,
-} from '@kore/core'
+import { useState, type ReactElement } from 'react'
+import { foldTag, hasNestedTags, tagDisplayName, type TagTreeNode } from '@kore/core'
 import { ChevronDown, ChevronRight, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'
@@ -32,68 +26,17 @@ interface TagTreeContext {
 }
 
 /**
- * When a configured tag (e.g. `#book`) also has unconfigured sub-tags
- * (`#book/sci-fi`), `splitTypesFromTags` keeps a parent node in `tags` so the
- * sub-tags stay reachable. Inside one unified Tags shelf that would show
- * `#book` twice: attach those unconfigured children directly under the pinned
- * `#book` row and omit the duplicate wrapper from the lower tree.
- */
-function foldConfiguredChildren(
-  configured: readonly TypeShelfEntry[],
-  tree: readonly TagTreeNode[],
-): { pinnedNodes: TagTreeNode[]; remainingTree: TagTreeNode[] } {
-  const configuredKeys = new Set(configured.map((entry) => entry.key))
-  const childrenByKey = new Map<string, TagTreeNode[]>()
-  const strip = (nodes: readonly TagTreeNode[]): TagTreeNode[] => {
-    const kept: TagTreeNode[] = []
-    for (const node of nodes) {
-      const children = strip(node.children)
-      if (configuredKeys.has(node.key)) {
-        if (children.length > 0) {
-          childrenByKey.set(node.key, children)
-        }
-        continue
-      }
-      // Drop a pure structural wrapper once every child was hoisted into the
-      // pinned group above, while keeping any unconfigured parent that notes
-      // directly carry (`direct: true`).
-      const emptiedPureWrapper =
-        node.direct !== true && node.children.length > 0 && children.length === 0
-      if (!emptiedPureWrapper) {
-        kept.push({ ...node, children })
-      }
-    }
-    return kept
-  }
-  const remainingTree = strip(tree)
-  const pinnedNodes: TagTreeNode[] = configured.map((entry) => ({
-    key: entry.key,
-    tag: entry.tag,
-    name: entry.name,
-    count: entry.count,
-    children: childrenByKey.get(entry.key) ?? [],
-  }))
-  return { pinnedNodes, remainingTree }
-}
-
-/**
- * The sidebar's unified Tags section (TDR 0005 Amendment I): tags carrying a
- * definition (`tags/<key>.md`) sit at the top (with any unconfigured sub-tags
- * nested directly beneath them so no tag appears twice), followed by a subtle
- * divider and every remaining tag nested on `/`.
+ * The sidebar's unified Tags section (TDR 0005 Amendment I): configured tags
+ * sit pinned at the top (carrying any unconfigured sub-tags beneath them via
+ * `splitTypesFromTags`), followed by a subtle divider and every remaining tag.
  * Hovering any row reveals its configure button.
  */
 export function SidebarTags(): ReactElement | null {
-  const { types: configured, tags: tree } = useTypeShelves()
+  const { types: pinnedNodes, tags: remainingTree } = useTypeShelves()
   const icons = useTagIcons()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const [expanded, toggle] = useSessionExpanded(EXPANDED_KEY)
-
-  const { pinnedNodes, remainingTree } = useMemo(
-    () => foldConfiguredChildren(configured, tree),
-    [configured, tree],
-  )
 
   if (pinnedNodes.length === 0 && remainingTree.length === 0) {
     return null
@@ -101,25 +44,16 @@ export function SidebarTags(): ReactElement | null {
 
   const activeKey =
     route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null
-  const open = (tag: string): void => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
-  const pinnedContext: TagTreeContext = {
+  const shared = {
     expanded,
     toggle,
     activeKey,
-    nested: hasNestedTags(pinnedNodes),
     icons,
-    open,
+    open: (tag: string) => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } }),
     configure: setConfiguring,
   }
-  const remainingContext: TagTreeContext = {
-    expanded,
-    toggle,
-    activeKey,
-    nested: hasNestedTags(remainingTree),
-    icons,
-    open,
-    configure: setConfiguring,
-  }
+  const pinnedContext: TagTreeContext = { ...shared, nested: hasNestedTags(pinnedNodes) }
+  const remainingContext: TagTreeContext = { ...shared, nested: hasNestedTags(remainingTree) }
 
   return (
     <SidebarSortableSection id="tags" title="Tags" label="Tags">

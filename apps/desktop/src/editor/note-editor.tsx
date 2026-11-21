@@ -336,8 +336,6 @@ interface NoteEditorProps {
   onWikilinkSearch?: WikilinkSearchHandler
   /** Search tags for the `#` autocomplete menu. */
   onTagSearch?: TagSearchHandler
-  /** Open the note's native tag picker when the mobile `#` toolbar button is tapped. */
-  onOpenTagPicker?: () => void
   /**
    * Search prompts for the selection AI menu. Omitting it disables the menu
    * and its selection affordance entirely (e.g. for `private: true` notes).
@@ -407,7 +405,6 @@ export function NoteEditor({
   onTagClick,
   onWikilinkSearch,
   onTagSearch,
-  onOpenTagPicker,
   onSelectionMenuSearch,
   pendingReplacementActions,
   onPendingReplacementResolve,
@@ -700,7 +697,6 @@ export function NoteEditor({
             `handleFilePaste` is the same handler meowdown pastes through. */}
           <FormattingToolbarBridge
             {...(saveFile !== undefined ? { saveFile: handleFilePaste } : {})}
-            {...(onOpenTagPicker !== undefined ? { onOpenTagPicker } : {})}
           />
           {blockHandle && !isTouchEditorSurface() ? (
             <BlockActionToolbar

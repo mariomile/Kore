@@ -40,7 +40,7 @@ describe('splitTypesFromTags', () => {
     { key: 'book', tag: 'book', count: 2 },
   ])
 
-  it('moves defined tags to a flat, name-sorted Types list and keeps topics in the tree', () => {
+  it('hoists configured tags with their unconfigured children and drops empty structural wrappers', () => {
     const { types, tags } = splitTypesFromTags(tree, [
       'type/project',
       'type/person',
@@ -49,16 +49,24 @@ describe('splitTypesFromTags', () => {
     ])
 
     expect(types).toEqual([
-      { key: 'area', tag: 'Area', name: 'Area', count: 5 },
-      { key: 'type/person', tag: 'type/person', name: 'person', count: 2 },
-      { key: 'type/project', tag: 'type/Project', name: 'Project', count: 4 },
+      {
+        key: 'area',
+        tag: 'Area',
+        name: 'Area',
+        count: 5,
+        children: [
+          { key: 'area/health', tag: 'Area/health', name: 'health', count: 1, children: [] },
+        ],
+      },
+      { key: 'type/person', tag: 'type/person', name: 'person', count: 2, children: [] },
+      { key: 'type/project', tag: 'type/Project', name: 'Project', count: 4, children: [] },
       // Defined, but no note is one yet.
-      { key: 'recipe', tag: 'recipe', name: 'recipe', count: 0 },
+      { key: 'recipe', tag: 'recipe', name: 'recipe', count: 0, children: [] },
     ])
-    // `type` only parented types, so it goes; `area` keeps its topic child.
-    expect(tags.map((node) => node.key)).toEqual(['area', 'book', 'domain'])
-    expect(tags[0]?.children.map((node) => node.key)).toEqual(['area/health'])
-    expect(tags[2]?.children.map((node) => node.key)).toEqual(['domain/ai'])
+    // `type` only parented types, so it goes; `area` moved up with `area/health`
+    // beneath it, so it never appears twice in the lower tree.
+    expect(tags.map((node) => node.key)).toEqual(['book', 'domain'])
+    expect(tags[1]?.children.map((node) => node.key)).toEqual(['domain/ai'])
   })
 
   it('leaves the tree whole when nothing is a type', () => {

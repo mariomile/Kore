@@ -1,13 +1,6 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import {
-  foldTag,
-  isTagName,
-  listTagTypes,
-  suggestTags,
-  tagDisplayName,
-  type TagType,
-} from '@kore/core'
+import { foldTag, isTagName, suggestTags, tagDisplayName, type TagType } from '@kore/core'
 import { Plus, Search } from '@/components/icons'
 import { TagIcon } from '@/components/tags/tag-icon'
 import {
@@ -21,7 +14,7 @@ import {
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { tagTypesQueryKey } from '@/hooks/use-tag-icons'
+import { useTagTypes } from '@/hooks/use-tag-icons'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -48,12 +41,8 @@ function useTagPickerOptions(
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const enabled = open && bridgeReady && graph !== null
+  const typed = useTagTypes(open)
 
-  const { data: typed } = useQuery({
-    queryKey: tagTypesQueryKey(graph?.root),
-    queryFn: () => listTagTypes(),
-    enabled,
-  })
   const { data: suggested } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-suggestions', query],
     queryFn: () => suggestTags(query, 12),
@@ -63,20 +52,12 @@ function useTagPickerOptions(
 
   const taken = new Set(carried)
   const needle = foldTag(query.trim())
-  const configured: TagOption[] = (typed ?? [])
+  const configured: TagOption[] = typed
     .filter((entry) => !taken.has(entry.tagKey) && entry.tagKey.includes(needle))
-    .map((entry) => ({
-      tag: entry.tagKey,
-      tagKey: entry.tagKey,
-      type: entry.type,
-    }))
+    .map((entry) => ({ tag: entry.tagKey, tagKey: entry.tagKey, type: entry.type }))
   const configuredKeys = new Set(configured.map((option) => option.tagKey))
   const others: TagOption[] = (suggested ?? [])
-    .map((suggestion) => ({
-      tag: suggestion.tag,
-      tagKey: foldTag(suggestion.tag),
-      type: null,
-    }))
+    .map((suggestion) => ({ tag: suggestion.tag, tagKey: foldTag(suggestion.tag), type: null }))
     .filter((option) => !taken.has(option.tagKey) && !configuredKeys.has(option.tagKey))
   const freshCandidate =
     needle !== '' && isTagName(needle) && !taken.has(needle) && !configuredKeys.has(needle)
@@ -90,6 +71,31 @@ function useTagPickerOptions(
   return { configured, others, fresh }
 }
 
+function DrawerTagRow({
+  option,
+  onChoose,
+}: {
+  option: TagOption
+  onChoose: (tag: string) => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={() => onChoose(option.tag)}
+      className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
+    >
+      <span className="flex size-6 shrink-0 items-center justify-center">
+        <TagIcon
+          icon={option.type?.icon}
+          className="size-[18px] text-text-muted"
+          emojiClassName="text-[18px]"
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{tagDisplayName(option.tag)}</span>
+    </button>
+  )
+}
+
 export interface NoteTagPickerDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -101,7 +107,7 @@ export interface NoteTagPickerDrawerProps {
 /**
  * Native bottom sheet for picking or creating a `#tag` on mobile
  * (TDR 0005 Amendment I). Shared by the note header's `+` button, the keyboard
- * toolbar's `#` action on regular notes, and `⋯ → Tags`.
+ * toolbar's `#` action on regular notes, and `⋯ → Add tag`.
  */
 export function NoteTagPickerDrawer({
   open,
@@ -151,21 +157,7 @@ export function NoteTagPickerDrawer({
           {configured.length > 0 ? (
             <div className="flex flex-col">
               {configured.map((option) => (
-                <button
-                  key={option.tagKey}
-                  type="button"
-                  onClick={() => choose(option.tag)}
-                  className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
-                >
-                  <span className="flex size-6 shrink-0 items-center justify-center">
-                    <TagIcon
-                      icon={option.type?.icon}
-                      className="size-[18px] text-text-muted"
-                      emojiClassName="text-[18px]"
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{tagDisplayName(option.tag)}</span>
-                </button>
+                <DrawerTagRow key={option.tagKey} option={option} onChoose={choose} />
               ))}
             </div>
           ) : null}
@@ -175,17 +167,7 @@ export function NoteTagPickerDrawer({
           {others.length > 0 ? (
             <div className="flex flex-col">
               {others.map((option) => (
-                <button
-                  key={option.tagKey}
-                  type="button"
-                  onClick={() => choose(option.tag)}
-                  className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
-                >
-                  <span className="flex size-6 shrink-0 items-center justify-center">
-                    <TagIcon icon={undefined} className="size-[18px] text-text-muted" />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{tagDisplayName(option.tag)}</span>
-                </button>
+                <DrawerTagRow key={option.tagKey} option={option} onChoose={choose} />
               ))}
             </div>
           ) : null}
@@ -220,13 +202,35 @@ interface NoteTypePickerProps {
   children: ReactNode
 }
 
-/**
- * The picker behind the note's Tags row: choose or create a `#tag` for the
- * note instead of typing the hashtag into prose. Configured tags (those with a
- * definition note) come first, followed by every other tag ranked most-used
- * first. Renders a popover on desktop and a native bottom sheet on mobile.
- */
-export function NoteTypePicker({
+function MobileTagPickerTrigger({
+  carried,
+  onChoose,
+  triggerLabel,
+  triggerClassName,
+  children,
+}: NoteTypePickerProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={triggerLabel}
+        className={triggerClassName}
+        onClick={() => setOpen(true)}
+      >
+        {children}
+      </button>
+      <NoteTagPickerDrawer
+        open={open}
+        onOpenChange={setOpen}
+        carried={carried}
+        onChoose={onChoose}
+      />
+    </>
+  )
+}
+
+function DesktopTagPickerPopover({
   carried,
   onChoose,
   triggerLabel,
@@ -235,29 +239,7 @@ export function NoteTypePicker({
 }: NoteTypePickerProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const mobile = isMobileSurface()
-  const { configured, others, fresh } = useTagPickerOptions(!mobile && open, query, carried)
-
-  if (mobile) {
-    return (
-      <>
-        <button
-          type="button"
-          aria-label={triggerLabel}
-          className={triggerClassName}
-          onClick={() => setOpen(true)}
-        >
-          {children}
-        </button>
-        <NoteTagPickerDrawer
-          open={open}
-          onOpenChange={setOpen}
-          carried={carried}
-          onChoose={onChoose}
-        />
-      </>
-    )
-  }
+  const { configured, others, fresh } = useTagPickerOptions(open, query, carried)
 
   const choose = (tag: string): void => {
     setOpen(false)
@@ -324,5 +306,19 @@ export function NoteTypePicker({
         </Command>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * The picker behind the note's Tags row: choose or create a `#tag` for the
+ * note instead of typing the hashtag into prose. Configured tags (those with a
+ * definition note) come first, followed by every other tag ranked most-used
+ * first. Renders a popover on desktop and a native bottom sheet on mobile.
+ */
+export function NoteTypePicker(props: NoteTypePickerProps): ReactElement {
+  return isMobileSurface() ? (
+    <MobileTagPickerTrigger {...props} />
+  ) : (
+    <DesktopTagPickerPopover {...props} />
   )
 }

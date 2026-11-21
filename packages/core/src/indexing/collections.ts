@@ -175,16 +175,37 @@ export function collectionValue(row: {
   }
 }
 
+type AncestorTagTypeRow = StoredTagTypeColumns & { tagKey: string; notePath: string }
+
 /**
- * The schema a sub-tag without its own definition inherits from its nearest
- * defined ancestor: properties (already resolved through higher ancestors) and
- * icon, never the ancestor's own saved views, template, or home folder.
+ * Pick the nearest defined `/` ancestor of `tagKey` from `rowsByKey`, returning
+ * only what an undefined sub-tag inherits (properties and icon — never the
+ * ancestor's own saved views, template, or home folder). Shared by `getTagType`
+ * and `listTagsOnNote`.
  */
-function inheritedFromAncestor(ancestor: TagType): TagType {
-  return {
-    properties: ancestor.properties,
-    ...(ancestor.icon !== undefined ? { icon: ancestor.icon } : {}),
+function pickAncestorTagType(
+  tagKey: string,
+  rowsByKey: ReadonlyMap<string, AncestorTagTypeRow>,
+  options: TagTypeReadOptions = {},
+): { type: TagType; notePath: string } | null {
+  const ancestors = tagAncestors(tagKey)
+  for (let index = ancestors.length - 1; index >= 0; index -= 1) {
+    const ancestorRow = rowsByKey.get(ancestors[index]!)
+    if (ancestorRow === undefined) {
+      continue
+    }
+    const ancestorType = decodeStoredTagType(ancestorRow, options)
+    if (ancestorType !== null) {
+      return {
+        type: {
+          properties: ancestorType.properties,
+          ...(ancestorType.icon !== undefined ? { icon: ancestorType.icon } : {}),
+        },
+        notePath: ancestorRow.notePath,
+      }
+    }
   }
+  return null
 }
 
 /**
@@ -212,26 +233,14 @@ export async function getTagType(
   const rows = await db
     .selectFrom('tagTypes')
     .where('tagKey', 'in', [key, ...ancestors])
-    .select(['tagTypes.tagKey', ...TAG_TYPE_COLUMNS])
+    .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .execute()
   const byKey = new Map(rows.map((row) => [row.tagKey, row]))
   const direct = byKey.get(key)
   if (direct !== undefined) {
     return decodeStoredTagType(direct, options)
   }
-  // Walk nearest ancestor first; its resolved schema already includes higher
-  // ancestors and explicit `extends`.
-  for (let index = ancestors.length - 1; index >= 0; index -= 1) {
-    const ancestorRow = byKey.get(ancestors[index]!)
-    if (ancestorRow === undefined) {
-      continue
-    }
-    const ancestorType = decodeStoredTagType(ancestorRow, options)
-    if (ancestorType !== null) {
-      return inheritedFromAncestor(ancestorType)
-    }
-  }
-  return null
+  return pickAncestorTagType(key, byKey, options)?.type ?? null
 }
 
 /** The `tag_types` columns every typed read decodes ({@link decodeStoredTagType}). */
@@ -285,14 +294,9 @@ export async function listTagTypes(options: ListTagTypesOptions = {}): Promise<T
   return decodeTagTypeRows(rows, options)
 }
 
-/**
- * Resolve ancestor tag definitions in one batched query for sub-tags that carry
- * no definition note of their own (TDR 0005 Amendment I). Returns an empty map
- * without touching SQLite when no sub-tag needs a lookup.
- */
 async function loadAncestorTagTypeRows(
   missingTagKeys: readonly string[],
-): Promise<Map<string, StoredTagTypeColumns & { tagKey: string; notePath: string }>> {
+): Promise<Map<string, AncestorTagTypeRow>> {
   const ancestorKeys = new Set<string>()
   for (const tagKey of missingTagKeys) {
     for (const ancestor of tagAncestors(tagKey)) {
@@ -308,24 +312,6 @@ async function loadAncestorTagTypeRows(
     .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .execute()
   return new Map(rows.map((row) => [row.tagKey, row]))
-}
-
-function resolveInheritedSubtag(
-  tagKey: string,
-  ancestorRows: ReadonlyMap<string, StoredTagTypeColumns & { tagKey: string; notePath: string }>,
-): { type: TagType; notePath: string } | null {
-  const ancestors = tagAncestors(tagKey)
-  for (let index = ancestors.length - 1; index >= 0; index -= 1) {
-    const ancestorRow = ancestorRows.get(ancestors[index]!)
-    if (ancestorRow === undefined) {
-      continue
-    }
-    const ancestorType = decodeStoredTagType(ancestorRow)
-    if (ancestorType !== null) {
-      return { type: inheritedFromAncestor(ancestorType), notePath: ancestorRow.notePath }
-    }
-  }
-  return null
 }
 
 /**
@@ -379,7 +365,7 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
         definitionPath: type === null ? null : row.notePath,
       }
     }
-    const inherited = resolveInheritedSubtag(row.tagKey, ancestorRows)
+    const inherited = pickAncestorTagType(row.tagKey, ancestorRows)
     return {
       tag: row.tag,
       tagKey: row.tagKey,

@@ -20,7 +20,7 @@ import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagFolderField } from './tag-folder-field'
-import { TagParentsField } from './tag-parents-field'
+import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
@@ -189,8 +189,6 @@ function TypePage({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)
-  const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null)
-  const showAdvanced = advancedOpen ?? config.parents.length > 0
 
   return (
     <>
@@ -361,26 +359,13 @@ function TypePage({
             labelClassName="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary"
             triggerClassName="min-w-0 flex-1"
           />
-          <div className="border-t border-border/60 pt-2">
-            <button
-              type="button"
-              aria-expanded={showAdvanced}
-              onClick={() => setAdvancedOpen(!showAdvanced)}
-              className="text-xs font-medium text-text-muted active:text-text"
-            >
-              {showAdvanced ? 'Hide advanced' : 'Advanced'}
-            </button>
-            {showAdvanced ? (
-              <div className="mt-2.5">
-                <TagParentsField
-                  tag={tagKey}
-                  parents={config.parents}
-                  candidates={config.parentCandidates}
-                  onChange={config.setParents}
-                />
-              </div>
-            ) : null}
-          </div>
+          <TagAdvancedSection
+            tag={tagKey}
+            parents={config.parents}
+            candidates={config.parentCandidates}
+            onChange={config.setParents}
+            className="border-t border-border/60 pt-2"
+          />
         </div>
       )}
 

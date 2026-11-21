@@ -4,6 +4,7 @@ import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { NoteTagPickerDrawer } from '@/components/notes/note-type-picker'
+import { registerMobileTagPicker } from '@/editor/formatting-toolbar-store'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -51,7 +52,7 @@ function MobileNoteTagSheet({
 }
 
 export function MobileNote({ path }: { path: string }): ReactElement {
-  const { back, canBack, navigate } = useRouter()
+  const { route, back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const untitled = isUntitledNotePath(path)
   // A string, so the scroll effect below doesn't resubscribe every render.
@@ -62,9 +63,20 @@ export function MobileNote({ path }: { path: string }): ReactElement {
   const [barTitle, setBarTitle] = useState('')
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const canTagNote = !isTemplatePath(path)
+  const isActiveNote = route.kind === 'note' && route.path === path
   const openTagPicker = useCallback(() => {
     setTagPickerOpen(true)
   }, [])
+
+  useEffect(() => {
+    if (!isActiveNote) {
+      return
+    }
+    return registerMobileTagPicker(
+      Symbol('mobile-note-tag-picker'),
+      canTagNote ? openTagPicker : null,
+    )
+  }, [isActiveNote, canTagNote, openTagPicker])
 
   // iPhone design pass (2026-11): the note's own title is the
   // page heading, so the bar stays empty until it scrolls away and then shows
@@ -142,7 +154,6 @@ export function MobileNote({ path }: { path: string }): ReactElement {
           lazy
           autoFocus={untitled}
           showBacklinks={false}
-          {...(canTagNote ? { onOpenTagPicker: openTagPicker } : {})}
           // The daily surface gets its top inset from the date header; a
           // plain note has no chrome between the header bar and the body,
           // so the pane carries the vertical breathing room itself.

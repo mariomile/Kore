@@ -49,6 +49,7 @@ export function MobileCellEditorDrawer({
   onOpenRelation,
 }: MobileCellEditorDrawerProps): ReactElement {
   const open = target !== null
+  const flushPendingRef = useRef<(() => void) | null>(null)
   const TypeIcon = target === null ? null : PROPERTY_TYPE_ICONS[target.property.type]
   const commit = (value: unknown): void => {
     if (target === null) {
@@ -56,13 +57,19 @@ export function MobileCellEditorDrawer({
     }
     onCommit(target.entryPath, target.property.key, value)
   }
+  const handleClose = (): void => {
+    const flush = flushPendingRef.current
+    flushPendingRef.current = null
+    flush?.()
+    onClose()
+  }
 
   return (
     <Drawer
       open={open}
       onOpenChange={(next) => {
         if (!next) {
-          onClose()
+          handleClose()
         }
       }}
     >
@@ -83,7 +90,7 @@ export function MobileCellEditorDrawer({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="flex h-9 shrink-0 items-center rounded-full px-3 text-[14px] font-medium text-accent active:bg-surface-hover"
               >
                 Done
@@ -125,6 +132,7 @@ export function MobileCellEditorDrawer({
                   value={target.value}
                   onCommit={commit}
                   onClose={onClose}
+                  flushRef={flushPendingRef}
                 />
               )}
             </DrawerBody>
@@ -316,15 +324,18 @@ function MobileInputBody({
   value,
   onCommit,
   onClose,
+  flushRef,
 }: {
   property: TagProperty
   value: CollectionValue | undefined
   onCommit: (value: unknown) => void
   onClose: () => void
+  flushRef: { current: (() => void) | null }
 }): ReactElement {
   const seed = property.type === 'files' ? editorSeedList(value).join(', ') : editorSeedText(value)
   const [draft, setDraft] = useState(seed)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const settledRef = useRef(false)
   const inputId = useId()
 
   useEffect(() => {
@@ -355,21 +366,39 @@ function MobileInputBody({
             ? 'url'
             : undefined
 
+  const commitDraft = (): void => {
+    if (settledRef.current) {
+      return
+    }
+    settledRef.current = true
+    if (draft === seed) {
+      return
+    }
+    const trimmed = draft.trim()
+    if (
+      property.type === 'number' &&
+      ((trimmed !== '' && !Number.isFinite(Number(trimmed))) ||
+        inputRef.current?.validity.badInput === true)
+    ) {
+      return
+    }
+    hapticImpactLight()
+    onCommit(typedValueForText(property, draft))
+  }
+
+  // Keep Done and swipe/backdrop dismiss saving any in-progress draft,
+  // matching how select and relation sheets persist without a separate step.
+  useEffect(() => {
+    flushRef.current = commitDraft
+    return () => {
+      flushRef.current = null
+    }
+  })
+
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    if (draft !== seed) {
-      const trimmed = draft.trim()
-      if (
-        property.type === 'number' &&
-        ((trimmed !== '' && !Number.isFinite(Number(trimmed))) ||
-          inputRef.current?.validity.badInput === true)
-      ) {
-        onClose()
-        return
-      }
-      hapticImpactLight()
-      onCommit(typedValueForText(property, draft))
-    }
+    flushRef.current = null
+    commitDraft()
     onClose()
   }
 
@@ -392,6 +421,8 @@ function MobileInputBody({
           <button
             type="button"
             onClick={() => {
+              settledRef.current = true
+              flushRef.current = null
               hapticImpactLight()
               onCommit(undefined)
               onClose()

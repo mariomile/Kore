@@ -153,4 +153,22 @@ describe('MobileCollectionTable', () => {
     await userEvent.click(view.getByRole('checkbox', { name: 'Done' }))
     expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'done', true)
   })
+
+  it('commits an edited text draft when tapping Done in the drawer header', async () => {
+    const OWNER: TagProperty = { name: 'Owner', key: 'owner', type: 'text' }
+    const view = await render(
+      <div style={{ height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={[entry('notes/kitchen.md', 'Kitchen shelves', { owner: text('Ada') })]}
+          type={{ properties: [OWNER] }}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await userEvent.click(view.getByRole('button', { name: 'Edit Owner' }))
+    await view.getByRole('textbox', { name: 'Owner' }).fill('Grace')
+    await userEvent.click(view.getByRole('button', { name: 'Done' }))
+    expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'owner', 'Grace')
+  })
 })

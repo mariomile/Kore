@@ -100,6 +100,14 @@ const INLINE_INPUT_TYPES: ReadonlySet<TagPropertyType> = new Set([
   'files',
 ])
 
+const READ_ONLY_PROPERTY_TYPES: ReadonlySet<TagPropertyType> = new Set([
+  'rollup',
+  'reverse',
+  'formula',
+  'created',
+  'updated',
+])
+
 /**
  * The Collection table (TDR 0005): a Notion-style database grid with a sticky
  * resizable Title column, typed column icons, crisp cell borders, inline cell
@@ -132,6 +140,7 @@ export function CollectionTable({
   const { clickSelect, isSelected } = selection
   const virtualizerRef = useRef<VirtualizerHandle>(null)
   const headerRef = useRef<HTMLDivElement | null>(null)
+  const lastResizeClickRef = useRef<{ key: string; at: number } | null>(null)
   // During a drag the draft widths render live; the persisted setting only
   // takes over once the pointer lifts (one settings write per resize).
   const [draftWidths, setDraftWidths] = useState<Record<string, number> | null>(null)
@@ -249,7 +258,8 @@ export function CollectionTable({
     })
   }, [registerScrollToIndex, rowItemIndex])
 
-  // Step focus to the next/previous editable cell on Tab or ArrowLeft/ArrowRight.
+  // Step focus to the next/previous interactive cell on Tab or ArrowLeft/ArrowRight,
+  // skipping any read-only columns that hold no focusable control.
   const stepFromCell = useCallback(
     (cellElement: HTMLElement | null, direction: 'next' | 'prev', activateInline: boolean) => {
       const container = headerRef.current?.parentElement
@@ -261,17 +271,25 @@ export function CollectionTable({
       if (currentIndex === -1) {
         return
       }
-      const target = cells[currentIndex + (direction === 'next' ? 1 : -1)]
-      if (target === undefined) {
+      const delta = direction === 'next' ? 1 : -1
+      for (let index = currentIndex + delta; index >= 0 && index < cells.length; index += delta) {
+        const target = cells[index]
+        if (target === undefined) {
+          return
+        }
+        const control = target.querySelector<HTMLElement>('button, input')
+        if (control === null) {
+          continue
+        }
+        control.focus()
+        if (
+          activateInline &&
+          target.dataset.inlineCell === 'true' &&
+          control.tagName === 'BUTTON'
+        ) {
+          control.click()
+        }
         return
-      }
-      const control = target.querySelector<HTMLElement>('button, input')
-      if (control === null) {
-        return
-      }
-      control.focus()
-      if (activateInline && target.dataset.inlineCell === 'true' && control.tagName === 'BUTTON') {
-        control.click()
       }
     },
     [],
@@ -298,10 +316,17 @@ export function CollectionTable({
   }
 
   const startResize =
-    (key: string, minRem: number, gutterOffsetRem = 0) =>
+    (key: string, minRem: number, defaultRem: number, gutterOffsetRem = 0) =>
     (event: ReactPointerEvent<HTMLElement>) => {
       event.preventDefault()
       event.stopPropagation()
+      const now = Date.now()
+      const previous = lastResizeClickRef.current
+      if (previous !== null && previous.key === key && now - previous.at < 350) {
+        lastResizeClickRef.current = null
+        onColumnWidthChange(key, defaultRem)
+        return
+      }
       const handle = event.currentTarget
       const cell = handle.parentElement
       if (cell === null) {
@@ -312,11 +337,15 @@ export function CollectionTable({
         columnWidths[key] ??
         Math.max(minRem, cell.getBoundingClientRect().width / 16 - gutterOffsetRem)
       let lastRem = startRem
+      let moved = false
       handle.setPointerCapture(event.pointerId)
       setResizingKey(key)
       const previousCursor = document.body.style.cursor
       document.body.style.cursor = 'col-resize'
       const onMove = (moveEvent: PointerEvent): void => {
+        if (Math.abs(moveEvent.clientX - startX) >= 2) {
+          moved = true
+        }
         lastRem = Math.max(
           minRem,
           Math.round((startRem + (moveEvent.clientX - startX) / 16) * 4) / 4,
@@ -330,7 +359,12 @@ export function CollectionTable({
         document.body.style.cursor = previousCursor
         setResizingKey(null)
         setDraftWidths(null)
-        onColumnWidthChange(key, lastRem)
+        if (moved) {
+          lastResizeClickRef.current = null
+          onColumnWidthChange(key, lastRem)
+        } else {
+          lastResizeClickRef.current = { key, at: Date.now() }
+        }
       }
       handle.addEventListener('pointermove', onMove)
       handle.addEventListener('pointerup', finish)
@@ -454,8 +488,16 @@ export function CollectionTable({
           <span
             role="separator"
             aria-label="Resize Title"
-            onPointerDown={startResize(TITLE_SORT_KEY, 8, titleGutterRem(embedded))}
-            onDoubleClick={() => onColumnWidthChange(TITLE_SORT_KEY, defaultTitleRem(embedded))}
+            onPointerDown={startResize(
+              TITLE_SORT_KEY,
+              8,
+              defaultTitleRem(embedded),
+              titleGutterRem(embedded),
+            )}
+            onDoubleClick={() => {
+              lastResizeClickRef.current = null
+              onColumnWidthChange(TITLE_SORT_KEY, defaultTitleRem(embedded))
+            }}
             className="group/resize absolute inset-y-0 -right-[3px] z-20 flex w-[7px] cursor-col-resize items-stretch justify-center"
           >
             <span
@@ -497,8 +539,11 @@ export function CollectionTable({
               <span
                 role="separator"
                 aria-label={`Resize ${property.name}`}
-                onPointerDown={startResize(property.key, 3.5)}
-                onDoubleClick={() => onColumnWidthChange(property.key, defaultColumnRem(property))}
+                onPointerDown={startResize(property.key, 3.5, defaultColumnRem(property))}
+                onDoubleClick={() => {
+                  lastResizeClickRef.current = null
+                  onColumnWidthChange(property.key, defaultColumnRem(property))
+                }}
                 className="group/resize absolute inset-y-0 -right-[3px] z-20 flex w-[7px] cursor-col-resize items-stretch justify-center"
               >
                 <span
@@ -609,11 +654,12 @@ export function CollectionTable({
                         </span>
                       )
                     }
+                    const isInteractiveType = !READ_ONLY_PROPERTY_TYPES.has(property.type)
                     const isInline = INLINE_INPUT_TYPES.has(property.type)
                     return (
                       <div
                         key={property.key}
-                        data-collection-cell
+                        data-collection-cell={isInteractiveType ? '' : undefined}
                         data-inline-cell={isInline ? 'true' : undefined}
                         onKeyDown={(event) => {
                           if (

@@ -530,12 +530,19 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     expect(header.style.gridTemplateColumns).toContain('20rem')
   })
 
-  it('steps between inline table cells on Tab after committing', async () => {
+  it('steps between inline table cells on Tab after committing, skipping read-only columns', async () => {
+    const typeWithReadOnly: TagType = {
+      properties: [
+        { name: 'Author', key: 'author', type: 'text' },
+        { name: 'Created', key: 'created', type: 'created' },
+        { name: 'Rating', key: 'rating', type: 'number' },
+      ],
+    }
     const view = await render(
       <CollectionTable
         entries={ENTRIES}
         tag="book"
-        type={BOOK_TYPE}
+        type={typeWithReadOnly}
         selection={selection()}
         sorts={[]}
         columnWidths={{}}
@@ -557,6 +564,32 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
 
     expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'author', 'U. K. Le Guin')
     await expect.element(view.getByRole('spinbutton', { name: 'Rating' })).toBeInTheDocument()
+  })
+
+  it('resets a resized column to its default width on double-click', async () => {
+    const onColumnWidthChange = vi.fn()
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{ author: 20 }}
+        onColumnWidthChange={onColumnWidthChange}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    const handle = view.getByRole('separator', { name: 'Resize Author' })
+    await userEvent.dblClick(handle)
+    expect(onColumnWidthChange).toHaveBeenCalledWith('author', 11.5)
   })
 
   it('renders shelf headers with counts between the grouped rows (Plan 29 V1b)', async () => {

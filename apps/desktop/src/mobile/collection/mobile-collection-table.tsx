@@ -1,11 +1,14 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactElement,
   type ReactNode,
+  type WheelEvent as ReactWheelEvent,
 } from 'react'
 import { Virtualizer } from 'virtua'
 import {
@@ -25,6 +28,7 @@ import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
+import { usePrefersReducedMotion } from '@/mobile/use-reduced-motion'
 import { MobileCellEditorDrawer, type MobileCellTarget } from './mobile-cell-editor-drawer'
 import { mobileColumnWidth } from './mobile-type-view'
 import './mobile-collection-table.css'
@@ -39,6 +43,31 @@ const HEADER_HEIGHT = 36
 const NUMBER_WIDTH = 32
 /** The frozen title column: balanced for titles while showing columns beside it. */
 const TITLE_WIDTH = 166
+/** Horizontal travel (px) before a touch claims column panning over vertical scroll. */
+const PAN_THRESHOLD_PX = 8
+/** Velocity sampling window (ms) for post-release pan inertia. */
+const VELOCITY_WINDOW_MS = 30
+/** Minimum release speed (px/ms) to coast after finger lift. */
+const MIN_INERTIA_VELOCITY = 0.15
+
+type PanGesture =
+  | {
+      phase: 'armed'
+      pointerId: number
+      startX: number
+      startY: number
+      startScrollX: number
+    }
+  | {
+      phase: 'dragging'
+      pointerId: number
+      startX: number
+      startScrollX: number
+      lastX: number
+      sampleX: number
+      sampleTime: number
+      velocity: number
+    }
 
 const READ_ONLY_TYPES: ReadonlySet<TagPropertyType> = new Set([
   'rollup',
@@ -64,17 +93,22 @@ interface MobileCollectionTableProps {
   onCreate?: ((title: string) => Promise<void>) | undefined
   /**
    * Inline in a note: the table takes its rows' height (the note scrolls,
-   * not the table), scrolls only sideways, and renders its few rows without
-   * the virtualizer.
+   * not the table), pans property columns sideways, and renders its few rows
+   * without the virtualizer.
    */
   embedded?: boolean
 }
 
 /**
  * A Notion-grade collection table on a phone: crisp horizontal and vertical
- * gridlines, a compact frozen `#` + `Title` pane, typed column headers with
- * tap-to-sort, instant checkbox toggles, and a touch-native bottom drawer
+ * gridlines, a permanently anchored `#` + `Title` pane, typed column headers
+ * with tap-to-sort, instant checkbox toggles, and a touch-native bottom drawer
  * editor for every property type.
+ *
+ * Vertical scrolling stays 100% native (`overflow-y: auto; overflow-x: hidden;
+ * touch-action: pan-y`) while property columns pan horizontally via a strictly
+ * clamped GPU transform (`--table-scroll-x`), so iOS WKWebView can never
+ * rubber-band the table away from the left bezel.
  */
 export function MobileCollectionTable({
   entries,
@@ -91,87 +125,205 @@ export function MobileCollectionTable({
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
+  const reducedMotion = usePrefersReducedMotion()
   const [editingCell, setEditingCell] = useState<MobileCellTarget | null>(null)
   const widths = type.properties.map(mobileColumnWidth)
   const frozenWidth = NUMBER_WIDTH + TITLE_WIDTH
-  const totalWidth = frozenWidth + widths.reduce((sum, width) => sum + width, 0)
+  const propertiesWidth = widths.reduce((sum, width) => sum + width, 0)
+  const totalWidth = frozenWidth + propertiesWidth
   const aggregates = useMemo(
     () => (embedded ? [] : type.properties.map((property) => columnAggregate(property, entries))),
     [embedded, type.properties, entries],
   )
 
-  // Block horizontal rubber-band dragging past either edge on iOS WKWebView:
-  // CSS `overscroll-behavior` stops momentum bounce, and canceling the first
-  // outward `touchmove` keeps the frozen `#`/`Title` pane locked to the left
-  // bezel even when the user drags right from `scrollLeft === 0`.
+  const scrollXRef = useRef(0)
+  const gestureRef = useRef<PanGesture | null>(null)
+  const suppressClickRef = useRef(false)
+  const inertiaFrameRef = useRef<number | null>(null)
+
+  const stopInertia = useCallback((): void => {
+    if (inertiaFrameRef.current !== null) {
+      cancelAnimationFrame(inertiaFrameRef.current)
+      inertiaFrameRef.current = null
+    }
+  }, [])
+
+  const maxScrollX = useCallback((): number => {
+    const element = scrollRef.current
+    if (element === null) {
+      return 0
+    }
+    return Math.max(0, totalWidth - element.clientWidth)
+  }, [totalWidth])
+
+  const applyScrollX = useCallback(
+    (next: number): number => {
+      const element = scrollRef.current
+      const clamped = Math.max(0, Math.min(maxScrollX(), next))
+      scrollXRef.current = clamped
+      if (element !== null) {
+        element.style.setProperty('--table-scroll-x', `${clamped}px`)
+        const scrolled = clamped > 0
+        if (element.hasAttribute('data-scrolled-x') !== scrolled) {
+          element.toggleAttribute('data-scrolled-x', scrolled)
+        }
+      }
+      return clamped
+    },
+    [maxScrollX],
+  )
+
+  // Re-clamp horizontal offset whenever the container or column set resizes.
   useEffect(() => {
     const element = scrollRef.current
     if (element === null) {
       return
     }
-    let startX = 0
-    let startY = 0
-    let prevX = 0
-    let axis: 'none' | 'x' | 'y' = 'none'
-
-    const onTouchStart = (event: TouchEvent): void => {
-      const touch = event.touches[0]
-      if (touch === undefined) {
-        return
-      }
-      startX = touch.clientX
-      startY = touch.clientY
-      prevX = touch.clientX
-      axis = 'none'
+    applyScrollX(scrollXRef.current)
+    if (typeof ResizeObserver === 'undefined') {
+      return
     }
+    const observer = new ResizeObserver(() => {
+      applyScrollX(scrollXRef.current)
+    })
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      stopInertia()
+    }
+  }, [applyScrollX, stopInertia])
 
-    const onTouchMove = (event: TouchEvent): void => {
-      const touch = event.touches[0]
-      if (touch === undefined) {
+  const startInertia = useCallback(
+    (initialVelocity: number): void => {
+      stopInertia()
+      if (reducedMotion || Math.abs(initialVelocity) < MIN_INERTIA_VELOCITY) {
         return
       }
-      const totalDx = touch.clientX - startX
-      const totalDy = touch.clientY - startY
-      const stepDx = touch.clientX - prevX
-      prevX = touch.clientX
-
-      const maxScrollLeft = element.scrollWidth - element.clientWidth
-      const pullingPastLeft = stepDx > 0 && element.scrollLeft <= 0
-      const pullingPastRight = stepDx < 0 && element.scrollLeft >= maxScrollLeft - 1
-
-      if (axis === 'none') {
-        const absX = Math.abs(totalDx)
-        const absY = Math.abs(totalDy)
-        if (absX < 4 && absY < 4) {
+      let velocity = initialVelocity
+      let lastTime = performance.now()
+      const step = (now: number): void => {
+        const dt = Math.min(32, Math.max(1, now - lastTime))
+        lastTime = now
+        const previous = scrollXRef.current
+        const next = applyScrollX(previous + velocity * dt)
+        // Exponential friction tuned for ~16ms frames; hard-stop at either edge.
+        velocity *= Math.pow(0.92, dt / 16)
+        if (next === previous || Math.abs(velocity) < 0.03) {
+          inertiaFrameRef.current = null
           return
         }
-        axis = absX > absY ? 'x' : 'y'
+        inertiaFrameRef.current = requestAnimationFrame(step)
       }
+      inertiaFrameRef.current = requestAnimationFrame(step)
+    },
+    [applyScrollX, reducedMotion, stopInertia],
+  )
 
-      if (axis !== 'x') {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (event.pointerType !== 'touch' || !event.isPrimary) {
+      return
+    }
+    stopInertia()
+    suppressClickRef.current = false
+    gestureRef.current = {
+      phase: 'armed',
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startScrollX: scrollXRef.current,
+    }
+  }
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const gesture = gestureRef.current
+    if (gesture === null || gesture.pointerId !== event.pointerId) {
+      return
+    }
+    const deltaX = event.clientX - gesture.startX
+    if (gesture.phase === 'armed') {
+      const absX = Math.abs(deltaX)
+      const absY = Math.abs(event.clientY - gesture.startY)
+      if (absY >= PAN_THRESHOLD_PX && absY >= absX) {
+        gestureRef.current = null
         return
       }
-
-      if (maxScrollLeft <= 0 || pullingPastLeft || pullingPastRight) {
-        event.preventDefault()
+      if (absX < PAN_THRESHOLD_PX || absX <= absY) {
+        return
       }
+      const limit = maxScrollX()
+      // Already at the boundary in the drag direction: do not capture or bounce.
+      if (
+        limit <= 0 ||
+        (deltaX > 0 && gesture.startScrollX <= 0) ||
+        (deltaX < 0 && gesture.startScrollX >= limit)
+      ) {
+        gestureRef.current = null
+        return
+      }
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // Synthetic test events have no live pointer to capture.
+      }
+      suppressClickRef.current = true
+      const nextX = applyScrollX(gesture.startScrollX - deltaX)
+      const now = performance.now()
+      gestureRef.current = {
+        phase: 'dragging',
+        pointerId: gesture.pointerId,
+        startX: gesture.startX,
+        startScrollX: gesture.startScrollX,
+        lastX: nextX,
+        sampleX: nextX,
+        sampleTime: now,
+        velocity: 0,
+      }
+      return
     }
 
-    const resetAxis = (): void => {
-      axis = 'none'
-    }
+    const nextX = applyScrollX(gesture.startScrollX - deltaX)
+    const now = performance.now()
+    const elapsed = now - gesture.sampleTime
+    gestureRef.current =
+      elapsed >= VELOCITY_WINDOW_MS
+        ? {
+            ...gesture,
+            lastX: nextX,
+            velocity: (nextX - gesture.sampleX) / elapsed,
+            sampleX: nextX,
+            sampleTime: now,
+          }
+        : { ...gesture, lastX: nextX }
+  }
 
-    element.addEventListener('touchstart', onTouchStart, { passive: true })
-    element.addEventListener('touchmove', onTouchMove, { passive: false })
-    element.addEventListener('touchend', resetAxis, { passive: true })
-    element.addEventListener('touchcancel', resetAxis, { passive: true })
-    return () => {
-      element.removeEventListener('touchstart', onTouchStart)
-      element.removeEventListener('touchmove', onTouchMove)
-      element.removeEventListener('touchend', resetAxis)
-      element.removeEventListener('touchcancel', resetAxis)
+  const releasePan = (event: ReactPointerEvent<HTMLDivElement>, cancelled: boolean): void => {
+    const gesture = gestureRef.current
+    if (gesture === null || gesture.pointerId !== event.pointerId) {
+      return
     }
-  }, [])
+    gestureRef.current = null
+    if (gesture.phase !== 'dragging') {
+      return
+    }
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+    } catch {
+      // Synthetic test events have no live pointer capture.
+    }
+    if (!cancelled) {
+      startInertia(gesture.velocity)
+    }
+  }
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>): void => {
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) || maxScrollX() <= 0) {
+      return
+    }
+    stopInertia()
+    applyScrollX(scrollXRef.current + event.deltaX)
+  }
 
   const primary = sorts[0] ?? null
   const cycleSort = (key: string): void => {
@@ -199,31 +351,23 @@ export function MobileCollectionTable({
         <div
           key={item.id}
           role="row"
-          className="flex border-b border-border bg-surface-sunken/70"
+          className="flex w-full border-b border-border bg-surface-sunken/70"
           style={{ height: GROUP_HEIGHT }}
         >
           <div
             role="rowheader"
             aria-colspan={type.properties.length + 2}
-            className="sticky left-0 z-10 flex h-full items-center bg-background"
+            className="flex h-full min-w-0 items-center"
           >
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-surface-sunken/70"
-            />
-            <span
-              aria-hidden
-              className="relative z-10 flex shrink-0 justify-center"
+              className="flex shrink-0 justify-center"
               style={{ width: NUMBER_WIDTH }}
             >
               <span className={cn('size-2 rounded-full', item.color ?? 'bg-text-muted/40')} />
             </span>
-            <span className="relative z-10 truncate px-2 text-[12px] font-semibold text-text">
-              {item.label}
-            </span>
-            <span className="relative z-10 pr-3 text-[12px] tabular-nums text-text-muted">
-              {item.count}
-            </span>
+            <span className="truncate px-2 text-[12px] font-semibold text-text">{item.label}</span>
+            <span className="pr-3 text-[12px] tabular-nums text-text-muted">{item.count}</span>
           </div>
         </div>
       )
@@ -234,20 +378,20 @@ export function MobileCollectionTable({
         key={entry.path}
         role="row"
         data-note-path={entry.path}
-        className="group flex border-b border-border bg-background"
+        className="group flex w-full border-b border-border bg-background"
         style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
       >
         <div
           role="cell"
-          className="sticky left-0 z-10 flex items-center justify-center border-r border-border bg-background text-[11px] tabular-nums text-text-muted/80"
+          className="relative z-10 flex shrink-0 items-center justify-center border-r border-border bg-background text-[11px] tabular-nums text-text-muted/80"
           style={{ width: NUMBER_WIDTH, minWidth: NUMBER_WIDTH }}
         >
           {index}
         </div>
         <div
           role="rowheader"
-          className="mobile-table-frozen-edge sticky z-10 flex border-r border-border-strong/70 bg-background"
-          style={{ left: NUMBER_WIDTH, width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
+          className="mobile-table-frozen-edge z-10 flex shrink-0 border-r border-border-strong/70 bg-background"
+          style={{ width: TITLE_WIDTH, minWidth: TITLE_WIDTH }}
         >
           <button
             type="button"
@@ -257,63 +401,71 @@ export function MobileCollectionTable({
             <span className="truncate">{entry.title}</span>
           </button>
         </div>
-        {type.properties.map((property, column) => {
-          const value = entry.properties[property.key]
-          const isActive =
-            editingCell?.entryPath === entry.path && editingCell.property.key === property.key
-          const isReadOnly = READ_ONLY_TYPES.has(property.type)
-          const isCheckbox = property.type === 'checkbox'
-          const checked = value?.valueType === 'boolean' && value.value === 'true'
-          return (
-            <div
-              key={property.key}
-              role="cell"
-              className="flex items-stretch border-r border-border"
-              style={{ width: widths[column], minWidth: widths[column] }}
-            >
-              {isReadOnly ? (
-                <span className="flex h-full w-full min-w-0 items-center px-2.5">
-                  <CollectionCell property={property} value={value} selected={false} />
-                </span>
-              ) : isCheckbox ? (
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={checked}
-                  aria-label={property.name}
-                  onClick={() => {
-                    hapticImpactLight()
-                    commitProperty(entry.path, property.key, !checked)
-                  }}
-                  className="flex h-full w-full min-w-0 items-center justify-center px-2.5 active:bg-surface-hover focus-visible:outline-none"
+        <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
+          <div
+            role="presentation"
+            className="mobile-table-pan-track flex h-full"
+            style={{ minWidth: propertiesWidth }}
+          >
+            {type.properties.map((property, column) => {
+              const value = entry.properties[property.key]
+              const isActive =
+                editingCell?.entryPath === entry.path && editingCell.property.key === property.key
+              const isReadOnly = READ_ONLY_TYPES.has(property.type)
+              const isCheckbox = property.type === 'checkbox'
+              const checked = value?.valueType === 'boolean' && value.value === 'true'
+              return (
+                <div
+                  key={property.key}
+                  role="cell"
+                  className="flex shrink-0 items-stretch border-r border-border"
+                  style={{ width: widths[column], minWidth: widths[column] }}
                 >
-                  <CollectionCell property={property} value={value} selected={false} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={`Edit ${property.name}`}
-                  onClick={() => {
-                    hapticImpactLight()
-                    setEditingCell({
-                      entryPath: entry.path,
-                      entryTitle: entry.title,
-                      property,
-                      value,
-                    })
-                  }}
-                  className={cn(
-                    'flex h-full w-full min-w-0 items-center px-2.5 text-left transition-colors active:bg-surface-hover focus-visible:outline-none',
-                    isActive && 'bg-accent-soft/50 ring-2 ring-inset ring-accent',
+                  {isReadOnly ? (
+                    <span className="flex h-full w-full min-w-0 items-center px-2.5">
+                      <CollectionCell property={property} value={value} selected={false} />
+                    </span>
+                  ) : isCheckbox ? (
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={checked}
+                      aria-label={property.name}
+                      onClick={() => {
+                        hapticImpactLight()
+                        commitProperty(entry.path, property.key, !checked)
+                      }}
+                      className="flex h-full w-full min-w-0 items-center justify-center px-2.5 active:bg-surface-hover focus-visible:outline-none"
+                    >
+                      <CollectionCell property={property} value={value} selected={false} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Edit ${property.name}`}
+                      onClick={() => {
+                        hapticImpactLight()
+                        setEditingCell({
+                          entryPath: entry.path,
+                          entryTitle: entry.title,
+                          property,
+                          value,
+                        })
+                      }}
+                      className={cn(
+                        'flex h-full w-full min-w-0 items-center px-2.5 text-left transition-colors active:bg-surface-hover focus-visible:outline-none',
+                        isActive && 'bg-accent-soft/50 ring-2 ring-inset ring-accent',
+                      )}
+                    >
+                      <CollectionCell property={property} value={value} selected={false} />
+                    </button>
                   )}
-                >
-                  <CollectionCell property={property} value={value} selected={false} />
-                </button>
-              )}
-            </div>
-          )
-        })}
-        <div aria-hidden className="flex-1" />
+                </div>
+              )
+            })}
+            <div aria-hidden className="flex-1" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -324,20 +476,24 @@ export function MobileCollectionTable({
         ref={scrollRef}
         data-base-ui-swipe-ignore
         data-embedded={embedded ? '' : undefined}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={(event) => releasePan(event, false)}
+        onPointerCancel={(event) => releasePan(event, true)}
+        onWheel={handleWheel}
+        onClickCapture={(event) => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}
         className={cn(
           'mobile-collection-table',
           embedded
-            ? 'overflow-x-auto overflow-y-hidden overscroll-x-none'
-            : 'min-h-0 flex-1 overflow-auto overscroll-none',
+            ? 'overflow-hidden'
+            : 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none',
         )}
-        // The frozen columns cast their edge only once the rest slides under
-        // them; toggled on the element so a scroll never re-renders the rows.
-        onScroll={(event) => {
-          const scrolled = event.currentTarget.scrollLeft > 0
-          if (event.currentTarget.hasAttribute('data-scrolled-x') !== scrolled) {
-            event.currentTarget.toggleAttribute('data-scrolled-x', scrolled)
-          }
-        }}
         style={
           embedded
             ? undefined
@@ -347,15 +503,10 @@ export function MobileCollectionTable({
               }
         }
       >
-        <div
-          role="table"
-          aria-label={label}
-          aria-rowcount={entries.length + 1}
-          style={{ width: `max(100%, ${totalWidth}px)` }}
-        >
+        <div role="table" aria-label={label} aria-rowcount={entries.length + 1} className="w-full">
           <div
             role="row"
-            className="sticky z-20 flex border-y border-border bg-background"
+            className="sticky z-20 flex w-full border-y border-border bg-background"
             // The band also paints the strip above it, so rows leaving the top
             // vanish under the glass header instead of peeking between the two.
             style={{
@@ -364,39 +515,51 @@ export function MobileCollectionTable({
               ...(embedded ? {} : { boxShadow: '0 -24px 0 0 var(--color-background)' }),
             }}
           >
-            <HeaderCell frozenLeft={0} width={NUMBER_WIDTH} align="center">
+            <HeaderCell width={NUMBER_WIDTH} align="center" frozen>
               #
             </HeaderCell>
             <HeaderCell
-              frozenLeft={NUMBER_WIDTH}
               width={TITLE_WIDTH}
               icon={<Note aria-hidden className="size-3.5 shrink-0 text-text-muted" />}
               sortDirection={sortFor(TITLE_SORT_KEY)}
               onSort={onSortChange === undefined ? undefined : () => cycleSort(TITLE_SORT_KEY)}
+              frozen
               edge
             >
               Title
             </HeaderCell>
-            {type.properties.map((property, index) => {
-              const TypeIcon = PROPERTY_TYPE_ICONS[property.type]
-              return (
-                <HeaderCell
-                  key={property.key}
-                  width={widths[index] ?? 0}
-                  icon={<TypeIcon aria-hidden className="size-3.5 shrink-0 text-text-muted" />}
-                  align={property.type === 'number' || property.type === 'rating' ? 'end' : 'start'}
-                  sortDirection={sortFor(property.key)}
-                  onSort={onSortChange === undefined ? undefined : () => cycleSort(property.key)}
-                >
-                  {property.name}
-                </HeaderCell>
-              )
-            })}
-            <div aria-hidden className="relative flex-1 bg-background">
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 bg-surface-hover/40"
-              />
+            <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
+              <div
+                role="presentation"
+                className="mobile-table-pan-track flex h-full"
+                style={{ minWidth: propertiesWidth }}
+              >
+                {type.properties.map((property, index) => {
+                  const TypeIcon = PROPERTY_TYPE_ICONS[property.type]
+                  return (
+                    <HeaderCell
+                      key={property.key}
+                      width={widths[index] ?? 0}
+                      icon={<TypeIcon aria-hidden className="size-3.5 shrink-0 text-text-muted" />}
+                      align={
+                        property.type === 'number' || property.type === 'rating' ? 'end' : 'start'
+                      }
+                      sortDirection={sortFor(property.key)}
+                      onSort={
+                        onSortChange === undefined ? undefined : () => cycleSort(property.key)
+                      }
+                    >
+                      {property.name}
+                    </HeaderCell>
+                  )
+                })}
+                <div aria-hidden className="relative flex-1 bg-background">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-surface-hover/40"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           {embedded ? (
@@ -416,28 +579,36 @@ export function MobileCollectionTable({
           {!embedded && entries.length > 0 ? (
             <div
               role="row"
-              className="flex h-9 items-center border-b border-border bg-background text-[12px] tabular-nums text-text-muted"
+              className="flex h-9 w-full items-center border-b border-border bg-background text-[12px] tabular-nums text-text-muted"
             >
               <div
-                className="mobile-table-frozen-edge sticky left-0 z-10 flex h-full items-center border-r border-border-strong/70 bg-background pr-2 pl-3"
+                className="mobile-table-frozen-edge z-10 flex h-full shrink-0 items-center border-r border-border-strong/70 bg-background pr-2 pl-3"
                 style={{ width: frozenWidth, minWidth: frozenWidth }}
               >
                 {`${entries.length} ${entries.length === 1 ? 'note' : 'notes'}`}
               </div>
-              {type.properties.map((property, index) => (
+              <div role="presentation" className="min-w-0 flex-1 overflow-hidden">
                 <div
-                  key={property.key}
-                  className={cn(
-                    'flex h-full items-center truncate border-r border-border px-2.5',
-                    (property.type === 'number' || property.type === 'rating') &&
-                      'justify-end text-right',
-                  )}
-                  style={{ width: widths[index], minWidth: widths[index] }}
+                  role="presentation"
+                  className="mobile-table-pan-track flex h-full"
+                  style={{ minWidth: propertiesWidth }}
                 >
-                  <span className="truncate">{aggregates[index]}</span>
+                  {type.properties.map((property, index) => (
+                    <div
+                      key={property.key}
+                      className={cn(
+                        'flex h-full shrink-0 items-center truncate border-r border-border px-2.5',
+                        (property.type === 'number' || property.type === 'rating') &&
+                          'justify-end text-right',
+                      )}
+                      style={{ width: widths[index], minWidth: widths[index] }}
+                    >
+                      <span className="truncate">{aggregates[index]}</span>
+                    </div>
+                  ))}
+                  <div aria-hidden className="flex-1" />
                 </div>
-              ))}
-              <div aria-hidden className="flex-1" />
+              </div>
             </div>
           ) : null}
         </div>
@@ -456,7 +627,7 @@ export function MobileCollectionTable({
 function HeaderCell({
   children,
   width,
-  frozenLeft,
+  frozen = false,
   icon,
   align = 'start',
   edge = false,
@@ -465,8 +636,8 @@ function HeaderCell({
 }: {
   children: string
   width: number
-  /** The sticky left offset for a frozen column; absent for a scrolling one. */
-  frozenLeft?: number
+  /** Whether this column belongs to the anchored left pane. */
+  frozen?: boolean
   icon?: ReactNode
   align?: 'start' | 'center' | 'end'
   /** The last frozen column draws the edge the scrolling columns slide under. */
@@ -474,7 +645,6 @@ function HeaderCell({
   sortDirection?: 'asc' | 'desc' | null
   onSort?: (() => void) | undefined
 }): ReactElement {
-  const frozen = frozenLeft !== undefined
   const content = (
     <>
       {icon}
@@ -490,13 +660,13 @@ function HeaderCell({
     <div
       role="columnheader"
       className={cn(
-        'relative flex h-full items-center bg-background text-[12px] font-medium',
+        'relative flex h-full shrink-0 items-center bg-background text-[12px] font-medium',
         sortDirection !== null ? 'text-text' : 'text-text-secondary',
         edge ? 'border-r border-border-strong/70' : 'border-r border-border',
-        frozen && 'sticky z-30',
+        frozen && 'z-20',
         edge && 'mobile-table-frozen-edge',
       )}
-      style={{ width, minWidth: width, left: frozenLeft }}
+      style={{ width, minWidth: width }}
     >
       <span aria-hidden className="pointer-events-none absolute inset-0 bg-surface-hover/40" />
       {onSort !== undefined ? (
@@ -534,8 +704,8 @@ function HeaderCell({
 
 /**
  * The table's last row: "New" until tapped, then a title field that creates
- * the note on Return (and on blur, when something was typed). Stays frozen
- * with the titles so it never scrolls out of reach sideways.
+ * the note on Return (and on blur, when something was typed). Stays anchored
+ * on the left under the titles so it never pans out of reach.
  */
 function NewRow({
   width,
@@ -584,15 +754,12 @@ function NewRow({
     <div
       role="row"
       className={cn(
-        'flex border-b border-border bg-background',
+        'flex w-full border-b border-border bg-background',
         editing && 'ring-2 ring-inset ring-accent',
       )}
       style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
     >
-      <div
-        className="sticky left-0 z-10 flex h-full items-center bg-background"
-        style={{ width, minWidth: width }}
-      >
+      <div className="flex h-full items-center bg-background" style={{ width, minWidth: width }}>
         {editing ? (
           <>
             <span

@@ -172,45 +172,49 @@ describe('MobileCollectionTable', () => {
     expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'owner', 'Grace')
   })
 
-  it('prevents dragging right past the left edge while allowing leftward scroll', async () => {
+  it('clamps horizontal column panning to [0, max] and never detaches the left pane', async () => {
     const view = await render(
       <div style={{ width: 300, height: 600, display: 'flex', flexDirection: 'column' }}>
         <MobileCollectionTable entries={ENTRIES} type={PROJECT} label="Project" onOpen={() => {}} />
       </div>,
     )
     const scroller = view.container.querySelector('.mobile-collection-table') as HTMLElement
-    expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth)
+    // The scroll container itself never overflows horizontally — frozen columns stay bolted to x=0.
+    expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth)
 
-    const dispatchTouch = (
-      type: 'touchstart' | 'touchmove' | 'touchend',
-      x?: number,
-      y?: number,
-    ) => {
-      const event = new Event(type, { bubbles: true, cancelable: type === 'touchmove' })
-      Object.defineProperty(event, 'touches', {
-        value: x !== undefined && y !== undefined ? [{ clientX: x, clientY: y }] : [],
-      })
-      scroller.dispatchEvent(event)
-      return event
+    const firePointer = (type: string, clientX: number, clientY: number): void => {
+      scroller.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: 'touch',
+          isPrimary: true,
+          clientX,
+          clientY,
+        }),
+      )
     }
 
-    // Sub-threshold horizontal jitter must not cancel vertical scroll.
-    dispatchTouch('touchstart', 120, 200)
-    const jitter = dispatchTouch('touchmove', 122, 200)
-    expect(jitter.defaultPrevented).toBe(false)
-    const verticalAfterJitter = dispatchTouch('touchmove', 122, 212)
-    expect(verticalAfterJitter.defaultPrevented).toBe(false)
-    dispatchTouch('touchend')
+    // Dragging right at rest stays pinned at 0px (no negative overscroll).
+    firePointer('pointerdown', 140, 200)
+    firePointer('pointermove', 200, 200)
+    firePointer('pointerup', 200, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('0px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(false)
 
-    // Dragging right at scrollLeft = 0 past the axis threshold must be canceled.
-    dispatchTouch('touchstart', 120, 200)
-    const pullRight = dispatchTouch('touchmove', 140, 200)
-    expect(pullRight.defaultPrevented).toBe(true)
-    dispatchTouch('touchend')
+    // Dragging left pans property columns smoothly and sets the scrolled shadow flag.
+    firePointer('pointerdown', 200, 200)
+    firePointer('pointermove', 140, 200)
+    firePointer('pointerup', 140, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('60px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(true)
 
-    // Dragging left when more columns sit to the right stays allowed.
-    dispatchTouch('touchstart', 140, 200)
-    const pullLeft = dispatchTouch('touchmove', 110, 200)
-    expect(pullLeft.defaultPrevented).toBe(false)
+    // Dragging right past 0 clamps cleanly back to 0px (never negative).
+    firePointer('pointerdown', 100, 200)
+    firePointer('pointermove', 260, 200)
+    firePointer('pointerup', 260, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('0px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(false)
   })
 })

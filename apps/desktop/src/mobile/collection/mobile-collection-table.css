@@ -1,16 +1,17 @@
 /*
- * Disable elastic rubber-band overscroll on iOS WKWebView so dragging sideways
- * past the table's edges never detaches the frozen `#` and `Title` columns
- * from the left bezel. Embedded tables keep vertical scroll chaining to the
- * host note while locking horizontal overscroll.
+ * Vertical scrolling stays 100% native (`touch-action: pan-y` + `overflow-x: hidden`),
+ * while property columns pan horizontally via a strictly clamped GPU transform
+ * (`--table-scroll-x`). That makes horizontal rubber-band detachment of the frozen
+ * `#` and `Title` columns impossible on iOS WKWebView without canceling `touchmove`.
  */
 .mobile-collection-table {
-  overscroll-behavior: none;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
 }
 
-.mobile-collection-table[data-embedded] {
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: auto;
+.mobile-table-pan-track {
+  transform: translate3d(calc(-1 * var(--table-scroll-x, 0px)), 0, 0);
+  will-change: transform;
 }
 
 /*
@@ -19,7 +20,7 @@
  * property columns slide under it.
  */
 .mobile-table-frozen-edge {
-  position: sticky;
+  position: relative;
 }
 
 .mobile-table-frozen-edge::after {

@@ -54,14 +54,11 @@ function foldConfiguredChildren(
         }
         continue
       }
-      const removedChildCount = node.children
-        .filter((child) => configuredKeys.has(child.key))
-        .reduce((sum, child) => sum + child.count, 0)
-      // Drop a pure wrapper prefix only when every note it counted belonged to
-      // the configured child(ren) hoisted above; keep an unconfigured parent
-      // that still carries notes of its own.
+      // Drop a pure structural wrapper once every child was hoisted into the
+      // pinned group above, while keeping any unconfigured parent that notes
+      // directly carry (`direct: true`).
       const emptiedPureWrapper =
-        node.children.length > 0 && children.length === 0 && removedChildCount >= node.count
+        node.direct !== true && node.children.length > 0 && children.length === 0
       if (!emptiedPureWrapper) {
         kept.push({ ...node, children })
       }

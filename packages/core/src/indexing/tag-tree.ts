@@ -18,6 +18,8 @@ export interface TagTreeCount {
   readonly tag: string
   /** Non-daily notes carrying this tag or any tag below it. */
   readonly count: number
+  /** True when at least one note carries this exact tag (not only a descendant). */
+  readonly direct?: boolean
 }
 
 /** One node of the tag tree. */
@@ -30,6 +32,8 @@ export interface TagTreeNode {
   readonly name: string
   /** Non-daily notes carrying this tag or any descendant, each counted once. */
   readonly count: number
+  /** True when at least one note carries this exact tag (not only a descendant). */
+  readonly direct?: boolean
   /** Child tags, ordered by key like the flat facet list. */
   readonly children: readonly TagTreeNode[]
 }
@@ -39,6 +43,7 @@ interface MutableNode {
   tag: string
   name: string
   count: number
+  direct?: boolean
   children: MutableNode[]
 }
 
@@ -67,7 +72,14 @@ export function buildTagTree(rows: readonly TagTreeCount[]): TagTreeNode[] {
     if (name === '' || byKey.has(row.key)) {
       continue
     }
-    const node: MutableNode = { key: row.key, tag: row.tag, name, count: row.count, children: [] }
+    const node: MutableNode = {
+      key: row.key,
+      tag: row.tag,
+      name,
+      count: row.count,
+      ...(row.direct !== undefined ? { direct: row.direct } : {}),
+      children: [],
+    }
     byKey.set(row.key, node)
     let parent: MutableNode | undefined
     for (
@@ -129,7 +141,8 @@ export function splitTypesFromTags(
         found.set(node.key, node)
       }
       const children = prune(node.children)
-      const emptiedParent = node.children.length > 0 && children.length === 0
+      const emptiedParent =
+        node.direct !== true && node.children.length > 0 && children.length === 0
       if (children.length > 0 || (!isType && !emptiedParent)) {
         kept.push({ ...node, children })
       }
@@ -197,7 +210,12 @@ async function listTagPrefixes(options: ListNoteTagsOptions): Promise<TagPrefixR
 export async function listTagTreeCounts(
   options: ListNoteTagsOptions = {},
 ): Promise<TagTreeCount[]> {
-  return (await listTagPrefixes(options)).map(({ key, tag, count }) => ({ key, tag, count }))
+  return (await listTagPrefixes(options)).map(({ key, tag, count, used }) => ({
+    key,
+    tag,
+    count,
+    direct: used !== 0,
+  }))
 }
 
 /**

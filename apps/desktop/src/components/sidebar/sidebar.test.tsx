@@ -387,6 +387,24 @@ describe('Sidebar', () => {
     await expect.element(tags.getByRole('button', { name: /^Sci-fi\s*2$/i })).toBeVisible()
   })
 
+  it('keeps a directly used unconfigured parent when its configured child is hoisted', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'work', tag: 'work', count: 5, direct: true },
+        { key: 'work/project', tag: 'work/project', count: 2, direct: true },
+        { key: 'work/project/active', tag: 'work/project/active', count: 1, direct: true },
+      ]),
+    )
+    listTagTypes.mockResolvedValue([
+      { tagKey: 'work/project', notePath: 'tags/work/project.md', type: { properties: [] } },
+    ])
+    const { view } = await renderSidebar()
+
+    const tags = view.getByRole('region', { name: 'Tags' })
+    await expect.element(tags.getByRole('button', { name: /^Project\s*2$/ })).toBeVisible()
+    await expect.element(tags.getByRole('button', { name: /^Work\s*5$/ })).toBeVisible()
+  })
+
   it('browses the vault by folder and opens a note from the tree', async () => {
     getFolderTree.mockResolvedValue(
       buildFolderTree([

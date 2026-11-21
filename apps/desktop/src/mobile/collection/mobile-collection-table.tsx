@@ -142,14 +142,10 @@ export function MobileCollectionTable({
       if (axis === 'none') {
         const absX = Math.abs(totalDx)
         const absY = Math.abs(totalDy)
-        if (absX >= 4 || absY >= 4) {
-          axis = absX > absY ? 'x' : 'y'
-        } else if (absX > absY && (maxScrollLeft <= 0 || pullingPastLeft || pullingPastRight)) {
-          event.preventDefault()
-          return
-        } else {
+        if (absX < 4 && absY < 4) {
           return
         }
+        axis = absX > absY ? 'x' : 'y'
       }
 
       if (axis !== 'x') {

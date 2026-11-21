@@ -194,7 +194,15 @@ describe('MobileCollectionTable', () => {
       return event
     }
 
-    // Dragging right at scrollLeft = 0 must be canceled (no left-edge rubber-band).
+    // Sub-threshold horizontal jitter must not cancel vertical scroll.
+    dispatchTouch('touchstart', 120, 200)
+    const jitter = dispatchTouch('touchmove', 122, 200)
+    expect(jitter.defaultPrevented).toBe(false)
+    const verticalAfterJitter = dispatchTouch('touchmove', 122, 212)
+    expect(verticalAfterJitter.defaultPrevented).toBe(false)
+    dispatchTouch('touchend')
+
+    // Dragging right at scrollLeft = 0 past the axis threshold must be canceled.
     dispatchTouch('touchstart', 120, 200)
     const pullRight = dispatchTouch('touchmove', 140, 200)
     expect(pullRight.defaultPrevented).toBe(true)

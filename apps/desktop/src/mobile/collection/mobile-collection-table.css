@@ -1,4 +1,19 @@
 /*
+ * Disable elastic rubber-band overscroll on iOS WKWebView so dragging sideways
+ * past the table's edges never detaches the frozen `#` and `Title` columns
+ * from the left bezel. Embedded tables keep vertical scroll chaining to the
+ * host note while locking horizontal overscroll.
+ */
+.mobile-collection-table {
+  overscroll-behavior: none;
+}
+
+.mobile-collection-table[data-embedded] {
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
+}
+
+/*
  * Frozen Title column elevation on mobile CollectionTable: a crisp border
  * always frames the Title column, and a soft depth shadow fades in as soon as
  * property columns slide under it.

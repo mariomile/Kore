@@ -100,6 +100,83 @@ export function MobileCollectionTable({
     [embedded, type.properties, entries],
   )
 
+  // Block horizontal rubber-band dragging past either edge on iOS WKWebView:
+  // CSS `overscroll-behavior` stops momentum bounce, and canceling the first
+  // outward `touchmove` keeps the frozen `#`/`Title` pane locked to the left
+  // bezel even when the user drags right from `scrollLeft === 0`.
+  useEffect(() => {
+    const element = scrollRef.current
+    if (element === null) {
+      return
+    }
+    let startX = 0
+    let startY = 0
+    let prevX = 0
+    let axis: 'none' | 'x' | 'y' = 'none'
+
+    const onTouchStart = (event: TouchEvent): void => {
+      const touch = event.touches[0]
+      if (touch === undefined) {
+        return
+      }
+      startX = touch.clientX
+      startY = touch.clientY
+      prevX = touch.clientX
+      axis = 'none'
+    }
+
+    const onTouchMove = (event: TouchEvent): void => {
+      const touch = event.touches[0]
+      if (touch === undefined) {
+        return
+      }
+      const totalDx = touch.clientX - startX
+      const totalDy = touch.clientY - startY
+      const stepDx = touch.clientX - prevX
+      prevX = touch.clientX
+
+      const maxScrollLeft = element.scrollWidth - element.clientWidth
+      const pullingPastLeft = stepDx > 0 && element.scrollLeft <= 0
+      const pullingPastRight = stepDx < 0 && element.scrollLeft >= maxScrollLeft - 1
+
+      if (axis === 'none') {
+        const absX = Math.abs(totalDx)
+        const absY = Math.abs(totalDy)
+        if (absX >= 4 || absY >= 4) {
+          axis = absX > absY ? 'x' : 'y'
+        } else if (absX > absY && (maxScrollLeft <= 0 || pullingPastLeft || pullingPastRight)) {
+          event.preventDefault()
+          return
+        } else {
+          return
+        }
+      }
+
+      if (axis !== 'x') {
+        return
+      }
+
+      if (maxScrollLeft <= 0 || pullingPastLeft || pullingPastRight) {
+        event.preventDefault()
+      }
+    }
+
+    const resetAxis = (): void => {
+      axis = 'none'
+    }
+
+    element.addEventListener('touchstart', onTouchStart, { passive: true })
+    element.addEventListener('touchmove', onTouchMove, { passive: false })
+    element.addEventListener('touchend', resetAxis, { passive: true })
+    element.addEventListener('touchcancel', resetAxis, { passive: true })
+    return () => {
+      element.removeEventListener('touchstart', onTouchStart)
+      element.removeEventListener('touchmove', onTouchMove)
+      element.removeEventListener('touchend', resetAxis)
+      element.removeEventListener('touchcancel', resetAxis)
+    }
+  }, [])
+
   const primary = sorts[0] ?? null
   const cycleSort = (key: string): void => {
     if (onSortChange === undefined) {
@@ -250,9 +327,12 @@ export function MobileCollectionTable({
       <div
         ref={scrollRef}
         data-base-ui-swipe-ignore
+        data-embedded={embedded ? '' : undefined}
         className={cn(
-          'mobile-collection-table overscroll-x-contain',
-          embedded ? 'overflow-x-auto overflow-y-hidden' : 'min-h-0 flex-1 overflow-auto',
+          'mobile-collection-table',
+          embedded
+            ? 'overflow-x-auto overflow-y-hidden overscroll-x-none'
+            : 'min-h-0 flex-1 overflow-auto overscroll-none',
         )}
         // The frozen columns cast their edge only once the rest slides under
         // them; toggled on the element so a scroll never re-renders the rows.

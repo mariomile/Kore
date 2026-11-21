@@ -171,4 +171,38 @@ describe('MobileCollectionTable', () => {
     await userEvent.click(view.getByRole('button', { name: 'Done' }))
     expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'owner', 'Grace')
   })
+
+  it('prevents dragging right past the left edge while allowing leftward scroll', async () => {
+    const view = await render(
+      <div style={{ width: 300, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable entries={ENTRIES} type={PROJECT} label="Project" onOpen={() => {}} />
+      </div>,
+    )
+    const scroller = view.container.querySelector('.mobile-collection-table') as HTMLElement
+    expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth)
+
+    const dispatchTouch = (
+      type: 'touchstart' | 'touchmove' | 'touchend',
+      x?: number,
+      y?: number,
+    ) => {
+      const event = new Event(type, { bubbles: true, cancelable: type === 'touchmove' })
+      Object.defineProperty(event, 'touches', {
+        value: x !== undefined && y !== undefined ? [{ clientX: x, clientY: y }] : [],
+      })
+      scroller.dispatchEvent(event)
+      return event
+    }
+
+    // Dragging right at scrollLeft = 0 must be canceled (no left-edge rubber-band).
+    dispatchTouch('touchstart', 120, 200)
+    const pullRight = dispatchTouch('touchmove', 140, 200)
+    expect(pullRight.defaultPrevented).toBe(true)
+    dispatchTouch('touchend')
+
+    // Dragging left when more columns sit to the right stays allowed.
+    dispatchTouch('touchstart', 140, 200)
+    const pullLeft = dispatchTouch('touchmove', 110, 200)
+    expect(pullLeft.defaultPrevented).toBe(false)
+  })
 })

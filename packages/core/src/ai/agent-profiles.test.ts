@@ -207,7 +207,9 @@ describe('agentContextPromptLines', () => {
     const withTools = agentContextPromptLines(kit, { canEdit: true, writeApproval: true }).join(
       '\n',
     )
-    expect(withTools).toContain('remember, open_loop, update_loop, close_loop, record_decision')
+    expect(withTools).toContain(
+      'remember, forget, open_loop, update_loop, close_loop, record_decision',
+    )
     expect(withTools).toContain('YYYY-MM-DD')
     expect(withTools).not.toContain('agents/memory/pending.md')
     expect(withTools).not.toContain('[certain|likely|speculative]')

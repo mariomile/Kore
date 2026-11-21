@@ -112,7 +112,7 @@ export async function queueCyberBrainMemory(
   caller: Caller,
   guardSource: (source: string) => void,
   refuse: (message: string) => never,
-): Promise<{ path: string; queued: true; since: string }> {
+): Promise<{ path: string; queued: true; since: string; runLogged: boolean }> {
   const system = await cyberBrainSystemPath(store)
   if (system === null) {
     refuse('This vault has no cyber-brain contract (`cyber_brain:` in AGENTS.md).')
@@ -125,7 +125,9 @@ export async function queueCyberBrainMemory(
   if (args.since !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(args.since)) {
     refuse('`since` must be YYYY-MM-DD')
   }
-  const secret = findCyberBrainSecret(`${args.text} ${args.source}`)
+  const secret = findCyberBrainSecret(
+    `${args.text} ${args.source} ${args.replaces ?? ''} ${args.target ?? ''}`,
+  )
   if (secret !== null) {
     refuse(`Refused: looks like a secret (${secret}). Secrets are never stored in memory.`)
   }
@@ -152,15 +154,6 @@ export async function queueCyberBrainMemory(
     ...(args.replaces !== undefined ? { replaces: args.replaces } : {}),
   })
   const transitPath = `${system}/memory/inbox/${slug}/${today}.md`
-  await appendOrCreate(
-    store,
-    transitPath,
-    `# Transit ${today}\n`,
-    (existing) => `${existing.replace(/\s*$/, '\n')}${entry}\n`,
-    caller.agent,
-    guardSource,
-    refuse,
-  )
   const runPath = `${system}/runs/${month}.md`
   const runHeader = `---\ndescription: Run log for ${month}, one record per agent run with the exact lines written.\nsensitivity: personal\n---\n# Runs ${month}\n`
   const runRecord = formatCyberBrainRunRecord({
@@ -170,14 +163,45 @@ export async function queueCyberBrainMemory(
     summary: `queued ${kind}: ${collapseOneLine(args.text).slice(0, 120)}`,
     writes: [`${transitPath} | (none) | ${entry}`],
   })
+
+  // Pre-validate the run log write against size/privacy limits before writing
+  // the transit file, so an oversized or private run log fails cleanly before
+  // any memory is queued.
+  const currentRun = await store.get(runPath)
+  const previewRun = `${(currentRun?.source ?? runHeader).replace(/\s*$/, '\n')}\n${runRecord}\n`
+  guardSource(previewRun)
+
   await appendOrCreate(
     store,
-    runPath,
-    runHeader,
-    (existing) => `${existing.replace(/\s*$/, '\n')}\n${runRecord}\n`,
+    transitPath,
+    `# Transit ${today}\n`,
+    (existing) => {
+      if (existing.split(/\r?\n/).includes(entry)) {
+        return existing
+      }
+      return `${existing.replace(/\s*$/, '\n')}${entry}\n`
+    },
     caller.agent,
     guardSource,
     refuse,
   )
-  return { path: transitPath, queued: true, since }
+
+  // The memory is already safely queued in transit. If the run log hits a
+  // transient race or limit afterwards, fail soft and report `runLogged: false`
+  // rather than throwing an error that would cause callers to retry.
+  let runLogged = true
+  try {
+    await appendOrCreate(
+      store,
+      runPath,
+      runHeader,
+      (existing) => `${existing.replace(/\s*$/, '\n')}\n${runRecord}\n`,
+      caller.agent,
+      guardSource,
+      refuse,
+    )
+  } catch {
+    runLogged = false
+  }
+  return { path: transitPath, queued: true, since, runLogged }
 }

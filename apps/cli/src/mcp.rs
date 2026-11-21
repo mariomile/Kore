@@ -1096,7 +1096,8 @@ mod tests {
                 "brain",
                 "forget",
                 "--text=Acme Corp",
-                "--reason=former client"
+                "--reason=former client",
+                "--exclude-only"
             ]
         );
         assert_eq!(calls.len(), 4, "a decision without its fields never runs");

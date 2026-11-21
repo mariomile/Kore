@@ -122,15 +122,18 @@ export function brainArgv(command: BrainCommand, caller: BrainCaller): string[] 
         ...option('since', command.since),
         ...flag('now', command.now),
       ]
-    case 'forget':
+    case 'forget': {
+      const hasTarget = command.target !== undefined && command.target.trim() !== ''
       return [
         'forget',
         ...signed,
         ...option('text', command.text),
-        ...option('target', command.target),
+        ...option('target', hasTarget ? command.target : undefined),
         ...option('reason', command.reason),
-        ...flag('no-exclude', command.noExclude),
+        ...flag('exclude-only', !hasTarget),
+        ...flag('no-exclude', hasTarget ? command.noExclude : undefined),
       ]
+    }
     case 'loop-open':
       return [
         'loop',

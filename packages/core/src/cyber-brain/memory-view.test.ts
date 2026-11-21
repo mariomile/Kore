@@ -88,6 +88,7 @@ describe('loadMemoryOverview', () => {
       { path: 'System/identity/USER.md' },
       { path: 'System/memory/loops.md' },
       { path: 'System/memory/exclusions.md' },
+      { path: 'System/memory/inbox/z-agent/2026-01-01.md' },
       { path: 'System/memory/inbox/chatgpt/2026-11-21.md' },
       { path: 'System/memory/decisions/2026-11-07-vault-migrato.md' },
       { path: 'System/memory/decisions/2026-11-10-memoria-via-kore-mcp.md' },
@@ -103,6 +104,8 @@ describe('loadMemoryOverview', () => {
         return '---\ndescription: exclusions\n---\n# Exclusions\n- Acme Corp [reason: former client; since: 2026-11-21]\n'
       if (path.endsWith('inbox/chatgpt/2026-11-21.md'))
         return '# Transit 2026-11-21\n- [observation] Prefers concise replies -> ? [source: ChatGPT; since: 2025-04-02]\n'
+      if (path.endsWith('inbox/z-agent/2026-01-01.md'))
+        return '# Transit 2026-01-01\n- [fact] Older queued item -> ? [source: z-agent; since: 2026-01-01]\n'
       if (path.endsWith('2026-11.md')) return RUNS
       if (path.endsWith('2026-10.md')) return '# Runs 2026-10\n'
       if (path.endsWith('secret.md')) return '---\nsensitivity: private\n---\n# Secret\n'
@@ -123,6 +126,16 @@ describe('loadMemoryOverview', () => {
         target: '?',
         source: 'ChatGPT',
         since: '2025-04-02',
+        was: null,
+      },
+      {
+        path: 'System/memory/inbox/z-agent/2026-01-01.md',
+        agent: 'z-agent',
+        kind: 'fact',
+        text: 'Older queued item',
+        target: '?',
+        source: 'z-agent',
+        since: '2026-01-01',
         was: null,
       },
     ])

@@ -132,10 +132,14 @@ export function buildMemoryTools(deps: MemoryToolDeps): MemoryTools {
     }),
     forget: tool({
       description:
-        "Forget a topic or fact with the vault's cyber-brain kit: archives matching lines into System/archive/ and records an exclusion in System/memory/exclusions.md so it is never re-imported.",
+        "Forget a topic or fact with the vault's cyber-brain kit: records an exclusion in System/memory/exclusions.md so it is never re-imported. Pass `target` to also archive matching lines from that specific non-private note into System/archive/.",
       inputSchema: forgetMemoryInput,
-      execute: async (input): Promise<MemoryWriteOutput> =>
-        await write({ ...given(input), kind: 'forget' }),
+      execute: async (input): Promise<MemoryWriteOutput> => {
+        if (input.target === undefined && input.noExclude === true) {
+          return { ok: false, error: '`noExclude` requires `target`.' }
+        }
+        return await write({ ...given(input), kind: 'forget' })
+      },
     }),
     open_loop: tool({
       description:

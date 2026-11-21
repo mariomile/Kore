@@ -371,18 +371,11 @@ fn kit_target(kit: &Kit, args: &[String]) -> Option<String> {
     })
 }
 
-/// Kore's privacy rule for kit writes: a command may not write into a note
-/// marked `private: true` or `sensitivity: private`, nor outside the vault,
-/// whoever asks. The kit itself does not know Kore's rule, so the gate runs
-/// before it, on the note the command names.
-pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), String> {
-    let Some(target) = kit_target(kit, args) else {
-        return Ok(());
-    };
-    if !is_safe_vault_folder(&target) {
+fn check_note_not_private(root: &Path, target: &str) -> Result<(), String> {
+    if target.is_empty() || target == ".md" || !is_safe_vault_folder(target) {
         return Err(format!("`{target}` is not a note path inside the vault"));
     }
-    let path = root.join(&target);
+    let path = root.join(target);
     // The nearest part of the path that exists must resolve inside the
     // vault, so neither the note nor a folder link on the way leaves it.
     let existing = path
@@ -406,6 +399,40 @@ pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), S
         ));
     }
     Ok(())
+}
+
+/// Kore's privacy rule for kit writes: a command may not write into a note
+/// marked `private: true` or `sensitivity: private`, nor outside the vault,
+/// whoever asks. The kit itself does not know Kore's rule, so the gate runs
+/// before it, on the note the command names. For `forget`, an unscoped vault
+/// scan is refused unless `--exclude-only` is passed (which only appends to
+/// `memory/exclusions.md` without reading any other note).
+pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), String> {
+    let is_forget = args.first().is_some_and(|word| word == "forget");
+    if is_forget {
+        let exclude_only = args.iter().any(|arg| arg == "--exclude-only");
+        let no_exclude = args.iter().any(|arg| arg == "--no-exclude");
+        if exclude_only && no_exclude {
+            return Err("forget cannot combine --exclude-only with --no-exclude".to_string());
+        }
+        if !no_exclude {
+            check_note_not_private(root, &format!("{}/memory/exclusions.md", kit.system))?;
+        }
+        match kit_target(kit, args) {
+            Some(target) => return check_note_not_private(root, &target),
+            None if exclude_only => return Ok(()),
+            None => {
+                return Err(
+                    "forget requires either --target=<note> or --exclude-only so private notes are never scanned"
+                        .to_string(),
+                );
+            }
+        }
+    }
+    let Some(target) = kit_target(kit, args) else {
+        return Ok(());
+    };
+    check_note_not_private(root, &target)
 }
 
 /// The digest the user last allowed on this machine, if any.
@@ -759,5 +786,42 @@ mod tests {
         assert_eq!(agent_slug("  ChatGPT (work)  "), "chatgpt-work");
         assert_eq!(agent_slug("../.."), "kore");
         assert_eq!(agent_slug(""), "kore");
+    }
+
+    #[test]
+    fn forget_requires_a_non_private_target_or_exclude_only() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("Notes")).expect("notes");
+        fs::write(
+            root.join("Notes/Private.md"),
+            "---\nprivate: true\n---\n# Secret\n",
+        )
+        .expect("private");
+        fs::write(root.join("Notes/Public.md"), "# Public\n").expect("public");
+        let kit = parse_contract(MARIO).expect("kit");
+
+        // Unscoped forget without --exclude-only is refused.
+        assert!(check_kit_target(root, &kit, &args(&["forget", "--text=Acme"])).is_err());
+        // --exclude-only is allowed when exclusions.md is not private.
+        assert!(check_kit_target(
+            root,
+            &kit,
+            &args(&["forget", "--text=Acme", "--exclude-only"])
+        )
+        .is_ok());
+        // Targeted forget on a private note is refused; on a public note is allowed.
+        assert!(check_kit_target(
+            root,
+            &kit,
+            &args(&["forget", "--text=Acme", "--target=Notes/Private.md"])
+        )
+        .is_err());
+        assert!(check_kit_target(
+            root,
+            &kit,
+            &args(&["forget", "--text=Acme", "--target=Notes/Public.md"])
+        )
+        .is_ok());
     }
 }

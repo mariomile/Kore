@@ -61,22 +61,29 @@ pub(super) fn kit_tools() -> Vec<Tool> {
         },
         Tool {
             name: "forget",
-            description: "Forget a topic or fact with the vault's kit: archives matching lines into System/archive/ (never hard-deletes) and records the topic in System/memory/exclusions.md so no agent or import re-adds it.",
+            description: "Forget a topic or fact with the vault's kit: records an exclusion in System/memory/exclusions.md so no agent or import re-adds it. Pass `target` to also archive matching lines from that specific non-private note into System/archive/ (unscoped vault-wide scans are disabled to protect private notes).",
             effect: Effect::Add,
             properties: || json!({
                 "text": kit_text("Topic or phrase to forget and exclude"),
-                "target": kit_text("Optional note path to limit archiving to"),
+                "target": kit_text("Optional non-private note path whose matching lines should also be archived; omit to only record the exclusion"),
                 "reason": kit_text("Optional short reason for forgetting"),
-                "no_exclude": { "type": "boolean", "description": "Archive matching lines without adding an exclusion entry" }
+                "no_exclude": { "type": "boolean", "description": "Only valid with `target`: archive matching lines without adding an exclusion entry" }
             }),
             required: &["text"],
             build: |args| {
+                let target = string_arg(args, "target")?;
+                let no_exclude = bool_arg(args, "no_exclude")?;
+                if target.is_none() && no_exclude {
+                    return Err("`no_exclude` requires `target`".to_string());
+                }
+                let exclude_only = target.is_none();
                 Ok(Invocation::new("brain")
                     .subcommand("forget")
                     .option("text", Some(required_string(args, "text")?))
-                    .option("target", string_arg(args, "target")?)
+                    .option("target", target)
                     .option("reason", string_arg(args, "reason")?)
-                    .flag("no-exclude", bool_arg(args, "no_exclude")?))
+                    .flag("exclude-only", exclude_only)
+                    .flag("no-exclude", no_exclude))
             },
         },
         Tool {

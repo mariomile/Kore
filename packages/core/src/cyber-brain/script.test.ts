@@ -126,9 +126,18 @@ describe('brainArgv', () => {
       '--target=Companies/Acme.md',
       '--reason=former client',
     ])
-    expect(brainArgv({ kind: 'forget', text: 'temp', noExclude: true }, { agent: 'kore' })).toEqual(
-      ['forget', '--agent=kore', '--text=temp', '--no-exclude'],
-    )
+    expect(brainArgv({ kind: 'forget', text: 'temp' }, { agent: 'kore' })).toEqual([
+      'forget',
+      '--agent=kore',
+      '--text=temp',
+      '--exclude-only',
+    ])
+    expect(
+      brainArgv(
+        { kind: 'forget', text: 'temp', target: 'Notes/A.md', noExclude: true },
+        { agent: 'kore' },
+      ),
+    ).toEqual(['forget', '--agent=kore', '--text=temp', '--target=Notes/A.md', '--no-exclude'])
   })
 
   it('reads facts and checks without signing', () => {

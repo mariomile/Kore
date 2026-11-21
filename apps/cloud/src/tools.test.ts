@@ -140,7 +140,7 @@ describe('agent tools', () => {
       since: '2025-03-14',
     })
     expect(saved.error).toBe(false)
-    expect(saved.value).toMatchObject({ queued: true, since: '2025-03-14' })
+    expect(saved.value).toMatchObject({ queued: true, since: '2025-03-14', runLogged: true })
     const transitPath = (saved.value as { path: string }).path
     expect((await store.get(transitPath))?.source).toContain(
       '- [observation] Prefers Italian in chat -> ? [source: ChatGPT export; since: 2025-03-14]',
@@ -151,7 +151,7 @@ describe('agent tools', () => {
       `- write: ${transitPath} | (none) | - [observation] Prefers Italian in chat`,
     )
 
-    // Refuses excluded topics and secrets.
+    // Refuses excluded topics and secrets (including inside `replaces`).
     expect((await call('remember', { text: 'Acme Corp renewed', source: 'ChatGPT' })).error).toBe(
       true,
     )
@@ -159,6 +159,15 @@ describe('agent tools', () => {
       (
         await call('remember', {
           text: 'token sk-abcdefghijklmnopqrstuvwxyz12',
+          source: 'ChatGPT',
+        })
+      ).error,
+    ).toBe(true)
+    expect(
+      (
+        await call('remember', {
+          text: 'Rotated API token',
+          replaces: 'sk-abcdefghijklmnopqrstuvwxyz12',
           source: 'ChatGPT',
         })
       ).error,

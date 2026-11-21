@@ -177,8 +177,11 @@ export async function loadMemoryOverview(config: CyberBrainConfig): Promise<Memo
     .filter((path) => !path.slice(decisionsDir.length).includes('/'))
   const transitPaths = paths
     .filter((path) => path.startsWith(inboxDir) && path.endsWith('.md'))
-    .sort()
-    .reverse()
+    .sort((left, right) => {
+      const leftFile = left.slice(left.lastIndexOf('/') + 1)
+      const rightFile = right.slice(right.lastIndexOf('/') + 1)
+      return rightFile.localeCompare(leftFile) || right.localeCompare(left)
+    })
     .slice(0, 20)
   const runPaths = paths
     .filter(

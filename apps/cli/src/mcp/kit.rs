@@ -71,7 +71,9 @@ pub(super) fn kit_tools() -> Vec<Tool> {
             }),
             required: &["text"],
             build: |args| {
-                let target = string_arg(args, "target")?;
+                let target = string_arg(args, "target")?
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty());
                 let no_exclude = bool_arg(args, "no_exclude")?;
                 if target.is_none() && no_exclude {
                     return Err("`no_exclude` requires `target`".to_string());

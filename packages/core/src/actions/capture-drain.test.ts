@@ -886,8 +886,12 @@ describe('drainCaptureInbox: shared X posts', () => {
     files.set(DAILY, '# plans\n\nMorning notes\n\n## [[Links]]\n\n- [[old|Old]]\n')
     xPostMock.mockResolvedValue({
       id: '1886192184808149383',
-      createdAt: '2026-02-02T00:00:00Z',
-      author: { name: 'Andrej Karpathy', handle: 'karpathy' },
+      createdAt: '2026-02-02T12:00:00Z',
+      author: {
+        name: 'Andrej Karpathy',
+        handle: 'karpathy',
+        avatar: 'https://pbs.twimg.com/profile_images/1/face_normal.jpg',
+      },
       body: [
         { type: 'text', text: 'Vibe coding, see ' },
         { type: 'link', text: 'this', url: 'https://example.com/vibe' },
@@ -910,7 +914,7 @@ describe('drainCaptureInbox: shared X posts', () => {
         '',
         '- [[old|Old]]',
         '',
-        `- **Andrej Karpathy** · [@karpathy](${POST_URL}) [[X posts]]`,
+        `- ![|40](assets/x-avatar-karpathy.jpg) **Andrej Karpathy** [@karpathy](https://x.com/karpathy) [2 Feb 2026](${POST_URL}) [[X posts]]`,
         '  > Vibe coding, see [this](https://example.com/vibe).',
         '  > Second line',
         '  >',
@@ -926,16 +930,21 @@ describe('drainCaptureInbox: shared X posts', () => {
       'x-1886192184808149383-1.jpg',
       expect.any(Number),
     )
+    expect(importImageMock).toHaveBeenCalledWith(
+      'https://pbs.twimg.com/profile_images/1/face_200x200.jpg',
+      'x-avatar-karpathy.jpg',
+      expect.any(Number),
+    )
     // The X posts note's backlink shows the post whole: byline, words, photo, note.
     expect(blockContextAt(daily, daily.indexOf('[[X posts]]') + 2)).toBe(
-      daily.slice(daily.indexOf('- **Andrej')).trimEnd(),
+      daily.slice(daily.indexOf('- ![|40]')).trimEnd(),
     )
   })
 
   it("keeps X's own link to a photo that cannot be fetched now", async () => {
     xPostMock.mockResolvedValue({
       id: '1886192184808149383',
-      createdAt: '2026-02-02T00:00:00Z',
+      createdAt: '2026-02-02T12:00:00Z',
       author: { name: 'Andrej Karpathy', handle: 'karpathy' },
       body: [{ type: 'text', text: 'Look' }],
       media: [
@@ -959,6 +968,9 @@ describe('drainCaptureInbox: shared X posts', () => {
     )
     expect(files.get(DAILY)).toContain(
       '  > ![](https://pbs.twimg.com/media/b?format=png&name=large)',
+    )
+    expect(files.get(DAILY)).toContain(
+      `- **Andrej Karpathy** [@karpathy](https://x.com/karpathy) [2 Feb 2026](${POST_URL}) [[X posts]]`,
     )
   })
 

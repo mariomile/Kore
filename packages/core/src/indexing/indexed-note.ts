@@ -10,7 +10,6 @@ import {
 import { getVaultLayout, vaultLayoutIndexKey } from '../graph/vault-layout'
 import {
   detectConflictMarkers,
-  displayNoteTitle,
   extractEmailFields,
   foldEmail,
   foldKey,
@@ -161,8 +160,12 @@ import {
  * a leading title written with link syntax (`# [[Folder/Note|Note]]`), so a
  * card no longer opens with the raw path. Existing rows keep it until
  * reprojected.
+ * 39 - `notes.preview` is prose only: headings, tables, property lines
+ * (`Type: #meeting`), embeds and footnotes no longer reach a card, and the
+ * search text drops `---` rules and table pipes, so a search snippet no longer
+ * shows them either. Existing rows keep the old text until reprojected.
  */
-export const PROJECTION_VERSION = 38
+export const PROJECTION_VERSION = 39
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -566,7 +569,7 @@ export function buildIndexedNote(
     mtime: meta.mtime,
     text: parsed.text,
     assetText: meta.assetText ?? '',
-    preview: previewSnippet(parsed.previewText, displayNoteTitle(parsed.title)),
+    preview: previewSnippet(parsed.previewText),
     links: [...wikiLinks, ...mdLinks],
     tags: parsed.tags.map((tag) => {
       const tagKey = foldTag(tag)

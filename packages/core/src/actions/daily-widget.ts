@@ -45,7 +45,7 @@ export function dailyWidgetSnapshot(source: string, date: string): DailyWidgetSn
   })
   return {
     date,
-    preview: previewSnippet(prose.previewText, prose.title, DAILY_WIDGET_PREVIEW_CHARS),
+    preview: previewSnippet(prose.previewText, DAILY_WIDGET_PREVIEW_CHARS),
     openTasks: open.slice(0, DAILY_WIDGET_TASK_LIMIT).map((task) => task.text.trim()),
     openTaskCount: open.length,
     doneTaskCount: parsed.tasks.filter((task) => task.checked).length,

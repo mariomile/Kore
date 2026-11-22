@@ -2,15 +2,22 @@ import type { Span } from './model'
 
 /**
  * Preview noise (list-row snippets): source a reader never sees as prose, cut
- * from the preview text on top of the ordinary plain-text cuts. Notes imported
- * from Obsidian open with plugin leftovers (a ```dataview query, a Templater
- * `<% tp.file.title %>`, a `%% comment %%`), and the plain text keeps all of it
- * verbatim, so a row's snippet read as query code instead of the note. The
- * search text is untouched: code stays searchable, only the preview skips it.
+ * from the preview text on top of the ordinary plain-text cuts. A preview is
+ * the note's own sentences and list items, nothing else: a card that reads
+ * `Info | Campo | Valore | | --- |` or `Type: #meeting` shows the note's
+ * scaffolding, not the note. So structure goes (headings, tables, property
+ * lines, embeds, footnotes, HTML), and so do Obsidian plugin leftovers (a
+ * ```dataview query, a Templater `<% tp.file.title %>`, a `%% comment %%`).
+ * A note with no prose previews as nothing. The search text is untouched:
+ * all of it stays searchable, only the preview skips it.
  */
 
-/** Block nodes whose whole range is never preview prose. */
-const NOISE_BLOCKS = new Set([
+/**
+ * Nodes whose whole range is never preview prose. Headings are noise too
+ * (section labels, not sentences); the note walk already identifies them by
+ * node id and cuts them there.
+ */
+const NOISE_NODES = new Set([
   'FencedCode',
   'CodeBlock',
   'BlockMath',
@@ -19,6 +26,15 @@ const NOISE_BLOCKS = new Set([
   'ProcessingInstructionBlock',
   'Comment',
   'ProcessingInstruction',
+  // Structure: a table's cells mean nothing without their grid.
+  'Table',
+  // `![alt](src)`, `![[file or note]]`: the reader sees the embed, not its name.
+  'Image',
+  'WikiEmbed',
+  // `<b>`, `<br>`: the tag goes, the words it wraps stay.
+  'HTMLTag',
+  // `[^1]: …` and `[ref]: url` definitions.
+  'LinkReference',
 ])
 
 /** Dataview inline queries: `` `= this.status` `` and `` `$= dv.current()` ``. */
@@ -30,10 +46,27 @@ const TEMPLATER_TAG = /<%[\s\S]*?%>/g
 const OBSIDIAN_COMMENT = /%%[\s\S]*?%%/g
 /** A callout's type marker after its quote marks: `> [!note]`, `> [!faq]-`. */
 const CALLOUT_MARKER = /^(?:[ \t]*>)+[ \t]*(\[![^\]\n]+\][+-]?)/gm
+/** A footnote: its whole `[^1]: …` definition line, or a `[^1]` reference. */
+const FOOTNOTE = /^[ \t]*\[\^[^\]\s]+\]:.*$|\[\^[^\]\s]+\]/gm
+const TAG = String.raw`#[^\s#]+`
+/** What a property holds instead of words: a tag, a wiki or Markdown link, a bare URL. */
+const REFERENCE = String.raw`(?:${TAG}|\[\[[^\]\n]*\]\]|\[[^\]\n]*\]\([^)\n]*\)|<?https?:\/\/\S+)`
+const LABEL = String.raw`\p{L}[\p{L}\p{N} _-]{0,40}`
+/**
+ * A property line, after an optional list marker: tags alone (`#meeting
+ * #work`, the line that gives a note its type), a label holding only
+ * references (`Type: #meeting`, `Author: [[James Clear]]`, `URL: https://…`),
+ * or a Dataview field (`status:: active`). Metadata the app shows as fields,
+ * never a sentence: `Decision: ship it on Monday` has words and stays.
+ */
+const PROPERTY_LINE = new RegExp(
+  String.raw`^[ \t]*(?:[-*+][ \t]+)?(?:(?:${TAG}[ \t]*)+|${LABEL}:[ \t]*(?:${REFERENCE}[ \t,]*)+|${LABEL}::[ \t].*)$`,
+  'gmu',
+)
 
 /** Is the tree node `name`, whose source is `text`, preview noise as a whole? */
 export function isPreviewNoiseNode(name: string, text: string): boolean {
-  if (NOISE_BLOCKS.has(name)) {
+  if (NOISE_NODES.has(name)) {
     return true
   }
   return name === 'InlineCode' && DATAVIEW_INLINE.test(text)
@@ -41,9 +74,9 @@ export function isPreviewNoiseNode(name: string, text: string): boolean {
 
 /**
  * Body spans of the noise the markdown tree has no node for: Templater tags,
- * Obsidian `%%` comments, and callout `[!type]` markers (the callout's title
- * and body stay; they are the note's words). `codeRanges` are blanked before
- * the scan, so a `%%` line inside a Mermaid fence can't pair with a later one
+ * Obsidian `%%` comments, footnotes, property lines, and callout `[!type]`
+ * markers (the callout's title and body stay; they are the note's words).
+ * `codeRanges` are blanked before the scan, so a `%%` line inside a Mermaid fence can't pair with a later one
  * and swallow the prose between them.
  */
 export function previewNoiseSpans(body: string, codeRanges: readonly Span[]): Span[] {
@@ -59,7 +92,7 @@ export function previewNoiseSpans(body: string, codeRanges: readonly Span[]): Sp
   }
   scanned += body.slice(cursor)
   const spans: Span[] = []
-  for (const pattern of [TEMPLATER_TAG, OBSIDIAN_COMMENT]) {
+  for (const pattern of [TEMPLATER_TAG, OBSIDIAN_COMMENT, FOOTNOTE, PROPERTY_LINE]) {
     for (const match of scanned.matchAll(pattern)) {
       spans.push({ from: match.index, to: match.index + match[0].length })
     }

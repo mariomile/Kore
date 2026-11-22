@@ -303,9 +303,11 @@ export interface ParsedNote {
   /** Plain-text rendering of the body for FTS (Plan 08) + AI context (Plan 10). */
   text: string
   /**
-   * {@link text} minus what a reader never sees as prose: code and math blocks,
-   * HTML blocks and comments, Obsidian `%%` comments, Templater tags, inline
-   * Dataview queries, callout `[!type]` markers. Feeds the list-row preview only.
+   * {@link text} minus everything that is not the note's own prose: headings,
+   * tables, property lines (`Type: #meeting`), embeds, footnotes, code and math
+   * blocks, HTML, Obsidian `%%` comments, Templater tags, inline Dataview
+   * queries, callout `[!type]` markers. Empty when the note has no prose.
+   * Feeds the list-row preview only.
    */
   previewText: string
 }

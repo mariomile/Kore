@@ -12,7 +12,7 @@ import { parseBody } from './grammar'
 import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
-import { buildPlainText, plainTextOfRange, unescapeMarkdownText } from './plain-text'
+import { buildPlainText, plainTextOfRange, unescapeMarkdownText, type Cut } from './plain-text'
 import { isPreviewNoiseNode, previewNoiseSpans } from './preview-noise'
 import { taskListBullet } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
@@ -63,7 +63,7 @@ export function isTagName(value: string): boolean {
  */
 function plainTextWithEmbeds(
   body: string,
-  cuts: Span[],
+  cuts: readonly Cut[],
   literalRanges: Span[],
   embeds: readonly (Span & { text: string })[],
 ): string {
@@ -87,6 +87,15 @@ function plainTextWithEmbeds(
 /** Names whose source range is markup to drop from plain text. */
 function isSyntaxNode(name: string): boolean {
   return name.endsWith('Mark') || name === 'URL' || name === 'CodeInfo' || name === 'TaskMarker'
+}
+
+/**
+ * Syntax that separates words instead of wrapping them: a `---` rule, and a
+ * table's pipes and `| --- |` row. Dropped like any syntax, but as a
+ * {@link Cut} `gap`, so neighbouring cells stay apart.
+ */
+function isSeparatorSyntaxNode(name: string): boolean {
+  return name === 'HorizontalRule' || name === 'TableDelimiter'
 }
 
 /** Names whose range should not yield tags (code keeps `#` literal; URLs have `#frag`). */
@@ -201,7 +210,7 @@ function readTask(
   body: string,
   taskNode: SyntaxNode,
   bodyOffset: number,
-  cuts: Span[],
+  cuts: readonly Cut[],
   literalRanges: Span[],
   wikiLinks: WikiLink[],
   tagExcluded: Span[],
@@ -435,7 +444,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const links: MarkdownLink[] = []
   const headings: Heading[] = []
   const assets: AssetRef[] = []
-  const cuts: Span[] = [] // body coords — syntax to drop from plain text
+  const cuts: Cut[] = [] // body coords — syntax to drop from plain text
   const tagExcluded: Span[] = [] // body coords — regions that don't yield tags
   const literalPlainText: Span[] = [] // body coords — regions that render backslashes literally
   const previewCuts: Span[] = [] // body coords — noise the list-row preview also drops
@@ -448,6 +457,8 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
 
       if (isSyntaxNode(name)) {
         cuts.push({ from, to })
+      } else if (isSeparatorSyntaxNode(name)) {
+        cuts.push({ from, to, gap: true })
       }
       if (name === 'Task') {
         // Resolve after the walk: the child `TaskMarker`/emphasis cuts this task
@@ -499,6 +510,8 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
 
       const headingLevel = headingLevelOf(node)
       if (headingLevel !== null) {
+        // A heading labels a section; the preview shows the prose under it.
+        previewCuts.push({ from, to })
         const text = cleanHeadingText(body.slice(from, to))
         // `isTop` is the `Document` node: a heading anywhere else is nested in a
         // blockquote or list item, so it never opens or ends a real section.

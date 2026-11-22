@@ -1,5 +1,11 @@
 # Kore working state
 
+## X post card byline and drag polish, 2026-11-22 (0.140.0)
+
+- [x] Shared X post cards show the author's picture (saved in the vault),
+  name, handle and date; a selected card is clearly highlighted (#622).
+- [x] The iOS text magnifier no longer appears while dragging a block (#630).
+
 ## Drag blocks on iPhone, 2026-11-22 (0.139.0)
 
 - [x] Hold a block and drag it to another place in the note; neighbours part

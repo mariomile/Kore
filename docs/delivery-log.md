@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Share: X post card with author picture, handle and date (#622).
+- iPhone: no magnifier while dragging a block (#630).
 - iPhone: hold and drag blocks to reorder, Move up / Move down for every
   block (#623).
 - iPhone: web links open in Safari (#626).

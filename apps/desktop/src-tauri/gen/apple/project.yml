@@ -129,11 +129,12 @@ targets:
             UIApplicationShortcutItemTitle: Record audio
             UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeAudio
         CFBundleDisplayName: $(KORE_DISPLAY_NAME)
-        # No UIScene manifest. Shipped builds use the Xcode 26 SDK (macos-26
-        # runner, iPhoneOS 26.5), which does not require one, and the scene
-        # lifecycle it switched tao onto (0.120/0.121) crashed the TestFlight
-        # build on launch on a real iPhone. Revisit when CI moves to the iOS
-        # 27 SDK, verified on a device first.
+        # No UIScene manifest here: the "Adopt the scene lifecycle on the
+        # iOS 27 SDK" build phase below adds it per build, only when the SDK
+        # requires it. Shipped builds use the Xcode 26 SDK (macos-26 runner,
+        # iPhoneOS 26.5) and keep the app-delegate launch path, because the
+        # scene lifecycle (0.120/0.121) crashed the TestFlight build on
+        # launch on a real iPhone.
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
         UISupportedInterfaceOrientations:
@@ -225,6 +226,22 @@ targets:
         outputFiles:
           - $(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a
           - $(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a
+    postBuildScripts:
+      # An app built with the iOS 27 SDK is killed on launch unless it adopts
+      # the UIScene lifecycle (UIKit traps in
+      # _UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption), which
+      # is what local `tauri ios dev` builds on Xcode 27 hit. tao takes its
+      # scene path (TaoSceneDelegate, first window attached to the main scene)
+      # only when the manifest enables multiple scenes; on iPhone the system
+      # still runs a single scene. Info.plist has no per-SDK conditionals, so
+      # the script edits the built plist, after Xcode writes it (hence the
+      # input file) and before code signing. Builds on an older SDK are left
+      # byte for byte as they were.
+      - script: '"${SRCROOT:?}/../../xcode-scripts/adopt-scene-lifecycle.sh"'
+        name: Adopt the scene lifecycle on the iOS 27 SDK
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
   # The share-sheet capture extension: saves links/text shared from any app
   # into the App Group inbox (`group.app.kore`), entirely offline; the main
   # app relays + drains on next launch/foreground (Plan 11's envelope model).

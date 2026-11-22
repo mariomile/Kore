@@ -524,6 +524,7 @@
 				85955AB12D745102D2B8C7AD /* Resources */,
 				EA5FF361D672FCDD65A1742F /* Frameworks */,
 				BD3D981F03353195982EBCE6 /* Embed Foundation Extensions */,
+				5EA208603F2D647E3D220953 /* Adopt the scene lifecycle on the iOS 27 SDK */,
 			);
 			buildRules = (
 			);
@@ -606,6 +607,26 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		5EA208603F2D647E3D220953 /* Adopt the scene lifecycle on the iOS 27 SDK */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Adopt the scene lifecycle on the iOS 27 SDK";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT:?}/../../xcode-scripts/adopt-scene-lifecycle.sh\"";
+		};
 		823BEF2AC9236315045FA6B8 /* Preserve entitlements on skip-codesign builds */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

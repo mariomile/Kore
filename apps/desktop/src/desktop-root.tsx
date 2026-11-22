@@ -1,3 +1,4 @@
+import { MoveToFolderDialog } from '@/components/notes/move-to-folder-dialog'
 import { useEffect, type ReactElement } from 'react'
 import { subscribeNoteMoved } from '@kore/core'
 import { App } from '@/app'
@@ -82,6 +83,7 @@ function DesktopAppRoot(): ReactElement {
           <SidebarWidthEffect />
           <WindowDragRegion />
           <App />
+          <MoveToFolderDialog />
           <Toaster />
         </TooltipProvider>
       </GraphProvider>

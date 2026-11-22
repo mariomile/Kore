@@ -118,6 +118,8 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     }
   }
 
+  // PROTOTYPE: screenshot hook
+  ;(globalThis as Record<string, unknown>).__koreNavigate = (route: Route) => navigate(route)
   function navigate(route: Route, options?: NavigateOptions): void {
     revision += 1
     const target = normalizeRoute(route)

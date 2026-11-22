@@ -2,6 +2,7 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 import { isDaily } from '@kore/core'
 import {
   ExternalLink,
+  FolderMove,
   FolderOpen,
   Link,
   Lock,
@@ -19,6 +20,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { openMoveToFolder } from '@/lib/folders/move-to-folder-store'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { formatBindingLabel } from '@/lib/keybindings'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -156,6 +158,13 @@ export function NoteContextMenuItems({ path }: { path: string }): ReactElement {
           {isPrivate ? 'Unlock note' : 'Lock note'}
           <Hint command="note.togglePrivate" />
         </ContextMenuItem>
+
+        {isDaily(path) ? null : (
+          <ContextMenuItem onClick={() => openMoveToFolder(path)}>
+            <FolderMove aria-hidden />
+            Move to folder…
+          </ContextMenuItem>
+        )}
 
         <ContextMenuSeparator />
 

@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
-import { Hash, Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
-import { errorMessage, isTemplatePath } from '@kore/core'
+import { FolderMove, Hash, Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
+import { errorMessage, isDaily, isTemplatePath } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { useNoteRowState } from '@/hooks/use-note-row'
@@ -8,6 +8,7 @@ import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { useBridgedNoteToggle } from '@/lib/notes/use-bridged-note-toggle'
+import { MoveToFolderDrawer } from '@/mobile/move-to-folder-drawer'
 import { NoteDeleteDialog } from '@/mobile/note-delete-dialog'
 import { shareNote } from '@/mobile/share'
 import { useGraph } from '@/providers/graph-provider'
@@ -41,6 +42,7 @@ export function NoteActionsMenu({
   const { row: noteRow, settled: privacyReady } = useNoteRowState(path)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [moving, setMoving] = useState(false)
   const {
     isActive: isPrivate,
     isToggling: isTogglingPrivate,
@@ -94,6 +96,20 @@ export function NoteActionsMenu({
                 Add tag
               </Button>
             ) : null}
+            {isDaily(path) ? null : (
+              <Button
+                variant="ghost"
+                size="lg"
+                className="h-12 justify-start gap-3 text-base"
+                onClick={() => {
+                  setActionsOpen(false)
+                  setMoving(true)
+                }}
+              >
+                <FolderMove />
+                Move to…
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="lg"
@@ -147,6 +163,7 @@ export function NoteActionsMenu({
         </DrawerContent>
       </Drawer>
 
+      <MoveToFolderDrawer path={path} open={moving} onOpenChange={setMoving} />
       <NoteDeleteDialog
         path={path}
         open={confirmingDelete}

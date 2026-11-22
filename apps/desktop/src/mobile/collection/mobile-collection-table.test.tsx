@@ -245,5 +245,24 @@ describe('MobileCollectionTable', () => {
     expect(statusHeader.closest('.mobile-table-pan-track')).toBeNull()
     expect(statusHeader.className).toContain('mobile-table-frozen-edge')
     expect(dueHeader.closest('.mobile-table-pan-track')).not.toBeNull()
+    await frozen.unmount()
+
+    // Freezing more columns than fit on a 390px phone steps down so remaining columns stay reachable.
+    const NOTES: TagProperty = { name: 'Notes', key: 'notes', type: 'text' }
+    const overflow = await render(
+      <div style={{ width: 390, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={ENTRIES}
+          type={{ properties: [STATUS, DUE, NOTES] }}
+          frozenColumns={3}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await vi.waitFor(() => {
+      const overflowDue = overflow.getByRole('columnheader', { name: 'Due' }).element()
+      expect(overflowDue.closest('.mobile-table-pan-track')).not.toBeNull()
+    })
   })
 })

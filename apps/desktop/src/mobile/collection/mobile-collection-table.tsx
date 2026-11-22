@@ -51,6 +51,8 @@ const VELOCITY_WINDOW_MS = 30
 const VELOCITY_STALE_MS = 4 * VELOCITY_WINDOW_MS
 /** Minimum release speed (px/ms) to coast after finger lift. */
 const MIN_INERTIA_VELOCITY = 0.15
+/** Minimum horizontal viewport (px) kept open for scrollable columns when freezing on narrow screens. */
+const MIN_PAN_VIEWPORT_WIDTH = 72
 
 type PanGesture =
   | {
@@ -133,6 +135,7 @@ export function MobileCollectionTable({
   const openRelation = useOpenRelation()
   const reducedMotion = usePrefersReducedMotion()
   const [editingCell, setEditingCell] = useState<MobileCellTarget | null>(null)
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null)
   const {
     frozenCount,
     frozenPropCount,
@@ -145,13 +148,28 @@ export function MobileCollectionTable({
     panTrackWidth,
   } = useMemo(() => {
     const widths = type.properties.map(mobileColumnWidth)
-    const count = Math.min(Math.max(0, frozenColumns), 1 + type.properties.length)
+    const baseWidth = NUMBER_WIDTH + TITLE_WIDTH
+    let count = Math.min(Math.max(0, frozenColumns), 1 + type.properties.length)
+    // On narrow phones, step down the effective frozen prefix whenever it would
+    // overflow the viewport or trap remaining columns in an unreachable track.
+    if (viewportWidth !== null && viewportWidth > 0) {
+      while (count > 0) {
+        const candidatePropWidths = widths.slice(0, count - 1)
+        const candidateFrozenWidth =
+          baseWidth + candidatePropWidths.reduce((sum, width) => sum + width, 0)
+        const hasMoreColumns = count < 1 + type.properties.length
+        const maxAllowed = hasMoreColumns ? viewportWidth - MIN_PAN_VIEWPORT_WIDTH : viewportWidth
+        if (candidateFrozenWidth <= maxAllowed) {
+          break
+        }
+        count -= 1
+      }
+    }
     const propCount = Math.max(0, count - 1)
     const leftProps = type.properties.slice(0, propCount)
     const rightProps = type.properties.slice(propCount)
     const leftWidths = widths.slice(0, propCount)
     const rightWidths = widths.slice(propCount)
-    const baseWidth = NUMBER_WIDTH + TITLE_WIDTH
     const pinnedWidth =
       count === 0 ? 0 : baseWidth + leftWidths.reduce((sum, width) => sum + width, 0)
     const rightWidth = rightWidths.reduce((sum, width) => sum + width, 0)
@@ -166,7 +184,7 @@ export function MobileCollectionTable({
       frozenWidth: pinnedWidth,
       panTrackWidth: count === 0 ? baseWidth + rightWidth : rightWidth,
     }
-  }, [type.properties, frozenColumns])
+  }, [type.properties, frozenColumns, viewportWidth])
   const aggregates = useMemo(
     () => (embedded ? [] : type.properties.map((property) => columnAggregate(property, entries))),
     [embedded, type.properties, entries],
@@ -210,17 +228,24 @@ export function MobileCollectionTable({
     [maxScrollX],
   )
 
-  // Re-clamp horizontal offset whenever the container or column set resizes.
+  // Track container width so over-wide frozen prefixes step down gracefully,
+  // and re-clamp horizontal offset whenever the container or column set resizes.
   useEffect(() => {
     const element = scrollRef.current
     if (element === null) {
       return
     }
+    const syncWidth = (): void => {
+      const nextWidth = element.clientWidth
+      setViewportWidth((current) => (current === nextWidth ? current : nextWidth))
+    }
+    syncWidth()
     applyScrollX(scrollXRef.current)
     if (typeof ResizeObserver === 'undefined') {
       return
     }
     const observer = new ResizeObserver(() => {
+      syncWidth()
       applyScrollX(scrollXRef.current)
     })
     observer.observe(element)
@@ -705,7 +730,13 @@ export function MobileCollectionTable({
               {renderItem}
             </Virtualizer>
           )}
-          {onCreate === undefined ? null : <NewRow width={baseLeftWidth} onCreate={onCreate} />}
+          {onCreate === undefined ? null : (
+            <NewRow
+              width={frozenWidth > 0 ? frozenWidth : baseLeftWidth}
+              frozenEdge={frozenCount > 0}
+              onCreate={onCreate}
+            />
+          )}
           {!embedded && entries.length > 0 ? (
             <div
               role="row"
@@ -875,9 +906,11 @@ function HeaderCell({
  */
 function NewRow({
   width,
+  frozenEdge,
   onCreate,
 }: {
   width: number
+  frozenEdge: boolean
   onCreate: (title: string) => Promise<void>
 }): ReactElement {
   const [editing, setEditing] = useState(false)
@@ -925,7 +958,13 @@ function NewRow({
       )}
       style={{ height: MOBILE_TABLE_ROW_HEIGHT }}
     >
-      <div className="flex h-full items-center bg-background" style={{ width, minWidth: width }}>
+      <div
+        className={cn(
+          'flex h-full items-center bg-background',
+          frozenEdge && 'mobile-table-frozen-edge z-10 border-r border-border-strong/70',
+        )}
+        style={{ width, minWidth: width }}
+      >
         {editing ? (
           <>
             <span

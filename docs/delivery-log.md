@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Notes: previews show only prose, never Markdown syntax (#619).
 - Tags: tagging an inbox note moves it into the tag's default folder (#615).
 - Editor: dates in notes show as weekday chips, Mac and iPhone (#600).
 - iOS: scene lifecycle on iOS 27 SDK builds, dev-only (#616).

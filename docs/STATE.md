@@ -1,5 +1,11 @@
 # Kore working state
 
+## Clean note previews, 2026-11-22 (0.138.1)
+
+- [x] Note cards, list rows and search snippets show only prose, never raw
+  Markdown (rules, table pipes, headings, property lines); PROJECTION_VERSION
+  39 rebuilds the index once (#619).
+
 ## Tagged inbox notes file themselves, 2026-11-22 (0.138.0)
 
 - [x] A titled note directly in the new-note (inbox) folder moves into a tag's

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { isTemplatePath, isUntitledNotePath, weekFromWeeklyPath, weeklyNoteTitle } from '@kore/core'
-import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { NoteTagPickerDrawer } from '@/components/notes/note-type-picker'
@@ -164,7 +163,6 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink opens the Daily surface at
             that date rather than pushing another note screen. */}
-        <NoteChildrenPanel key={path} path={path} className={MOBILE_CONTENT_GUTTER} />
         <IncomingBacklinks path={path} className={cn(MOBILE_CONTENT_GUTTER, 'pb-4')} />
       </main>
       {/* The Mac's outline, sized for the phone's margin: a tap opens the

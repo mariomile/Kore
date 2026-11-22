@@ -26,25 +26,11 @@ import {
   useCollectionViewSettings,
 } from '@/components/all-notes/use-collection-view-settings'
 import { LIVE_COLLECTION_VIEW_ID } from '@/components/all-notes/collection-view-model'
-import {
-  BoardView,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  LayoutGrid,
-  Search,
-  Settings,
-  Sliders,
-  TableView,
-  TimelineView,
-  type Icon,
-} from '@/components/icons'
+import { ChevronDown, ChevronLeft, Search, Settings, Sliders } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { timelineFieldsOf } from '@/lib/tags/timeline-layout'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useCollection } from '@/hooks/use-collection'
@@ -56,7 +42,6 @@ import { MobileBoard } from '@/mobile/collection/mobile-board'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { SearchInput } from '@/mobile/search-input'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
-import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -65,32 +50,11 @@ import { MobileTimeline } from './mobile-timeline'
 import { MobileCollectionTable } from './mobile-collection-table'
 import { MobileGallery } from './mobile-gallery'
 import { MobileViewOptions, type ViewGrouping } from './mobile-view-options'
-import {
-  availableTypeViews,
-  mobileTypeView,
-  rowsMatchingTitle,
-  storedTypeView,
-  type MobileTypeView,
-} from './mobile-type-view'
+import { MOBILE_VIEW_GLYPH, MOBILE_VIEW_LABEL, MobileViewsSheet } from './mobile-views-sheet'
+import { availableTypeViews, mobileTypeView, rowsMatchingTitle } from './mobile-type-view'
 
 /** Stable empty list for a type whose definition stores no views. */
 const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
-
-const VIEW_GLYPH: Record<MobileTypeView, Icon> = {
-  table: TableView,
-  board: BoardView,
-  calendar: Calendar,
-  timeline: TimelineView,
-  gallery: LayoutGrid,
-}
-
-const VIEW_LABEL: Record<MobileTypeView, string> = {
-  table: 'Table',
-  board: 'Board',
-  calendar: 'Calendar',
-  timeline: 'Timeline',
-  gallery: 'Grid',
-}
 
 interface MobileTypePageProps {
   /** The routed tag (display casing). */
@@ -128,7 +92,9 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
     tableGroupProperties,
     setTableGroup,
     hiddenColumns,
+    frozenColumns,
     toggleColumnHidden,
+    setFrozenColumns,
     visibleTagType,
   } = useCollectionViewSettings(tagKey, tagType ?? null)
   const collection = useCollection(tag, collectionSorts)
@@ -136,27 +102,35 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
   // sheet edits them and the saved-views hook writes them back.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
   const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
-  const { tabs, activeViewId, applySavedView, addView, updateActiveTimeline } =
-    useCollectionSavedViews({
-      tagKey,
-      typeViews:
-        loadedTagType === undefined || loadedTagType === null
-          ? loadedTagType
-          : (loadedTagType.views ?? NO_TYPE_VIEWS),
-      view: storedView,
-      collectionSorts,
-      boardGroupProperty,
-      tableGroupProperty,
-      calendarAvailable,
-      collectionFilters,
-      filterMatch,
-      setViewMode,
-      setCollectionSorts,
-      setCollectionGroup,
-      setTableGroup,
-      setCollectionFilters,
-      setFilterMatch,
-    })
+  const {
+    tabs,
+    activeViewId,
+    applySavedView,
+    addView,
+    deleteSavedView,
+    renameSavedView,
+    setSavedViewLayout,
+    updateActiveTimeline,
+  } = useCollectionSavedViews({
+    tagKey,
+    typeViews:
+      loadedTagType === undefined || loadedTagType === null
+        ? loadedTagType
+        : (loadedTagType.views ?? NO_TYPE_VIEWS),
+    view: storedView,
+    collectionSorts,
+    boardGroupProperty,
+    tableGroupProperty,
+    calendarAvailable,
+    collectionFilters,
+    filterMatch,
+    setViewMode,
+    setCollectionSorts,
+    setCollectionGroup,
+    setTableGroup,
+    setCollectionFilters,
+    setFilterMatch,
+  })
   const activeTab = tabs.find((entry) => entry.id === activeViewId) ?? tabs[0]
   // The timeline's fields and zoom ride on its saved tab, as on the Mac.
   const [liveTimelineZoom, setLiveTimelineZoom] = useState<TimelineZoom>('month')
@@ -192,10 +166,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
 
   const view = mobileTypeView(storedView)
   const layouts = availableTypeViews({ boardAvailable, calendarAvailable })
-  const setView = (next: MobileTypeView): void => {
-    hapticImpactLight()
-    setViewMode(storedTypeView(next))
-  }
+  const ActiveViewGlyph = MOBILE_VIEW_GLYPH[view]
 
   const [choosingView, setChoosingView] = useState(false)
   const [adjustingView, setAdjustingView] = useState(false)
@@ -337,14 +308,19 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
         <div className="flex items-center gap-2 pt-2">
           <button
             type="button"
-            onClick={() => setChoosingView(true)}
-            aria-label={`View: ${activeTab?.name ?? VIEW_LABEL[view]}`}
+            onClick={() => {
+              hapticImpactLight()
+              setChoosingView(true)
+            }}
+            aria-label={`View: ${activeTab?.name ?? MOBILE_VIEW_LABEL[view]}`}
             aria-haspopup="dialog"
-            className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] bg-surface-hover pr-2.5 pl-3.5 text-[14px] font-medium text-text active:bg-surface-active"
+            className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full bg-surface-hover pr-2.5 pl-3 text-[14px] font-medium text-text before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] active:bg-surface-active"
           >
-            <span className="truncate">{activeTab?.name ?? VIEW_LABEL[view]}</span>
+            <ActiveViewGlyph aria-hidden className="size-4 shrink-0 text-text-muted" />
+            <span className="truncate">{activeTab?.name ?? MOBILE_VIEW_LABEL[view]}</span>
             <ChevronDown aria-hidden className="size-3.5 shrink-0 text-text-muted" />
           </button>
+          <div className="flex-1" />
           <button
             type="button"
             onClick={() => {
@@ -372,8 +348,6 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
               </span>
             ) : null}
           </button>
-          <div className="flex-1" />
-          <TypeViewToggle view={view} layouts={layouts} onChange={setView} />
         </div>
       </header>
 
@@ -426,71 +400,30 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           groupProperty={tableGroupProperty}
           sorts={collectionSorts}
           onSortChange={setCollectionSorts}
+          frozenColumns={frozenColumns}
           label={name}
           onOpen={open}
           onCreate={createRow}
         />
       )}
 
-      <Drawer open={choosingView} onOpenChange={setChoosingView}>
-        <DrawerContent>
-          <DrawerTitle>Views</DrawerTitle>
-          <DrawerBody className="px-4 pb-2">
-            <div role="listbox" aria-label="Saved views" className="flex flex-col">
-              {tabs.map((entry) => {
-                const Glyph = VIEW_GLYPH[mobileTypeView(entry.view)]
-                const selected = entry.id === activeTab?.id
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      hapticImpactLight()
-                      applySavedView(entry)
-                      setChoosingView(false)
-                    }}
-                    className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
-                  >
-                    <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
-                    <span className={cn('min-w-0 flex-1 truncate', selected && 'font-medium')}>
-                      {entry.name}
-                    </span>
-                    {selected ? <Check aria-hidden className="size-4 text-primary" /> : null}
-                  </button>
-                )
-              })}
-            </div>
-            <p className="px-2 pt-4 pb-1 text-[13px] text-text-muted">New view</p>
-            <div className="flex flex-col">
-              {layouts.map((entry) => {
-                const Glyph = VIEW_GLYPH[entry]
-                return (
-                  <button
-                    key={entry}
-                    type="button"
-                    onClick={() => {
-                      hapticImpactLight()
-                      addView(storedTypeView(entry))
-                      setChoosingView(false)
-                    }}
-                    className="flex h-12 items-center gap-3 rounded-xl px-2 text-left text-base active:bg-surface-hover"
-                  >
-                    <Glyph aria-hidden className="size-[18px] shrink-0 text-text-muted" />
-                    <span className="min-w-0 flex-1 truncate">{VIEW_LABEL[entry]}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+      <MobileViewsSheet
+        open={choosingView}
+        onOpenChange={setChoosingView}
+        tabs={tabs}
+        activeTabId={activeTab?.id}
+        layouts={layouts}
+        onSelect={applySavedView}
+        onAdd={addView}
+        onRename={renameSavedView}
+        onChangeLayout={setSavedViewLayout}
+        onDelete={deleteSavedView}
+      />
       {tagType !== undefined ? (
         <MobileViewOptions
           open={adjustingView}
           onOpenChange={setAdjustingView}
-          viewName={activeTab?.name ?? VIEW_LABEL[view]}
+          viewName={activeTab?.name ?? MOBILE_VIEW_LABEL[view]}
           layout={view}
           type={tagType}
           entries={collection}
@@ -503,6 +436,8 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           grouping={grouping}
           hiddenFields={hiddenColumns}
           onToggleField={toggleColumnHidden}
+          frozenColumns={frozenColumns}
+          onFrozenColumnsChange={setFrozenColumns}
         />
       ) : null}
       {configuring ? (
@@ -525,56 +460,6 @@ function EmptyRows({ searching, name }: { searching: boolean; name: string }): R
       style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
     >
       <p className="text-sm">{searching ? 'No matches' : `No ${name} notes yet`}</p>
-    </div>
-  )
-}
-
-interface TypeViewToggleProps {
-  view: MobileTypeView
-  /** The layouts this type can show. */
-  layouts: readonly MobileTypeView[]
-  onChange: (view: MobileTypeView) => void
-}
-
-/** Table / Board / Calendar / Grid: the page's layout, one tap each. */
-function TypeViewToggle({ view, layouts, onChange }: TypeViewToggleProps): ReactElement {
-  const controlRef = useRef<HTMLDivElement | null>(null)
-  const indicatorRef = useRef<HTMLSpanElement | null>(null)
-  useSlidingIndicator(controlRef, indicatorRef, view)
-  return (
-    <div
-      ref={controlRef}
-      role="group"
-      aria-label="Layout"
-      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
-    >
-      <span
-        ref={indicatorRef}
-        data-sliding-indicator
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
-      />
-      {layouts.map((entry) => {
-        const Glyph = VIEW_GLYPH[entry]
-        return (
-          <button
-            key={entry}
-            type="button"
-            data-sliding-value={entry}
-            aria-label={`${VIEW_LABEL[entry]} view`}
-            aria-pressed={view === entry}
-            onClick={() => onChange(entry)}
-            className={cn(
-              "relative z-20 flex h-9 items-center before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
-              // Five layouts (a dated type) still leave the view's name room.
-              layouts.length > 4 ? 'w-9' : 'w-11',
-              view === entry ? 'text-text' : 'text-text-muted',
-            )}
-          >
-            <Glyph aria-hidden className="size-[18px]" />
-          </button>
-        )
-      })}
     </div>
   )
 }

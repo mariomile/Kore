@@ -1,8 +1,9 @@
 import { useState, type ReactElement } from 'react'
 import { tagDisplayName, type NoteTagEntry } from '@kore/core'
-import { Close, Plus } from '@/components/icons'
+import { Close, Hash, Plus } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { TagIcon } from '@/components/tags/tag-icon'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { useRemoveNoteTag } from '@/lib/tags/use-remove-note-tag'
 import { cn } from '@/lib/utils'
@@ -42,13 +43,24 @@ export function NoteTypeField({
   const removeTag = useRemoveNoteTag()
   const carried = tags.map((entry) => entry.tagKey)
   const [configuring, setConfiguring] = useState<string | null>(null)
+  const mobile = isMobileSurface()
 
   return (
-    <li className="flex min-h-7 items-center gap-2">
-      <span className={cn('shrink-0 truncate text-[13px] text-text-muted', labelClassName)}>
-        Tags
+    <li className={cn('flex items-center gap-2', mobile ? 'min-h-10' : 'min-h-8')}>
+      <span
+        className={cn(
+          'flex shrink-0 items-center gap-2 truncate px-1.5 text-text-secondary',
+          mobile ? 'text-[14px]' : 'text-[13px]',
+          labelClassName,
+        )}
+      >
+        <Hash
+          aria-hidden
+          className={cn('shrink-0 text-text-muted', mobile ? 'size-4' : 'size-3.5')}
+        />
+        <span className="truncate">Tags</span>
       </span>
-      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 px-1.5 py-0.5">
         {tags.map((entry) => (
           <li key={entry.tagKey}>
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">

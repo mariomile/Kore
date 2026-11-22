@@ -106,6 +106,7 @@ export function MobileCollectionEmbed({
 }: MobileCollectionEmbedProps): ReactElement {
   const [adjusting, setAdjusting] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [frozenColumns, setFrozenColumns] = useState(0)
   const hidden = useMemo(() => new Set(embed.hidden ?? []), [embed.hidden])
   const visibleType = useMemo(
     () => ({ properties: type.properties.filter((property) => !hidden.has(property.key)) }),
@@ -248,6 +249,7 @@ export function MobileCollectionEmbed({
                 ? undefined
                 : (sorts) => onChange({ ...embed, sorts: [...sorts] })
             }
+            frozenColumns={frozenColumns}
             label={title}
             onOpen={onOpen}
             onCreate={more > 0 ? undefined : onCreate}
@@ -297,6 +299,8 @@ export function MobileCollectionEmbed({
             const { hidden: _drop, ...rest } = embed
             onChange(next.length === 0 ? rest : { ...rest, hidden: next })
           }}
+          frozenColumns={frozenColumns}
+          onFrozenColumnsChange={setFrozenColumns}
         />
       ) : null}
     </section>

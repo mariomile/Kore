@@ -200,15 +200,72 @@ export type TextCaptureEnvelope = z.infer<typeof textCaptureEnvelopeSchema>
 export type TextCaptureKind = z.infer<typeof textCaptureKindSchema>
 export type TextCaptureSource = z.infer<typeof textCaptureSourceSchema>
 
+/** Cap on the files one share can carry (the iOS share sheet's activation rule matches). */
+export const FILE_CAPTURE_MAX_FILES = 10
+
 /**
- * Anything the capture inbox can legally hold: a link capture from the
- * browser extension, or a text capture. Dispatch is by **shape** — the
- * `kind` discriminator text envelopes carry and link envelopes lack (they
- * predate it on the wire) — never by `source`, which names provenance and
- * widens independently of shape. Text envelopes parse first so `kind` is
- * honored before the link shape gets a say.
+ * A spooled file's name: the envelope id, its position, its extension
+ * (`<id>.<n>.<ext>`). Keyed by the id so the relay and the orphan sweep can
+ * pair every file with its envelope, and plain so it can never escape the
+ * inbox.
  */
-export const inboxEnvelopeSchema = z.union([textCaptureEnvelopeSchema, captureEnvelopeSchema])
+const FILE_REF_RE = /^[0-9a-f-]{36}\.\d{1,2}\.[a-z0-9]{1,8}$/
+
+/**
+ * Files shared through the iOS share sheet (photos, PDFs). The extension
+ * copies each file into the App Group inbox beside this envelope, as
+ * `files[].ref`; the drain moves them into the vault's attachment folder and
+ * writes them where `destination` says: an image as `![](…)`, anything else
+ * as a `[name](…)` file link, then the user's note.
+ */
+export const fileCaptureEnvelopeSchema = z
+  .object({
+    /** Envelope format version; bump on breaking changes. */
+    version: z.literal(1),
+    /** Producer-generated UUID — names the spool files (same rule as link captures). */
+    id: z.guid(),
+    /** Discriminates from text envelopes (`append`…) and link envelopes (no `kind`). */
+    kind: z.literal('file'),
+    files: z
+      .array(
+        z.object({
+          /** The spooled copy's filename in the inbox. */
+          ref: z.string().regex(FILE_REF_RE, 'must be <id>.<n>.<ext>'),
+          /** The file's own name as shared, the attachment's name in the vault. */
+          name: z.string().trim().min(1).max(255),
+        }),
+      )
+      .min(1)
+      .max(FILE_CAPTURE_MAX_FILES),
+    /** The user's own words from the sheet's "Add a thought" field. */
+    note: z.string().max(10_000).optional(),
+    /** When the share happened, ISO-8601 — decides the daily note it lands on. */
+    capturedAt: z.iso.datetime({ offset: true }),
+    /** Only the iOS share sheet shares files today. */
+    source: z.literal('ios-share'),
+    /** Where to write the files; the daily note when absent. */
+    destination: captureDestinationSchema.optional(),
+  })
+  .refine(
+    (envelope) => envelope.files.every((file) => file.ref.startsWith(`${envelope.id}.`)),
+    'every file ref must belong to its envelope',
+  )
+
+export type FileCaptureEnvelope = z.infer<typeof fileCaptureEnvelopeSchema>
+
+/**
+ * Anything the capture inbox can legally hold: a link capture (browser
+ * extension or share sheet), a text capture, or shared files. Dispatch is
+ * by **shape** — the `kind` discriminator text and file envelopes carry and
+ * link envelopes lack (they predate it on the wire) — never by `source`,
+ * which names provenance and widens independently of shape. The `kind`
+ * shapes parse first so `kind` is honored before the link shape gets a say.
+ */
+export const inboxEnvelopeSchema = z.union([
+  textCaptureEnvelopeSchema,
+  fileCaptureEnvelopeSchema,
+  captureEnvelopeSchema,
+])
 
 export type InboxEnvelope = z.infer<typeof inboxEnvelopeSchema>
 

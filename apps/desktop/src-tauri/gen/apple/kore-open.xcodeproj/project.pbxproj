@@ -15,6 +15,7 @@
 		4DA1FFC0E15797521EE39A94 /* StopRecordingLiveActivityIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */; };
 		5693613DE956199D6486EA26 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8D0D6D72E614086946EBF890 /* LaunchScreen.storyboard */; };
 		5C88834F22D37FFC49CBD2F1 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 38829A9D2116D0D324C18C4B /* main.mm */; };
+		09495D4EF91DA0CED09BBEF8 /* SharedFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5551B2C4998374915FB4703 /* SharedFiles.swift */; };
 		6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357D2D54012FD394DF9423E /* CaptureInbox.swift */; };
 		A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
 		A1C4E7F20B3D5E6F7A8B9C03 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
@@ -24,6 +25,7 @@
 		169786C71C03518553671315 /* DailyNoteWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E2D9C16277E38A7EFA5E99 /* DailyNoteWidget.swift */; };
 		B5B843DAF2FE8A112571657A /* DailyWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 545074F28A0613BD8C385ADA /* DailyWidgetSnapshot.swift */; };
 		93F2A1181D6BC7832338EE9C /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93EF89A222208D739ABC00B8 /* ShareView.swift */; };
+		5AFF8619DE77A1D6AD944451 /* ShareFilesPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B39AC9BD5310E20101D92A /* ShareFilesPreview.swift */; };
 		9611839F9E9EC688FCDFCC91 /* RecordingWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */; };
 		961AA49623F0DDC7AB09B777 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39269153EFAD0C2FEFBE6696 /* UIKit.framework */; };
 		99EC4B1E2F71936A7C4EFCE4 /* LinkPresentation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A941ADD800B6F9E26D1C47C /* LinkPresentation.framework */; };
@@ -33,6 +35,7 @@
 		A5285230FABC4D1A6855E685 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3BF10ECC85432AE76A51F4B4 /* EventKit.framework */; };
 		B109D161D258110DC703F97C /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51006DE1482D28D9562253A1 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6B5B091EADAF6EAEC6E2EDA /* ShareState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89342C7501B47DBB934B2D27 /* ShareState.swift */; };
+		09495D4EF91DA0CED09BBEF7 /* SharedFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5551B2C4998374915FB4703 /* SharedFiles.swift */; };
 		BEA09DBDD61413051FFEB9E3 /* CaptureInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357D2D54012FD394DF9423E /* CaptureInbox.swift */; };
 		C1FBC0B57C41A13D88225DFB /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 3ED6411036D50396010D935D /* assets */; };
 		C3F8EB03E386D36B71BF8772 /* RecordingIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80AF8D983D8D0A334637D2FD /* RecordingIntents.swift */; };
@@ -137,11 +140,13 @@
 		80E05926405BFDA2A3BC70BC /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		88ED38A3B3D14839B5066255 /* embed.rs */ = {isa = PBXFileReference; path = embed.rs; sourceTree = "<group>"; };
 		89342C7501B47DBB934B2D27 /* ShareState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareState.swift; sourceTree = "<group>"; };
+		E5551B2C4998374915FB4703 /* SharedFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFiles.swift; sourceTree = "<group>"; };
 		89B314CA06450414E4537033 /* query.rs */ = {isa = PBXFileReference; path = query.rs; sourceTree = "<group>"; };
 		8A676086DFF0C50E4E5C77A5 /* archive.rs */ = {isa = PBXFileReference; path = archive.rs; sourceTree = "<group>"; };
 		8C04E40F02C9B4AE9A24A9A4 /* recents.rs */ = {isa = PBXFileReference; path = recents.rs; sourceTree = "<group>"; };
 		8D0D6D72E614086946EBF890 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		93EF89A222208D739ABC00B8 /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
+		10B39AC9BD5310E20101D92A /* ShareFilesPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareFilesPreview.swift; sourceTree = "<group>"; };
 		A26DB86321DA75DFE1CD4B41 /* RecordingWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingWidgetBundle.swift; sourceTree = "<group>"; };
 		A4F0D18C7B37B593ED8ACD6F /* scan.rs */ = {isa = PBXFileReference; path = scan.rs; sourceTree = "<group>"; };
 		A67279D745DF48458936735A /* storage.rs */ = {isa = PBXFileReference; path = storage.rs; sourceTree = "<group>"; };
@@ -214,7 +219,9 @@
 				536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */,
 				A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */,
 				89342C7501B47DBB934B2D27 /* ShareState.swift */,
+				E5551B2C4998374915FB4703 /* SharedFiles.swift */,
 				93EF89A222208D739ABC00B8 /* ShareView.swift */,
+				10B39AC9BD5310E20101D92A /* ShareFilesPreview.swift */,
 				1A58A746A41B6BF1D50A8547 /* ShareViewController.swift */,
 			);
 			path = ShareExtension;
@@ -668,7 +675,9 @@
 				BEA09DBDD61413051FFEB9E3 /* CaptureInbox.swift in Sources */,
 				A1C4E7F20B3D5E6F7A8B9C03 /* ShareChoices.swift in Sources */,
 				B6B5B091EADAF6EAEC6E2EDA /* ShareState.swift in Sources */,
+				09495D4EF91DA0CED09BBEF7 /* SharedFiles.swift in Sources */,
 				93F2A1181D6BC7832338EE9C /* ShareView.swift in Sources */,
+				5AFF8619DE77A1D6AD944451 /* ShareFilesPreview.swift in Sources */,
 				495C9E97530FC781EB5645D6 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -692,6 +701,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */,
+				09495D4EF91DA0CED09BBEF8 /* SharedFiles.swift in Sources */,
 				A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */,
 				134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */,
 				C3F8EB03E386D36B71BF8772 /* RecordingIntents.swift in Sources */,

@@ -52,7 +52,7 @@ fn read_only_authorization(context: AuthContext<'_>) -> Authorization {
 /// (and their `PRAGMA defer_foreign_keys`) use the writer connection, which
 /// must have created and migrated the file first.
 pub fn open_read_connection(root: &Path) -> StoreResult<Connection> {
-    let conn = kore_index_schema::open_index_read_only_at(root)
+    let mut conn = kore_index_schema::open_index_read_only_at(root)
         .map_err(|err| StoreError::io(err.to_string()))?;
     conn.authorizer(Some(read_only_authorization))?;
     Ok(conn)
@@ -104,7 +104,7 @@ pub fn run_query(
             "db_query only executes read-only statements",
         ));
     }
-    let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
+    let columns: Vec<String> = stmt.column_names().map(str::to_owned).collect();
     let bound: Vec<rusqlite::types::Value> = params.iter().map(json_to_sql).collect();
     let mut rows = stmt.query(params_from_iter(bound))?;
     let mut out = Vec::new();

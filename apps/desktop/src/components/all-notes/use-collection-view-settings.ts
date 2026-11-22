@@ -54,10 +54,13 @@ export interface CollectionViewSettings {
   setTableGroup: (key: string | null) => void
   hiddenColumns: Set<string>
   columnWidths: Record<string, number>
+  /** How many leading columns stay frozen on horizontal scroll (`0` = none). */
+  frozenColumns: number
   /** The tag's schema with hidden columns filtered out (the table renders this). */
   visibleTagType: TagType | null
   setColumnWidth: (key: string, rem: number) => void
   toggleColumnHidden: (key: string) => void
+  setFrozenColumns: (count: number) => void
 }
 
 /**
@@ -183,11 +186,12 @@ export function useCollectionViewSettings(
     },
     [tagKey, updateSettingsWith],
   )
-  // Column layout (hidden keys, manual widths) is a persisted per-tag view
-  // preference like the sort; the table renders the visible subset.
+  // Column layout (hidden keys, manual widths, frozen columns) is a persisted
+  // per-tag view preference like the sort; the table renders the visible subset.
   const columnsSetting = tagKey === null ? undefined : settings.collectionColumns[tagKey]
   const hiddenColumns = useMemo(() => new Set(columnsSetting?.hidden ?? []), [columnsSetting])
   const columnWidths = columnsSetting?.widths ?? EMPTY_WIDTHS
+  const frozenColumns = columnsSetting?.frozen ?? 0
   const visibleTagType = useMemo(
     () =>
       collectionAvailable
@@ -229,6 +233,25 @@ export function useCollectionViewSettings(
     },
     [tagKey, updateSettingsWith],
   )
+  const setFrozenColumns = useCallback(
+    (count: number) => {
+      if (tagKey === null) {
+        return
+      }
+      const nextCount = Math.max(0, Math.floor(count))
+      updateSettingsWith((current) => {
+        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
+        const { frozen: _drop, ...rest } = entry
+        return {
+          collectionColumns: {
+            ...current.collectionColumns,
+            [tagKey]: nextCount === 0 ? rest : { ...rest, frozen: nextCount },
+          },
+        }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
   return {
     boardProperties,
     boardGroupProperty,
@@ -246,9 +269,11 @@ export function useCollectionViewSettings(
     setTableGroup,
     hiddenColumns,
     columnWidths,
+    frozenColumns,
     visibleTagType,
     setColumnWidth,
     toggleColumnHidden,
+    setFrozenColumns,
   }
 }
 
@@ -282,6 +307,10 @@ export interface CollectionSavedViews {
   applySavedView: (saved: SavedCollectionView) => void
   addView: (view: CollectionPageView) => void
   deleteSavedView: (id: string) => void
+  /** Rename a saved view; ignores empty names. */
+  renameSavedView: (id: string, name: string) => void
+  /** Change a saved view's layout (`table`, `board`, …), updating the active view if selected. */
+  setSavedViewLayout: (id: string, view: CollectionPageView) => void
   /** Drops tab `id` into `targetId`'s slot (a drag landing); the selection is untouched. */
   moveSavedView: (id: string, targetId: string) => void
   /** Swaps tab `id` with its neighbour (a keyboard move); a no-op at the edges. */
@@ -482,6 +511,54 @@ export function useCollectionSavedViews(
     [tagKey, savedViews, persistViews, applySavedView],
   )
 
+  const renameSavedView = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim()
+      if (tagKey === null || trimmed === '') {
+        return
+      }
+      const existing = savedViews.find((entry) => entry.id === id)
+      if (existing === undefined || existing.name === trimmed) {
+        return
+      }
+      persistViews(
+        savedViews.map((entry) => (entry.id === id ? { ...entry, name: trimmed } : entry)),
+        resolvedActiveIdRef.current ?? id,
+      )
+    },
+    [tagKey, savedViews, persistViews],
+  )
+
+  const setSavedViewLayout = useCallback(
+    (id: string, nextView: CollectionPageView) => {
+      if (tagKey === null) {
+        return
+      }
+      if (nextView === 'board' && boardGroupProperty === null) {
+        return
+      }
+      if ((nextView === 'calendar' || nextView === 'timeline') && !calendarAvailable) {
+        return
+      }
+      const existing = savedViews.find((entry) => entry.id === id)
+      if (existing === undefined) {
+        setViewMode(nextView)
+        return
+      }
+      const updated: SavedCollectionView = { ...existing, view: nextView }
+      const activeId = resolvedActiveIdRef.current
+      switchingRef.current = true
+      persistViews(
+        savedViews.map((entry) => (entry.id === id ? updated : entry)),
+        activeId ?? id,
+      )
+      if (activeId === id) {
+        setViewMode(nextView)
+      }
+    },
+    [tagKey, boardGroupProperty, calendarAvailable, savedViews, persistViews, setViewMode],
+  )
+
   // Reordering only changes tab positions: ids stay, so the active id is
   // re-persisted as is and the lens on screen never changes.
   const persistReordered = useCallback(
@@ -607,6 +684,8 @@ export function useCollectionSavedViews(
     applySavedView,
     addView,
     deleteSavedView,
+    renameSavedView,
+    setSavedViewLayout,
     moveSavedView,
     shiftSavedView,
     updateActiveTimeline,

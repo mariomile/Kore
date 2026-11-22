@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// The share sheet: a live preview of how the link will land, an optional
-/// thought, **Where** (today, a note, a new note) and **How** (the link looks
-/// the editor offers), then one Save button. Everything is pre-filled from
+/// The share sheet: a live preview of how the link or the files will land,
+/// an optional thought, **Where** (today, a note, a new note) and, for a link,
+/// **How** (the link looks the editor offers), then one Save button. Everything is pre-filled from
 /// the last share, so a repeat share is a single tap. Colors and radii are
 /// Kore's design tokens (`design-system/tokens/colors.css`), mirrored in
 /// `KoreColor` below.
@@ -19,9 +19,9 @@ struct ShareView: View {
                 case .ready:
                     ShareForm()
                 case .saved:
-                    ShareResult(saved: true)
-                case .failed:
-                    ShareResult(saved: false)
+                    ShareResult(saved: true, failure: nil)
+                case let .failed(failure):
+                    ShareResult(saved: false, failure: failure)
                 }
             }
             .background(KoreColor.app.ignoresSafeArea())
@@ -54,12 +54,18 @@ private struct ShareForm: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                LinkPreview(capture: state.capture, look: state.look, kind: state.kind)
+                if state.files.isEmpty {
+                    LinkPreview(capture: state.capture, look: state.look, kind: state.kind)
+                } else {
+                    FilesPreview(files: state.files, leftOut: state.filesLeftOut)
+                }
                 ThoughtField(text: $state.thought)
                     .padding(.top, 10)
-                if let kind = state.kind {
+                if state.hasDestination {
                     SectionLabel("Where")
                     WhereGroup()
+                }
+                if let kind = state.kind {
                     SectionLabel("How")
                     LookPicker(kind: kind, selection: $state.look)
                 }
@@ -109,7 +115,7 @@ private struct LinkPreview: View {
                     .lineLimit(6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-            case nil:
+            case .files, nil:
                 EmptyView()
             }
         }
@@ -187,12 +193,13 @@ private struct LinkPreview: View {
                     Text(name).font(.subheadline.weight(.semibold)).lineLimit(2).padding(16)
                 }
             }
+        case .text where kind == .post:
+            PostCardPreview(handle: handle ?? host, text: selection ?? description)
         case .text:
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     SiteTile(host: host, size: 18).frame(width: 32, alignment: .leading)
-                    Text(kind == .post ? "@\(handle ?? host) on X" : name)
-                        .font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 }
                 HStack(spacing: 12) {
                     RoundedRectangle(cornerRadius: 1.5).fill(KoreColor.accent).frame(width: 3)
@@ -213,10 +220,42 @@ private struct LinkPreview: View {
             return selection
         }
         switch kind {
-        case .post: return "The post\u{2019}s text is saved when Kore opens."
         case .video: return "The video\u{2019}s transcript is saved when Kore opens."
         default: return description.map { "\($0)\u{2026}" } ?? "The page\u{2019}s text is saved when Kore opens."
         }
+    }
+}
+
+/// The post as its Markdown card lands: a quote with the author linked to
+/// the post, then the words. Drawn like the editor draws a quote.
+private struct PostCardPreview: View {
+    let handle: String
+    let text: String?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // The editor's quote: a 2pt accent-soft rule, secondary ink.
+            Rectangle().fill(KoreColor.accentSoft).frame(width: 2)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text("@\(handle)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(KoreColor.accent)
+                        .underline(color: KoreColor.accent.opacity(0.35))
+                    Text("on X").font(.subheadline).foregroundColor(KoreColor.muted)
+                }
+                if let words = text, !words.isEmpty {
+                    Text(words).font(.subheadline).foregroundColor(KoreColor.secondary).lineLimit(5)
+                } else {
+                    Text("The post\u{2019}s words and photos are saved when Kore opens.")
+                        .font(.subheadline)
+                        .foregroundColor(KoreColor.secondary)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
     }
 }
 
@@ -350,7 +389,8 @@ private struct WhereGroup: View {
     private var todayDetail: String {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-        return "\(formatter.string(from: Date())) \u{00B7} under Links"
+        let date = formatter.string(from: Date())
+        return state.landsUnderLinks ? "\(date) \u{00B7} under Links" : date
     }
 
     private var noteTitle: String? {
@@ -373,7 +413,7 @@ private struct WhereGroup: View {
         if case let .new(_, folder) = state.destination {
             return folder.isEmpty ? "In the vault\u{2019}s top folder" : "In \(folder)"
         }
-        return "Named after the page, in a folder"
+        return state.files.isEmpty ? "Named after the page, in a folder" : "Named after the file, in a folder"
     }
 }
 
@@ -465,7 +505,7 @@ private struct NotePicker: View {
                     .padding(4)
                     .background(KoreColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    Text("The link goes at the end of the note.")
+                    Text(endOfNoteHint)
                         .font(.footnote)
                         .foregroundColor(KoreColor.muted)
                         .frame(maxWidth: .infinity)
@@ -479,6 +519,12 @@ private struct NotePicker: View {
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search notes")
         .navigationTitle("A note")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var endOfNoteHint: String {
+        let noun = state.noun
+        let verb = noun.hasSuffix("s") ? "go" : "goes"
+        return "The \(noun) \(verb) at the end of the note."
     }
 }
 
@@ -768,6 +814,7 @@ private struct KoreMark: View {
 private struct ShareResult: View {
     @EnvironmentObject var state: ShareState
     let saved: Bool
+    let failure: ShareFailure?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -778,6 +825,13 @@ private struct ShareResult: View {
                 .background(Circle().fill(saved ? KoreColor.successSoft : KoreColor.active))
             Text(saved ? savedTitle : "Couldn\u{2019}t save")
                 .font(.title3.weight(.semibold))
+            if failure == .fileTooLarge {
+                Text("Files over 100 MB can\u{2019}t go in the vault.")
+                    .font(.subheadline)
+                    .foregroundColor(KoreColor.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
             if !saved {
                 Button("Close") { state.dismiss() }
                     .font(.body.weight(.semibold))

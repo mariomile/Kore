@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { buildFolderTree, findFolder, folderTreeAffectedBy, hasOwnFolders } from './folder-tree'
+import {
+  buildFolderTree,
+  findFolder,
+  folderTreeAffectedBy,
+  hasOwnFolders,
+  noteFolderCrumbs,
+} from './folder-tree'
 
 describe('buildFolderTree', () => {
   it('nests notes under their folders, folders first, alphabetical with counts', () => {
@@ -102,5 +108,26 @@ describe('folderTreeAffectedBy', () => {
   it('refreshes when a held note has lost its index row', async () => {
     indexWithTitles([])
     expect(await folderTreeAffectedBy(tree, [{ path: 'inbox.md', kind: 'upsert' }])).toBe(true)
+  })
+})
+
+describe('noteFolderCrumbs', () => {
+  it('lists the folders a note lives in, root first', () => {
+    expect(noteFolderCrumbs('CRM/People/Ada.md')).toEqual([
+      { name: 'CRM', path: 'CRM' },
+      { name: 'People', path: 'CRM/People' },
+    ])
+  })
+
+  it('is empty at the vault root and directly in Kore notes/', () => {
+    expect(noteFolderCrumbs('Inbox.md')).toEqual([])
+    expect(noteFolderCrumbs('notes/Idea.md')).toEqual([])
+  })
+
+  it('keeps notes/ when the note sits in a subfolder of it', () => {
+    expect(noteFolderCrumbs('notes/Work/Plan.md')).toEqual([
+      { name: 'notes', path: 'notes' },
+      { name: 'Work', path: 'notes/Work' },
+    ])
   })
 })

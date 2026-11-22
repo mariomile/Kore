@@ -1,5 +1,24 @@
 # Kore working state
 
+## Share photos and PDFs from iPhone, 2026-11-22 (0.135.0)
+
+- [x] The iPhone share sheet accepts photos and PDFs (up to 10 files), saved as
+  attachments and embedded in today's daily or the chosen note; HEIC becomes
+  JPEG. A shared X post is saved under Links as a readable card that links the
+  "X posts" note (#598).
+
+## Folder path above the title, 2026-11-22 (0.134.0)
+
+- [x] The label above a note title shows the note's folder path and opens that
+  folder on tap; the up: parent label and the Child notes section are removed
+  (#603, supersedes the #599 glyph).
+
+## Parent-note breadcrumb, 2026-11-22 (0.133.0)
+
+- [x] The breadcrumb above a note title carries the note glyph, so it reads as
+  the parent note rather than a folder (#599).
+- [x] Dependencies: zip 9.8, rusqlite 0.41 (#597).
+
 ## Folders menu, collapsed icon rails, and daily scroll perf, 2026-11-20 (0.129.0)
 
 - [x] Folders sidebar context menu with real disk operations (New note, New subfolder, Rename, Move, Reveal in Finder, Copy path, Move to Trash), empty-folder visibility, session/shadow/link consistency, and bulk-move path-link rewriting (#581).

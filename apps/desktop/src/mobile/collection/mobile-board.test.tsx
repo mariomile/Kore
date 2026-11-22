@@ -78,18 +78,24 @@ describe('MobileBoard', () => {
     createNote.mockClear()
   })
 
-  it('shows one lane at a time and switches lanes from the pill row', async () => {
+  it('renders every lane side by side in a horizontally scrollable strip', async () => {
     const { view } = await mount()
-    await expect
-      .element(view.getByRole('button', { name: 'Kitchen shelves', exact: true }))
-      .toBeVisible()
-    expect(view.getByRole('button', { name: 'V2 launch plan', exact: true }).query()).toBeNull()
+    const strip = view.getByLabelText('Status lanes').element()
+    expect(strip.className).toContain('overflow-x-auto')
+    expect(strip.className).toContain('snap-x')
 
-    await view.getByRole('button', { name: /^Doing/ }).click()
+    const ideaLane = view.getByRole('region', { name: 'Idea' })
+    const doingLane = view.getByRole('region', { name: 'Doing' })
+    const doneLane = view.getByRole('region', { name: 'Done' })
     await expect
-      .element(view.getByRole('button', { name: 'V2 launch plan', exact: true }))
+      .element(ideaLane.getByRole('button', { name: 'Kitchen shelves', exact: true }))
       .toBeVisible()
-    expect(view.getByRole('button', { name: 'Kitchen shelves', exact: true }).query()).toBeNull()
+    await expect
+      .element(doingLane.getByRole('button', { name: 'V2 launch plan', exact: true }))
+      .toBeInTheDocument()
+    await expect
+      .element(doneLane.getByRole('button', { name: 'File taxes', exact: true }))
+      .toBeInTheDocument()
   })
 
   it('moves a card to another lane with one tap and writes the value', async () => {
@@ -98,17 +104,24 @@ describe('MobileBoard', () => {
     await view.getByRole('button', { name: /^Done/ }).last().click()
 
     expect(commitProperties).toHaveBeenCalledWith('notes/kitchen.md', { status: 'Done' })
-    // The overlay moves it at once: the Idea lane is empty now.
+    // The overlay moves it at once: the Idea lane is empty and Done holds it.
     await expect.element(view.getByText('Nothing in Idea')).toBeVisible()
+    await expect
+      .element(
+        view
+          .getByRole('region', { name: 'Done' })
+          .getByRole('button', { name: 'Kitchen shelves', exact: true }),
+      )
+      .toBeInTheDocument()
   })
 
-  it('opens a card and creates a note born in the current lane', async () => {
+  it('opens a card and creates a note born in the chosen lane', async () => {
     const { view, onOpen } = await mount()
     await view.getByRole('button', { name: 'Kitchen shelves', exact: true }).click()
     expect(onOpen).toHaveBeenCalledWith('notes/kitchen.md')
 
-    await view.getByRole('button', { name: 'New in Idea' }).click()
-    await expect.poll(() => createNote.mock.calls.at(-1)).toEqual([{ status: 'Idea' }])
+    await view.getByRole('button', { name: 'New in Doing' }).click()
+    await expect.poll(() => createNote.mock.calls.at(-1)).toEqual([{ status: 'Doing' }])
     await expect.poll(() => onOpen.mock.calls.at(-1)).toEqual(['notes/new.md'])
   })
 

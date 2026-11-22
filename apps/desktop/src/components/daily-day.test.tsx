@@ -38,7 +38,6 @@ vi.mock('@/components/note-pane', () => ({
   },
 }))
 vi.mock('@/components/backlinks-panel', () => ({ BacklinksPanel: () => null }))
-vi.mock('@/components/note-children-panel', () => ({ NoteChildrenPanel: () => null }))
 vi.mock('@/components/unlinked-mentions-panel', () => ({ UnlinkedMentionsPanel: () => null }))
 vi.mock('@/hooks/use-note-row', () => ({ useNoteRow: () => null }))
 vi.mock('@/editor/use-asset-persistence', () => ({

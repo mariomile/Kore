@@ -66,7 +66,7 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
   if (isMobileSurface()) {
     return (
       <NoteFieldSummary fields={fields}>
-        <NoteFieldList path={path} fields={fields} labelClassName="w-24" />
+        <NoteFieldList path={path} fields={fields} labelClassName="w-28" />
       </NoteFieldSummary>
     )
   }

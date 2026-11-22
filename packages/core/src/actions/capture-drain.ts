@@ -22,6 +22,7 @@ import { sectionEnd, topLevelHeadings } from '../markdown/heading-blocks'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { ReconcileStop } from './audio-memo'
 import { ensureBacklinkTarget } from './backlink-target'
+import { drainFileCapture } from './file-capture'
 import { drainPlacedCapture } from './placed-capture'
 import {
   captureFromPath,
@@ -53,7 +54,7 @@ const LINKS_NOTE_TITLE = 'Links'
 /** Long-edge cap for promoted screenshots (the Rust side re-encodes JPEG). */
 const SCREENSHOT_MAX_DIM = 1600
 
-/** Spool `.jpg`s with no sibling `.json` older than this are host-crash debris. */
+/** Spool files with no sibling `.json` older than this are producer-crash debris. */
 const ORPHAN_SPOOL_MAX_AGE_MS = 60 * 60 * 1000
 
 export interface DrainCaptureInboxInput {
@@ -194,8 +195,21 @@ export async function drainCaptureInbox(
       const envelope = parseEnvelope(raw)
       if (envelope === null) {
         await captureInboxReject(name, input.generation)
-        await captureInboxReject(name.replace(/\.json$/, '.jpg'), input.generation)
+        // Its screenshot or shared files go with it: quarantined beside it,
+        // never swept as orphans.
+        for (const sibling of siblingSpools(entries, name)) {
+          await captureInboxReject(sibling, input.generation)
+        }
         invalid += 1
+        continue
+      }
+      if ('kind' in envelope && envelope.kind === 'file') {
+        await drainFileCapture(envelope, input.generation)
+        await captureInboxRemove(name, input.generation)
+        for (const file of envelope.files) {
+          await captureInboxRemove(file.ref, input.generation)
+        }
+        drained += 1
         continue
       }
       if ('kind' in envelope) {
@@ -345,22 +359,40 @@ async function drainTextCapture(envelope: TextCaptureEnvelope, generation: numbe
   await writeNote(daily, appendListItem(dailySource, envelope.text, kind), generation)
 }
 
+/** The id a spool file belongs to: its name up to the first dot (`<id>.json`, `<id>.jpg`, `<id>.1.pdf`). */
+function spoolStem(name: string): string {
+  const dot = name.indexOf('.')
+  return dot === -1 ? name : name.slice(0, dot)
+}
+
+/** The spool files riding with envelope `name`: its screenshot or shared files. */
+function siblingSpools(entries: ReadonlyArray<{ path: string }>, name: string): string[] {
+  const stem = spoolStem(name)
+  return entries
+    .map((entry) => captureSpoolName(entry.path))
+    .filter((spool) => spool !== name && !spool.endsWith('.json') && spoolStem(spool) === stem)
+}
+
+/**
+ * Remove spool files no envelope claims (a screenshot or a shared file whose
+ * envelope never committed) once they are old enough that no producer can
+ * still be writing that envelope.
+ */
 async function sweepOrphanSpools(
   entries: Array<{ path: string; modifiedMs: number }>,
   input: DrainCaptureInboxInput,
 ): Promise<void> {
   const now = input.now ?? Date.now
-  const jsonStems = new Set(
-    entries
-      .filter((entry) => entry.path.endsWith('.json'))
-      .map((entry) => entry.path.replace(/\.json$/, '')),
-  )
-  const orphans = entries.filter(
-    (entry) =>
-      entry.path.endsWith('.jpg') &&
-      !jsonStems.has(entry.path.replace(/\.jpg$/, '')) &&
-      now() - entry.modifiedMs > ORPHAN_SPOOL_MAX_AGE_MS,
-  )
+  const names = entries.map((entry) => captureSpoolName(entry.path))
+  const claimed = new Set(names.filter((name) => name.endsWith('.json')).map(spoolStem))
+  const orphans = entries.filter((entry, index) => {
+    const name = names[index] ?? ''
+    return (
+      !name.endsWith('.json') &&
+      !claimed.has(spoolStem(name)) &&
+      now() - entry.modifiedMs > ORPHAN_SPOOL_MAX_AGE_MS
+    )
+  })
   for (const orphan of orphans) {
     await captureInboxRemove(captureSpoolName(orphan.path), input.generation)
   }

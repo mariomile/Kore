@@ -9,7 +9,11 @@ import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
 import { GlobalSearchSheet } from '@/mobile/global-search-sheet'
 import { MobileStack } from '@/mobile/mobile-stack'
 import { MobileTabBar, tabRootFor, type MobileTab } from '@/mobile/mobile-tab-bar'
-import { EMPTY_ALL_NOTES_FILTERS, type AllNotesFilters } from '@/mobile/search-filters/filter-state'
+import {
+  EMPTY_ALL_NOTES_FILTERS,
+  folderSearchQuery,
+  type AllNotesFilters,
+} from '@/mobile/search-filters/filter-state'
 import { useKeyboardVisible } from '@/mobile/use-keyboard'
 import { PullToSearchIndicator, usePullToSearch } from '@/mobile/pull-to-search'
 import { useWakeToToday } from '@/mobile/use-wake-to-today'
@@ -74,14 +78,22 @@ export function MobileShell(): ReactElement {
   })
 
   // A `search` history entry seeds the live query — once per entry, so the
-  // user can keep typing without the effect snapping the text back.
+  // user can keep typing without the effect snapping the text back. A folder
+  // route (the breadcrumb above a note title) has no iPhone page of its own:
+  // it seeds the folder's `path:` query the same way.
   const seededEntry = useRef<number | null>(null)
+  const seedQuery =
+    route.kind === 'search'
+      ? route.query
+      : route.kind === 'allNotes' && route.filter.kind === 'folder'
+        ? folderSearchQuery(route.filter.folder)
+        : null
   useEffect(() => {
-    if (route.kind === 'search' && seededEntry.current !== entryId) {
+    if (seedQuery !== null && seededEntry.current !== entryId) {
       seededEntry.current = entryId
-      setAllQuery(route.query)
+      setAllQuery(seedQuery)
     }
-  }, [route, entryId])
+  }, [seedQuery, entryId])
 
   // A note keeps whichever tab it was opened from: routes that don't map to a
   // tab fall back to the last one, remembered across renders. Tracking that in

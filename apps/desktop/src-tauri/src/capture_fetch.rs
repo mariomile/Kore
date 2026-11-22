@@ -1,19 +1,22 @@
 //! The bounded fetch primitives capture enrichment uses to reach arbitrary
-//! hosts: a page's HTML for its meta tags, an oEmbed answer, and a JSON or
-//! XML document (a pasted link's saved text). They live here rather than
+//! hosts: a page's HTML for its meta tags, an oEmbed answer, a JSON or XML
+//! document (a pasted link's saved text), and an image kept as an
+//! attachment. They live here rather than
 //! widening the webview's HTTP-plugin capability to every URL, and the
 //! privacy gate in `@kore/core` runs before any of them is called.
 //!
 //! Which URLs are asked is policy in core; each command only bounds the
-//! transport: scheme, redirects, accepted content type and a byte cap. The
-//! three share one request path ([`fetch_bounded`]) and differ only in those
+//! transport: scheme, redirects, accepted content type and a byte cap. They
+//! share one request path ([`fetch_bounded`]) and differ only in those
 //! bounds.
 
 use std::time::Duration;
 
 use reqwest::redirect::Policy;
+use tauri::Manager;
 
 use crate::error::{AppError, AppResult};
+use crate::fs::GraphState;
 
 const FETCH_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -41,6 +44,9 @@ const OEMBED_FETCH_MAX_BYTES: usize = 64 * 1024;
 /// A video's caption track is the largest document the data fetch exists
 /// for: an hour of speech is ~1 MiB of timed-text XML.
 const DATA_FETCH_MAX_BYTES: usize = 4 * 1024 * 1024;
+
+/// A saved post's photo: X serves its largest rendition well under this.
+const IMAGE_FETCH_MAX_BYTES: usize = 20 * 1024 * 1024;
 
 fn classify_fetch_error(err: reqwest::Error) -> AppError {
     if err.is_timeout() || err.is_connect() || err.is_request() {
@@ -236,6 +242,43 @@ pub async fn capture_data_fetch(url: String, json_body: Option<String>) -> AppRe
     })
     .await?;
     utf8(&url, body)
+}
+
+/// Fetch one image and keep it as an attachment named `desired_name` (or its
+/// first free `-2` variant), returning the graph-relative path; fetching the
+/// same image under the same name again returns the copy already kept. Which
+/// images are worth keeping is policy in core (`actions/placed-capture`).
+/// https only, a raster image only, a byte cap, no redirects.
+#[tauri::command]
+pub async fn capture_image_fetch<R: tauri::Runtime>(
+    url: String,
+    desired_name: String,
+    generation: u64,
+    dir: Option<String>,
+    app: tauri::AppHandle<R>,
+) -> AppResult<String> {
+    require_https(&url)?;
+    let bounds = Bounds {
+        redirects: Policy::none(),
+        content_types: &["image/jpeg", "image/png", "image/webp", "image/gif"],
+        expected: "an image",
+        max_bytes: IMAGE_FETCH_MAX_BYTES,
+        oversize: Oversize::Refuse,
+    };
+    let body = fetch_bounded(&url, bounds, |client| {
+        client.get(&url).header("Accept", "image/*")
+    })
+    .await?;
+    crate::blocking::run_blocking(move || {
+        crate::fs::assets::import_bytes_once(
+            &app.state::<GraphState>(),
+            generation,
+            &body,
+            &desired_name,
+            dir.as_deref(),
+        )
+    })
+    .await
 }
 
 #[cfg(test)]

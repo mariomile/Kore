@@ -57,7 +57,29 @@ const ADD_COL_REM = 2.5
 const RIGHT_RAIL_MIN_REM = 1.75
 
 /**
- * The inline grid template — sticky Title (including its selection gutter),
+ * Cumulative left offset (rem) for each leading column (`0` = Title,
+ * `1..N` = schema properties in order), so any prefix of frozen columns can
+ * position itself with exact CSS `left` values and zero DOM measurement.
+ */
+export function collectionColumnLeftRems(
+  type: TagType,
+  widths: Record<string, number> = {},
+  options: { embedded?: boolean } = {},
+): number[] {
+  const embedded = options.embedded ?? false
+  const titleTotalRem =
+    titleGutterRem(embedded) + (widths[TITLE_SORT_KEY] ?? defaultTitleRem(embedded))
+  const lefts = [0]
+  let cursor = titleTotalRem
+  for (const property of type.properties) {
+    lefts.push(cursor)
+    cursor += widths[property.key] ?? defaultColumnRem(property)
+  }
+  return lefts
+}
+
+/**
+ * The inline grid template — Title (including its selection gutter),
  * one bordered column per schema property, Updated, optional "+" column, and
  * a trailing filler track so a narrow table stays compact instead of
  * stretching two columns across a wide monitor.

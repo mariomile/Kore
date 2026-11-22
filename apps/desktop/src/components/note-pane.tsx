@@ -24,14 +24,13 @@ import {
 } from '@kore/core'
 import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
-import { NoteBreadcrumb } from '@/components/note-breadcrumb'
+import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
 import { WeekHeader } from '@/components/weekly/week-header'
-import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
-import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
+import { AssetViewerDialog, opensInAssetViewer } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
 import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
@@ -242,7 +241,7 @@ export function NotePaneComponent({
         navigate({ kind: 'canvas', path: assetPath })
         return
       }
-      if (viewableAssetKind(assetPath) !== null) {
+      if (opensInAssetViewer(assetPath)) {
         setViewerAssetPath(assetPath)
         return
       }
@@ -530,7 +529,6 @@ export function NotePaneComponent({
         )}
         {showBacklinks ? (
           <>
-            <NoteChildrenPanel key={path} path={path} />
             <BacklinksPanel path={path} />
             {!dailyNote ? <UnlinkedMentionsPanel path={path} /> : null}
           </>
@@ -554,7 +552,7 @@ export function NotePaneComponent({
         {weeklyWeek !== null ? (
           <WeekHeader week={weeklyWeek} />
         ) : !dailyNote ? (
-          <NoteBreadcrumb path={path} />
+          <NoteFolderBreadcrumb path={path} />
         ) : null}
 
         {document.error !== null ? (
@@ -731,7 +729,6 @@ export function NotePaneComponent({
 
       {showBacklinks ? (
         <div className={gutterClassName}>
-          <NoteChildrenPanel key={path} path={path} />
           <BacklinksPanel path={path} />
           {!dailyNote ? <UnlinkedMentionsPanel path={path} /> : null}
         </div>

@@ -20,9 +20,13 @@ import {
   wireCaptureMocks,
   writeNoteMock,
 } from './capture-harness'
-import type { TextCaptureEnvelope } from './capture-envelope'
+import type { FileCaptureEnvelope, TextCaptureEnvelope } from './capture-envelope'
+import { blockContextAt } from '../indexing/block-context'
 
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
+const importSpoolMock = vi.hoisted(() => vi.fn())
+const importImageMock = vi.hoisted(() => vi.fn())
+const xPostMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../graph/commands', () => ({
   createNoteIfAbsent: vi.fn(),
@@ -55,10 +59,34 @@ vi.mock('../secrets/keychain', () => ({
 vi.mock('./backlink-target', () => ({
   ensureBacklinkTarget: ensureBacklinkTargetMock,
 }))
+vi.mock('../graph/assets', () => ({
+  importCaptureSpool: importSpoolMock,
+  importRemoteImage: importImageMock,
+}))
+vi.mock('./post-embed', () => ({
+  resolveXPostEmbed: xPostMock,
+}))
 
 beforeEach(() => {
   wireCaptureMocks()
-  ensureBacklinkTargetMock.mockResolvedValue('Links')
+  ensureBacklinkTargetMock.mockImplementation((title: string) => Promise.resolve(title))
+  xPostMock.mockResolvedValue(undefined)
+  // The vault's attachment folder: the spooled copy lands under its
+  // desired name, `-2` on a collision, as Rust's `persist_unique` does.
+  importImageMock.mockImplementation((_url: string, name: string) =>
+    Promise.resolve(`assets/${name}`),
+  )
+  importSpoolMock.mockImplementation(async (spoolName: string, desiredName: string) => {
+    const entry = spool.get(spoolName)
+    if (entry === undefined) throw { kind: 'notFound', message: 'missing' }
+    const dot = desiredName.lastIndexOf('.')
+    let path = `assets/${desiredName}`
+    for (let attempt = 2; files.has(path); attempt += 1) {
+      path = `assets/${desiredName.slice(0, dot)}-${attempt}${desiredName.slice(dot)}`
+    }
+    files.set(path, entry.contents)
+    return path
+  })
 })
 
 describe('drainCaptureInbox', () => {
@@ -846,5 +874,233 @@ describe('drainCaptureInbox: placed captures (iOS share sheet)', () => {
     const again = await drain()
     expect(again).toMatchObject({ drained: 1, deduped: 1 })
     expect(files.get(DAILY)?.match(/example\.com\/article/g)).toHaveLength(1)
+  })
+})
+
+describe('drainCaptureInbox: shared X posts', () => {
+  const POST_URL = 'https://x.com/karpathy/status/1886192184808149383'
+  const post = (overrides: Partial<Parameters<typeof envelope>[0]> = {}) =>
+    envelope({ source: 'ios-share', url: POST_URL, title: '', look: 'text', ...overrides })
+
+  it('writes a post as a list-item card under Links, linked to the X posts note', async () => {
+    files.set(DAILY, '# plans\n\nMorning notes\n\n## [[Links]]\n\n- [[old|Old]]\n')
+    xPostMock.mockResolvedValue({
+      id: '1886192184808149383',
+      createdAt: '2026-02-02T00:00:00Z',
+      author: { name: 'Andrej Karpathy', handle: 'karpathy' },
+      body: [
+        { type: 'text', text: 'Vibe coding, see ' },
+        { type: 'link', text: 'this', url: 'https://example.com/vibe' },
+        { type: 'text', text: '.\nSecond line' },
+      ],
+      media: [{ type: 'photo', url: 'https://pbs.twimg.com/media/a.jpg', width: 1, height: 1 }],
+    })
+    addSpool(post({ note: 'Worth a read' }), { screenshot: false })
+
+    await drain()
+
+    const daily = files.get(DAILY) ?? ''
+    expect(daily).toBe(
+      [
+        '# plans',
+        '',
+        'Morning notes',
+        '',
+        '## [[Links]]',
+        '',
+        '- [[old|Old]]',
+        '',
+        `- **Andrej Karpathy** · [@karpathy](${POST_URL}) [[X posts]]`,
+        '  > Vibe coding, see [this](https://example.com/vibe).',
+        '  > Second line',
+        '  >',
+        '  > ![](assets/x-1886192184808149383-1.jpg)',
+        '',
+        '  Worth a read',
+        '',
+      ].join('\n'),
+    )
+    expect(ensureBacklinkTargetMock).toHaveBeenCalledWith('X posts', expect.any(Number))
+    expect(importImageMock).toHaveBeenCalledWith(
+      'https://pbs.twimg.com/media/a.jpg',
+      'x-1886192184808149383-1.jpg',
+      expect.any(Number),
+    )
+    // The X posts note's backlink shows the post whole: byline, words, photo, note.
+    expect(blockContextAt(daily, daily.indexOf('[[X posts]]') + 2)).toBe(
+      daily.slice(daily.indexOf('- **Andrej')).trimEnd(),
+    )
+  })
+
+  it("keeps X's own link to a photo that cannot be fetched now", async () => {
+    xPostMock.mockResolvedValue({
+      id: '1886192184808149383',
+      createdAt: '2026-02-02T00:00:00Z',
+      author: { name: 'Andrej Karpathy', handle: 'karpathy' },
+      body: [{ type: 'text', text: 'Look' }],
+      media: [
+        {
+          type: 'photo',
+          url: 'https://pbs.twimg.com/media/b?format=png&name=large',
+          width: 1,
+          height: 1,
+        },
+      ],
+    })
+    importImageMock.mockRejectedValueOnce({ kind: 'network', message: 'offline' })
+    addSpool(post(), { screenshot: false })
+
+    await drain()
+
+    expect(importImageMock).toHaveBeenCalledWith(
+      'https://pbs.twimg.com/media/b?format=png&name=large',
+      'x-1886192184808149383-1.png',
+      expect.any(Number),
+    )
+    expect(files.get(DAILY)).toContain(
+      '  > ![](https://pbs.twimg.com/media/b?format=png&name=large)',
+    )
+  })
+
+  it('keeps the author line and the link when the post cannot be read', async () => {
+    xPostMock.mockRejectedValue(new Error('offline'))
+    addSpool(post(), { screenshot: false })
+
+    await drain()
+
+    expect(files.get(DAILY)).toBe(`## [[Links]]\n\n- [@karpathy](${POST_URL}) [[X posts]]\n`)
+  })
+
+  it('files a post embed under Links too', async () => {
+    addSpool(post({ look: 'embed' }), { screenshot: false })
+
+    await drain()
+
+    expect(files.get(DAILY)).toBe(`## [[Links]]\n\n![](${POST_URL})\n`)
+  })
+})
+
+describe('drainCaptureInbox: shared files (iOS share sheet)', () => {
+  const ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+  function addFileSpool(
+    names: string[],
+    overrides: Partial<FileCaptureEnvelope> = {},
+  ): FileCaptureEnvelope {
+    const capture: FileCaptureEnvelope = {
+      version: 1,
+      id: ID,
+      kind: 'file',
+      files: names.map((name, index) => ({
+        ref: `${ID}.${index + 1}.${name.slice(name.lastIndexOf('.') + 1).toLowerCase()}`,
+        name,
+      })),
+      capturedAt: CAPTURED_AT.toISOString(),
+      source: 'ios-share',
+      ...overrides,
+    }
+    spool.set(`${ID}.json`, { contents: JSON.stringify(capture), modifiedMs: 0 })
+    for (const file of capture.files) {
+      spool.set(file.ref, { contents: `bytes of ${file.name}`, modifiedMs: 0 })
+    }
+    return capture
+  }
+
+  it('moves photos and a PDF into the vault and embeds them in the daily body', async () => {
+    files.set(DAILY, '# plans\n\n## [[Links]]\n\n- [[old|Old]]\n')
+    files.set('assets/img-0042.jpg', 'an older photo')
+    addFileSpool(['IMG_0042.JPG', 'Q3 Report (final).pdf'], { note: 'From the offsite' })
+
+    const outcome = await drain()
+
+    expect(outcome).toMatchObject({ drained: 1, stopped: null })
+    expect(files.get('assets/img-0042-2.jpg')).toBe('bytes of IMG_0042.JPG')
+    expect(files.get('assets/q3-report-final.pdf')).toBe('bytes of Q3 Report (final).pdf')
+    expect(files.get(DAILY)).toBe(
+      [
+        '# plans',
+        '',
+        '![](assets/img-0042-2.jpg)',
+        '',
+        '[Q3 Report (final).pdf](assets/q3-report-final.pdf)',
+        '',
+        'From the offsite',
+        '',
+        '## [[Links]]',
+        '',
+        '- [[old|Old]]',
+        '',
+      ].join('\n'),
+    )
+    expect(spool.size).toBe(0)
+  })
+
+  it('writes into the chosen note, or a new note linked from the daily', async () => {
+    files.set('Projects/Kore.md', '# Kore\n')
+    addFileSpool(['scan.pdf'], { destination: { kind: 'note', path: 'Projects/Kore.md' } })
+    await drain()
+    expect(files.get('Projects/Kore.md')).toBe('# Kore\n\n[scan.pdf](assets/scan.pdf)\n')
+
+    addFileSpool(['Board deck.pdf'], {
+      destination: { kind: 'new', title: 'Board deck', folder: 'Work' },
+    })
+    await drain()
+    expect(files.get('Work/board-deck.md')).toContain(
+      '# Board deck\n\n[Board deck.pdf](assets/board-deck.pdf)\n',
+    )
+    expect(files.get(DAILY)).toBe('[[board-deck|Board deck]]\n')
+  })
+
+  it('escapes a space in the attachment folder so the link stays one destination', async () => {
+    importSpoolMock.mockResolvedValueOnce('Files (shared)/photo one.png')
+    addFileSpool(['photo one.png'])
+
+    await drain()
+
+    expect(files.get(DAILY)).toBe('![](Files%20%28shared%29/photo%20one.png)\n')
+  })
+
+  it('still lands the rest of a share when one file never arrived', async () => {
+    const capture = addFileSpool(['a.png', 'b.pdf'])
+    spool.delete(capture.files[0]?.ref ?? '')
+
+    const outcome = await drain()
+
+    expect(outcome).toMatchObject({ drained: 1, stopped: null })
+    expect(files.get(DAILY)).toBe('[b.pdf](assets/b.pdf)\n')
+  })
+
+  it('keeps the spool for a retry when the copy fails', async () => {
+    importSpoolMock.mockRejectedValueOnce({ kind: 'io', message: 'disk full' })
+    addFileSpool(['a.png'])
+
+    const outcome = await drain()
+
+    expect(outcome.stopped).toMatchObject({ reason: 'io' })
+    expect(spool.size).toBe(2)
+    expect(files.has(DAILY)).toBe(false)
+  })
+
+  it('quarantines an unreadable file envelope together with its files', async () => {
+    const capture = addFileSpool(['a.png'])
+    spool.set(`${ID}.json`, { contents: '{"kind":"file"}', modifiedMs: 0 })
+
+    await drain()
+
+    expect(rejected.has(`${ID}.json`)).toBe(true)
+    expect(rejected.has(capture.files[0]?.ref ?? '')).toBe(true)
+    expect(spool.size).toBe(0)
+  })
+
+  it('sweeps an old file no envelope claims, never a young one', async () => {
+    spool.set(`${ID}.1.png`, { contents: 'old', modifiedMs: 0 })
+    spool.set('00000000-0000-4000-8000-000000000009.1.pdf', {
+      contents: 'young',
+      modifiedMs: 2 * 60 * 60 * 1000,
+    })
+
+    await drain({ now: () => 2 * 60 * 60 * 1000 + 1 })
+
+    expect(spool.has(`${ID}.1.png`)).toBe(false)
+    expect(spool.has('00000000-0000-4000-8000-000000000009.1.pdf')).toBe(true)
   })
 })

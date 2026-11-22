@@ -169,12 +169,12 @@ export const collectionSavedViewsSchema = z
     return views
   })
 
-/** One Collection table's column layout: hidden property keys and manual
- * column widths (rem). Both empty by default — the schema's order and the
- * type-derived widths rule until the user touches a column. */
+/** One Collection table's column layout: hidden property keys, manual
+ * column widths (rem), and frozen leading column count (`0` = none). */
 export interface CollectionColumnsSetting {
   hidden: string[]
   widths: Record<string, number>
+  frozen?: number | undefined
 }
 
 export type CollectionColumns = Record<string, CollectionColumnsSetting>
@@ -193,6 +193,7 @@ const collectionColumnsEntrySchema = z.object({
       }
       return widths
     }),
+  frozen: z.number().int().min(0).optional().catch(undefined),
 })
 
 /** Per-tag Collection column layout, same per-entry resilience as

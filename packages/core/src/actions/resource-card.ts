@@ -1,5 +1,6 @@
 import { wikiLinkSafe } from '../markdown/edit'
 import { splitFrontmatter } from '../markdown/frontmatter'
+import { markdownLinkDestination } from '../markdown/link-destination'
 import type { ResourceKind } from './resource-collection'
 
 /**
@@ -24,8 +25,7 @@ function cardTitle(kind: ResourceKind, title: string): { heading: string; label:
 
 export function cardBody(kind: ResourceKind, title: string, target: string): string {
   const { heading, label } = cardTitle(kind, title)
-  const destination = target.replaceAll(' ', '%20').replaceAll('(', '%28').replaceAll(')', '%29')
-  return `# ${heading}\n\n#${kind}\n\n${kind === 'image' ? '!' : ''}[${label}](${destination})\n`
+  return `# ${heading}\n\n#${kind}\n\n${kind === 'image' ? '!' : ''}[${label}](${markdownLinkDestination(target)})\n`
 }
 
 /**

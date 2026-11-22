@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocumentBinding, type BindFactories } from './document-binding'
 import type { NoteSession } from './note-session'
-import { openSession } from './open-documents'
+import { openSession, retargetOpenDocument } from './open-documents'
 import type { RenameCoordinator } from './rename-coordinator'
 
 /**
@@ -103,6 +103,8 @@ describe('createDocumentBinding', () => {
     binding.bind('notes/a.md', factories(moved.session, coordinator))
 
     moved.session.retarget('notes/renamed.md') // what moveNoteCarryingSession does
+    retargetOpenDocument('notes/a.md', 'notes/renamed.md', moved.session)
+    expect(retarget).toHaveBeenCalledWith('notes/renamed.md')
     binding.unbind('notes/a.md') // route follows → React cleanup for the old path
     const spare = fakeSession('notes/renamed.md')
     const adopted = binding.bind('notes/renamed.md', factories(spare.session, null))

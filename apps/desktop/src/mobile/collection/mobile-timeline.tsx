@@ -55,22 +55,24 @@ export function MobileTimeline({
     0,
   )
 
+  const hasItems = items.length > 0
   const todayScrollLeft = useCallback((): number => {
     const element = scrollRef.current
     return element === null ? 0 : Math.max(0, todayOffset * dayWidth - element.clientWidth / 4)
   }, [todayOffset, dayWidth])
   useLayoutEffect(() => {
-    if (scrollRef.current !== null) {
+    if (hasItems && scrollRef.current !== null) {
       scrollRef.current.scrollLeft = todayScrollLeft()
     }
-  }, [todayScrollLeft])
+  }, [hasItems, todayScrollLeft])
 
   // The visible stretch of the track, as CSS numbers the off-screen hints
   // read (see EdgeHint): a scroll writes two custom properties and never
-  // re-renders a row.
+  // re-renders a row. Re-subscribes when `hasItems` mounts the scroller after
+  // starting empty.
   useEffect(() => {
     const element = scrollRef.current
-    if (element === null) {
+    if (!hasItems || element === null) {
       return
     }
     const sync = (): void => {
@@ -88,7 +90,7 @@ export function MobileTimeline({
       element.removeEventListener('scroll', sync)
       observer.disconnect()
     }
-  }, [])
+  }, [hasItems])
 
   const scrollToBar = (left: number): void => {
     hapticImpactLight()

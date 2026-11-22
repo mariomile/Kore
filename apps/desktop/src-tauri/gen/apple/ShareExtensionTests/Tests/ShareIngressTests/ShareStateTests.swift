@@ -145,12 +145,12 @@ final class ShareStateTests: XCTestCase {
 
     func testFileNameTakesTheSuggestedNameWithTheSavedFormatsExtension() {
         let source = URL(fileURLWithPath: "/tmp/F1A2.heic")
-        XCTAssertEqual(ShareState.fileName(suggested: "IMG_0042", source: source, extension: "jpeg"), "IMG_0042.jpeg")
-        XCTAssertEqual(ShareState.fileName(suggested: "IMG_0042.HEIC", source: source, extension: "jpeg"), "IMG_0042.jpeg")
-        XCTAssertEqual(ShareState.fileName(suggested: "Report v1.2", source: source, extension: "pdf"), "Report v1.2.pdf")
-        XCTAssertEqual(ShareState.fileName(suggested: nil, source: source, extension: nil), "F1A2.heic")
-        XCTAssertEqual(ShareState.fileName(suggested: "  ", source: source, extension: "jpeg"), "F1A2.jpeg")
-        XCTAssertEqual(ShareState.fileName(suggested: "a/b", source: source, extension: "pdf"), "a-b.pdf")
+        XCTAssertEqual(SharedFiles.fileName(suggested: "IMG_0042", source: source, extension: "jpeg"), "IMG_0042.jpeg")
+        XCTAssertEqual(SharedFiles.fileName(suggested: "IMG_0042.HEIC", source: source, extension: "jpeg"), "IMG_0042.jpeg")
+        XCTAssertEqual(SharedFiles.fileName(suggested: "Report v1.2", source: source, extension: "pdf"), "Report v1.2.pdf")
+        XCTAssertEqual(SharedFiles.fileName(suggested: nil, source: source, extension: nil), "F1A2.heic")
+        XCTAssertEqual(SharedFiles.fileName(suggested: "  ", source: source, extension: "jpeg"), "F1A2.jpeg")
+        XCTAssertEqual(SharedFiles.fileName(suggested: "a/b", source: source, extension: "pdf"), "a-b.pdf")
     }
 
     func testExtractFilesCopiesAPdfUnderItsSharedName() async throws {
@@ -163,11 +163,11 @@ final class ShareStateTests: XCTestCase {
         let provider = try XCTUnwrap(NSItemProvider(contentsOf: pdf))
         provider.suggestedName = "Q3 report"
         let text = NSItemProvider(item: "not a file" as NSString, typeIdentifier: UTType.plainText.identifier)
-        XCTAssertTrue(ShareState.isSharedFile(provider))
-        XCTAssertFalse(ShareState.isSharedFile(text))
+        XCTAssertTrue(SharedFiles.isSharedFile(provider))
+        XCTAssertFalse(SharedFiles.isSharedFile(text))
 
         let files = await withCheckedContinuation { continuation in
-            ShareState.extractFiles(from: [provider]) { continuation.resume(returning: $0) }
+            SharedFiles.extract(from: [provider]) { continuation.resume(returning: $0) }
         }
 
         let file = try XCTUnwrap(files.first)
@@ -175,7 +175,7 @@ final class ShareStateTests: XCTestCase {
         XCTAssertEqual(file.name, "Q3 report.pdf")
         XCTAssertTrue(file.isPDF)
         XCTAssertEqual(try Data(contentsOf: file.url), Data("%PDF-1.4".utf8))
-        try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent().deletingLastPathComponent())
+        SharedFiles.discard(files)
     }
 
     // MARK: - helpers

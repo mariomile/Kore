@@ -1,29 +1,6 @@
 import Combine
 import Foundation
-import ImageIO
 import UniformTypeIdentifiers
-
-/// One shared file (a photo, a PDF), copied into the extension's own
-/// temporary folder while its provider's callback still held it.
-struct SharedFile: Equatable {
-    /// The local copy.
-    let url: URL
-    /// Its name as shared, extension included: the attachment's name in the vault.
-    let name: String
-
-    /// The name without its extension, what a new note is called after.
-    var title: String {
-        (name as NSString).deletingPathExtension
-    }
-
-    var isImage: Bool {
-        UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false
-    }
-
-    var isPDF: Bool {
-        UTType(filenameExtension: url.pathExtension)?.conforms(to: .pdf) ?? false
-    }
-}
 
 /// What one share-sheet invocation extracted, ready to spool.
 enum SharedCapture {
@@ -224,11 +201,7 @@ final class ShareState: ObservableObject {
     }
 
     func dismiss() {
-        // The local copies are spooled (or the share was dropped): nothing
-        // in the temporary folder is needed any more.
-        if let folder = files.first?.url.deletingLastPathComponent() {
-            try? FileManager.default.removeItem(at: folder)
-        }
+        SharedFiles.discard(files)
         extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
     }
 
@@ -277,156 +250,14 @@ final class ShareState: ObservableObject {
 
         // Photos and PDFs, unless the share is really a web link that
         // carries a preview image (a link is what the user meant then).
-        let fileProviders = attachments.filter(isSharedFile)
-        if !fileProviders.isEmpty, !attachments.contains(where: isWebUrl) {
+        let fileProviders = attachments.filter(SharedFiles.isSharedFile)
+        if !fileProviders.isEmpty, !attachments.contains(where: SharedFiles.isWebUrl) {
             let kept = Array(fileProviders.prefix(CaptureInbox.maxFiles))
-            return extractFiles(from: kept) { files in
+            return SharedFiles.extract(from: kept) { files in
                 completion(files.isEmpty ? nil : .files(files), fileProviders.count - kept.count)
             }
         }
         extractPlain(from: attachments) { completion($0, 0) }
-    }
-
-    // MARK: - files
-
-    /// A photo or a PDF.
-    static func isSharedFile(_ provider: NSItemProvider) -> Bool {
-        provider.hasItemConformingToTypeIdentifier(UTType.image.identifier)
-            || provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier)
-    }
-
-    /// A web address (a file URL is how some apps hand over a file, not a link).
-    private static func isWebUrl(_ provider: NSItemProvider) -> Bool {
-        provider.hasItemConformingToTypeIdentifier(UTType.url.identifier)
-            && !provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
-    }
-
-    /// Image formats every Markdown reader draws (Obsidian's Chromium has no
-    /// HEIC), in the order a provider offering several is asked for them.
-    private static let portableImageTypes: [UTType] = [.jpeg, .png, .gif, .webP]
-
-    /// Longest edge of a HEIC photo transcoded to JPEG: sharp on any screen,
-    /// and a decode the extension's memory budget can afford.
-    private static let transcodeMaxPixels = 4096
-
-    /// Copy every provider's file into one fresh temporary folder, keeping
-    /// the providers' order; a provider that fails to load is skipped.
-    ///
-    /// Not `private`: `ShareIngressTests` calls this directly, like
-    /// `extractPlain`.
-    static func extractFiles(
-        from providers: [NSItemProvider],
-        completion: @escaping ([SharedFile]) -> Void
-    ) {
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("kore-share-\(UUID().uuidString)", isDirectory: true)
-        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil
-        else {
-            return completion([])
-        }
-        let group = DispatchGroup()
-        let lock = NSLock()
-        var loaded = [SharedFile?](repeating: nil, count: providers.count)
-        for (index, provider) in providers.enumerated() {
-            guard let type = loadType(of: provider) else {
-                continue
-            }
-            group.enter()
-            _ = provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
-                defer { group.leave() }
-                // The file at `url` is deleted once this callback returns.
-                guard let url else {
-                    return
-                }
-                let file = copy(url, of: type, named: provider.suggestedName, index: index, into: folder)
-                lock.lock()
-                loaded[index] = file
-                lock.unlock()
-            }
-        }
-        group.notify(queue: .global(qos: .userInitiated)) {
-            completion(loaded.compactMap { $0 })
-        }
-    }
-
-    /// What to ask a provider for: a PDF as itself, a photo in a format every
-    /// reader draws when the provider offers one, else its own format.
-    private static func loadType(of provider: NSItemProvider) -> UTType? {
-        let registered = provider.registeredTypeIdentifiers.compactMap(UTType.init)
-        if let pdf = registered.first(where: { $0.conforms(to: .pdf) }) {
-            return pdf
-        }
-        for portable in portableImageTypes where registered.contains(where: { $0.conforms(to: portable) }) {
-            return portable
-        }
-        return registered.first { $0.conforms(to: .image) }
-    }
-
-    /// Copy one loaded file into `folder` under its shared name, a HEIC
-    /// photo transcoded to JPEG on the way. Nil when the copy fails.
-    private static func copy(
-        _ source: URL, of type: UTType, named suggested: String?, index: Int, into folder: URL
-    ) -> SharedFile? {
-        let transcode = type.conforms(to: .image) && !portableImageTypes.contains { type.conforms(to: $0) }
-        let target = transcode ? UTType.jpeg : type
-        let name = fileName(suggested: suggested, source: source, extension: target.preferredFilenameExtension)
-        // One subfolder per file keeps two "image.jpg"s from colliding.
-        let slot = folder.appendingPathComponent("\(index)", isDirectory: true)
-        let destination = slot.appendingPathComponent(name)
-        do {
-            try FileManager.default.createDirectory(at: slot, withIntermediateDirectories: true)
-            if transcode {
-                guard transcodeToJpeg(source, to: destination) else {
-                    return nil
-                }
-            } else {
-                try FileManager.default.copyItem(at: source, to: destination)
-            }
-        } catch {
-            return nil
-        }
-        return SharedFile(url: destination, name: name)
-    }
-
-    /// The shared name with the extension of what is actually saved: the
-    /// provider's suggested name (which often has none), else the loaded
-    /// file's own. An extension the name already carries is replaced only
-    /// when it is a real file type ("Report v1.2" keeps its ".2").
-    static func fileName(suggested: String?, source: URL, extension ext: String?) -> String {
-        let trimmed = suggested?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let raw = (trimmed.isEmpty ? source.lastPathComponent : trimmed)
-            .replacingOccurrences(of: "/", with: "-")
-        let current = (raw as NSString).pathExtension
-        let isFileType = !current.isEmpty && UTType(filenameExtension: current)?.isDeclared == true
-        let stem = isFileType ? (raw as NSString).deletingPathExtension : raw
-        let name = stem.isEmpty ? "Shared file" : stem
-        guard let ext = ext ?? (isFileType ? current : nil) else {
-            return name
-        }
-        return "\(name).\(ext)"
-    }
-
-    /// A HEIC/HEIF photo as a JPEG, upright, its long edge capped at
-    /// `transcodeMaxPixels`.
-    private static func transcodeToJpeg(_ source: URL, to destination: URL) -> Bool {
-        guard let image = CGImageSourceCreateWithURL(source as CFURL, nil) else {
-            return false
-        }
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: transcodeMaxPixels,
-        ]
-        guard
-            let decoded = CGImageSourceCreateThumbnailAtIndex(image, 0, options as CFDictionary),
-            let output = CGImageDestinationCreateWithURL(
-                destination as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
-        else {
-            return false
-        }
-        CGImageDestinationAddImage(
-            output, decoded, [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary)
-        return CGImageDestinationFinalize(output)
     }
 
     /// The non-Safari extraction paths: a URL attachment (title best-effort

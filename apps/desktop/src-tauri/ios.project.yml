@@ -236,7 +236,9 @@ targets:
     sources:
       - path: ShareExtension/ShareViewController.swift
       - path: ShareExtension/ShareState.swift
+      - path: ShareExtension/SharedFiles.swift
       - path: ShareExtension/ShareView.swift
+      - path: ShareExtension/ShareFilesPreview.swift
       - path: ShareExtension/CaptureInbox.swift
       - path: ShareExtension/ShareChoices.swift
       # The Safari preprocessor (title/URL/selection/meta description); a

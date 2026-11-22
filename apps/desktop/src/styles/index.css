@@ -1889,20 +1889,6 @@ html[data-sidebar-resizing] aside {
   background: transparent;
 }
 
-/* Where dragged blocks would land (block-drag.ts): one accent rule across
-   the gap, from the level's left edge to the text's right edge. Fixed and
-   moved by transform, so following the finger costs no layout. */
-.kore-block-drop-marker {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 30;
-  height: 3px;
-  border-radius: 9999px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
 /* A finger held on a block is heading for Kore's long-press: no iOS text
    selection, loupe or callout underneath it (see block-swipe.tsx). */
 .kore-block-press-guard,

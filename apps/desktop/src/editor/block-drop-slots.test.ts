@@ -1,6 +1,7 @@
 import { markdownToDoc } from '@meowdown/core'
 import { describe, expect, it } from 'vitest'
 import { buildDropRows, dropSlotAt, type BlockBox } from './block-drop-slots'
+import { isIdleMove } from './block-move'
 import { blockRangeAt } from './block-selection-plugin'
 
 const doc = markdownToDoc(
@@ -72,19 +73,25 @@ describe('buildDropRows and dropSlotAt', () => {
     expect(dropSlotAt(rows, 200, 70)?.pos).toBe(posOf('second'))
   })
 
-  it('drops nowhere while the finger is over the dragged block’s own place', () => {
+  it('drops a dragged block where it already is while it is over its own place', () => {
     // The last nested item, lifted and barely moved: it must not leave its nest.
     const nestedTwo = blockRangeAt(doc, posOf('nested two') + 2)
     const rows = buildDropRows(doc, nestedTwo === null ? [] : [nestedTwo], boxOf, true)
     expect(rows).toHaveLength(5)
-    // "nested two" owns 60..80.
-    expect(dropSlotAt(rows, 200, 62)).toBeNull()
-    expect(dropSlotAt(rows, 200, 78)).toBeNull()
+    // "nested two" owns 60..80: its own two edges, however far left the finger.
+    for (const x of [200, 0]) {
+      const above = dropSlotAt(rows, x, 62)
+      const below = dropSlotAt(rows, x, 78)
+      expect(above?.pos).toBe(nestedTwo?.from)
+      expect(below?.pos).toBe(nestedTwo?.to)
+      expect(isIdleMove(nestedTwo === null ? [] : [nestedTwo], above?.pos ?? -1)).toBe(true)
+      expect(isIdleMove(nestedTwo === null ? [] : [nestedTwo], below?.pos ?? -1)).toBe(true)
+    }
     // A dragged item takes its children's rows with it.
     const first = blockRangeAt(doc, posOf('first') + 2)
     const without = buildDropRows(doc, first === null ? [] : [first], boxOf, true)
     expect(without).toHaveLength(3)
-    expect(dropSlotAt(without, 200, 50)).toBeNull()
+    expect(dropSlotAt(without, 200, 50)?.pos).toBe(first?.to)
   })
 
   it('clamps past either end', () => {

@@ -177,13 +177,14 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     const y = intro.top + intro.height / 2
     editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
     await new Promise((resolve) => setTimeout(resolve, 450))
-    // Held, then moved: the paragraph lifts and the gap under "second" is marked.
+    // Held, then moved: the paragraph lifts and the list closes up over the
+    // place it left, which opens its landing place under "second".
     const move = touchEventOn(editable, 'touchmove', x, second.bottom - 2)
     editable.dispatchEvent(move)
     expect(move.defaultPrevented).toBe(true)
-    const marker = document.querySelector<HTMLElement>('.kore-block-drop-marker')
-    expect(marker?.hidden).toBe(false)
-    // One tick for the lift, one for the gap the marker found.
+    const firstItem = view.getByText('first').element().closest('.prosemirror-flat-list')
+    expect(firstItem?.getAnimations()).toHaveLength(1)
+    // One tick for the lift, one for the place that opened.
     expect(hapticImpactLight).toHaveBeenCalledTimes(2)
     expect(onChange).not.toHaveBeenCalled()
 
@@ -191,8 +192,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     await vi.waitFor(() => {
       expect(onChange.mock.calls.at(-1)?.[0]).toBe('- first\n- second\n\nintro\n')
     })
-    // It lands still selected, and the marker is gone.
-    expect(document.querySelector('.kore-block-drop-marker')).toBeNull()
+    // It lands still selected.
     expect(currentBlockSelection()?.state.count).toBe(1)
     expect(document.querySelector('.kore-block-selected')?.textContent).toBe('intro')
     currentBlockSelection()?.commands.clear()
@@ -208,9 +208,10 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
     await new Promise((resolve) => setTimeout(resolve, 450))
     editable.dispatchEvent(touchEventOn(editable, 'touchmove', x, y + 8))
-    expect(document.querySelector<HTMLElement>('.kore-block-drop-marker')?.hidden).toBe(true)
+    // Still over its own place: nothing around it makes room.
+    const secondItem = view.getByText('second').element().closest('.prosemirror-flat-list')
+    expect(secondItem?.getAnimations()).toHaveLength(0)
     editable.dispatchEvent(touchEventOn(editable, 'touchend', x, y + 8))
-    expect(document.querySelector('.kore-block-drop-marker')).toBeNull()
     expect(onChange).not.toHaveBeenCalled()
     expect(currentBlockSelection()?.state.count).toBe(1)
     currentBlockSelection()?.commands.clear()

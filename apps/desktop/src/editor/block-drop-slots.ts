@@ -8,8 +8,9 @@ import { isListNode, type BlockRange } from './block-selection-plugin'
  * The note is cut into rows: a top-level block is one row, and a list item is
  * the row of its own line with its nested items as rows of their own. The
  * upper half of a row drops above its block; the lower half drops below it,
- * at the row's own level. A dragged block keeps its row with no gap in it, so
- * a finger still over the place it was lifted from drops nowhere. Under the
+ * at the row's own level. A dragged block keeps its row, with the gaps at its
+ * own level only, so over the place it was lifted from it drops where it
+ * already is. Under the
  * last item of a nested list "below" is ambiguous (still nested, or out at
  * one of the levels above), so that row offers every level and the finger's
  * horizontal position picks: slide left to step out.
@@ -29,15 +30,20 @@ interface Gap {
 }
 
 export interface DropRow {
+  /** Where the row's block starts in the document. */
+  pos: number
   top: number
   bottom: number
-  /** Null on a dragged block's own row. */
-  before: Gap | null
-  /** Deepest level first; empty on a dragged block's own row. */
+  /** The row is an item's own line only: its nested items are rows of their own. */
+  ownLine: boolean
+  /** The row is a dragged block, whole. */
+  lifted: boolean
+  before: Gap
+  /** Deepest level first. */
   after: readonly Gap[]
 }
 
-/** The gap under the finger, and where its marker draws. */
+/** The gap under the finger: where it is in the document and on the page. */
 export interface DropSlot {
   pos: number
   y: number
@@ -62,11 +68,12 @@ export function buildDropRows(
   const visit = (node: ProseMirrorNode, pos: number, tails: readonly Gap[]): void => {
     const box = boxOf(pos)
     if (box === null) return
+    const end: Gap = { pos: pos + node.nodeSize, left: box.left }
+    const whole = { pos, top: box.top, bottom: box.bottom, ownLine: false }
     if (lifted.has(pos)) {
-      rows.push({ top: box.top, bottom: box.bottom, before: null, after: [] })
+      rows.push({ ...whole, lifted: true, before: { pos, left: box.left }, after: [end] })
       return
     }
-    const end: Gap = { pos: pos + node.nodeSize, left: box.left }
     const nested: Array<{ node: ProseMirrorNode; pos: number }> = []
     if (nest && isListNode(node)) {
       node.forEach((child, offset, index) => {
@@ -77,8 +84,8 @@ export function buildDropRows(
     const firstBox = first === undefined ? null : boxOf(first.pos)
     if (first === undefined || firstBox === null) {
       rows.push({
-        top: box.top,
-        bottom: box.bottom,
+        ...whole,
+        lifted: false,
         before: { pos, left: box.left },
         after: [end, ...tails],
       })
@@ -86,8 +93,11 @@ export function buildDropRows(
     }
     // The item's own line: below it is its first child's place.
     rows.push({
+      pos,
       top: box.top,
       bottom: firstBox.top,
+      ownLine: true,
+      lifted: false,
       before: { pos, left: box.left },
       after: [{ pos: first.pos, left: firstBox.left }],
     })
@@ -104,8 +114,8 @@ export function buildDropRows(
 
 /**
  * The gap for a finger at (`x`, `y`): the row under it (the nearest one when
- * it is past either end), split at its middle. The marker sits halfway
- * between the two blocks the gap separates.
+ * it is past either end), split at its middle. Its `y` is halfway between
+ * the two blocks the gap separates.
  */
 export function dropSlotAt(rows: readonly DropRow[], x: number, y: number): DropSlot | null {
   if (rows.length === 0) return null
@@ -114,7 +124,6 @@ export function dropSlotAt(rows: readonly DropRow[], x: number, y: number): Drop
   const row = rows[index]
   if (row === undefined) return null
   if (y < (row.top + row.bottom) / 2) {
-    if (row.before === null) return null
     const above = rows[index - 1]
     const edge = above === undefined ? row.top : (above.bottom + row.top) / 2
     return { pos: row.before.pos, left: row.before.left, y: edge }

@@ -7,13 +7,12 @@ import { isListNode, type BlockRange } from './block-selection-plugin'
  *
  * The note is cut into rows: a top-level block is one row, and a list item is
  * the row of its own line with its nested items as rows of their own. The
- * upper half of a row drops above its block; the lower half drops below it,
- * at the row's own level. A dragged block keeps its row, with the gaps at its
- * own level only, so over the place it was lifted from it drops where it
- * already is. Under the
- * last item of a nested list "below" is ambiguous (still nested, or out at
- * one of the levels above), so that row offers every level and the finger's
- * horizontal position picks: slide left to step out.
+ * lower half of a row and the upper half of the row under it are the same
+ * place, the gap between the two. Under the last item of a nested list that
+ * gap is ambiguous (still nested, or out at one of the levels above), so it
+ * offers every level and the finger's horizontal position picks: slide left
+ * to step out. A dragged block keeps its row, so the gaps around the place it
+ * was lifted from stay where they were.
  */
 
 /** A block's box, in whatever vertical coordinates the caller hit-tests in. */
@@ -71,7 +70,7 @@ export function buildDropRows(
     const end: Gap = { pos: pos + node.nodeSize, left: box.left }
     const whole = { pos, top: box.top, bottom: box.bottom, ownLine: false }
     if (lifted.has(pos)) {
-      rows.push({ ...whole, lifted: true, before: { pos, left: box.left }, after: [end] })
+      rows.push({ ...whole, lifted: true, before: { pos, left: box.left }, after: [end, ...tails] })
       return
     }
     const nested: Array<{ node: ProseMirrorNode; pos: number }> = []
@@ -112,6 +111,11 @@ export function buildDropRows(
   return rows
 }
 
+/** The deepest of `levels` the finger at `x` has not slid left of; the outermost otherwise. */
+function levelAt(levels: readonly Gap[], x: number): Gap | undefined {
+  return levels.find((level) => level.left <= x) ?? levels[levels.length - 1]
+}
+
 /**
  * The gap for a finger at (`x`, `y`): the row under it (the nearest one when
  * it is past either end), split at its middle. Its `y` is halfway between
@@ -123,15 +127,24 @@ export function dropSlotAt(rows: readonly DropRow[], x: number, y: number): Drop
   if (index === -1) index = rows.length - 1
   const row = rows[index]
   if (row === undefined) return null
-  if (y < (row.top + row.bottom) / 2) {
-    const above = rows[index - 1]
-    const edge = above === undefined ? row.top : (above.bottom + row.top) / 2
-    return { pos: row.before.pos, left: row.before.left, y: edge }
-  }
-  const below = rows[index + 1]
-  const edge = below === undefined ? row.bottom : (row.bottom + below.top) / 2
-  // The deepest level the finger has not slid left of; the outermost otherwise.
-  const gap = row.after.find((level) => level.left <= x) ?? row.after[row.after.length - 1]
+  const upper = y < (row.top + row.bottom) / 2
+  const above = upper ? rows[index - 1] : row
+  const below = upper ? row : rows[index + 1]
+  // The gap's levels are the upper row's; the lower row's own start joins
+  // them when the upper row does not reach it (it ends inside its item).
+  const levels =
+    above === undefined ||
+    below === undefined ||
+    above.after.some((gap) => gap.pos === below.before.pos)
+      ? (above?.after ?? [row.before])
+      : [...above.after, below.before]
+  const gap = levelAt(levels, x)
   if (gap === undefined) return null
+  const edge =
+    above === undefined
+      ? row.top
+      : below === undefined
+        ? row.bottom
+        : (above.bottom + below.top) / 2
   return { pos: gap.pos, left: gap.left, y: edge }
 }

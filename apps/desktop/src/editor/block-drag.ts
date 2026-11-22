@@ -39,11 +39,6 @@ const SCROLL_MAX_PX_PER_FRAME = 16
 /** Blocks picked apart close up into one stack as they lift. */
 const GATHER_MS = 180
 const GATHER_GAP_PX = 8
-/**
- * How far the blocks travel before any place opens: a held finger that
- * wavers must not move the blocks a level out.
- */
-const STEADY_PX = 12
 
 function scrollerOf(element: HTMLElement): HTMLElement {
   for (let node = element.parentElement; node !== null; node = node.parentElement) {
@@ -227,10 +222,7 @@ export function startBlockDrag(
     }
     // A row gives way when the stack's leading edge passes its middle, so
     // the place that opens is the one the stack is drawn over.
-    const slot =
-      Math.abs(travel) < STEADY_PX
-        ? null
-        : dropSlotAt(rows, fingerX, (travel > 0 ? stackBottom : stackTop) + travel)
+    const slot = dropSlotAt(rows, fingerX, (travel > 0 ? stackBottom : stackTop) + travel)
     const next = slot === null || isIdleMove(blocks, slot.pos) ? null : slot
     if (next?.pos === target?.pos) return
     if (next !== null) onStep()

@@ -45,8 +45,11 @@ describe('buildDropRows and dropSlotAt', () => {
   it('drops above a block from its upper half and below from its lower half', () => {
     const rows = buildDropRows(doc, [], boxOf, true)
     expect(rows).toHaveLength(5)
-    // "second" is the fifth line: 80..100.
-    expect(dropSlotAt(rows, 200, 84)?.pos).toBe(posOf('second'))
+    // "first" is the second line: 20..40.
+    expect(dropSlotAt(rows, 200, 24)?.pos).toBe(posOf('first'))
+    // "second" is the fifth line: 80..100. Above it the nest has just closed,
+    // so only a finger out at its own level lands right before it.
+    expect(dropSlotAt(rows, 0, 84)?.pos).toBe(posOf('second'))
     const end = doc.content.size
     expect(dropSlotAt(rows, 200, 96)).toEqual({ pos: end, left: 0, y: 100 })
   })
@@ -73,22 +76,27 @@ describe('buildDropRows and dropSlotAt', () => {
     expect(dropSlotAt(rows, 200, 70)?.pos).toBe(posOf('second'))
   })
 
-  it('drops a dragged block where it already is while it is over its own place', () => {
-    // The last nested item, lifted and barely moved: it must not leave its nest.
+  it('keeps a dragged block where it is until the finger slides left to step out', () => {
     const nestedTwo = blockRangeAt(doc, posOf('nested two') + 2)
-    const rows = buildDropRows(doc, nestedTwo === null ? [] : [nestedTwo], boxOf, true)
-    expect(rows).toHaveLength(5)
-    // "nested two" owns 60..80: its own two edges, however far left the finger.
-    for (const x of [200, 0]) {
-      const above = dropSlotAt(rows, x, 62)
-      const below = dropSlotAt(rows, x, 78)
-      expect(above?.pos).toBe(nestedTwo?.from)
-      expect(below?.pos).toBe(nestedTwo?.to)
-      expect(isIdleMove(nestedTwo === null ? [] : [nestedTwo], above?.pos ?? -1)).toBe(true)
-      expect(isIdleMove(nestedTwo === null ? [] : [nestedTwo], below?.pos ?? -1)).toBe(true)
-    }
-    // A dragged item takes its children's rows with it.
     const first = blockRangeAt(doc, posOf('first') + 2)
+    const dragged = nestedTwo === null ? [] : [nestedTwo]
+    const rows = buildDropRows(doc, dragged, boxOf, true)
+    expect(rows).toHaveLength(5)
+    // "nested two" owns 60..80 and "second" 80..100: the gap between them is
+    // one place, whichever row's half the finger is in.
+    for (const y of [78, 82]) {
+      // At the item's own level it stays the last nested item.
+      const nested = dropSlotAt(rows, 200, y)
+      expect(nested?.pos).toBe(nestedTwo?.to)
+      expect(isIdleMove(dragged, nested?.pos ?? -1)).toBe(true)
+      // Slid left it steps out, after the item it was nested in.
+      const out = dropSlotAt(rows, 0, y)
+      expect(out?.pos).toBe(first?.to)
+      expect(isIdleMove(dragged, out?.pos ?? -1)).toBe(false)
+    }
+    // Over its upper half it stays put.
+    expect(isIdleMove(dragged, dropSlotAt(rows, 0, 62)?.pos ?? -1)).toBe(true)
+    // A dragged item takes its children's rows with it.
     const without = buildDropRows(doc, first === null ? [] : [first], boxOf, true)
     expect(without).toHaveLength(3)
     expect(dropSlotAt(without, 200, 50)?.pos).toBe(first?.to)

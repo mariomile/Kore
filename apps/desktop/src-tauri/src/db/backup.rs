@@ -218,7 +218,11 @@ fn restore_backup(archive_path: &Path, parent: &Path) -> AppResult<RestoredBacku
     let mut total = 0_u64;
     for index in 0..archive.len() {
         let mut entry = archive.by_index(index).map_err(zip_error)?;
-        let name = entry.name().trim_end_matches('/').to_owned();
+        let name = entry
+            .name()
+            .map_err(zip_error)?
+            .trim_end_matches('/')
+            .to_owned();
         if !allowed_path(&name)
             || entry
                 .unix_mode()

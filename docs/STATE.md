@@ -1,5 +1,13 @@
 # Kore working state
 
+## Drag blocks on iPhone, 2026-11-22 (0.139.0)
+
+- [x] Hold a block and drag it to another place in the note; neighbours part
+  to make room (no drop line); multi-block and nested lists; Move up / Move
+  down work for every block; holding a photo selects its block (#623).
+- [x] Web links on iPhone open in Safari instead of a blank in-app screen
+  (#626).
+
 ## Clean note previews, 2026-11-22 (0.138.1)
 
 - [x] Note cards, list rows and search snippets show only prose, never raw

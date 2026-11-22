@@ -71,3 +71,28 @@ export async function setTagPropertyType(
   )
   await saveTagType(tag, next, generation)
 }
+
+/**
+ * Rename the display label of the property under `key`, keeping its stored
+ * frontmatter key intact so existing notes keep their values.
+ */
+export async function renameTagProperty(
+  tag: string,
+  generation: number,
+  key: string,
+  name: string,
+): Promise<void> {
+  const trimmed = name.trim()
+  if (trimmed === '') {
+    return
+  }
+  const definition = await readTagDefinition(tag)
+  const current = definition.properties.find((property) => property.key === key)
+  if (current === undefined || current.name === trimmed) {
+    return
+  }
+  const next = definition.properties.map((property) =>
+    property.key === key ? { ...property, name: trimmed } : property,
+  )
+  await saveTagType(tag, next, generation)
+}

@@ -43,7 +43,16 @@ vi.mock('@/lib/tags/use-add-note-tag', () => ({
 }))
 vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => vi.fn() }))
 const setTagPropertyType = vi.hoisted(() => vi.fn(async () => {}))
-vi.mock('@/lib/tags/schema-edits', () => ({ setTagPropertyType }))
+const addTagProperty = vi.hoisted(() => vi.fn(async () => {}))
+const removeTagProperty = vi.hoisted(() => vi.fn(async () => {}))
+const renameTagProperty = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/lib/tags/schema-edits', () => ({
+  addTagProperty,
+  removeTagProperty,
+  renameTagProperty,
+  setTagPropertyType,
+}))
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
 
 function Subject({ path = 'notes/dispossessed.md' }: { path?: string }): ReactElement {
   return (
@@ -267,5 +276,47 @@ describe('NotePropertiesHeader', () => {
     await view.getByRole('button', { name: 'follow_up (Text)' }).click()
     await expect.element(view.getByText('Type: Text')).toBeInTheDocument()
     expect(view.getByRole('menuitemradio').elements()).toHaveLength(0)
+  })
+
+  it('uses animated mobile sheets for property values and labels on iPhone', async () => {
+    setPlatformSurface({ mobileApp: true })
+    try {
+      data.tags = [
+        {
+          tag: 'project',
+          tagKey: 'project',
+          definitionPath: 'tags/project.md',
+          type: {
+            properties: [
+              { name: 'Status', key: 'status', type: 'status', options: ['active', 'paused'] },
+            ],
+          },
+        },
+      ]
+      data.values = {
+        status: { value: 'active', valueType: 'string', valueNumber: null },
+      }
+      const view = await render(<Subject />)
+
+      // Collapsed summary shows the filled status value right beside the tag chip.
+      await expect.element(view.getByText('active')).toBeVisible()
+      await view.getByRole('button', { expanded: false }).click()
+
+      // Tapping the value opens the animated MobileCellEditorDrawer sheet.
+      await view.getByRole('button', { name: 'Edit Status' }).click()
+      await view.getByRole('option', { name: 'paused' }).click()
+      expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'status', 'paused')
+
+      // Tapping the property label opens the Notion-style PropertyLabelSheet.
+      await view.getByRole('button', { name: 'Status (Status)' }).click()
+      await view.getByRole('button', { name: 'Rename' }).click()
+      await view.getByRole('textbox', { name: 'Property name' }).fill('Stage')
+      await view.getByRole('button', { name: 'Save' }).click()
+      await vi.waitFor(() =>
+        expect(renameTagProperty).toHaveBeenCalledWith('project', 1, 'status', 'Stage'),
+      )
+    } finally {
+      setPlatformSurface({ mobileApp: false })
+    }
   })
 })

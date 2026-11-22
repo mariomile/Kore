@@ -5,7 +5,7 @@ import {
   type TagProperty,
   type TagPropertyType,
 } from '@kore/core'
-import { Settings } from '@/components/icons'
+import { Settings, Trash } from '@/components/icons'
 import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
@@ -21,10 +21,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from '@/components/ui/toast'
-import { setTagPropertyType } from '@/lib/tags/schema-edits'
+import { isMobileSurface } from '@/lib/platform-surface'
+import { removeTagProperty, renameTagProperty, setTagPropertyType } from '@/lib/tags/schema-edits'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
+import { hapticImpactLight } from '@/mobile/haptics'
 import { useGraph } from '@/providers/graph-provider'
+import { PropertyLabelSheet } from './property-label-sheet'
 
 interface PropertyFieldLabelProps {
   property: TagProperty
@@ -39,11 +42,9 @@ interface PropertyFieldLabelProps {
 
 /**
  * A note field's name, drawn with its type's glyph so the type reads at a
- * glance. Clicking it opens the field's menu: the type, switchable in place
- * (written to the owning tag's schema, so it applies to every note of that
- * type, which the menu says), and the door to the full schema dialog. A
- * loose field has no schema to change, so its menu only names the type read
- * from its value.
+ * glance. On desktop, clicking opens a compact menu (edit fields, switch type,
+ * delete property). On iPhone, tapping opens a Notion-style animated bottom
+ * sheet (rename, change type, edit fields, delete property).
  */
 export function PropertyFieldLabel({
   property,
@@ -51,6 +52,8 @@ export function PropertyFieldLabel({
   className,
 }: PropertyFieldLabelProps): ReactElement {
   const { graph } = useGraph()
+  const mobile = isMobileSurface()
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [configuring, setConfiguring] = useState(false)
   const TypeIcon = PROPERTY_TYPE_ICONS[property.type]
   const typeLabel = PROPERTY_TYPE_LABELS[property.type]
@@ -76,6 +79,76 @@ export function PropertyFieldLabel({
     }
   }
 
+  const rename = async (nextName: string): Promise<void> => {
+    if (ownerTag === null || graph === null) {
+      return
+    }
+    try {
+      await renameTagProperty(ownerTag, graph.generation, property.key, nextName)
+      invalidateOnNextIndexApply()
+    } catch (error) {
+      toast.add({
+        type: 'error',
+        title: "Couldn't rename the property",
+        description: errorMessage(error),
+      })
+    }
+  }
+
+  const remove = async (): Promise<void> => {
+    if (ownerTag === null || graph === null) {
+      return
+    }
+    try {
+      await removeTagProperty(ownerTag, graph.generation, property.key)
+      invalidateOnNextIndexApply()
+    } catch (error) {
+      toast.add({
+        type: 'error',
+        title: "Couldn't delete the property",
+        description: errorMessage(error),
+      })
+    }
+  }
+
+  const triggerClass = cn(
+    'flex min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 py-1 text-left text-text-secondary transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none data-[popup-open]:bg-surface-hover data-[popup-open]:text-text',
+    mobile ? 'min-h-9 text-[14px] active:bg-surface-hover' : 'min-h-7 text-[13px]',
+    className,
+  )
+
+  if (mobile) {
+    return (
+      <>
+        <button
+          type="button"
+          aria-label={`${property.name} (${typeLabel})`}
+          onClick={() => {
+            hapticImpactLight()
+            setSheetOpen(true)
+          }}
+          className={triggerClass}
+        >
+          <TypeIcon aria-hidden className="size-4 shrink-0 text-text-muted" />
+          <span className="truncate">{property.name}</span>
+        </button>
+        <PropertyLabelSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          property={property}
+          ownerTag={ownerTag}
+          onRename={rename}
+          onChangeType={changeType}
+          onEditSchema={() => setConfiguring(true)}
+          onDelete={remove}
+        />
+        {configuring && ownerTag !== null ? (
+          <TagConfigDialog tag={ownerTag} onClose={() => setConfiguring(false)} />
+        ) : null}
+      </>
+    )
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -85,12 +158,9 @@ export function PropertyFieldLabel({
               type="button"
               aria-label={`${property.name} (${typeLabel})`}
               title={`${typeLabel}: click to change`}
-              className={cn(
-                'flex min-w-0 shrink-0 items-center gap-1.5 rounded-sm text-left text-[13px] text-text-muted transition-colors hover:text-text focus-visible:outline-none data-[popup-open]:text-text',
-                className,
-              )}
+              className={triggerClass}
             >
-              <TypeIcon aria-hidden className="size-3.5 shrink-0" />
+              <TypeIcon aria-hidden className="size-3.5 shrink-0 text-text-muted" />
               <span className="truncate">{property.name}</span>
             </button>
           }
@@ -128,6 +198,11 @@ export function PropertyFieldLabel({
                   })}
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={() => void remove()}>
+                <Trash aria-hidden className="size-3.5" />
+                Delete property
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

@@ -1,5 +1,12 @@
 # Kore working state
 
+## Share photos and PDFs from iPhone, 2026-11-22 (0.135.0)
+
+- [x] The iPhone share sheet accepts photos and PDFs (up to 10 files), saved as
+  attachments and embedded in today's daily or the chosen note; HEIC becomes
+  JPEG. A shared X post is saved under Links as a readable card that links the
+  "X posts" note (#598).
+
 ## Folder path above the title, 2026-11-22 (0.134.0)
 
 - [x] The label above a note title shows the note's folder path and opens that

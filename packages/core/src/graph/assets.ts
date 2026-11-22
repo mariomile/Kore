@@ -101,6 +101,28 @@ export async function writeAssetStreamed(
 }
 
 /**
+ * The shared tail of every file-to-file import: Rust lands `source` in the
+ * attachment folder as `desiredName` (or its first free variant) and answers
+ * the graph-relative path, which is then echoed and announced like any other
+ * new attachment.
+ */
+async function importAttachment(
+  command: string,
+  source: Record<string, string>,
+  desiredName: string,
+  generation: number,
+): Promise<string> {
+  const path = await call(
+    command,
+    { ...source, desiredName, generation, dir: attachmentDir() },
+    z.string(),
+  )
+  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
+  noteAttachmentAdded(path)
+  return path
+}
+
+/**
  * Copy a file the OS handed us a real path for (file picker) into the graph's
  * `assets/` folder as `desiredName`, with the same collision policy and
  * return value as {@link createAsset}. The copy happens file-to-file in Rust;
@@ -111,14 +133,7 @@ export async function importAsset(
   desiredName: string,
   generation: number,
 ): Promise<string> {
-  const path = await call(
-    'asset_import',
-    { sourcePath, desiredName, generation, dir: attachmentDir() },
-    z.string(),
-  )
-  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
-  noteAttachmentAdded(path)
-  return path
+  return await importAttachment('asset_import', { sourcePath }, desiredName, generation)
 }
 
 /**
@@ -133,14 +148,7 @@ export async function importCaptureSpool(
   desiredName: string,
   generation: number,
 ): Promise<string> {
-  const path = await call(
-    'capture_inbox_import',
-    { spoolName, desiredName, generation, dir: attachmentDir() },
-    z.string(),
-  )
-  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
-  noteAttachmentAdded(path)
-  return path
+  return await importAttachment('capture_inbox_import', { spoolName }, desiredName, generation)
 }
 
 /**
@@ -155,12 +163,5 @@ export async function importRemoteImage(
   desiredName: string,
   generation: number,
 ): Promise<string> {
-  const path = await call(
-    'capture_image_fetch',
-    { url, desiredName, generation, dir: attachmentDir() },
-    z.string(),
-  )
-  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
-  noteAttachmentAdded(path)
-  return path
+  return await importAttachment('capture_image_fetch', { url }, desiredName, generation)
 }

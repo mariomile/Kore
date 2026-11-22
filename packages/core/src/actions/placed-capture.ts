@@ -115,8 +115,8 @@ const X_POSTS_NOTE_TITLE = 'X posts'
  * agent, `cat`) shows as the post: a list item whose line says who wrote it,
  * linked to the post, and links the [[X posts]] note; under it, quoted, what
  * they wrote and the photos (a video by its poster), each kept in the vault,
- * then the user's own note. A list item, not a bare quote, because a backlink's context is the
- * whole item: the X posts note then shows each post in full. Offline or for
+ * then the user's own note. A list item, not a bare quote, because a
+ * backlink's context is the whole item: the X posts note then shows each post in full. Offline or for
  * a post that is gone, the card is the author line alone, so the save never
  * waits on X and never loses the link.
  */
@@ -140,10 +140,11 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
     const image = media.type === 'photo' ? media.url : media.poster
     return image && media.unavailable !== true ? [image] : []
   })
-  for (const [index, image] of images.entries()) {
-    const kept = await keptPostImage(image, xPostId(envelope.url), index + 1, generation)
-    quote.push(`![](${markdownLinkDestination(kept)})`)
-  }
+  const postId = xPostId(envelope.url)
+  const kept = await Promise.all(
+    images.map((image, index) => keptPostImage(image, postId, index + 1, generation)),
+  )
+  quote.push(...kept.map((image) => `![](${markdownLinkDestination(image)})`))
   const children = quote.length > 0 ? [quoted(quote.join('\n\n'))] : []
   const note = envelope.note?.trim()
   if (note) {

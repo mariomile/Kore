@@ -64,7 +64,10 @@ export function PropertyFieldLabel({
     : [property.type, ...QUICK_PROPERTY_TYPES]
 
   const changeType = async (type: TagPropertyType): Promise<boolean> => {
-    if (ownerTag === null || graph === null || type === property.type) {
+    if (type === property.type) {
+      return true
+    }
+    if (ownerTag === null || graph === null) {
       return false
     }
     try {

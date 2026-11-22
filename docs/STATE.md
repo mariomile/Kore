@@ -1,5 +1,11 @@
 # Kore working state
 
+## Folder path above the title, 2026-11-22 (0.134.0)
+
+- [x] The label above a note title shows the note's folder path and opens that
+  folder on tap; the up: parent label and the Child notes section are removed
+  (#603, supersedes the #599 glyph).
+
 ## Parent-note breadcrumb, 2026-11-22 (0.133.0)
 
 - [x] The breadcrumb above a note title carries the note glyph, so it reads as

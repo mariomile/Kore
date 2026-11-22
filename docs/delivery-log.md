@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Notes: folder path above the title, tap to open the folder; parent label and
+  Child notes removed (#603).
 - Notes: parent-note breadcrumb shows the note glyph (#599).
 - Deps: zip 9.8 and rusqlite 0.41 (#597).
 - Folders: right-click context menu on Folders (create note/subfolder, rename, move, reveal, copy path, trash) with disk/session/link consistency and bulk-move path-link rewriting (#581).

@@ -105,76 +105,92 @@ export function MobileTimeline({
       className="flex min-h-0 flex-1 flex-col"
       style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
     >
-      <div className="flex h-14 flex-none items-center gap-2 px-4">
-        <div
-          role="radiogroup"
-          aria-label="Timeline zoom"
-          className="flex items-center rounded-full bg-surface-hover p-0.5"
-        >
-          {TIMELINE_ZOOMS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              role="radio"
-              aria-checked={option === zoom}
-              onClick={() => pickZoom(option)}
-              className={cn(
-                "relative h-8 rounded-full px-3.5 text-[13px] transition-colors before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
-                option === zoom
-                  ? 'bg-surface font-semibold text-text shadow-sm'
-                  : 'font-medium text-text-muted',
-              )}
-            >
-              {timelineZoomLabel(option)}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => {
-            hapticImpactLight()
-            scrollRef.current?.scrollTo({ left: todayScrollLeft(), behavior: 'smooth' })
-          }}
-          className="h-8 rounded-full bg-surface-hover px-3.5 text-[13px] font-medium text-text active:opacity-60"
-        >
-          Today
-        </button>
-      </div>
-
-      <div
-        ref={scrollRef}
-        data-base-ui-swipe-ignore
-        data-collection-timeline
-        className="relative min-h-0 flex-1 overflow-auto overscroll-contain"
-        style={{
-          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
-        }}
-      >
-        <div style={{ width: trackWidth }} className="relative min-h-full">
+      {items.length > 0 ? (
+        <div className="flex h-14 flex-none items-center gap-2 px-4">
           <div
-            style={{ height: HEADER_HEIGHT }}
-            className="sticky top-0 z-20 flex border-b border-border bg-background"
+            role="radiogroup"
+            aria-label="Timeline zoom"
+            className="flex items-center rounded-full bg-surface-hover p-0.5"
           >
-            <TimelineHeader layout={layout} zoom={zoom} labelInset={GUTTER - 8} />
+            {TIMELINE_ZOOMS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={option === zoom}
+                onClick={() => pickZoom(option)}
+                className={cn(
+                  "relative h-8 rounded-full px-3.5 text-[13px] transition-colors before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
+                  option === zoom
+                    ? 'bg-surface font-semibold text-text shadow-sm'
+                    : 'font-medium text-text-muted',
+                )}
+              >
+                {timelineZoomLabel(option)}
+              </button>
+            ))}
           </div>
-          <div
-            aria-hidden
-            style={{ top: HEADER_HEIGHT, height: itemsHeight, ...gridStyle }}
-            className="pointer-events-none absolute inset-x-0"
-          />
-          {todayOffset >= 0 && todayOffset < window.days ? (
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => {
+              hapticImpactLight()
+              scrollRef.current?.scrollTo({ left: todayScrollLeft(), behavior: 'smooth' })
+            }}
+            className="h-8 rounded-full bg-surface-hover px-3.5 text-[13px] font-medium text-text active:opacity-60"
+          >
+            Today
+          </button>
+        </div>
+      ) : null}
+
+      {items.length === 0 ? (
+        <div
+          className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-6 text-center"
+          style={{
+            paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+          }}
+        >
+          <p className="text-[15px] font-medium text-text-secondary">
+            No notes have a {fields.start.name} yet.
+          </p>
+          {layout.undated > 0 ? (
+            <p className="text-[13px] text-text-muted">
+              {layout.undated === 1 ? '1 note has' : `${String(layout.undated)} notes have`} no{' '}
+              {fields.start.name}, so {layout.undated === 1 ? 'it shows' : 'they show'} in the
+              table.
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div
+          ref={scrollRef}
+          data-base-ui-swipe-ignore
+          data-collection-timeline
+          className="relative min-h-0 flex-1 overflow-auto overscroll-contain"
+          style={{
+            paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+          }}
+        >
+          <div style={{ width: trackWidth }} className="relative min-h-full">
+            <div
+              style={{ height: HEADER_HEIGHT }}
+              className="sticky top-0 z-20 flex border-b border-border bg-background"
+            >
+              <TimelineHeader layout={layout} zoom={zoom} labelInset={GUTTER - 8} />
+            </div>
             <div
               aria-hidden
-              style={{ left: (todayOffset + 0.5) * dayWidth, top: HEADER_HEIGHT }}
-              className="pointer-events-none absolute bottom-0 w-px bg-accent/60"
+              style={{ top: HEADER_HEIGHT, height: itemsHeight, ...gridStyle }}
+              className="pointer-events-none absolute inset-x-0"
             />
-          ) : null}
-          {items.length === 0 ? (
-            <p style={{ left: GUTTER }} className="sticky w-fit py-8 text-[15px] text-text-muted">
-              No notes have a {fields.start.name} yet.
-            </p>
-          ) : (
+            {todayOffset >= 0 && todayOffset < window.days ? (
+              <div
+                aria-hidden
+                style={{ left: (todayOffset + 0.5) * dayWidth, top: HEADER_HEIGHT }}
+                className="pointer-events-none absolute bottom-0 w-px bg-accent/60"
+              />
+            ) : null}
             <Virtualizer
               as="ul"
               item="li"
@@ -222,16 +238,16 @@ export function MobileTimeline({
                 )
               }
             </Virtualizer>
-          )}
-          {layout.undated > 0 ? (
-            <p style={{ left: GUTTER }} className="sticky w-fit py-4 text-[13px] text-text-muted">
-              {layout.undated === 1 ? '1 note has' : `${String(layout.undated)} notes have`} no{' '}
-              {fields.start.name}, so {layout.undated === 1 ? 'it shows' : 'they show'} in the
-              table.
-            </p>
-          ) : null}
+            {layout.undated > 0 ? (
+              <p style={{ left: GUTTER }} className="sticky w-fit py-4 text-[13px] text-text-muted">
+                {layout.undated === 1 ? '1 note has' : `${String(layout.undated)} notes have`} no{' '}
+                {fields.start.name}, so {layout.undated === 1 ? 'it shows' : 'they show'} in the
+                table.
+              </p>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

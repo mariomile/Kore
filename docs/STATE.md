@@ -1,5 +1,18 @@
 # Kore working state
 
+## Clean note previews, 2026-11-22 (0.138.1)
+
+- [x] Note cards, list rows and search snippets show only prose, never raw
+  Markdown (rules, table pipes, headings, property lines); PROJECTION_VERSION
+  39 rebuilds the index once (#619).
+
+## Tagged inbox notes file themselves, 2026-11-22 (0.138.0)
+
+- [x] A titled note directly in the new-note (inbox) folder moves into a tag's
+  default `folder:` when tagged, carrying the open session and rewriting
+  inbound path links; filed notes, daily notes and untitled placeholders are
+  never moved (#615).
+
 ## Weekday date chips, 2026-11-22 (0.137.0)
 
 - [x] Dates in notes (plain 2026-11-16 or linked [[2026-11-16]]) render as

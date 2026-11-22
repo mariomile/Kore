@@ -1,6 +1,6 @@
 import type { SyntaxNode } from '@meowdown/markdown'
 import type { Span } from './model'
-import { plainTextOfRange } from './plain-text'
+import { plainTextOfRange, type Cut } from './plain-text'
 
 /**
  * A task's breadcrumbs are the rendered labels of its ancestor `ListItem`
@@ -27,7 +27,7 @@ function listItemLeadTextblock(item: SyntaxNode): SyntaxNode | null {
 function listItemBreadcrumbLabel(
   body: string,
   item: SyntaxNode,
-  cuts: Span[],
+  cuts: readonly Cut[],
   literalRanges: Span[],
 ): string | null {
   const textblock = listItemLeadTextblock(item)
@@ -42,7 +42,7 @@ function listItemBreadcrumbLabel(
 export function taskBreadcrumbs(
   body: string,
   taskNode: SyntaxNode,
-  cuts: Span[],
+  cuts: readonly Cut[],
   literalRanges: Span[],
 ): string[] {
   const ownItem = taskNode.parent

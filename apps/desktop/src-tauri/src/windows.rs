@@ -520,6 +520,11 @@ pub async fn open_browser_window(
     app: tauri::AppHandle,
 ) -> AppResult<()> {
     let parsed = parse_browser_url(&url)?;
+    // Mobile has one fullscreen webview: a second window would cover the app
+    // with no way back. Refuse, so the caller falls back to the OS opener.
+    if cfg!(mobile) {
+        return Err(AppError::unknown("browser windows are desktop-only"));
+    }
     let label = browser_window_label(parsed.as_str());
     if let Some(existing) = app.get_webview_window(&label) {
         let _ = existing.show();

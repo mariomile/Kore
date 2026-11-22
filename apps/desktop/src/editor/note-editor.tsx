@@ -599,6 +599,11 @@ export function NoteEditor({
       alt: string
       event: MouseEvent | TouchEvent | KeyboardEvent
     }) => {
+      // While blocks are selected a touch on a picture belongs to its block
+      // (held to select and drag it, tapped to drop it from the selection).
+      if (event.target instanceof Element && event.target.closest('[data-block-selecting]')) {
+        return
+      }
       const displayUrl = latestRef.current.resolveImageUrl?.(src) ?? null
       if (displayUrl === null) {
         return

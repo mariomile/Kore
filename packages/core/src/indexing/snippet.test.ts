@@ -80,36 +80,23 @@ describe('lineAt', () => {
 })
 
 describe('previewSnippet', () => {
-  // The indexer's plain text is whitespace-collapsed (`buildPlainText`), so
-  // realistic input is one long line that opens with the note's title.
-  it('drops the leading title from collapsed plain text', () => {
-    expect(previewSnippet('Roadmap Ship the alpha in June. More.', 'Roadmap')).toBe(
-      'Ship the alpha in June. More.',
-    )
+  it('returns short text whole', () => {
+    expect(previewSnippet('Ship the alpha in June. More.')).toBe('Ship the alpha in June. More.')
   })
 
-  it('keeps text that does not open with the title (untitled notes)', () => {
-    expect(previewSnippet('Just a thought. Second thought.', 'ulid-derived')).toBe(
-      'Just a thought. Second thought.',
-    )
-  })
-
-  it('only strips the title at a word boundary, never a mere prefix', () => {
-    expect(previewSnippet('Healthy habits compound.', 'Health')).toBe('Healthy habits compound.')
-  })
-
-  it('keeps a repeated title beyond the leading occurrence', () => {
-    expect(previewSnippet('Echo Echo', 'Echo')).toBe('Echo')
+  it('never strips words that happen to repeat the title', () => {
+    // The preview text carries no headings, so nothing here is the title: a
+    // note called "Kore" that opens "Kore is a vault…" keeps its first word.
+    expect(previewSnippet('Kore is a vault for agents.')).toBe('Kore is a vault for agents.')
   })
 
   it('collapses raw multi-line input the same way the indexer does', () => {
-    expect(previewSnippet('Title\n\n   \n\tbody at last', 'Title')).toBe('body at last')
-    expect(previewSnippet('A  title\nwith   gaps', 'A title')).toBe('with gaps')
+    expect(previewSnippet('first\n\n   \n\tbody at last')).toBe('first body at last')
   })
 
   it('truncates long text with an ellipsis', () => {
     const long = 'x'.repeat(200)
-    const snippet = previewSnippet(long, 'Title', 50)
+    const snippet = previewSnippet(long, 50)
     expect(snippet).toBe(`${'x'.repeat(50)}…`)
   })
 
@@ -118,21 +105,20 @@ describe('previewSnippet', () => {
     // and leave a lone high surrogate the Rust index writer's serde_json
     // rejects ("unexpected end of hex escape"), dropping the note from the index.
     const text = `${'x'.repeat(49)}𝐒𝐏𝐈𝐍 the rest is dropped`
-    const snippet = previewSnippet(text, 'Title', 50)
+    const snippet = previewSnippet(text, 50)
     expect(hasLoneSurrogate(snippet)).toBe(false)
     expect(snippet).toBe(`${'x'.repeat(49)}…`)
   })
 
   it('keeps a whole astral character that fits within the limit', () => {
     const text = `${'x'.repeat(48)}𝐒 spilling well past the cap to force a cut`
-    const snippet = previewSnippet(text, 'Title', 50)
+    const snippet = previewSnippet(text, 50)
     expect(hasLoneSurrogate(snippet)).toBe(false)
     expect(snippet).toBe(`${'x'.repeat(48)}𝐒…`)
   })
 
-  it('returns empty for empty or title-only text', () => {
-    expect(previewSnippet('', 'Title')).toBe('')
-    expect(previewSnippet('Title', 'Title')).toBe('')
-    expect(previewSnippet('Title\n', 'Title')).toBe('')
+  it('returns empty for empty or blank text', () => {
+    expect(previewSnippet('')).toBe('')
+    expect(previewSnippet(' \n\t')).toBe('')
   })
 })

@@ -13,6 +13,16 @@ import type { Span } from './model'
  * pure string surgery over those spans; it does no parsing of its own.
  */
 
+/**
+ * A syntax range dropped from plain text. Most cuts close up (`**bold**ly`
+ * reads `boldly`); a `gap` cut is syntax that separates words — a table's `|`
+ * between two cells, a `---` rule between two blocks — and leaves a space, so
+ * `|a|b|` reads `a b`, never `ab`.
+ */
+export interface Cut extends Span {
+  gap?: true
+}
+
 // Inner of a wiki link, for plain-text rendering.
 const WIKI_INNER_RE = /\[\[([^\]\n]*)\]\]/g
 // CommonMark backslash escapes are visible in source, but not rendered text.
@@ -69,7 +79,7 @@ export function plainTextOfRange(
   body: string,
   start: number,
   end: number,
-  cuts: Span[],
+  cuts: readonly Cut[],
   literalRanges: Span[],
 ): string {
   const sorted = [...cuts].sort((a, b) => a.from - b.from)
@@ -88,6 +98,9 @@ export function plainTextOfRange(
       kept += appendPlainTextChunk(body, pos, cutFrom, sortedLiteralRanges)
     }
     pos = Math.max(pos, Math.min(end, cut.to))
+    if (cut.gap === true) {
+      kept += ' '
+    }
   }
   if (pos < end) {
     kept += appendPlainTextChunk(body, pos, end, sortedLiteralRanges)
@@ -96,6 +109,6 @@ export function plainTextOfRange(
 }
 
 /** Body text minus the cut (syntax) ranges, with wiki brackets/pipes flattened. */
-export function buildPlainText(body: string, cuts: Span[], literalRanges: Span[]): string {
+export function buildPlainText(body: string, cuts: readonly Cut[], literalRanges: Span[]): string {
   return plainTextOfRange(body, 0, body.length, cuts, literalRanges)
 }

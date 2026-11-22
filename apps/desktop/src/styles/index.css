@@ -1290,6 +1290,10 @@ html:root {
 }
 .kore-editor .md-image-view-preview img {
   cursor: zoom-in;
+  /* A finger held on a picture selects its block (block-swipe.tsx): iOS's
+     own picture menu would open over it. The lightbox's Open hands the file
+     to iOS, which is where saving and sharing live. */
+  -webkit-touch-callout: none;
 }
 /* A picture written on the same line as text (`- caption ![](a.png)`, the
    shape the iPhone's paste leaves) would sit inline on the text's baseline: a

@@ -915,6 +915,7 @@ describe('drainCaptureInbox: shared X posts', () => {
         '- [[old|Old]]',
         '',
         `- ![|40](assets/x-avatar-karpathy.jpg) **Andrej Karpathy** [@karpathy](https://x.com/karpathy) [2 Feb 2026](${POST_URL}) [[X posts]]`,
+        '',
         '  > Vibe coding, see [this](https://example.com/vibe).',
         '  > Second line',
         '  >',

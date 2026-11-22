@@ -442,6 +442,11 @@
   & > blockquote > :last-child {
     margin-bottom: 0;
   }
+  /* The post's paragraphs keep their air in a backlink snippet too, where
+     paragraphs otherwise sit flush. */
+  & > blockquote > p + p {
+    margin-top: 0.45em;
+  }
   /* A photo's preview is a block, so the photo's hidden source would sit on
      an empty line of its own under it: no line box there, and nothing hanging
      under the baseline, so the card's padding is all that follows a photo. */

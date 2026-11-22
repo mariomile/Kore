@@ -200,7 +200,9 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
   }
   const head = `- ${[...byline, `[[${postsNote}]]`].join(' ')}`
   const body = children.join('\n\n').replaceAll(/^(?=.)/gm, '  ')
-  return body === '' ? head : `${head}\n${body}`
+  // A blank line under the byline, as the editor writes the item back: the
+  // first save then changes nothing.
+  return body === '' ? head : `${head}\n\n${body}`
 }
 
 /**

@@ -109,6 +109,7 @@ export function createDocumentBinding(): DocumentBinding {
       if (adopted !== null) {
         bound = adopted
         owner = coordinator
+        owner?.retarget(path)
       } else {
         owner = create.coordinator()
         bound = create.session(owner)

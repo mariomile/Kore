@@ -237,14 +237,14 @@ export async function homePathForTaggedInboxNote(
     return null
   }
   const stem = noteFileStem(path)
-  const destFolder = typedNoteFolder(homeFolder, stem).replaceAll(/^\/+|\/+$/g, '')
+  const normalizeFolder = (candidate: string): string =>
+    typedNoteFolder(homeFolder, candidate).replaceAll(/^\/+|\/+$/g, '')
+  const destFolder = normalizeFolder(stem)
   if (destFolder === '' || foldGraphPath(destFolder) === foldGraphPath(currentFolder)) {
     return null
   }
-  return await probeNotePath(
-    stem,
-    taken,
-    path,
-    (candidate) => `${typedNoteFolder(homeFolder, candidate)}/${candidate}.md`,
-  )
+  return await probeNotePath(stem, taken, path, (candidate) => {
+    const folder = normalizeFolder(candidate)
+    return folder === '' ? `${candidate}.md` : `${folder}/${candidate}.md`
+  })
 }

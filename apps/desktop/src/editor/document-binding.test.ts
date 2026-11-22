@@ -48,15 +48,17 @@ function fakeSession(path: string) {
 }
 
 function fakeCoordinator() {
+  const retarget = vi.fn()
   const settle = vi.fn()
   const dispose = vi.fn()
   const coordinator: RenameCoordinator = {
     content: () => {},
+    retarget,
     settle,
     settled: async () => {},
     dispose,
   }
-  return { coordinator, settle, dispose }
+  return { coordinator, retarget, settle, dispose }
 }
 
 function factories(session: NoteSession, coordinator: RenameCoordinator | null): BindFactories {
@@ -97,7 +99,7 @@ describe('createDocumentBinding', () => {
   it('adopts a retargeted session when the next bind lands on its new path', async () => {
     const binding = createDocumentBinding()
     const moved = fakeSession('notes/a.md')
-    const { coordinator } = fakeCoordinator()
+    const { coordinator, retarget } = fakeCoordinator()
     binding.bind('notes/a.md', factories(moved.session, coordinator))
 
     moved.session.retarget('notes/renamed.md') // what moveNoteCarryingSession does
@@ -108,6 +110,7 @@ describe('createDocumentBinding', () => {
     expect(adopted.created).toBe(false)
     expect(adopted.session).toBe(moved.session)
     expect(adopted.coordinator).toBe(coordinator)
+    expect(retarget).toHaveBeenCalledWith('notes/renamed.md')
     expect(binding.epoch()).toBe(1) // no remount: the editor keeps its cursor
     await microtasks()
     expect(moved.dispose).not.toHaveBeenCalled() // the hand-off cancelled teardown

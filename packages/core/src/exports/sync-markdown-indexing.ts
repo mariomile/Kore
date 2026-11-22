@@ -584,6 +584,7 @@ export {
   availableTemplatePath,
   slugPathForTitle,
   birthPathForTitle,
+  homePathForTaggedInboxNote,
   templateSlugPathForTitle,
   titleFilePathForRetitle,
   listTemplates,

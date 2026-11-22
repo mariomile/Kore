@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocumentBinding, type BindFactories } from './document-binding'
 import type { NoteSession } from './note-session'
-import { openSession } from './open-documents'
+import { openSession, retargetOpenDocument } from './open-documents'
 import type { RenameCoordinator } from './rename-coordinator'
 
 /**
@@ -48,15 +48,17 @@ function fakeSession(path: string) {
 }
 
 function fakeCoordinator() {
+  const retarget = vi.fn()
   const settle = vi.fn()
   const dispose = vi.fn()
   const coordinator: RenameCoordinator = {
     content: () => {},
+    retarget,
     settle,
     settled: async () => {},
     dispose,
   }
-  return { coordinator, settle, dispose }
+  return { coordinator, retarget, settle, dispose }
 }
 
 function factories(session: NoteSession, coordinator: RenameCoordinator | null): BindFactories {
@@ -97,10 +99,12 @@ describe('createDocumentBinding', () => {
   it('adopts a retargeted session when the next bind lands on its new path', async () => {
     const binding = createDocumentBinding()
     const moved = fakeSession('notes/a.md')
-    const { coordinator } = fakeCoordinator()
+    const { coordinator, retarget } = fakeCoordinator()
     binding.bind('notes/a.md', factories(moved.session, coordinator))
 
     moved.session.retarget('notes/renamed.md') // what moveNoteCarryingSession does
+    retargetOpenDocument('notes/a.md', 'notes/renamed.md', moved.session)
+    expect(retarget).toHaveBeenCalledWith('notes/renamed.md')
     binding.unbind('notes/a.md') // route follows → React cleanup for the old path
     const spare = fakeSession('notes/renamed.md')
     const adopted = binding.bind('notes/renamed.md', factories(spare.session, null))
@@ -108,6 +112,7 @@ describe('createDocumentBinding', () => {
     expect(adopted.created).toBe(false)
     expect(adopted.session).toBe(moved.session)
     expect(adopted.coordinator).toBe(coordinator)
+    expect(retarget).toHaveBeenCalledWith('notes/renamed.md')
     expect(binding.epoch()).toBe(1) // no remount: the editor keeps its cursor
     await microtasks()
     expect(moved.dispose).not.toHaveBeenCalled() // the hand-off cancelled teardown

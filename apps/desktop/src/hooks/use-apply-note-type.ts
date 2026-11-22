@@ -12,6 +12,7 @@ import {
   upsertFrontmatter,
 } from '@kore/core'
 import { commitNoteBodyTransform, readNoteSource } from '@/lib/note-frontmatter'
+import { maybeMoveTaggedInboxNote } from '@/lib/tags/auto-move-tagged-note'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -60,6 +61,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
       // stamped on the way out — unsetting a type must not date anything.
       const type = remove ? null : await getTagType(tag)
       const starting = await startingValuesFor(tag, type)
+      let tagAdded = false
       await commitNoteBodyTransform(
         path,
         (current) => {
@@ -70,10 +72,14 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
           if (tagged === null) {
             return current
           }
+          tagAdded = true
           return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
         },
         generation,
       )
+      if (!remove && tagAdded && type?.folder !== undefined) {
+        await maybeMoveTaggedInboxNote(path, type.folder, generation)
+      }
       invalidateOnNextIndexApply()
     },
     [generation],

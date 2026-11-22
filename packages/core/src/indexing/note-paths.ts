@@ -1,7 +1,9 @@
 import { noteExists } from '../graph/commands'
+import { isUntitledNotePath } from '../graph/create-note'
 import {
   collisionStem,
   foldGraphPath,
+  isDaily,
   notePath,
   noteFileStem,
   noteFileStemForTitle,
@@ -211,4 +213,38 @@ export async function birthPathForTitle(
     }
   }
   return await slugPathForTitle(path, title, taken)
+}
+
+/**
+ * Where a titled note sitting directly in the vault's new-note / inbox folder
+ * (`VaultLayout.newNoteFolder`) moves when the user adds a `#tag` declaring a
+ * `folder:` home. Returns `null` when the note is already filed in another
+ * folder (so multi-tag notes never fight over folders), is a daily note, is an
+ * untitled ULID placeholder (handled by {@link birthPathForTitle} once titled),
+ * or is already in the tag's folder.
+ */
+export async function homePathForTaggedInboxNote(
+  path: string,
+  homeFolder: string,
+  taken: (candidate: string) => Promise<boolean> = pathTaken,
+): Promise<string | null> {
+  if (!path.endsWith('.md') || isDaily(path) || isUntitledNotePath(path)) {
+    return null
+  }
+  const currentFolder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+  const inboxFolder = getVaultLayout().newNoteFolder.replaceAll(/^\/+|\/+$/g, '')
+  if (foldGraphPath(currentFolder) !== foldGraphPath(inboxFolder)) {
+    return null
+  }
+  const stem = noteFileStem(path)
+  const normalizeFolder = (candidate: string): string =>
+    typedNoteFolder(homeFolder, candidate).replaceAll(/^\/+|\/+$/g, '')
+  const destFolder = normalizeFolder(stem)
+  if (destFolder === '' || foldGraphPath(destFolder) === foldGraphPath(currentFolder)) {
+    return null
+  }
+  return await probeNotePath(stem, taken, path, (candidate) => {
+    const folder = normalizeFolder(candidate)
+    return folder === '' ? `${candidate}.md` : `${folder}/${candidate}.md`
+  })
 }

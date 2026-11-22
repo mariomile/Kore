@@ -8,8 +8,9 @@ import {
   openMigratedIndex,
   project,
 } from './flow-test-harness'
+import { DEFAULT_VAULT_LAYOUT, setVaultLayout } from '../graph/vault-layout'
 import { getTagType } from './collections'
-import { birthPathForTitle } from './note-paths'
+import { birthPathForTitle, homePathForTaggedInboxNote } from './note-paths'
 import { refreshTagTypeResolutions } from './resolved-tag-types'
 
 /**
@@ -25,6 +26,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  setVaultLayout(DEFAULT_VAULT_LAYOUT)
   setBridge(null)
   database.close()
 })
@@ -79,5 +81,38 @@ describe('type home folder', () => {
     await expect(birthPathForTitle('notes/01abc.md', 'Dune', '# Dune\n', free)).resolves.toBe(
       'notes/dune.md',
     )
+  })
+
+  it('auto-moves a titled note from the inbox folder into a tagged home folder', async () => {
+    setVaultLayout({ ...DEFAULT_VAULT_LAYOUT, newNoteFolder: 'inbox', noteFileNames: 'title' })
+    await expect(
+      homePathForTaggedInboxNote('inbox/Ada Lovelace.md', 'CRM/People', free),
+    ).resolves.toBe('CRM/People/Ada Lovelace.md')
+    await expect(
+      homePathForTaggedInboxNote('inbox/Kore Cloud.md', 'Active/Projects/{title}', free),
+    ).resolves.toBe('Active/Projects/Kore Cloud/Kore Cloud.md')
+    await expect(homePathForTaggedInboxNote('inbox/Kore Cloud.md', '{title}', free)).resolves.toBe(
+      'Kore Cloud/Kore Cloud.md',
+    )
+    await expect(
+      homePathForTaggedInboxNote('inbox/Ada Lovelace.md', '/CRM/People/', free),
+    ).resolves.toBe('CRM/People/Ada Lovelace.md')
+
+    // Collision suffixes keep working in the target folder.
+    const taken = new Set(['CRM/People/Ada Lovelace.md'])
+    await expect(
+      homePathForTaggedInboxNote('inbox/Ada Lovelace.md', 'CRM/People', async (p) => taken.has(p)),
+    ).resolves.toBe('CRM/People/Ada Lovelace 2.md')
+
+    // Already-filed notes, dailies, and untitled ULID placeholders never auto-move.
+    await expect(
+      homePathForTaggedInboxNote('Knowledge/Ada Lovelace.md', 'CRM/People', free),
+    ).resolves.toBeNull()
+    await expect(
+      homePathForTaggedInboxNote('daily/2026-11-22.md', 'CRM/People', free),
+    ).resolves.toBeNull()
+    await expect(
+      homePathForTaggedInboxNote('inbox/01jxk2v9qz3m4n5p6r7s8t9vwx.md', 'CRM/People', free),
+    ).resolves.toBeNull()
   })
 })

@@ -70,6 +70,8 @@ export interface RenameCoordinatorOptions {
 export interface RenameCoordinator {
   /** Wire into the session's `onContent` stream (load/external/saved). */
   content(content: string, origin: NoteContentOrigin): void
+  /** Follow an external move that retargeted the open session in place. */
+  retarget(nextPath: string): void
   /** A settle point (blur, teardown, quit): fire any pending rename now. */
   settle(): void
   /** Resolves once settled renames' writes have landed (quit awaits this). */
@@ -268,6 +270,13 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
       } else {
         tracker.baseline(content) // load/external: new ground truth, no rewrite
       }
+    },
+    retarget(nextPath: string): void {
+      if (nextPath === currentPath) {
+        return
+      }
+      clearDraftTitle(currentPath, draftOwner)
+      currentPath = nextPath
     },
     settle(): void {
       tracker.settle()

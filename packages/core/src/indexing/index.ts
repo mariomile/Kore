@@ -38,6 +38,7 @@ export { hashContent } from './hash'
 export {
   availableTemplatePath,
   birthPathForTitle,
+  homePathForTaggedInboxNote,
   slugPathForTitle,
   templateSlugPathForTitle,
   titleFilePathForRetitle,

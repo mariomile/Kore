@@ -109,6 +109,7 @@ export function createDocumentBinding(): DocumentBinding {
       if (adopted !== null) {
         bound = adopted
         owner = coordinator
+        owner?.retarget(path)
       } else {
         owner = create.coordinator()
         bound = create.session(owner)
@@ -121,7 +122,13 @@ export function createDocumentBinding(): DocumentBinding {
       // quit-time flush, settle-time rename work, and reopened-note lookups.
       unregister = registerOpenDocument({
         session: bound,
-        ...(owner ? { settle: () => owner.settle(), settled: () => owner.settled() } : {}),
+        ...(owner
+          ? {
+              retarget: (to) => owner.retarget(to),
+              settle: () => owner.settle(),
+              settled: () => owner.settled(),
+            }
+          : {}),
       })
       return { session: bound, coordinator: owner, created: adopted === null }
     },

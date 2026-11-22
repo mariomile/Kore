@@ -25,6 +25,7 @@ import { blockContextAt } from '../indexing/block-context'
 
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
 const importSpoolMock = vi.hoisted(() => vi.fn())
+const importImageMock = vi.hoisted(() => vi.fn())
 const xPostMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../graph/commands', () => ({
@@ -60,6 +61,7 @@ vi.mock('./backlink-target', () => ({
 }))
 vi.mock('../graph/assets', () => ({
   importCaptureSpool: importSpoolMock,
+  importRemoteImage: importImageMock,
 }))
 vi.mock('./post-embed', () => ({
   resolveXPostEmbed: xPostMock,
@@ -71,6 +73,9 @@ beforeEach(() => {
   xPostMock.mockResolvedValue(undefined)
   // The vault's attachment folder: the spooled copy lands under its
   // desired name, `-2` on a collision, as Rust's `persist_unique` does.
+  importImageMock.mockImplementation((_url: string, name: string) =>
+    Promise.resolve(`assets/${name}`),
+  )
   importSpoolMock.mockImplementation(async (spoolName: string, desiredName: string) => {
     const entry = spool.get(spoolName)
     if (entry === undefined) throw { kind: 'notFound', message: 'missing' }
@@ -909,16 +914,51 @@ describe('drainCaptureInbox: shared X posts', () => {
         '  > Vibe coding, see [this](https://example.com/vibe).',
         '  > Second line',
         '  >',
-        '  > ![](https://pbs.twimg.com/media/a.jpg)',
+        '  > ![](assets/x-1886192184808149383-1.jpg)',
         '',
         '  Worth a read',
         '',
       ].join('\n'),
     )
     expect(ensureBacklinkTargetMock).toHaveBeenCalledWith('X posts', expect.any(Number))
+    expect(importImageMock).toHaveBeenCalledWith(
+      'https://pbs.twimg.com/media/a.jpg',
+      'x-1886192184808149383-1.jpg',
+      expect.any(Number),
+    )
     // The X posts note's backlink shows the post whole: byline, words, photo, note.
     expect(blockContextAt(daily, daily.indexOf('[[X posts]]') + 2)).toBe(
       daily.slice(daily.indexOf('- **Andrej')).trimEnd(),
+    )
+  })
+
+  it("keeps X's own link to a photo that cannot be fetched now", async () => {
+    xPostMock.mockResolvedValue({
+      id: '1886192184808149383',
+      createdAt: '2026-02-02T00:00:00Z',
+      author: { name: 'Andrej Karpathy', handle: 'karpathy' },
+      body: [{ type: 'text', text: 'Look' }],
+      media: [
+        {
+          type: 'photo',
+          url: 'https://pbs.twimg.com/media/b?format=png&name=large',
+          width: 1,
+          height: 1,
+        },
+      ],
+    })
+    importImageMock.mockRejectedValueOnce({ kind: 'network', message: 'offline' })
+    addSpool(post(), { screenshot: false })
+
+    await drain()
+
+    expect(importImageMock).toHaveBeenCalledWith(
+      'https://pbs.twimg.com/media/b?format=png&name=large',
+      'x-1886192184808149383-1.png',
+      expect.any(Number),
+    )
+    expect(files.get(DAILY)).toContain(
+      '  > ![](https://pbs.twimg.com/media/b?format=png&name=large)',
     )
   })
 

@@ -425,6 +425,21 @@ pub(crate) fn import_file_once(
     import_file(state, generation, source, desired_name, dir)
 }
 
+/// [`import_file_once`] for bytes already in memory (a fetched image):
+/// staged under `.kore/tmp/` first, so the asset lands whole or not at all.
+pub(crate) fn import_bytes_once(
+    state: &State<GraphState>,
+    generation: u64,
+    bytes: &[u8],
+    desired_name: &str,
+    dir: Option<&str>,
+) -> AppResult<String> {
+    let root = root_for_generation(state, generation)?;
+    let mut staged = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
+    staged.write_all(bytes)?;
+    import_file_once(state, generation, staged.path(), desired_name, dir)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

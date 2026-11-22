@@ -30,7 +30,7 @@ import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/b
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
-import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
+import { AssetViewerDialog, opensInAssetViewer } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
 import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
@@ -241,7 +241,7 @@ export function NotePaneComponent({
         navigate({ kind: 'canvas', path: assetPath })
         return
       }
-      if (viewableAssetKind(assetPath) !== null) {
+      if (opensInAssetViewer(assetPath)) {
         setViewerAssetPath(assetPath)
         return
       }

@@ -291,7 +291,7 @@
   /* Full width, bullet column included: a shared page's card under it is a
      plain paragraph's, and the two share their left edge. */
   margin: 0.5em 0;
-  padding: 0.85rem 1.05rem 0.9rem;
+  padding: 0.9rem 1.05rem;
   border-radius: var(--radius-xl, 12px);
   background-color: var(--surface-hover);
 }
@@ -313,7 +313,12 @@
   > .list-content {
   margin-inline-start: 0;
 
+  /* The byline keeps a column free on its right for the [[X posts]] pill, so
+     a long name wraps under itself and the pill stays on the first line. */
   & > p:first-child {
+    position: relative;
+    margin-top: 0;
+    padding-right: 4.75rem;
     color: var(--text-muted);
     font-size: 0.9em;
     line-height: 1.4;
@@ -327,8 +332,9 @@
     text-decoration: none;
   }
   & > p:first-child .md-wikilink-view-preview {
-    float: right;
-    margin-left: 0.5rem;
+    position: absolute;
+    top: 0;
+    right: 0;
     padding: 0.05rem 0.55rem;
     border-radius: 999px;
     background-color: var(--surface-active);
@@ -345,10 +351,16 @@
     margin-bottom: 0;
   }
   /* A photo's preview is a block, so the photo's hidden source would sit on
-     an empty line of its own under it: no line box there, so the card ends
-     at the photo. */
+     an empty line of its own under it: no line box there, and nothing hanging
+     under the baseline, so the card's padding is all that follows a photo. */
   & > blockquote > p:has(> .md-pack[data-key='image']) {
     line-height: 0;
+  }
+  & > blockquote .md-image-view-preview {
+    margin-bottom: 0;
+  }
+  & > blockquote .md-image-view-content {
+    vertical-align: top;
   }
   & > blockquote img {
     border-radius: var(--radius-lg, 10px);

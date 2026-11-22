@@ -505,6 +505,7 @@ pub fn run() {
             capture_fetch::capture_meta_fetch,
             capture_fetch::capture_oembed_fetch,
             capture_fetch::capture_data_fetch,
+            capture_fetch::capture_image_fetch,
             git::git_status,
             git::git_setup,
             git::git_disconnect,

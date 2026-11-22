@@ -3,6 +3,7 @@ import { ExternalLink } from '@/components/icons'
 import { CsvAssetView, DocxAssetView, TextAssetView } from '@/components/asset-viewer-views'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { isMobileSurface } from '@/lib/platform-surface'
 
 /** What the in-app viewer can render; anything else keeps the OS-open path. */
 export type ViewableAssetKind = 'pdf' | 'html' | 'csv' | 'docx' | 'text'
@@ -25,6 +26,17 @@ export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
     return 'text'
   }
   return null
+}
+
+/**
+ * Whether opening `assetPath` shows the in-app viewer. A PDF on the mobile app
+ * does not: the viewer frames it, and a WebKit frame on iOS draws only the
+ * first page at its natural size with no zoom, so the system's own preview
+ * (every page, pinch zoom, share) is the one that reads it.
+ */
+export function opensInAssetViewer(assetPath: string): boolean {
+  const kind = viewableAssetKind(assetPath)
+  return kind !== null && !(kind === 'pdf' && isMobileSurface())
 }
 
 interface AssetViewerDialogProps {

@@ -496,6 +496,7 @@ pub fn run() {
             capture::capture_inbox_read,
             capture::capture_inbox_remove,
             capture::capture_inbox_reject,
+            capture::capture_inbox_import,
             capture::capture_shared_inbox_relay,
             capture::share_targets_write,
             capture::capture_screenshot_promote,

@@ -328,23 +328,41 @@ pub async fn asset_import<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
     crate::blocking::run_blocking(move || {
-        let source = Path::new(&source_path);
-        if !source.is_file() {
-            return Err(AppError::not_found(format!(
-                "import source is not a file: {source_path}"
-            )));
-        }
-        let state = app.state::<GraphState>();
-        let root = root_for_generation(&state, generation)?;
-        let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
-        std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
-        let (assets_dir, rel_dir) =
-            assets_dir_for(&state, generation, &desired_name, dir.as_deref())?;
-        let final_name = persist_unique(temp, &assets_dir, &desired_name)?;
-        super::invalidate_file_catalog(&state, &root);
-        Ok(format!("{rel_dir}/{final_name}"))
+        import_file(
+            &app.state::<GraphState>(),
+            generation,
+            Path::new(&source_path),
+            &desired_name,
+            dir.as_deref(),
+        )
     })
     .await
+}
+
+/// Copy `source` into the graph's `assets/` folder (or `dir`) as
+/// `desired_name`, file to file, with [`persist_unique`]'s collision policy.
+/// Returns the graph-relative path. Shared by [`asset_import`] and the
+/// capture drain's import of shared files.
+pub(crate) fn import_file(
+    state: &State<GraphState>,
+    generation: u64,
+    source: &Path,
+    desired_name: &str,
+    dir: Option<&str>,
+) -> AppResult<String> {
+    if !source.is_file() {
+        return Err(AppError::not_found(format!(
+            "import source is not a file: {}",
+            source.display()
+        )));
+    }
+    let root = root_for_generation(state, generation)?;
+    let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
+    std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
+    let (assets_dir, rel_dir) = assets_dir_for(state, generation, desired_name, dir)?;
+    let final_name = persist_unique(temp, &assets_dir, desired_name)?;
+    super::invalidate_file_catalog(state, &root);
+    Ok(format!("{rel_dir}/{final_name}"))
 }
 
 #[cfg(test)]

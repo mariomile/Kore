@@ -1,8 +1,9 @@
 import Foundation
 
-/// The share sheet's two choices, **how** a link is written and **where**, plus
-/// what it remembers between shares and the note list it offers. Foundation
-/// only, so `ShareExtensionTests` compiles it on macOS.
+/// The share sheet's two choices, **how** a link is written and **where** it
+/// (or a shared file) goes, plus what it remembers between shares and the
+/// note list it offers. Foundation only, so `ShareExtensionTests` compiles it
+/// on macOS.
 
 // MARK: - what was shared
 
@@ -34,17 +35,31 @@ enum ShareContentKind: String {
     /// The looks offered for this kind, in the order the sheet lists them.
     var looks: [ShareLook] {
         switch self {
-        case .post: return [.link, .embed, .text]
+        case .post: return [.link, .text, .embed]
         case .video: return [.link, .embed, .card, .text]
         case .page: return [.link, .compact, .card, .large, .text]
         }
     }
 
-    /// The look a first share of this kind starts on.
+    /// The look a first share of this kind starts on. A post starts as its
+    /// Markdown card (`text`): author, words and link, readable in any
+    /// Markdown app and by any agent, where the embed is a bare URL outside
+    /// Kore.
     var defaultLook: ShareLook {
         switch self {
-        case .post, .video: return .embed
+        case .post: return .text
+        case .video: return .embed
         case .page: return .card
+        }
+    }
+
+    /// Where the last look picked for this kind is remembered. The post key
+    /// moved when the default became the card: the old key mostly holds the
+    /// old default (the embed), not a choice anyone made.
+    var lookPreferenceKey: String {
+        switch self {
+        case .post: return "share.look.post-card"
+        case .video, .page: return "share.look.\(rawValue)"
         }
     }
 
@@ -75,8 +90,13 @@ enum ShareLook: String, Codable, CaseIterable {
         case .compact: return "Compact"
         case .card: return "Card"
         case .large: return "Large"
-        case .embed: return kind == .video ? "Video" : "Post"
-        case .text: return kind == .video ? "Transcript" : "Text"
+        case .embed: return kind == .video ? "Video" : "Embed"
+        case .text:
+            switch kind {
+            case .post: return "Post"
+            case .video: return "Transcript"
+            case .page: return "Text"
+            }
         }
     }
 }
@@ -200,7 +220,7 @@ struct SharePreferences {
     }
 
     func look(for kind: ShareContentKind) -> ShareLook {
-        guard let raw = defaults.string(forKey: "share.look.\(kind.rawValue)"),
+        guard let raw = defaults.string(forKey: kind.lookPreferenceKey),
             let look = ShareLook(rawValue: raw), kind.looks.contains(look)
         else {
             return kind.defaultLook
@@ -209,7 +229,7 @@ struct SharePreferences {
     }
 
     func remember(look: ShareLook, for kind: ShareContentKind) {
-        defaults.set(look.rawValue, forKey: "share.look.\(kind.rawValue)")
+        defaults.set(look.rawValue, forKey: kind.lookPreferenceKey)
     }
 
     /// The last destination, re-checked against the current note list. A new

@@ -1,6 +1,29 @@
 import Combine
 import Foundation
+import ImageIO
 import UniformTypeIdentifiers
+
+/// One shared file (a photo, a PDF), copied into the extension's own
+/// temporary folder while its provider's callback still held it.
+struct SharedFile: Equatable {
+    /// The local copy.
+    let url: URL
+    /// Its name as shared, extension included: the attachment's name in the vault.
+    let name: String
+
+    /// The name without its extension, what a new note is called after.
+    var title: String {
+        (name as NSString).deletingPathExtension
+    }
+
+    var isImage: Bool {
+        UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false
+    }
+
+    var isPDF: Bool {
+        UTType(filenameExtension: url.pathExtension)?.conforms(to: .pdf) ?? false
+    }
+}
 
 /// What one share-sheet invocation extracted, ready to spool.
 enum SharedCapture {
@@ -10,15 +33,25 @@ enum SharedCapture {
     case link(url: String, title: String, selection: String?, metaDescription: String?)
     /// Non-URL text: becomes a bullet on today's daily note.
     case text(String)
+    /// Photos and PDFs: copied into the vault and embedded where the user picks.
+    case files([SharedFile])
 }
 
-enum ShareStatus {
+enum ShareStatus: Equatable {
     /// Reading the shared item (a blink: no network is involved).
     case loading
     /// Waiting on the user's choices; Save is one tap away.
     case ready
     case saved
-    case failed
+    case failed(ShareFailure)
+}
+
+/// Why a share could not be saved, for the one line under "Couldn't save".
+enum ShareFailure: Equatable {
+    /// Nothing usable was shared, or the inbox could not be written.
+    case generic
+    /// A shared file is over `CaptureInbox.maxFileBytes`.
+    case fileTooLarge
 }
 
 /// The share sheet's one flow: extract the shared item, let the user pick
@@ -33,6 +66,8 @@ final class ShareState: ObservableObject {
     @Published var look = ShareLook.card
     @Published var destination = ShareDestination.daily
     @Published var thought = ""
+    /// How many shared files are left out over `CaptureInbox.maxFiles`.
+    @Published private(set) var filesLeftOut = 0
 
     var extensionContext: NSExtensionContext?
 
@@ -57,13 +92,55 @@ final class ShareState: ObservableObject {
         return ShareContentKind.of(url: url)
     }
 
-    /// The page's title, the default name of a new note.
+    /// The shared files (empty for a link or text).
+    var files: [SharedFile] {
+        guard case let .files(files) = capture else {
+            return []
+        }
+        return files
+    }
+
+    /// Whether the user picks where this share goes: links and files do,
+    /// plain text always lands on today's daily.
+    var hasDestination: Bool {
+        kind != nil || !files.isEmpty
+    }
+
+    /// Whether today's daily files it under its Links section: web pages
+    /// and videos do; a post, a photo or a PDF goes in the day's own notes
+    /// (`DailySpot` in core's `placed-capture.ts`).
+    var landsUnderLinks: Bool {
+        kind == .page || kind == .video
+    }
+
+    /// What was shared, as the sheet's small print names it
+    /// ("The post goes at the end of the note.").
+    var noun: String {
+        let files = self.files
+        if !files.isEmpty {
+            let many = files.count > 1
+            if files.allSatisfy(\.isImage) { return many ? "photos" : "photo" }
+            if files.allSatisfy(\.isPDF) { return many ? "PDFs" : "PDF" }
+            return "files"
+        }
+        switch kind {
+        case .post: return "post"
+        case .video: return "video"
+        default: return "link"
+        }
+    }
+
+    /// The page's title, or the first file's name: the default name of a new note.
     var pageTitle: String {
-        guard case let .link(url, title, _, _) = capture else {
+        switch capture {
+        case let .link(url, title, _, _):
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? (URL(string: url)?.host ?? url) : trimmed
+        case let .files(files):
+            return files.first?.title ?? ""
+        default:
             return ""
         }
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? (URL(string: url)?.host ?? url) : trimmed
     }
 
     func load() {
@@ -72,19 +149,22 @@ final class ShareState: ObservableObject {
         }
         started = true
         guard let context = extensionContext else {
-            return update(.failed)
+            return update(.failed(.generic))
         }
-        Self.extract(from: context) { [weak self] capture in
+        Self.extract(from: context) { [weak self] capture, leftOut in
             DispatchQueue.main.async {
                 guard let self else {
                     return
                 }
                 guard let capture else {
-                    return self.update(.failed)
+                    return self.update(.failed(.generic))
                 }
                 self.capture = capture
+                self.filesLeftOut = leftOut
                 if let kind = self.kind {
                     self.look = self.preferences.look(for: kind)
+                }
+                if self.hasDestination {
                     self.destination = self.preferences.destination(
                         pageTitle: self.pageTitle, targets: self.targets)
                 }
@@ -123,20 +203,32 @@ final class ShareState: ObservableObject {
             case let .text(text):
                 let line = note.isEmpty ? text : "\(text) · \(note)"
                 guard try CaptureInbox.spoolText(line, source: "ios-share") else {
-                    return update(.failed) // nothing printable to save
+                    return update(.failed(.generic)) // nothing printable to save
                 }
+            case let .files(files):
+                try CaptureInbox.spoolFiles(
+                    files, note: note.isEmpty ? nil : note, destination: destination)
+                preferences.remember(destination: destination)
             }
             update(.saved)
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.dismissDelay) { [weak self] in
                 self?.dismiss()
             }
+        } catch CaptureInboxError.fileTooLarge {
+            saving = false
+            update(.failed(.fileTooLarge))
         } catch {
             saving = false
-            update(.failed)
+            update(.failed(.generic))
         }
     }
 
     func dismiss() {
+        // The local copies are spooled (or the share was dropped): nothing
+        // in the temporary folder is needed any more.
+        if let folder = files.first?.url.deletingLastPathComponent() {
+            try? FileManager.default.removeItem(at: folder)
+        }
         extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
     }
 
@@ -154,15 +246,17 @@ final class ShareState: ObservableObject {
 
     /// Pull the shared content out of the extension context. Provider load
     /// callbacks arrive on arbitrary queues; `completion` may too.
+    /// `completion` also gets how many shared files were left out over
+    /// `CaptureInbox.maxFiles` (zero for anything but files).
     private static func extract(
         from context: NSExtensionContext,
-        completion: @escaping (SharedCapture?) -> Void
+        completion: @escaping (SharedCapture?, Int) -> Void
     ) {
         let attachments = context.inputItems
             .compactMap { $0 as? NSExtensionItem }
             .flatMap { $0.attachments ?? [] }
         guard !attachments.isEmpty else {
-            return completion(nil)
+            return completion(nil, 0)
         }
 
         // Safari web pages: the JS preprocessor's property-list results carry
@@ -171,16 +265,168 @@ final class ShareState: ObservableObject {
             provider.loadItem(forTypeIdentifier: UTType.propertyList.identifier, options: nil) {
                 item, _ in
                 if let capture = pageCapture(from: item) {
-                    completion(capture)
+                    completion(capture, 0)
                 } else {
                     // Malformed preprocessing results must not fail a share
                     // that also carries a plain URL or text attachment.
-                    extractPlain(from: attachments, completion: completion)
+                    extractPlain(from: attachments) { completion($0, 0) }
                 }
             }
             return
         }
-        extractPlain(from: attachments, completion: completion)
+
+        // Photos and PDFs, unless the share is really a web link that
+        // carries a preview image (a link is what the user meant then).
+        let fileProviders = attachments.filter(isSharedFile)
+        if !fileProviders.isEmpty, !attachments.contains(where: isWebUrl) {
+            let kept = Array(fileProviders.prefix(CaptureInbox.maxFiles))
+            return extractFiles(from: kept) { files in
+                completion(files.isEmpty ? nil : .files(files), fileProviders.count - kept.count)
+            }
+        }
+        extractPlain(from: attachments) { completion($0, 0) }
+    }
+
+    // MARK: - files
+
+    /// A photo or a PDF.
+    static func isSharedFile(_ provider: NSItemProvider) -> Bool {
+        provider.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+            || provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier)
+    }
+
+    /// A web address (a file URL is how some apps hand over a file, not a link).
+    private static func isWebUrl(_ provider: NSItemProvider) -> Bool {
+        provider.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+            && !provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+    }
+
+    /// Image formats every Markdown reader draws (Obsidian's Chromium has no
+    /// HEIC), in the order a provider offering several is asked for them.
+    private static let portableImageTypes: [UTType] = [.jpeg, .png, .gif, .webP]
+
+    /// Longest edge of a HEIC photo transcoded to JPEG: sharp on any screen,
+    /// and a decode the extension's memory budget can afford.
+    private static let transcodeMaxPixels = 4096
+
+    /// Copy every provider's file into one fresh temporary folder, keeping
+    /// the providers' order; a provider that fails to load is skipped.
+    ///
+    /// Not `private`: `ShareIngressTests` calls this directly, like
+    /// `extractPlain`.
+    static func extractFiles(
+        from providers: [NSItemProvider],
+        completion: @escaping ([SharedFile]) -> Void
+    ) {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kore-share-\(UUID().uuidString)", isDirectory: true)
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil
+        else {
+            return completion([])
+        }
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var loaded = [SharedFile?](repeating: nil, count: providers.count)
+        for (index, provider) in providers.enumerated() {
+            guard let type = loadType(of: provider) else {
+                continue
+            }
+            group.enter()
+            _ = provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
+                defer { group.leave() }
+                // The file at `url` is deleted once this callback returns.
+                guard let url else {
+                    return
+                }
+                let file = copy(url, of: type, named: provider.suggestedName, index: index, into: folder)
+                lock.lock()
+                loaded[index] = file
+                lock.unlock()
+            }
+        }
+        group.notify(queue: .global(qos: .userInitiated)) {
+            completion(loaded.compactMap { $0 })
+        }
+    }
+
+    /// What to ask a provider for: a PDF as itself, a photo in a format every
+    /// reader draws when the provider offers one, else its own format.
+    private static func loadType(of provider: NSItemProvider) -> UTType? {
+        let registered = provider.registeredTypeIdentifiers.compactMap(UTType.init)
+        if let pdf = registered.first(where: { $0.conforms(to: .pdf) }) {
+            return pdf
+        }
+        for portable in portableImageTypes where registered.contains(where: { $0.conforms(to: portable) }) {
+            return portable
+        }
+        return registered.first { $0.conforms(to: .image) }
+    }
+
+    /// Copy one loaded file into `folder` under its shared name, a HEIC
+    /// photo transcoded to JPEG on the way. Nil when the copy fails.
+    private static func copy(
+        _ source: URL, of type: UTType, named suggested: String?, index: Int, into folder: URL
+    ) -> SharedFile? {
+        let transcode = type.conforms(to: .image) && !portableImageTypes.contains { type.conforms(to: $0) }
+        let target = transcode ? UTType.jpeg : type
+        let name = fileName(suggested: suggested, source: source, extension: target.preferredFilenameExtension)
+        // One subfolder per file keeps two "image.jpg"s from colliding.
+        let slot = folder.appendingPathComponent("\(index)", isDirectory: true)
+        let destination = slot.appendingPathComponent(name)
+        do {
+            try FileManager.default.createDirectory(at: slot, withIntermediateDirectories: true)
+            if transcode {
+                guard transcodeToJpeg(source, to: destination) else {
+                    return nil
+                }
+            } else {
+                try FileManager.default.copyItem(at: source, to: destination)
+            }
+        } catch {
+            return nil
+        }
+        return SharedFile(url: destination, name: name)
+    }
+
+    /// The shared name with the extension of what is actually saved: the
+    /// provider's suggested name (which often has none), else the loaded
+    /// file's own. An extension the name already carries is replaced only
+    /// when it is a real file type ("Report v1.2" keeps its ".2").
+    static func fileName(suggested: String?, source: URL, extension ext: String?) -> String {
+        let trimmed = suggested?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let raw = (trimmed.isEmpty ? source.lastPathComponent : trimmed)
+            .replacingOccurrences(of: "/", with: "-")
+        let current = (raw as NSString).pathExtension
+        let isFileType = !current.isEmpty && UTType(filenameExtension: current)?.isDeclared == true
+        let stem = isFileType ? (raw as NSString).deletingPathExtension : raw
+        let name = stem.isEmpty ? "Shared file" : stem
+        guard let ext = ext ?? (isFileType ? current : nil) else {
+            return name
+        }
+        return "\(name).\(ext)"
+    }
+
+    /// A HEIC/HEIF photo as a JPEG, upright, its long edge capped at
+    /// `transcodeMaxPixels`.
+    private static func transcodeToJpeg(_ source: URL, to destination: URL) -> Bool {
+        guard let image = CGImageSourceCreateWithURL(source as CFURL, nil) else {
+            return false
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: transcodeMaxPixels,
+        ]
+        guard
+            let decoded = CGImageSourceCreateThumbnailAtIndex(image, 0, options as CFDictionary),
+            let output = CGImageDestinationCreateWithURL(
+                destination as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
+        else {
+            return false
+        }
+        CGImageDestinationAddImage(
+            output, decoded, [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary)
+        return CGImageDestinationFinalize(output)
     }
 
     /// The non-Safari extraction paths: a URL attachment (title best-effort

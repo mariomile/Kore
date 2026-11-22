@@ -1,16 +1,23 @@
 import { writeNote } from '../graph/commands'
 import { createNoteWithSource, newNoteSource } from '../graph/create-note'
 import { dailyPath, isNotePath, isSafeVisibleGraphPath, noteFileStem } from '../graph/paths'
-import { appendBlock, appendBlockUnderBacklinkedHeading, wikiLinkSafe } from '../markdown/edit'
+import {
+  appendBlock,
+  appendBlockUnderBacklinkedHeading,
+  insertBlockBeforeBacklinkedHeading,
+  wikiLinkSafe,
+} from '../markdown/edit'
 import { formatEmbedBlock } from '../markdown/embed-block'
+import { markdownLinkDestination } from '../markdown/link-destination'
 import { linkKind } from '../markdown/link-kind'
 import { ensureBacklinkTarget } from './backlink-target'
 import { captureLocalDate } from './capture-identity'
-import type { CaptureEnvelope, CaptureLook } from './capture-envelope'
+import type { CaptureDestination, CaptureEnvelope, CaptureLook } from './capture-envelope'
 import { displayTitle, localNoteSource, readNoteUnlessMissing } from './capture-note'
 import { fetchLinkText } from './link-text'
 import { xPostId } from './link-preview-providers'
 import { resolveXPostEmbed } from './post-embed'
+import type { XPost } from '@post-embed/types'
 
 /**
  * Placed captures: a link the iOS share sheet shared with a chosen look and
@@ -55,11 +62,60 @@ function bounded(text: string): string {
   return `${text.slice(0, cut > 0 ? cut : MAX_QUOTED_CHARS)}\n\n…`
 }
 
+/** The `@handle` an `x.com/<handle>/status/<id>` link names (`null` for `/i/status/…`). */
+function urlHandle(url: string): string | null {
+  const handle = new URL(url).pathname.split('/')[1] ?? ''
+  return handle === '' || handle === 'i' ? null : handle
+}
+
+/** The post's words with its links kept as Markdown links. */
+function postWords(post: XPost): string {
+  return post.body
+    .map((segment) =>
+      segment.type === 'link' && segment.url !== segment.text
+        ? markdownLink(segment.url, segment.text)
+        : segment.text,
+    )
+    .join('')
+    .trim()
+}
+
 /**
- * The words a `text` capture quotes: the text the user selected, else what
- * the page holds (an X post's text, an article, a video's transcript), else
- * the page's own description. Best-effort: a network failure falls back to
- * what the envelope carried, so the save itself never waits on a fetch.
+ * An X post as a plain Markdown card, a quote any Markdown reader (Obsidian,
+ * an agent, `cat`) shows as the post: who wrote it, linked to the post, then
+ * what they wrote and the photos (a video by its poster). Offline or for a
+ * post that is gone, the card is the author line alone, so the save never
+ * waits on X and never loses the link.
+ */
+async function postCard(envelope: CaptureEnvelope): Promise<string> {
+  let post: XPost | undefined
+  try {
+    post = await resolveXPostEmbed(envelope.url)
+  } catch {
+    post = undefined
+  }
+  const handle = post?.author.handle ?? urlHandle(envelope.url)
+  const name = post?.author.name.trim()
+  const byline = name ? `**${name.replaceAll(/[\\*_`[\]]/g, String.raw`\$&`)}** · ` : ''
+  const lines = [`${byline}${markdownLink(envelope.url, handle ? `@${handle}` : 'Post on X')}`]
+  const words = envelope.selection?.trim() || (post ? postWords(post) : '')
+  if (words) {
+    lines.push('', words)
+  }
+  for (const media of post?.media ?? []) {
+    const image = media.type === 'photo' ? media.url : media.poster
+    if (image && media.unavailable !== true) {
+      lines.push('', `![](${markdownLinkDestination(image)})`)
+    }
+  }
+  return quoted(lines.join('\n'))
+}
+
+/**
+ * The words a `text` capture of a page quotes: the text the user selected,
+ * else what the page holds (an article, a video's transcript), else the
+ * page's own description. Best-effort: a network failure falls back to what
+ * the envelope carried, so the save itself never waits on a fetch.
  */
 async function capturedWords(envelope: CaptureEnvelope): Promise<string | null> {
   const selection = envelope.selection?.trim()
@@ -67,21 +123,9 @@ async function capturedWords(envelope: CaptureEnvelope): Promise<string | null> 
     return selection
   }
   try {
-    if (xPostId(envelope.url) !== null) {
-      const post = await resolveXPostEmbed(envelope.url)
-      const words = post?.body
-        .map((segment) => segment.text)
-        .join('')
-        .trim()
-      if (post !== undefined && words) {
-        const author = post.author.name.trim() || `@${post.author.handle}`
-        return `${words}\n\n— ${markdownLink(envelope.url, author)}`
-      }
-    } else {
-      const text = await fetchLinkText(envelope.url)
-      if (text !== null) {
-        return bounded(text.markdown)
-      }
+    const text = await fetchLinkText(envelope.url)
+    if (text !== null) {
+      return bounded(text.markdown)
     }
   } catch {
     // Offline, blocked, or a page with nothing readable: keep what we have.
@@ -119,8 +163,11 @@ export async function placedCaptureBlock(envelope: CaptureEnvelope): Promise<str
       parts.push(`![](${envelope.url})`)
       break
     case 'text': {
-      const isPost = xPostId(envelope.url) !== null
-      parts.push(isPost ? markdownLink(envelope.url, title) : envelope.url)
+      if (xPostId(envelope.url) !== null) {
+        parts.push(await postCard(envelope))
+        break
+      }
+      parts.push(envelope.url)
       const words = await capturedWords(envelope)
       if (words !== null) {
         parts.push(quoted(words))
@@ -152,61 +199,118 @@ export interface PlacedCaptureOutcome {
   readonly duplicate: boolean
 }
 
+/** Where a capture lands in today's daily note. */
+export type DailySpot =
+  /** At the end of the daily's Links section, which it creates when missing. */
+  | 'links'
+  /** In the daily's own body, above its Links section (posts, photos, PDFs). */
+  | 'body'
+
+/** One block to write where the share sheet's "Where" choice says. */
+export interface Placement {
+  readonly destination: CaptureDestination | undefined
+  /** When the share happened: decides which daily note is "today". */
+  readonly capturedAt: string
+  /** What a new note is named when its destination carries no title of its own. */
+  readonly title: string
+  readonly dailySpot: DailySpot
+  /** Text whose presence means the destination already holds this capture (a URL). */
+  readonly identity?: string
+  /** The block itself, built only once the capture is known to be written. */
+  readonly block: () => Promise<string>
+}
+
+function writeIntoDaily(
+  source: string,
+  block: string,
+  spot: DailySpot,
+  linksTitle: string,
+): string {
+  return spot === 'links'
+    ? appendBlockUnderBacklinkedHeading(source, linksTitle, block, [LINKS_NOTE_TITLE])
+    : insertBlockBeforeBacklinkedHeading(source, [linksTitle, LINKS_NOTE_TITLE], block)
+}
+
 /**
- * Write one placed capture into its destination. Today's daily note gets it
- * at the end of its Links section; an existing note at its end; a new note
- * is created with it (and today's daily links to the new note). A
+ * Write one block into its destination. Today's daily note gets it in its
+ * {@link DailySpot}; an existing note at its end; a new note is created with
+ * it (and today's daily links to the new note, in the same spot). A
  * destination note that no longer exists falls back to the daily note. A
- * destination that already holds the URL is left untouched.
+ * destination that already holds the capture's identity is left untouched.
  */
-export async function drainPlacedCapture(
-  envelope: CaptureEnvelope,
+export async function placeCapture(
+  placement: Placement,
   generation: number,
 ): Promise<PlacedCaptureOutcome> {
-  const destination = envelope.destination ?? { kind: 'daily' }
-  const daily = dailyPath(captureLocalDate(new Date(envelope.capturedAt)))
+  const destination = placement.destination ?? { kind: 'daily' }
+  const daily = dailyPath(captureLocalDate(new Date(placement.capturedAt)))
+  const holds = (source: string): boolean =>
+    placement.identity !== undefined && source.includes(placement.identity)
 
   if (destination.kind === 'note' && isNotePath(destination.path)) {
     const source = await readNoteUnlessMissing(destination.path, generation)
     if (source !== null) {
-      if (source.includes(envelope.url)) {
+      if (holds(source)) {
         return { path: destination.path, duplicate: true }
       }
-      const block = await placedCaptureBlock(envelope)
-      await writeNote(destination.path, appendBlock(source, block), generation)
+      await writeNote(destination.path, appendBlock(source, await placement.block()), generation)
       return { path: destination.path, duplicate: false }
     }
   }
 
-  const linksTitle = await ensureBacklinkTarget(LINKS_NOTE_TITLE, generation)
+  // Only the Links spot needs the category note; a post or a photo must not
+  // create it as a side effect.
+  const linksTitle =
+    placement.dailySpot === 'links'
+      ? await ensureBacklinkTarget(LINKS_NOTE_TITLE, generation)
+      : LINKS_NOTE_TITLE
   const dailySource = await localNoteSource(daily, generation)
 
   if (destination.kind === 'new') {
-    const title = wikiLinkSafe(destination.title) || displayTitle(envelope)
-    const block = await placedCaptureBlock(envelope)
+    const title = wikiLinkSafe(destination.title) || placement.title
     const path = await createNoteWithSource(
       title,
-      newNoteSource(title, block),
+      newNoteSource(title, await placement.block()),
       generation,
       safeFolder(destination.folder),
     )
     const reference = `[[${noteFileStem(path)}|${title}]]`
     await writeNote(
       daily,
-      appendBlockUnderBacklinkedHeading(dailySource, linksTitle, reference, [LINKS_NOTE_TITLE]),
+      writeIntoDaily(dailySource, reference, placement.dailySpot, linksTitle),
       generation,
     )
     return { path, duplicate: false }
   }
 
-  if (dailySource.includes(envelope.url)) {
+  if (holds(dailySource)) {
     return { path: daily, duplicate: true }
   }
-  const block = await placedCaptureBlock(envelope)
   await writeNote(
     daily,
-    appendBlockUnderBacklinkedHeading(dailySource, linksTitle, block, [LINKS_NOTE_TITLE]),
+    writeIntoDaily(dailySource, await placement.block(), placement.dailySpot, linksTitle),
     generation,
   )
   return { path: daily, duplicate: false }
+}
+
+/**
+ * Write one shared link where the share sheet said. A post is not a link:
+ * it goes in the daily's own body, not under Links.
+ */
+export async function drainPlacedCapture(
+  envelope: CaptureEnvelope,
+  generation: number,
+): Promise<PlacedCaptureOutcome> {
+  return await placeCapture(
+    {
+      destination: envelope.destination,
+      capturedAt: envelope.capturedAt,
+      title: displayTitle(envelope),
+      dailySpot: xPostId(envelope.url) === null ? 'links' : 'body',
+      identity: envelope.url,
+      block: async () => await placedCaptureBlock(envelope),
+    },
+    generation,
+  )
 }

@@ -141,6 +141,43 @@ final class ShareStateTests: XCTestCase {
         XCTAssertNil(capture)
     }
 
+    // MARK: - shared photos and PDFs
+
+    func testFileNameTakesTheSuggestedNameWithTheSavedFormatsExtension() {
+        let source = URL(fileURLWithPath: "/tmp/F1A2.heic")
+        XCTAssertEqual(ShareState.fileName(suggested: "IMG_0042", source: source, extension: "jpeg"), "IMG_0042.jpeg")
+        XCTAssertEqual(ShareState.fileName(suggested: "IMG_0042.HEIC", source: source, extension: "jpeg"), "IMG_0042.jpeg")
+        XCTAssertEqual(ShareState.fileName(suggested: "Report v1.2", source: source, extension: "pdf"), "Report v1.2.pdf")
+        XCTAssertEqual(ShareState.fileName(suggested: nil, source: source, extension: nil), "F1A2.heic")
+        XCTAssertEqual(ShareState.fileName(suggested: "  ", source: source, extension: "jpeg"), "F1A2.jpeg")
+        XCTAssertEqual(ShareState.fileName(suggested: "a/b", source: source, extension: "pdf"), "a-b.pdf")
+    }
+
+    func testExtractFilesCopiesAPdfUnderItsSharedName() async throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("share-state-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let pdf = folder.appendingPathComponent("Q3 report.pdf")
+        try Data("%PDF-1.4".utf8).write(to: pdf)
+        let provider = try XCTUnwrap(NSItemProvider(contentsOf: pdf))
+        provider.suggestedName = "Q3 report"
+        let text = NSItemProvider(item: "not a file" as NSString, typeIdentifier: UTType.plainText.identifier)
+        XCTAssertTrue(ShareState.isSharedFile(provider))
+        XCTAssertFalse(ShareState.isSharedFile(text))
+
+        let files = await withCheckedContinuation { continuation in
+            ShareState.extractFiles(from: [provider]) { continuation.resume(returning: $0) }
+        }
+
+        let file = try XCTUnwrap(files.first)
+        XCTAssertEqual(files.count, 1)
+        XCTAssertEqual(file.name, "Q3 report.pdf")
+        XCTAssertTrue(file.isPDF)
+        XCTAssertEqual(try Data(contentsOf: file.url), Data("%PDF-1.4".utf8))
+        try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent().deletingLastPathComponent())
+    }
+
     // MARK: - helpers
 
     /// Bridges `ShareState.extractPlain`'s completion-handler API (provider

@@ -1,6 +1,6 @@
 import type { SyntaxNode } from '@meowdown/markdown'
 import { appendListItemAtHeading, listItemBlock } from './append-list-item'
-import { appendHeadingSection } from './append-section'
+import { appendBlock, appendHeadingSection } from './append-section'
 import { parseNote } from './extract'
 import { splitFrontmatter } from './frontmatter'
 import { parseBody } from './grammar'
@@ -477,4 +477,24 @@ export function appendBlockUnderBacklinkedHeading(
   const after = upgraded.slice(end)
   const tail = after.length > 0 ? lineEnding : ''
   return `${before}${lineEnding.repeat(2)}${block.trim()}${lineEnding}${tail}${after}`
+}
+
+/**
+ * Add `block` to the note's own body: above the section a backlinked heading
+ * for any of `titles` opens (the daily's `## [[Links]]`), else at the end.
+ */
+export function insertBlockBeforeBacklinkedHeading(
+  source: string,
+  titles: readonly string[],
+  block: string,
+): string {
+  const { headings, wikiLinks } = parseNote({ path: '', source })
+  const target = matchingBacklinkedHeading(source, headings, wikiLinks, titles)
+  if (target === undefined) {
+    return appendBlock(source, block)
+  }
+  const lineEnding = documentLineEnding(source)
+  const before = source.slice(0, target.from).replace(/\s*$/, '')
+  const separator = before.length > 0 ? lineEnding.repeat(2) : ''
+  return `${before}${separator}${block.trim()}${lineEnding.repeat(2)}${source.slice(target.from)}`
 }

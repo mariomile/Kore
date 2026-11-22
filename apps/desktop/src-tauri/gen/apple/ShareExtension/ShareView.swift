@@ -1,9 +1,10 @@
+import ImageIO
 import SwiftUI
 import UIKit
 
-/// The share sheet: a live preview of how the link will land, an optional
-/// thought, **Where** (today, a note, a new note) and **How** (the link looks
-/// the editor offers), then one Save button. Everything is pre-filled from
+/// The share sheet: a live preview of how the link or the files will land,
+/// an optional thought, **Where** (today, a note, a new note) and, for a link,
+/// **How** (the link looks the editor offers), then one Save button. Everything is pre-filled from
 /// the last share, so a repeat share is a single tap. Colors and radii are
 /// Kore's design tokens (`design-system/tokens/colors.css`), mirrored in
 /// `KoreColor` below.
@@ -19,9 +20,9 @@ struct ShareView: View {
                 case .ready:
                     ShareForm()
                 case .saved:
-                    ShareResult(saved: true)
-                case .failed:
-                    ShareResult(saved: false)
+                    ShareResult(saved: true, failure: nil)
+                case let .failed(failure):
+                    ShareResult(saved: false, failure: failure)
                 }
             }
             .background(KoreColor.app.ignoresSafeArea())
@@ -54,12 +55,18 @@ private struct ShareForm: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                LinkPreview(capture: state.capture, look: state.look, kind: state.kind)
+                if state.files.isEmpty {
+                    LinkPreview(capture: state.capture, look: state.look, kind: state.kind)
+                } else {
+                    FilesPreview(files: state.files, leftOut: state.filesLeftOut)
+                }
                 ThoughtField(text: $state.thought)
                     .padding(.top, 10)
-                if let kind = state.kind {
+                if state.hasDestination {
                     SectionLabel("Where")
                     WhereGroup()
+                }
+                if let kind = state.kind {
                     SectionLabel("How")
                     LookPicker(kind: kind, selection: $state.look)
                 }
@@ -109,7 +116,7 @@ private struct LinkPreview: View {
                     .lineLimit(6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-            case nil:
+            case .files, nil:
                 EmptyView()
             }
         }
@@ -187,12 +194,13 @@ private struct LinkPreview: View {
                     Text(name).font(.subheadline.weight(.semibold)).lineLimit(2).padding(16)
                 }
             }
+        case .text where kind == .post:
+            PostCardPreview(handle: handle ?? host, text: selection ?? description)
         case .text:
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     SiteTile(host: host, size: 18).frame(width: 32, alignment: .leading)
-                    Text(kind == .post ? "@\(handle ?? host) on X" : name)
-                        .font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 }
                 HStack(spacing: 12) {
                     RoundedRectangle(cornerRadius: 1.5).fill(KoreColor.accent).frame(width: 3)
@@ -213,10 +221,42 @@ private struct LinkPreview: View {
             return selection
         }
         switch kind {
-        case .post: return "The post\u{2019}s text is saved when Kore opens."
         case .video: return "The video\u{2019}s transcript is saved when Kore opens."
         default: return description.map { "\($0)\u{2026}" } ?? "The page\u{2019}s text is saved when Kore opens."
         }
+    }
+}
+
+/// The post as its Markdown card lands: a quote with the author linked to
+/// the post, then the words. Drawn like the editor draws a quote.
+private struct PostCardPreview: View {
+    let handle: String
+    let text: String?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // The editor's quote: a 2pt accent-soft rule, secondary ink.
+            Rectangle().fill(KoreColor.accentSoft).frame(width: 2)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text("@\(handle)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(KoreColor.accent)
+                        .underline(color: KoreColor.accent.opacity(0.35))
+                    Text("on X").font(.subheadline).foregroundColor(KoreColor.muted)
+                }
+                if let words = text, !words.isEmpty {
+                    Text(words).font(.subheadline).foregroundColor(KoreColor.secondary).lineLimit(5)
+                } else {
+                    Text("The post\u{2019}s words and photos are saved when Kore opens.")
+                        .font(.subheadline)
+                        .foregroundColor(KoreColor.secondary)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
     }
 }
 
@@ -246,6 +286,168 @@ private struct PostPreview: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
+    }
+}
+
+/// The shared files as they will land: photos as the images they are, a
+/// PDF as the file chip the editor draws. Thumbnails are decoded small, off
+/// the main thread, so a share of ten photos opens as fast as one.
+private struct FilesPreview: View {
+    let files: [SharedFile]
+    let leftOut: Int
+
+    /// Photos past this show as a "+N" on the last tile.
+    private static let maxTiles = 6
+
+    var body: some View {
+        let images = files.filter(\.isImage)
+        let documents = files.filter { !$0.isImage }
+        VStack(alignment: .leading, spacing: 8) {
+            if images.count == 1, let image = images.first {
+                Thumbnail(file: image, maxPixels: 1200)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else if !images.isEmpty {
+                PhotoGrid(images: images, maxTiles: Self.maxTiles)
+            }
+            if !documents.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(documents, id: \.url) { FileRow(file: $0) }
+                }
+                .background(KoreColor.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            if leftOut > 0 {
+                Text("Kore saves the first \(CaptureInbox.maxFiles) of \(CaptureInbox.maxFiles + leftOut).")
+                    .font(.footnote)
+                    .foregroundColor(KoreColor.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel(images: images.count, documents: documents.count))
+    }
+
+    private func accessibilityLabel(images: Int, documents: Int) -> String {
+        var parts: [String] = []
+        if images > 0 { parts.append(images == 1 ? "1 photo" : "\(images) photos") }
+        if documents > 0 { parts.append(documents == 1 ? "1 file" : "\(documents) files") }
+        return "Preview, " + parts.joined(separator: " and ")
+    }
+}
+
+/// Square tiles, three to a row, the last one counting what does not fit.
+private struct PhotoGrid: View {
+    let images: [SharedFile]
+    let maxTiles: Int
+
+    var body: some View {
+        let shown = Array(images.prefix(maxTiles))
+        let hidden = images.count - shown.count
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
+            ForEach(Array(shown.enumerated()), id: \.element.url) { index, image in
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay(Thumbnail(file: image, maxPixels: 400))
+                    .overlay {
+                        if hidden > 0, index == shown.count - 1 {
+                            ZStack {
+                                Color.black.opacity(0.45)
+                                Text("+\(hidden)")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(4)
+        .background(KoreColor.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// A photo, decoded down to `maxPixels` on a background queue, filling its frame.
+private struct Thumbnail: View {
+    let file: SharedFile
+    let maxPixels: Int
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            KoreColor.active
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .transition(.opacity)
+            }
+        }
+        .clipped()
+        .task(id: file.url) {
+            let url = file.url
+            let pixels = maxPixels
+            let decoded = await Task.detached(priority: .userInitiated) {
+                Thumbnail.decode(url, maxPixels: pixels)
+            }.value
+            withAnimation(.easeOut(duration: 0.15)) { image = decoded }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private static func decode(_ url: URL, maxPixels: Int) -> UIImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return nil
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary).map(UIImage.init)
+    }
+}
+
+/// A PDF (or any other file) as the editor's file chip: its icon, its name,
+/// its kind and size.
+private struct FileRow: View {
+    let file: SharedFile
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: file.isPDF ? "doc.richtext" : "doc")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(KoreColor.accentSoftText)
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(KoreColor.accentSoft))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(file.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundColor(KoreColor.text)
+                    .lineLimit(2)
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundColor(KoreColor.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 62)
+    }
+
+    private var detail: String {
+        var parts = [file.isPDF ? "PDF" : (file.url.pathExtension.uppercased())]
+        if let size = try? file.url.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+            parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+        }
+        if file.isPDF, let pages = CGPDFDocument(file.url as CFURL)?.numberOfPages, pages > 0 {
+            parts.append(pages == 1 ? "1 page" : "\(pages) pages")
+        }
+        return parts.joined(separator: " \u{00B7} ")
     }
 }
 
@@ -350,7 +552,8 @@ private struct WhereGroup: View {
     private var todayDetail: String {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-        return "\(formatter.string(from: Date())) \u{00B7} under Links"
+        let date = formatter.string(from: Date())
+        return state.landsUnderLinks ? "\(date) \u{00B7} under Links" : date
     }
 
     private var noteTitle: String? {
@@ -373,7 +576,7 @@ private struct WhereGroup: View {
         if case let .new(_, folder) = state.destination {
             return folder.isEmpty ? "In the vault\u{2019}s top folder" : "In \(folder)"
         }
-        return "Named after the page, in a folder"
+        return state.files.isEmpty ? "Named after the page, in a folder" : "Named after the file, in a folder"
     }
 }
 
@@ -465,7 +668,7 @@ private struct NotePicker: View {
                     .padding(4)
                     .background(KoreColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    Text("The link goes at the end of the note.")
+                    Text(endOfNoteHint)
                         .font(.footnote)
                         .foregroundColor(KoreColor.muted)
                         .frame(maxWidth: .infinity)
@@ -479,6 +682,12 @@ private struct NotePicker: View {
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search notes")
         .navigationTitle("A note")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var endOfNoteHint: String {
+        let noun = state.noun
+        let verb = noun.hasSuffix("s") ? "go" : "goes"
+        return "The \(noun) \(verb) at the end of the note."
     }
 }
 
@@ -768,6 +977,7 @@ private struct KoreMark: View {
 private struct ShareResult: View {
     @EnvironmentObject var state: ShareState
     let saved: Bool
+    let failure: ShareFailure?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -778,6 +988,13 @@ private struct ShareResult: View {
                 .background(Circle().fill(saved ? KoreColor.successSoft : KoreColor.active))
             Text(saved ? savedTitle : "Couldn\u{2019}t save")
                 .font(.title3.weight(.semibold))
+            if failure == .fileTooLarge {
+                Text("Files over 100 MB can\u{2019}t go in the vault.")
+                    .font(.subheadline)
+                    .foregroundColor(KoreColor.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
             if !saved {
                 Button("Close") { state.dismiss() }
                     .font(.body.weight(.semibold))

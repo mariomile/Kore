@@ -279,6 +279,82 @@ final class CaptureInboxTests: XCTestCase {
         XCTAssertEqual(json["source"] as? String, "ios-share")
     }
 
+    // MARK: - spoolFiles: shared photos and PDFs
+
+    func testFileEnvelopeFieldNamesMatchTheSchema() throws {
+        let envelope = FileCaptureEnvelope(
+            id: "3f9e8f1a-1111-4a2b-8c3d-abcdefabcdef",
+            files: [.init(ref: "3f9e8f1a-1111-4a2b-8c3d-abcdefabcdef.1.pdf", name: "Q3.pdf")],
+            capturedAt: "2024-01-01T00:00:00.000Z"
+        )
+        let json = try encodeToObject(envelope)
+
+        XCTAssertEqual(Set(json.keys), ["version", "id", "kind", "files", "capturedAt", "source"])
+        XCTAssertEqual(json["kind"] as? String, "file")
+        XCTAssertEqual(json["source"] as? String, "ios-share")
+        let files = try XCTUnwrap(json["files"] as? [[String: String]])
+        XCTAssertEqual(files, [["ref": "3f9e8f1a-1111-4a2b-8c3d-abcdefabcdef.1.pdf", "name": "Q3.pdf"]])
+    }
+
+    func testSpoolFilesCopiesEachFileBesideTheEnvelopeThatNamesIt() throws {
+        let photo = try sharedFile("IMG_0042.jpg", bytes: Data("photo".utf8))
+        let pdf = try sharedFile("Q3 report.pdf", bytes: Data("%PDF".utf8))
+        let directory = try inboxDirectory()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let before = Set((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
+
+        let json = try spoolAndInspect {
+            try CaptureInbox.spoolFiles([photo, pdf], note: "From the offsite", destination: .daily)
+        }
+
+        let id = try XCTUnwrap(json["id"] as? String)
+        let files = try XCTUnwrap(json["files"] as? [[String: String]])
+        XCTAssertEqual(files.map { $0["ref"] }, ["\(id).1.jpg", "\(id).2.pdf"])
+        XCTAssertEqual(files.map { $0["name"] }, ["IMG_0042.jpg", "Q3 report.pdf"])
+        XCTAssertEqual(json["note"] as? String, "From the offsite")
+        XCTAssertEqual((json["destination"] as? [String: String])?["kind"], "daily")
+        let after = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))
+        let spooled = after.subtracting(before).filter { !$0.hasSuffix(".json") }
+        for name in spooled {
+            addTeardownBlock { try? FileManager.default.removeItem(at: directory.appendingPathComponent(name)) }
+        }
+        XCTAssertEqual(spooled, ["\(id).1.jpg", "\(id).2.pdf"])
+        XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("\(id).1.jpg")), Data("photo".utf8))
+    }
+
+    func testSpoolFilesRefusesAFileOverTheCapAndLeavesNothingBehind() throws {
+        let small = try sharedFile("a.png", bytes: Data("png".utf8))
+        let giant = try sharedFile("b.pdf", bytes: Data())
+        let handle = try FileHandle(forWritingTo: giant.url)
+        try handle.truncate(atOffset: UInt64(CaptureInbox.maxFileBytes + 1))
+        try handle.close()
+        let directory = try inboxDirectory()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let before = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))
+
+        assertThrows(.fileTooLarge) {
+            try CaptureInbox.spoolFiles([small, giant])
+        }
+
+        XCTAssertEqual(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)), before)
+    }
+
+    func testSpoolExtensionKeepsOnlyWhatTheRefPatternAllows() {
+        XCTAssertEqual(CaptureInbox.spoolExtension(of: URL(fileURLWithPath: "/t/a.JPG")), "jpg")
+        XCTAssertEqual(CaptureInbox.spoolExtension(of: URL(fileURLWithPath: "/t/a")), "bin")
+        XCTAssertEqual(CaptureInbox.spoolExtension(of: URL(fileURLWithPath: "/t/a.tar-gz2xyzabc")), "targz2xy")
+    }
+
+    private func sharedFile(_ name: String, bytes: Data) throws -> SharedFile {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("capture-inbox-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent(name)
+        try bytes.write(to: url)
+        return SharedFile(url: url, name: name)
+    }
+
     // MARK: - helpers
 
     private static let guidPattern =
@@ -346,7 +422,8 @@ final class CaptureInboxTests: XCTestCase {
                 return
             }
             switch (captureError, expected) {
-            case (.containerUnavailable, .containerUnavailable), (.envelopeTooLarge, .envelopeTooLarge):
+            case (.containerUnavailable, .containerUnavailable), (.envelopeTooLarge, .envelopeTooLarge),
+                (.fileTooLarge, .fileTooLarge):
                 break
             default:
                 XCTFail("expected \(expected) but got \(captureError)", file: file, line: line)

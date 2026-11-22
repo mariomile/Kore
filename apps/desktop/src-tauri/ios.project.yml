@@ -256,14 +256,20 @@ targets:
           # pins the runtime name the plist references.
           NSExtensionPrincipalClass: ShareViewController
           NSExtensionAttributes:
-            # Dictionary version 2 allows subset matching — Chrome shares a
-            # URL *and* text, which version 1's exact match would refuse
-            # (V1 parity; see the porting doc).
-            NSExtensionActivationRule:
-              NSExtensionActivationDictionaryVersion: 2
-              NSExtensionActivationSupportsText: true
-              NSExtensionActivationSupportsWebPageWithMaxCount: 1
-              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+            # A predicate, because the dictionary form cannot name PDFs
+            # (its file key would also offer Kore for every zip). Shown when
+            # any attachment is a web URL (Safari's page and Chrome's URL +
+            # title text both carry one), text, a photo or a PDF. A file URL
+            # is not a link: it only arrives beside a file's own type.
+            NSExtensionActivationRule: >-
+              SUBQUERY (extensionItems, $extensionItem,
+              SUBQUERY ($extensionItem.attachments, $attachment,
+              (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url"
+              AND NOT (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url"))
+              OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text"
+              OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image"
+              OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf"
+              ).@count >= 1).@count >= 1
             NSExtensionJavaScriptPreprocessingFile: ExtensionClass
     # The extension's only capability: the App Group container it spools
     # capture envelopes into. Must match the main app's entry per flavor (the

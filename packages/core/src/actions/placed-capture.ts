@@ -89,22 +89,67 @@ function postImageExtension(url: string): string {
 }
 
 /**
- * A post's photo kept in the vault (`x-<post id>-<n>.jpg` in the attachment
- * folder), so the card reads offline and after X drops the photo. When the
- * photo cannot be fetched now the card keeps X's own link to it instead.
+ * A post's picture kept in the vault's attachment folder as `name`, so the
+ * card reads offline and after X drops the picture; `null` when it cannot be
+ * fetched now.
  */
 async function keptPostImage(
   url: string,
-  postId: string | null,
-  position: number,
+  name: string,
   generation: number,
-): Promise<string> {
+): Promise<string | null> {
   try {
-    const name = `x-${postId ?? 'post'}-${position}.${postImageExtension(url)}`
     return await importRemoteImage(url, name, generation)
   } catch {
-    return url
+    return null
   }
+}
+
+/** X serves a profile picture at 48px by default; this is the size a card draws sharp. */
+function largeAvatar(url: string): string {
+  return url.replace(/_normal(\.\w+)$/, '_200x200$1')
+}
+
+/**
+ * Pinned to UTC: the day is written into the note, so the same post must read
+ * the same whichever device, and whichever time zone, saved it.
+ */
+const POST_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** `21 Nov 2026` (the UTC day), or null for a post with no readable date. */
+function postDay(iso: string): string | null {
+  const time = Date.parse(iso)
+  return Number.isNaN(time) ? null : POST_DATE.format(time)
+}
+
+/**
+ * Who wrote the post and when, as the pieces of one Markdown line: the
+ * profile picture (kept in the vault as `x-avatar-<handle>`, 40px wide where
+ * a reader honours `|40`), the name, the handle linked to the profile, and
+ * the day linked to the post itself, as X does.
+ */
+async function postByline(post: XPost, url: string, generation: number): Promise<string[]> {
+  const { name, handle, avatar } = post.author
+  const picture =
+    avatar === undefined
+      ? null
+      : await keptPostImage(
+          largeAvatar(avatar),
+          `x-avatar-${handle}.${postImageExtension(avatar)}`,
+          generation,
+        )
+  const displayName = name.trim().replaceAll(/[\\*_`[\]]/g, String.raw`\$&`)
+  return [
+    ...(picture === null ? [] : [`![|40](${markdownLinkDestination(picture)})`]),
+    ...(displayName === '' ? [] : [`**${displayName}**`]),
+    markdownLink(`https://x.com/${handle}`, `@${handle}`),
+    markdownLink(url, postDay(post.createdAt) ?? 'Post on X'),
+  ]
 }
 
 /** The note every shared X post links to, so its backlinks list the posts. */
@@ -112,13 +157,13 @@ const X_POSTS_NOTE_TITLE = 'X posts'
 
 /**
  * An X post as a plain Markdown card any Markdown reader (Obsidian, an
- * agent, `cat`) shows as the post: a list item whose line says who wrote it,
- * linked to the post, and links the [[X posts]] note; under it, quoted, what
- * they wrote and the photos (a video by its poster), each kept in the vault,
- * then the user's own note. A list item, not a bare quote, because a
- * backlink's context is the whole item: the X posts note then shows each post in full. Offline or for
- * a post that is gone, the card is the author line alone, so the save never
- * waits on X and never loses the link.
+ * agent, `cat`) shows as the post: a list item whose line says who wrote it
+ * and when ({@link postByline}) and links the [[X posts]] note; under it,
+ * quoted, what they wrote and the photos (a video by its poster), each kept
+ * in the vault, then the user's own note. A list item, not a bare quote,
+ * because a backlink's context is the whole item: the X posts note then
+ * shows each post in full. Offline or for a post that is gone, the card is
+ * the link alone, so the save never waits on X and never loses the link.
  */
 async function postCard(envelope: CaptureEnvelope, generation: number): Promise<string> {
   let post: XPost | undefined
@@ -127,9 +172,10 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
   } catch {
     post = undefined
   }
-  const handle = post?.author.handle ?? urlHandle(envelope.url)
-  const name = post?.author.name.trim()
-  const byline = name ? `**${name.replaceAll(/[\\*_`[\]]/g, String.raw`\$&`)}** · ` : ''
+  const handle = urlHandle(envelope.url)
+  const byline = post
+    ? await postByline(post, envelope.url, generation)
+    : [markdownLink(envelope.url, handle ? `@${handle}` : 'Post on X')]
   const postsNote = await ensureBacklinkTarget(X_POSTS_NOTE_TITLE, generation)
   const quote: string[] = []
   const words = envelope.selection?.trim() || (post ? postWords(post) : '')
@@ -142,7 +188,14 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
   })
   const postId = xPostId(envelope.url)
   const kept = await Promise.all(
-    images.map((image, index) => keptPostImage(image, postId, index + 1, generation)),
+    images.map(
+      async (image, index) =>
+        (await keptPostImage(
+          image,
+          `x-${postId ?? 'post'}-${index + 1}.${postImageExtension(image)}`,
+          generation,
+        )) ?? image,
+    ),
   )
   quote.push(...kept.map((image) => `![](${markdownLinkDestination(image)})`))
   const children = quote.length > 0 ? [quoted(quote.join('\n\n'))] : []
@@ -150,9 +203,11 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
   if (note) {
     children.push(note)
   }
-  const head = `- ${byline}${markdownLink(envelope.url, handle ? `@${handle}` : 'Post on X')} [[${postsNote}]]`
+  const head = `- ${[...byline, `[[${postsNote}]]`].join(' ')}`
   const body = children.join('\n\n').replaceAll(/^(?=.)/gm, '  ')
-  return body === '' ? head : `${head}\n${body}`
+  // A blank line under the byline, as the editor writes the item back: the
+  // first save then changes nothing.
+  return body === '' ? head : `${head}\n\n${body}`
 }
 
 /**

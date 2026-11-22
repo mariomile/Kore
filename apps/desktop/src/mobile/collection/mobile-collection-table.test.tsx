@@ -171,4 +171,50 @@ describe('MobileCollectionTable', () => {
     await userEvent.click(view.getByRole('button', { name: 'Done' }))
     expect(commitProperty).toHaveBeenCalledWith('notes/kitchen.md', 'owner', 'Grace')
   })
+
+  it('clamps horizontal column panning to [0, max] and never detaches the left pane', async () => {
+    const view = await render(
+      <div style={{ width: 300, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable entries={ENTRIES} type={PROJECT} label="Project" onOpen={() => {}} />
+      </div>,
+    )
+    const scroller = view.container.querySelector('.mobile-collection-table') as HTMLElement
+    // The scroll container itself never overflows horizontally — frozen columns stay bolted to x=0.
+    expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth)
+
+    const firePointer = (type: string, clientX: number, clientY: number): void => {
+      scroller.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: 'touch',
+          isPrimary: true,
+          clientX,
+          clientY,
+        }),
+      )
+    }
+
+    // Dragging right at rest stays pinned at 0px (no negative overscroll).
+    firePointer('pointerdown', 140, 200)
+    firePointer('pointermove', 200, 200)
+    firePointer('pointerup', 200, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('0px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(false)
+
+    // Dragging left pans property columns smoothly and sets the scrolled shadow flag.
+    firePointer('pointerdown', 200, 200)
+    firePointer('pointermove', 140, 200)
+    firePointer('pointerup', 140, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('60px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(true)
+
+    // Dragging right past 0 clamps cleanly back to 0px (never negative).
+    firePointer('pointerdown', 100, 200)
+    firePointer('pointermove', 260, 200)
+    firePointer('pointerup', 260, 200)
+    expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('0px')
+    expect(scroller.hasAttribute('data-scrolled-x')).toBe(false)
+  })
 })

@@ -1,10 +1,26 @@
 /*
+ * Vertical scrolling stays 100% native (`touch-action: pan-y` + `overflow-x: hidden`),
+ * while property columns pan horizontally via a strictly clamped GPU transform
+ * (`--table-scroll-x`). That makes horizontal rubber-band detachment of the frozen
+ * `#` and `Title` columns impossible on iOS WKWebView without canceling `touchmove`.
+ */
+.mobile-collection-table {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
+.mobile-table-pan-track {
+  transform: translate3d(calc(-1 * var(--table-scroll-x, 0px)), 0, 0);
+  will-change: transform;
+}
+
+/*
  * Frozen Title column elevation on mobile CollectionTable: a crisp border
  * always frames the Title column, and a soft depth shadow fades in as soon as
  * property columns slide under it.
  */
 .mobile-table-frozen-edge {
-  position: sticky;
+  position: relative;
 }
 
 .mobile-table-frozen-edge::after {

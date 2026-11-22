@@ -321,7 +321,8 @@ pub async fn capture_inbox_remove<R: tauri::Runtime>(
 /// Copy a spooled file (one the iOS share sheet shared) into the vault's
 /// attachment folder as `desired_name` — or the first free `-2` variant —
 /// returning its graph-relative path. The spool file stays until the drain
-/// removes it, so a crash between the two only ever costs a retry.
+/// removes it, and importing it again returns the copy already made, so a
+/// failure between the two only ever costs a retry, never a second copy.
 #[tauri::command]
 pub async fn capture_inbox_import<R: tauri::Runtime>(
     spool_name: String,
@@ -333,7 +334,7 @@ pub async fn capture_inbox_import<R: tauri::Runtime>(
     crate::blocking::run_blocking(move || {
         let state = app.state::<GraphState>();
         let root = root_for_generation(&state, generation)?;
-        crate::fs::assets::import_file(
+        crate::fs::assets::import_file_once(
             &state,
             generation,
             &inbox_file(&root, &spool_name)?,

@@ -61,7 +61,8 @@ export function fileCaptureBlock(files: readonly PlacedFile[], note?: string): s
  * Move a file capture's spooled files into the vault and write them where
  * the share sheet said; `null` when none of them arrived and there is
  * nothing else to write. The spooled copies stay until the caller removes
- * them, so a failure part-way only ever costs a retry.
+ * them, and importing one again returns the copy already in the vault, so a
+ * failure part-way only ever costs a retry, never a second attachment.
  */
 export async function drainFileCapture(
   envelope: FileCaptureEnvelope,

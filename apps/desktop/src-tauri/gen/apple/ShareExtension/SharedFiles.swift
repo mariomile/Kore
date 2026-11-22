@@ -50,6 +50,11 @@ enum SharedFiles {
     /// and a decode the extension's memory budget can afford.
     private static let transcodeMaxPixels = 4096
 
+    /// Providers hand their files over concurrently; decoding ten photos at
+    /// once would not fit the extension's memory budget, so transcodes take
+    /// turns here.
+    private static let transcodeQueue = DispatchQueue(label: "app.kore.share.transcode")
+
     /// Copy every provider's file into one fresh temporary folder, keeping
     /// the providers' order; a provider that fails to load is skipped.
     static func extract(
@@ -123,7 +128,7 @@ enum SharedFiles {
         do {
             try FileManager.default.createDirectory(at: slot, withIntermediateDirectories: true)
             if transcode {
-                guard transcodeToJpeg(source, to: destination) else {
+                guard transcodeQueue.sync(execute: { transcodeToJpeg(source, to: destination) }) else {
                     return nil
                 }
             } else {

@@ -32,8 +32,13 @@ const DRAG_FOLLOW_MAX_PX = 56
 
 /** Hold time that turns a still touch into a block selection (before iOS's own text loupe). */
 const LONG_PRESS_MS = 380
-/** Past a tap's length: from here a held finger is heading for a long-press. */
-const PRESS_GUARD_MS = 240
+/**
+ * From here a held finger is heading for a long-press. Early enough that iOS
+ * has not latched its text loupe onto the block yet (at 240 ms the loupe
+ * showed over the finger once the block was dragged); a tap that outlasts it
+ * still lands its caret, because the release lifts the guard first.
+ */
+const PRESS_GUARD_MS = 100
 const PRESS_GUARD_RELEASE_MS = 400
 
 /** Finger travel under which a touch on a selecting editor counts as a tap. */

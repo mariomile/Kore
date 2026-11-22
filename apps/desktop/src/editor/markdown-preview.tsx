@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
-import { separateCalloutTitles, withoutBlockIds } from '@kore/core'
+import { separateCalloutTitles, withoutBlockIds, type DateFormat } from '@kore/core'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useCalloutDom } from '@/editor/use-callout-dom'
+import { useDateChipDom } from '@/editor/use-date-chip-dom'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
@@ -43,6 +44,11 @@ interface MarkdownPreviewProps {
    * or remote embeds.
    */
   interactive?: boolean
+  /**
+   * Draw `[[2026-11-16]]` links as the editor's date chips in this format.
+   * Omitted, they show the daily-note key.
+   */
+  dateFormat?: DateFormat
   /** Extra classes for the rendered root. */
   className?: string
 }
@@ -52,6 +58,7 @@ export function MarkdownPreview({
   resolveImageUrl,
   onWikiLinkClick,
   interactive = true,
+  dateFormat,
   className,
 }: MarkdownPreviewProps): ReactElement {
   const openExternalLink = useOpenExternalLink()
@@ -89,6 +96,7 @@ export function MarkdownPreview({
   const hostRef = useRef<HTMLDivElement>(null)
   // A passive preview can't be clicked open, so it shows folded callouts open.
   useCalloutDom(hostRef, interactive)
+  useDateChipDom(hostRef, dateFormat)
 
   // Previews float outside the panes (palette, hover cards, chat), so a note
   // that cannot render gets its own boundary here rather than blanking the app.

@@ -5,6 +5,7 @@ import {
   wikiEmbedKind,
 } from '@kore/core'
 import { parseBodyEmbeds } from '@/components/body-embeds'
+import { bareDateRanges } from './date-chip-plugin'
 import { checkRoundTrip } from './roundtrip'
 
 /**
@@ -20,6 +21,7 @@ import { checkRoundTrip } from './roundtrip'
  *
  * - a cover or an icon in the frontmatter (they sit above the editor),
  * - sync conflict markers and notes the editor opens read-only,
+ * - dates typed as plain text, which the editor draws as chips,
  * - note and base embeds under the editor,
  * - X and YouTube posts, embedded files, images with a stored size, code
  *   fences (collections, diagrams, link embeds), math, tables, callouts,
@@ -60,6 +62,9 @@ export function staticDayBody(source: string): string | null {
   }
   const text = withoutPlainImages(body)
   if (text === null || UNSAFE.test(text) || detectConflictMarkers(body)) {
+    return null
+  }
+  if (bareDateRanges(text.replaceAll(WIKILINK, '')).length > 0) {
     return null
   }
   const embeds = parseBodyEmbeds(body)
@@ -118,6 +123,8 @@ const UNSAFE = new RegExp(
  */
 const MARKDOWN_IMAGE =
   /!\[[^\]\n]*\]\(\s*(?:<([^<>\n]*)>|((?:[^()\s<>]|\([^()\s]*\))+))(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\s*\)/g
+/** A `[[wiki link]]`: a date inside one is a link, not plain text. */
+const WIKILINK = /\[\[[^\]\n]*\]\]/g
 /** `![[target|size]]`, capturing what is inside. */
 const WIKI_EMBED = /!\[\[([^\]\n]+)\]\]/g
 const REMOTE = /^https?:\/\//i

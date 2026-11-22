@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
+import { formatDateChip } from '@/lib/dates'
 import { MarkdownPreview } from './markdown-preview'
 
 vi.mock('@/editor/open-external-link', () => ({
@@ -44,5 +45,26 @@ describe('MarkdownPreview callouts', () => {
     const quote = view.container.querySelector('blockquote')!
     await expect.poll(() => quote.getAttribute('data-callout-fold')).toBe('none')
     expect(quote.hasAttribute('data-callout-folded')).toBe(false)
+  })
+})
+
+describe('MarkdownPreview date links', () => {
+  it('draws a date link as the editor date chip when given a format', async () => {
+    const view = await render(
+      <MarkdownPreview
+        content={'Call on [[2026-11-16]], see [[2026-11-17|Tuesday]] and [[Lisbon]]'}
+        dateFormat="dmy"
+      />,
+    )
+    const labels = () =>
+      [...view.container.querySelectorAll('.md-wikilink-view-label')].map((label) => ({
+        text: label.textContent,
+        chip: label.classList.contains('kore-date-chip'),
+      }))
+    await expect.poll(labels).toEqual([
+      { text: formatDateChip('2026-11-16', 'dmy'), chip: true },
+      { text: 'Tuesday', chip: false },
+      { text: 'Lisbon', chip: false },
+    ])
   })
 })

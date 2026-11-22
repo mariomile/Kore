@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDaysIso,
+  formatDateChip,
   formatDayLabel,
   formatDateTime,
   formatFullDate,
@@ -55,6 +56,14 @@ describe('dates', () => {
     expect(formatShortDate('2026-06-09', 'iso', now)).toBe('2026-06-09')
     expect(formatShortDate('2025-12-31', 'mdy', now)).toBe('Dec 31, 2025')
     expect(formatShortDate('2025-12-31', 'dmy', now)).toBe('31 Dec 2025')
+  })
+
+  it('formatDateChip adds the weekday, giving way to the year away from it', () => {
+    const now = new Date(2026, 10, 22)
+    expect(formatDateChip('2026-11-16', 'mdy', now)).toBe('Mon, Nov 16')
+    expect(formatDateChip('2026-11-16', 'dmy', now)).toBe('Mon 16 Nov')
+    expect(formatDateChip('2026-11-16', 'iso', now)).toBe('2026-11-16')
+    expect(formatDateChip('2025-11-16', 'dmy', now)).toBe('16 Nov 2025')
   })
 
   it('formatDateTime pairs the short date with the time', () => {

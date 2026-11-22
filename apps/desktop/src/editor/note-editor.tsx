@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { resourceUrl, errorMessage, type DateFormat, type TimeFormat } from '@kore/core'
 import { docToMarkdown } from '@meowdown/core'
-import { DateLinkLabels } from './date-link-labels'
+import { DateChips } from './date-chips'
 import { togglePageAtCaret } from './page-block-commands'
 import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
@@ -250,7 +250,7 @@ interface NoteEditorProps {
    */
   timeFormat?: TimeFormat
   /**
-   * How `[[2026-11-20]]` date links read (the user's `dateFormat` setting).
+   * How dates in the text read as chips (the user's `dateFormat` setting).
    * Defaults to `mdy`.
    */
   dateFormat?: DateFormat
@@ -690,7 +690,7 @@ export function NoteEditor({
           onExitBoundary={handleExitBoundary}
         >
           <EditorInputTraits />
-          <DateLinkLabels dateFormat={dateFormat} />
+          <DateChips dateFormat={dateFormat} />
           <FocusedEditorTracker />
           <SelectionShape />
           {/* Only a pane that persists files gets the toolbar's attach button;

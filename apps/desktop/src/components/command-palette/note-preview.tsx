@@ -54,7 +54,13 @@ export function NotePreview({ entry }: NotePreviewProps): ReactElement {
   } else if (body === null || body.trim() === '') {
     content = <p className="text-sm text-text-muted italic">Empty</p>
   } else {
-    content = <MarkdownPreview content={body} resolveImageUrl={resolveImageUrl} />
+    content = (
+      <MarkdownPreview
+        content={body}
+        resolveImageUrl={resolveImageUrl}
+        dateFormat={settings.dateFormat}
+      />
+    )
   }
 
   return (

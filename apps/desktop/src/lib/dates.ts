@@ -115,6 +115,27 @@ export function formatWeekdayShortDate(date: Date, dateFormat: DateFormat): stri
 }
 
 /**
+ * A date as a chip in a note's text: the weekday and compact date in the
+ * current year (`Mon, Nov 16` / `Mon 16 Nov`), and the compact date with its
+ * year away from it (`Nov 16, 2025` / `16 Nov 2025`), where the year says more
+ * than the weekday. `iso` keeps the daily-note key. `now` is injectable for
+ * tests.
+ */
+export function formatDateChip(
+  date: string,
+  dateFormat: DateFormat,
+  now: Date = new Date(),
+): string {
+  if (dateFormat === 'iso') {
+    return date
+  }
+  const parsed = parseIsoDate(date)
+  return parsed.getFullYear() === now.getFullYear()
+    ? formatWeekdayShortDate(parsed, dateFormat)
+    : shortDateOf(parsed, dateFormat, now)
+}
+
+/**
  * A date label per the date-format setting: `June 10th, 2026` for `mdy`,
  * `10th June, 2026` for `dmy`, and `2026-06-10` for `iso` (the forms the
  * settings screen shows as the options themselves).

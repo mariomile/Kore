@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { isAppError, loadLinkPreview, readNote } from '@kore/core'
+import { isAppError, loadLinkPreview, readNote, type DateFormat } from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NotePane, type NotePaneProps } from '@/components/note-pane'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
@@ -212,6 +212,7 @@ export const DailyDay = memo(function DailyDay({
             <StaticDay
               path={path}
               body={editorBodyWithDefaultBullet(body, settings.editorDefaultBullet)}
+              dateFormat={settings.dateFormat}
               gutterClassName={pane.gutterClassName}
               editorClassName={pane.editorClassName}
             />
@@ -236,6 +237,8 @@ export const DailyDay = memo(function DailyDay({
 interface StaticDayProps {
   path: string
   body: string
+  /** How date links read, as in the editor that takes this day over. */
+  dateFormat: DateFormat
   gutterClassName: string | undefined
   editorClassName: string | undefined
 }
@@ -259,7 +262,13 @@ function sizeLikeEditor(image: HTMLImageElement, failed: boolean): void {
   }
 }
 
-function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayProps): ReactElement {
+function StaticDay({
+  path,
+  body,
+  dateFormat,
+  gutterClassName,
+  editorClassName,
+}: StaticDayProps): ReactElement {
   const { graph } = useGraph()
   const { resolveImageUrl } = useAssetPersistence(graph?.generation ?? null, path)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -301,6 +310,7 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
         content={body}
         resolveImageUrl={resolveImageUrl}
         interactive={false}
+        dateFormat={dateFormat}
         className={cn('kore-note-surface', gutterClassName, editorClassName)}
       />
       {dwelt ? (

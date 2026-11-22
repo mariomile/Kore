@@ -2222,3 +2222,27 @@ html[data-sidebar-resizing] aside {
 .kore-editor .md-wikilink-view-label[data-date-link] {
   white-space: nowrap;
 }
+
+/* A date reads as a chip (`editor/date-chips.tsx`), the same pill whether the
+   markdown holds a `[[2026-11-16]]` link or a plain `2026-11-16`: the tag's
+   shape (6px radius, 2px 6px padding) in a neutral fill, so a date and a tag
+   side by side read as one family while the tag keeps the accent. */
+.kore-editor .kore-date-chip {
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: color-mix(in oklab, var(--text) 7%, transparent);
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.kore-editor .kore-date-chip:hover {
+  background: color-mix(in oklab, var(--text) 11%, transparent);
+}
+/* The plain date's own characters stay in the text behind its chip until the
+   caret touches them (meowdown hides an atom's source the same way). */
+.kore-editor .kore-date-source {
+  font-size: 0;
+  letter-spacing: 0;
+  opacity: 0;
+}

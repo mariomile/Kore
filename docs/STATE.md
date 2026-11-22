@@ -1,5 +1,13 @@
 # Kore working state
 
+## Weekday date chips, 2026-11-22 (0.137.0)
+
+- [x] Dates in notes (plain 2026-11-16 or linked [[2026-11-16]]) render as
+  weekday chips following the date format setting; Markdown on disk is
+  unchanged and the caret reveals the source text (#600).
+- [x] iOS 27 SDK builds adopt the scene lifecycle so the simulator app
+  launches; TestFlight builds on the 26.5 SDK are unchanged (#616).
+
 ## Notion-style properties and collections, 2026-11-22 (0.136.0)
 
 - [x] Note properties redesigned with rich typed values and animated mobile

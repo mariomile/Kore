@@ -1,21 +1,33 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
-import { isTemplatePath, isUntitledNotePath, weekFromWeeklyPath, weeklyNoteTitle } from '@kore/core'
-import { NoteChildrenPanel } from '@/components/note-children-panel'
-import { NotePane } from '@/components/note-pane'
-import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
-import { NoteTagPickerDrawer } from '@/components/notes/note-type-picker'
-import { registerMobileTagPicker } from '@/editor/formatting-toolbar-store'
-import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
-import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
-import { hapticImpactLight } from '@/mobile/haptics'
-import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
-import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
-import { MobileScreenHeader } from '@/mobile/screen-header'
-import { useBarHeightVar } from '@/mobile/use-bar-height'
-import { NoteActionsMenu } from '@/mobile/note-actions-menu'
-import { cn } from '@/lib/utils'
-import { setTabBarScrolledAway } from '@/mobile/chrome-visibility'
-import { useRouter } from '@/routing/router'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
+import {
+  isTemplatePath,
+  isUntitledNotePath,
+  weekFromWeeklyPath,
+  weeklyNoteTitle,
+} from "@kore/core";
+import { NoteChildrenPanel } from "@/components/note-children-panel";
+import { NotePane } from "@/components/note-pane";
+import { NoteOutlineRail } from "@/components/notes/note-outline-rail";
+import { NoteTagPickerDrawer } from "@/components/notes/note-type-picker";
+import { registerMobileTagPicker } from "@/editor/formatting-toolbar-store";
+import { useAddNoteTag } from "@/lib/tags/use-add-note-tag";
+import { useNoteTypedProperties } from "@/lib/tags/use-note-typed-properties";
+import { hapticImpactLight } from "@/mobile/haptics";
+import { IncomingBacklinks } from "@/mobile/incoming-backlinks";
+import { MOBILE_CONTENT_GUTTER } from "@/mobile/mobile-content-gutter";
+import { MobileScreenHeader } from "@/mobile/screen-header";
+import { useBarHeightVar } from "@/mobile/use-bar-height";
+import { NoteActionsMenu } from "@/mobile/note-actions-menu";
+import { ParentNoteSheet } from "@/mobile/parent-note-sheet";
+import { cn } from "@/lib/utils";
+import { setTabBarScrolledAway } from "@/mobile/chrome-visibility";
+import { useRouter } from "@/routing/router";
 
 /**
  * One note, opened from a wiki link, the new-note button, or (later) search
@@ -32,104 +44,114 @@ function MobileNoteTagSheet({
   path,
   onClose,
 }: {
-  path: string
-  onClose: () => void
+  path: string;
+  onClose: () => void;
 }): ReactElement {
-  const addTag = useAddNoteTag()
-  const { tags } = useNoteTypedProperties(path)
+  const addTag = useAddNoteTag();
+  const { tags } = useNoteTypedProperties(path);
   return (
     <NoteTagPickerDrawer
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) onClose();
       }}
       carried={tags.map((entry) => entry.tagKey)}
       onChoose={(tag) => {
-        void addTag(path, tag)
+        void addTag(path, tag);
       }}
     />
-  )
+  );
 }
 
 export function MobileNote({ path }: { path: string }): ReactElement {
-  const { route, back, canBack, navigate } = useRouter()
-  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
-  const untitled = isUntitledNotePath(path)
+  const { route, back, canBack, navigate } = useRouter();
+  const { scopeRef, barRef } = useBarHeightVar("--mobile-header-height");
+  const untitled = isUntitledNotePath(path);
   // A string, so the scroll effect below doesn't resubscribe every render.
-  const week = weekFromWeeklyPath(path)
-  const weekTitle = week === null ? null : weeklyNoteTitle(week)
-  const mainRef = useRef<HTMLElement>(null)
-  const [titleInBar, setTitleInBar] = useState(false)
-  const [barTitle, setBarTitle] = useState('')
-  const [tagPickerOpen, setTagPickerOpen] = useState(false)
-  const canTagNote = !isTemplatePath(path)
-  const isActiveNote = route.kind === 'note' && route.path === path
+  const week = weekFromWeeklyPath(path);
+  const weekTitle = week === null ? null : weeklyNoteTitle(week);
+  const mainRef = useRef<HTMLElement>(null);
+  const [titleInBar, setTitleInBar] = useState(false);
+  const [barTitle, setBarTitle] = useState("");
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [parentPickerOpen, setParentPickerOpen] = useState(false);
+  const canTagNote = !isTemplatePath(path);
+  const isActiveNote = route.kind === "note" && route.path === path;
   const openTagPicker = useCallback(() => {
-    setTagPickerOpen(true)
-  }, [])
+    setTagPickerOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!isActiveNote) {
-      return
+      return;
     }
     return registerMobileTagPicker(
-      Symbol('mobile-note-tag-picker'),
+      Symbol("mobile-note-tag-picker"),
       canTagNote ? openTagPicker : null,
-    )
-  }, [isActiveNote, canTagNote, openTagPicker])
+    );
+  }, [isActiveNote, canTagNote, openTagPicker]);
 
   // iPhone design pass (2026-11): the note's own title is the
   // page heading, so the bar stays empty until it scrolls away and then shows
   // it small (the iOS large-title pattern); scrolling down hides the tab bar,
   // scrolling up brings it back. One passive listener, coalesced per frame.
   useEffect(() => {
-    const main = mainRef.current
-    if (main === null) return
-    let lastTop = main.scrollTop
-    let frame = 0
+    const main = mainRef.current;
+    if (main === null) return;
+    let lastTop = main.scrollTop;
+    let frame = 0;
     const onScroll = (): void => {
-      if (frame !== 0) return
+      if (frame !== 0) return;
       frame = requestAnimationFrame(() => {
-        frame = 0
-        const top = main.scrollTop
-        const showTitle = top > 56
+        frame = 0;
+        const top = main.scrollTop;
+        const showTitle = top > 56;
         if (showTitle) {
           // A week names itself; otherwise the note's own H1 (what the page
           // shows), else the file name.
-          const heading = main.querySelector('.ProseMirror h1')?.textContent?.trim()
+          const heading = main
+            .querySelector(".ProseMirror h1")
+            ?.textContent?.trim();
           setBarTitle(
             untitled
-              ? ''
-              : (weekTitle ?? (heading || (path.split('/').pop() ?? '').replace(/\.md$/i, ''))),
-          )
+              ? ""
+              : (weekTitle ??
+                  (heading ||
+                    (path.split("/").pop() ?? "").replace(/\.md$/i, ""))),
+          );
         }
-        setTitleInBar(showTitle)
-        if (top < 24) setTabBarScrolledAway(false)
-        else if (top - lastTop > 6) setTabBarScrolledAway(true)
-        else if (lastTop - top > 6) setTabBarScrolledAway(false)
-        lastTop = top
-      })
-    }
-    main.addEventListener('scroll', onScroll, { passive: true })
+        setTitleInBar(showTitle);
+        if (top < 24) setTabBarScrolledAway(false);
+        else if (top - lastTop > 6) setTabBarScrolledAway(true);
+        else if (lastTop - top > 6) setTabBarScrolledAway(false);
+        lastTop = top;
+      });
+    };
+    main.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      main.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(frame)
-      setTabBarScrolledAway(false)
-    }
-  }, [path, untitled, weekTitle])
+      main.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+      setTabBarScrolledAway(false);
+    };
+  }, [path, untitled, weekTitle]);
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
         ref={barRef}
-        title={titleInBar ? barTitle : ''}
-        accessibleTitle={untitled ? 'New note' : 'Edit note'}
-        onBack={() => (canBack ? back() : navigate({ kind: 'today' }))}
+        title={titleInBar ? barTitle : ""}
+        accessibleTitle={untitled ? "New note" : "Edit note"}
+        onBack={() => (canBack ? back() : navigate({ kind: "today" }))}
         trailing={
           <NoteActionsMenu
             path={path}
-            onDeleted={() => (canBack ? back() : navigate({ kind: 'today' }))}
-            {...(canTagNote ? { onOpenTagPicker: openTagPicker } : {})}
+            onDeleted={() => (canBack ? back() : navigate({ kind: "today" }))}
+            {...(canTagNote
+              ? {
+                  onOpenTagPicker: openTagPicker,
+                  onOpenParentPicker: () => setParentPickerOpen(true),
+                }
+              : {})}
           />
         }
       />
@@ -142,11 +164,12 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         // keyboard's top); the bottom fallback only clears the home
         // indicator while the tab bar is hidden.
         style={{
-          paddingTop: 'var(--mobile-header-height, 0px)',
-          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+          paddingTop: "var(--mobile-header-height, 0px)",
+          paddingBottom:
+            "var(--mobile-tab-bar-height, env(safe-area-inset-bottom))",
           // An outline jump parks its heading just under the glass header.
-          ['--kore-outline-scroll-margin' as string]:
-            'calc(var(--mobile-header-height, 0px) + 0.75rem)',
+          ["--kore-outline-scroll-margin" as string]:
+            "calc(var(--mobile-header-height, 0px) + 0.75rem)",
         }}
       >
         <NotePane
@@ -164,15 +187,35 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink opens the Daily surface at
             that date rather than pushing another note screen. */}
-        <NoteChildrenPanel key={path} path={path} className={MOBILE_CONTENT_GUTTER} />
-        <IncomingBacklinks path={path} className={cn(MOBILE_CONTENT_GUTTER, 'pb-4')} />
+        <NoteChildrenPanel
+          key={path}
+          path={path}
+          className={MOBILE_CONTENT_GUTTER}
+        />
+        <IncomingBacklinks
+          path={path}
+          className={cn(MOBILE_CONTENT_GUTTER, "pb-4")}
+        />
       </main>
       {/* The Mac's outline, sized for the phone's margin: a tap opens the
           jump list, and it steps aside while the keyboard is up. */}
-      <NoteOutlineRail scope={mainRef} className="right-0" onOpen={hapticImpactLight} />
+      <NoteOutlineRail
+        scope={mainRef}
+        className="right-0"
+        onOpen={hapticImpactLight}
+      />
       {canTagNote && tagPickerOpen ? (
-        <MobileNoteTagSheet path={path} onClose={() => setTagPickerOpen(false)} />
+        <MobileNoteTagSheet
+          path={path}
+          onClose={() => setTagPickerOpen(false)}
+        />
+      ) : null}
+      {canTagNote && parentPickerOpen ? (
+        <ParentNoteSheet
+          path={path}
+          onClose={() => setParentPickerOpen(false)}
+        />
       ) : null}
     </div>
-  )
+  );
 }

@@ -7,13 +7,14 @@ import {
   useRef,
   useState,
   type ReactElement,
-} from 'react'
-import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
-import type { CodeBlockRenderer } from '@meowdown/react'
+} from "react";
+import type { ExitBoundaryHandler, SearchStatus } from "@meowdown/core";
+import type { CodeBlockRenderer } from "@meowdown/react";
 import {
   detectConflictMarkers,
   isBasePath,
   isCanvasPath,
+  isTemplatePath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   parseEmbedFenceBody,
@@ -21,107 +22,124 @@ import {
   splitFrontmatter,
   wikiLinkTargetForTitle,
   type EmbedHostNote,
-} from '@kore/core'
-import { EmbedHostContext } from '@/components/notes/embed-host-context'
-import { BacklinksPanel } from '@/components/backlinks-panel'
-import { NoteBreadcrumb } from '@/components/note-breadcrumb'
-import { WeekHeader } from '@/components/weekly/week-header'
-import { NoteChildrenPanel } from '@/components/note-children-panel'
-import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
-import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
-import { InlineAlert } from '@/components/inline-alert'
-import { NoteConflictBanner } from '@/components/note-conflict-banner'
-import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
-import { ProtectedNoteView } from '@/components/protected-note-view'
-import { SuggestedContactCard } from '@/components/suggested-contact-card'
-import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
-import { EditorAiKeymap } from '@/editor/ai-menu/editor-ai-keymap'
-import { useEditorAiMenu } from '@/editor/ai-menu/use-editor-ai-menu'
-import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
+} from "@kore/core";
+import { EmbedHostContext } from "@/components/notes/embed-host-context";
+import { BacklinksPanel } from "@/components/backlinks-panel";
+import { NoteBreadcrumb } from "@/components/note-breadcrumb";
+import { WeekHeader } from "@/components/weekly/week-header";
+import { NoteChildrenPanel } from "@/components/note-children-panel";
+import {
+  parseBodyEmbeds,
+  sameBodyEmbeds,
+  type BodyEmbeds,
+} from "@/components/body-embeds";
+import { UnlinkedMentionsPanel } from "@/components/unlinked-mentions-panel";
+import { InlineAlert } from "@/components/inline-alert";
+import { NoteConflictBanner } from "@/components/note-conflict-banner";
+import {
+  AssetViewerDialog,
+  viewableAssetKind,
+} from "@/components/asset-viewer-dialog";
+import { ProtectedNoteView } from "@/components/protected-note-view";
+import { SuggestedContactCard } from "@/components/suggested-contact-card";
+import {
+  SyncConflictNotice,
+  ConflictProtectedSection,
+} from "@/components/sync-conflict-notice";
+import { EditorAiKeymap } from "@/editor/ai-menu/editor-ai-keymap";
+import { useEditorAiMenu } from "@/editor/ai-menu/use-editor-ai-menu";
+import { editorBodyWithDefaultBullet } from "@/editor/default-bullet";
 import {
   registerNoteEditorHandle,
   revealNoteHeadingOnNoteScreen,
   unregisterNoteEditorHandle,
-} from '@/editor/editor-handle-registry'
-import { markModeFromSyntax } from '@/editor/mark-mode'
-import { MermaidDiagram } from '@/editor/mermaid-diagram'
-import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
-import { useResourceCollection } from '@/editor/use-resource-collection'
-import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
-import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
-import { useNotePaneDocument } from '@/components/use-note-pane-document'
-import { TagActionsMenu } from '@/editor/tag-actions-menu'
-import { useTagActions } from '@/editor/use-tag-actions'
-import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
-import { BlockSwipeGestures } from '@/editor/block-swipe'
-import { PageBlocks } from '@/editor/page-blocks'
-import { CalloutHighlighter } from '@/editor/callout-highlighter'
-import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
-import { LineAuthorShading } from '@/editor/line-author-shading'
-import { LinkPreviewCards } from '@/editor/link-preview-cards'
-import { NoteTitleIcon } from '@/editor/note-title-icon'
-import { BlockIds } from '@/editor/block-ids'
-import { BlockZoom } from '@/editor/block-zoom'
-import { MoveBranch } from '@/editor/move-branch-picker'
-import { EditorNoteProperties } from '@/editor/editor-note-properties'
-import { conflictWritePath } from '@/hooks/use-periodic-note-seed'
-import { useNoteRow } from '@/hooks/use-note-row'
-import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
-import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
-import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
-import { usePageSlashItems } from '@/editor/use-page-slash-items'
-import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
-import { EmbeddedBase } from '@/components/notes/embedded-base'
-import { EmbedFence } from '@/components/notes/embed-fence'
-import { LinkLayoutMenu } from '@/editor/link-layout-menu'
-import { EmbeddedNote } from '@/components/notes/embedded-note'
-import { NoteAppearance } from '@/components/notes/note-appearance'
-import { useNoteAppearanceEdit } from '@/components/notes/use-note-appearance-edit'
-import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
-import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
-import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
-import { isTouchEditorSurface } from '@/lib/platform-surface'
-import { CollectionFenceRemoval } from '@/editor/collection-fence-removal'
-import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
-import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
-import { useSettings } from '@/providers/settings-provider'
-import { useRouter } from '@/routing/router'
+} from "@/editor/editor-handle-registry";
+import { markModeFromSyntax } from "@/editor/mark-mode";
+import { MermaidDiagram } from "@/editor/mermaid-diagram";
+import { NoteEditor, type NoteEditorHandle } from "@/editor/note-editor";
+import { useResourceCollection } from "@/editor/use-resource-collection";
+import {
+  resolveAssetFileLink,
+  useAssetPersistence,
+} from "@/editor/use-asset-persistence";
+import { useEditorAutocomplete } from "@/editor/use-editor-autocomplete";
+import { useNotePaneDocument } from "@/components/use-note-pane-document";
+import { useNoteAncestors } from "@/hooks/use-note-hierarchy";
+import { TagActionsMenu } from "@/editor/tag-actions-menu";
+import { useTagActions } from "@/editor/use-tag-actions";
+import { AutocompleteBlurDismiss } from "@/editor/autocomplete-blur-dismiss";
+import { BlockSwipeGestures } from "@/editor/block-swipe";
+import { PageBlocks } from "@/editor/page-blocks";
+import { CalloutHighlighter } from "@/editor/callout-highlighter";
+import { CollectionFenceGuard } from "@/editor/collection-fence-guard";
+import { LineAuthorShading } from "@/editor/line-author-shading";
+import { LinkPreviewCards } from "@/editor/link-preview-cards";
+import { NoteTitleIcon } from "@/editor/note-title-icon";
+import { BlockIds } from "@/editor/block-ids";
+import { BlockZoom } from "@/editor/block-zoom";
+import { MoveBranch } from "@/editor/move-branch-picker";
+import { EditorNoteProperties } from "@/editor/editor-note-properties";
+import { conflictWritePath } from "@/hooks/use-periodic-note-seed";
+import { useNoteRow } from "@/hooks/use-note-row";
+import { useCalloutSlashItems } from "@/editor/use-callout-slash-items";
+import { useCollectionSlashItems } from "@/editor/use-collection-slash-items";
+import { useEmbedSlashItems } from "@/editor/use-embed-slash-items";
+import { usePageSlashItems } from "@/editor/use-page-slash-items";
+import { useTemplateSlashItems } from "@/editor/use-template-slash-items";
+import { EmbeddedBase } from "@/components/notes/embedded-base";
+import { EmbedFence } from "@/components/notes/embed-fence";
+import { LinkLayoutMenu } from "@/editor/link-layout-menu";
+import { EmbeddedNote } from "@/components/notes/embedded-note";
+import { NoteAppearance } from "@/components/notes/note-appearance";
+import { useNoteAppearanceEdit } from "@/components/notes/use-note-appearance-edit";
+import { useMarkdownLinkNavigation } from "@/editor/use-markdown-link-navigation";
+import { useWikiLinkNavigation } from "@/editor/use-wiki-link-navigation";
+import { useWikiLinkHoverPreview } from "@/editor/use-wiki-link-hover-preview";
+import { isTouchEditorSurface } from "@/lib/platform-surface";
+import { CollectionFenceRemoval } from "@/editor/collection-fence-removal";
+import { cn } from "@/lib/utils";
+import { useGraph } from "@/providers/graph-provider";
+import {
+  useNoteSearchQuery,
+  useNoteSearchReport,
+} from "@/providers/note-find-provider";
+import { useSettings } from "@/providers/settings-provider";
+import { useRouter } from "@/routing/router";
 
 // A ```collection fence draws a table, board or calendar: the All Notes view
 // machinery. Only notes that embed one need it, so it loads with the first
 // such fence instead of on every launch.
 const EmbeddedCollection = lazy(() =>
-  import('@/components/notes/embedded-collection').then((module) => ({
+  import("@/components/notes/embedded-collection").then((module) => ({
     default: module.EmbeddedCollection,
   })),
-)
+);
 
 export interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
-  path: string
+  path: string;
   /**
    * Request lazy creation. The pane permits it only for daily notes and the
    * explicit new-note ULID route; arbitrary missing paths fail closed.
    */
-  lazy?: boolean
+  lazy?: boolean;
   /** Focus the editor when it mounts (the navigated-to day/note). */
-  autoFocus?: boolean
+  autoFocus?: boolean;
   /**
    * Where the caret lands when {@link autoFocus} applies: the document start
    * (default — a seeded new note's empty H1, so typing names the note) or the
    * end of the note's content (append-style capture, e.g. the mobile daily
    * double-tap).
    */
-  autoFocusSelection?: 'start' | 'end'
+  autoFocusSelection?: "start" | "end";
   /** Called once the autofocus actually happened (the editor mounted). */
-  onAutoFocused?: () => void
+  onAutoFocused?: () => void;
   /**
    * Extra classes for the pane root in every state (loading, error,
    * protected, editing). The note route uses this to make the pane a
    * stretching flex column so the editor can fill the viewport.
    */
-  className?: string
+  className?: string;
   /**
    * Extra classes for the editable area (e.g. the daily stream's per-day
    * `min-h-*`). Applied to the contenteditable root, so the reserved space
@@ -129,7 +147,7 @@ export interface NotePaneProps {
    * holds the same space in every state instead of collapsing and re-expanding
    * around the stream's scroll anchor while its note arrives.
    */
-  editorClassName?: string
+  editorClassName?: string;
   /**
    * Horizontal gutter applied *inside* the pane's pieces — the contenteditable
    * itself plus the chrome around it (alerts, backlinks, loading/error text) —
@@ -137,36 +155,36 @@ export interface NotePaneProps {
    * spans the pane's full width (dividers run edge to edge) while the gutter
    * stays part of the editor's click-to-focus area.
    */
-  gutterClassName?: string
+  gutterClassName?: string;
   /**
    * Render the built-in desktop backlinks panel below the note (default).
    * The mobile surfaces pass `false` and mount their own touch-chrome
    * `IncomingBacklinks` section over the same data layer.
    */
-  showBacklinks?: boolean
+  showBacklinks?: boolean;
   /**
    * The daily stream's day key for this pane (omitted by non-daily callers).
    * Required for {@link registerHandle} and {@link onExitBoundary} to identify
    * which day fired.
    */
-  dailyDate?: string
+  dailyDate?: string;
   /**
    * Register (or, with `null`, unregister) this pane's editor handle with the
    * daily stream, so it can move the caret here from an adjacent day. Keyed by
    * {@link dailyDate}.
    */
-  registerHandle?: (date: string, handle: NoteEditorHandle | null) => void
+  registerHandle?: (date: string, handle: NoteEditorHandle | null) => void;
   /**
    * The caret tried to leave this pane's top (`'up'`) / bottom (`'down'`) edge.
    * The daily stream moves focus to the adjacent day; returns `true` when it
    * did, so the editor consumes the key.
    */
-  onExitBoundary?: (date: string, direction: 'up' | 'down') => boolean
+  onExitBoundary?: (date: string, direction: "up" | "down") => boolean;
   /**
    * A tapped sub page opens on the note's own screen instead of zooming in
    * place (the phone's daily carousel, whose day chrome a zoom would keep).
    */
-  openPagesOnNoteScreen?: boolean
+  openPagesOnNoteScreen?: boolean;
 }
 
 function NoteLoadingSkeleton(): ReactElement {
@@ -184,7 +202,7 @@ function NoteLoadingSkeleton(): ReactElement {
         <div className="h-3 w-[72%] rounded-md bg-text-muted/10 motion-safe:animate-pulse" />
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -203,7 +221,7 @@ export function NotePaneComponent({
   path,
   lazy = false,
   autoFocus = false,
-  autoFocusSelection = 'start',
+  autoFocusSelection = "start",
   onAutoFocused,
   className,
   editorClassName,
@@ -214,111 +232,138 @@ export function NotePaneComponent({
   onExitBoundary,
   openPagesOnNoteScreen = false,
 }: NotePaneProps): ReactElement {
-  const { graph } = useGraph()
-  const { settings } = useSettings()
-  const generation = graph?.generation ?? null
+  const { graph } = useGraph();
+  const { settings } = useSettings();
+  const generation = graph?.generation ?? null;
   // The document session plus the lazy-create/seed policy around it — see
   // use-note-pane-document.
   // A weekly note's subject is its week (`Week 47`), drawn by WeekHeader.
-  const { document, dailyNote, weeklyWeek } = useNotePaneDocument(path, generation, lazy, dailyDate)
+  const { document, dailyNote, weeklyWeek } = useNotePaneDocument(
+    path,
+    generation,
+    lazy,
+    dailyDate,
+  );
   // Named by a date or a week, never a title: no title placeholder, no
   // icon or cover editing, no contact suggestion.
-  const periodicNote = dailyNote || weeklyWeek !== null
-  const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
-    useAssetPersistence(generation, path)
-  const resources = useResourceCollection(generation, path, document.header, saveFile)
+  const periodicNote = dailyNote || weeklyWeek !== null;
+  const {
+    resolveImageUrl,
+    resolveAssetOpenPath,
+    openAsset,
+    saveFile,
+    resolveFileInfo,
+    saveError,
+  } = useAssetPersistence(generation, path);
+  const resources = useResourceCollection(
+    generation,
+    path,
+    document.header,
+    saveFile,
+  );
   // PDF and HTML attachments open in the in-app viewer; everything else keeps
   // the OS-open path. The viewer's "Open externally" routes back to openAsset.
-  const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null)
-  const { navigate } = useRouter()
+  const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null);
+  const { navigate } = useRouter();
   const openOrViewAsset = useCallback(
     async (assetPath: string): Promise<void> => {
       // A `.base` chip opens Kore's own Base screen, not Obsidian.
       if (isBasePath(assetPath)) {
-        navigate({ kind: 'base', path: assetPath, view: null })
-        return
+        navigate({ kind: "base", path: assetPath, view: null });
+        return;
       }
       if (isCanvasPath(assetPath)) {
-        navigate({ kind: 'canvas', path: assetPath })
-        return
+        navigate({ kind: "canvas", path: assetPath });
+        return;
       }
       if (viewableAssetKind(assetPath) !== null) {
-        setViewerAssetPath(assetPath)
-        return
+        setViewerAssetPath(assetPath);
+        return;
       }
-      await openAsset(assetPath)
+      await openAsset(assetPath);
     },
     [navigate, openAsset],
-  )
+  );
   const renderWikilinkHoverCard = useWikiLinkHoverPreview({
     generation,
     graphKey: graph?.root ?? null,
     dateFormat: settings.dateFormat,
     resolveImageUrl,
     resolveAssetOpenPath,
-  })
-  const onWikiLinkClick = useWikiLinkNavigation(generation, path)
-  const onNoteLinkClick = useMarkdownLinkNavigation(generation, path)
-  const { onWikilinkSearch, onTagSearch } = useEditorAutocomplete()
+  });
+  const onWikiLinkClick = useWikiLinkNavigation(generation, path);
+  const onNoteLinkClick = useMarkdownLinkNavigation(generation, path);
+  const { onWikilinkSearch, onTagSearch } = useEditorAutocomplete();
   // The index's privacy flag for this note, overlay-backed so an in-app
   // "Mark as private" takes effect immediately. Null until it resolves, which
   // the link-preview gate below reads as "not known to be public".
-  const noteRow = useNoteRow(path)
+  const noteRow = useNoteRow(path);
   // The header's "Add icon" and "Add cover" are pointer affordances for
   // regular notes: daily notes stack in a stream where every day would grow
   // them, and touch has no hover to reveal them.
-  const appearanceEdit = useNoteAppearanceEdit(path, generation)
+  const appearanceEdit = useNoteAppearanceEdit(path, generation);
   const editableAppearance =
-    appearanceEdit !== null && !periodicNote && !isTouchEditorSurface() ? appearanceEdit : null
-  const onIconChange = editableAppearance?.setIcon
+    appearanceEdit !== null && !periodicNote && !isTouchEditorSurface()
+      ? appearanceEdit
+      : null;
+  const onIconChange = editableAppearance?.setIcon;
+  // "Add parent" rides the same hover row; a note that has one shows it as
+  // the breadcrumb instead (same cached query, no extra read).
+  const hasParent = useNoteAncestors(path).length > 0;
+  const canAddParent =
+    editableAppearance !== null && !hasParent && !isTemplatePath(path);
   // A note with a `#` title draws its icon on that line, left of the text;
   // only a title-less note keeps it above the body.
-  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false)
+  const [titleDrawsIcon, setTitleDrawsIcon] = useState(false);
   const noteLinkTarget =
     noteRow === null
       ? null
-      : (noteRow.dailyDate ?? (noteRow.title === '' ? null : wikiLinkTargetForTitle(noteRow.title)))
+      : (noteRow.dailyDate ??
+        (noteRow.title === "" ? null : wikiLinkTargetForTitle(noteRow.title)));
   const openMovedTo = useCallback(
-    (movedTo: string) => navigate({ kind: 'note', path: movedTo }),
+    (movedTo: string) => navigate({ kind: "note", path: movedTo }),
     [navigate],
-  )
+  );
   // On the phone's daily carousel a page zoomed in place would stay under
   // the date, the week strip and the day's backlinks, with no Back: it never
   // reads as opened. Push the note's own screen with the page open instead,
   // as a followed `[[Note#^page-…]]` link does; Back returns to the day.
   const openPageOnItsScreen = openPagesOnNoteScreen
     ? (id: string): boolean => {
-        revealNoteHeadingOnNoteScreen(path, `^${id}`)
-        navigate({ kind: 'note', path })
-        return true
+        revealNoteHeadingOnNoteScreen(path, `^${id}`);
+        navigate({ kind: "note", path });
+        return true;
       }
-    : undefined
+    : undefined;
 
-  const bindEditor = document.bindEditor
-  const aiEditorRef = useRef<NoteEditorHandle | null>(null)
+  const bindEditor = document.bindEditor;
+  const aiEditorRef = useRef<NoteEditorHandle | null>(null);
   // Find is one session per window: only the targeted note gets a query, and
   // only its status reaches the Find bar.
-  const searchQuery = useNoteSearchQuery(path)
-  const reportSearchStatus = useNoteSearchReport()
+  const searchQuery = useNoteSearchQuery(path);
+  const reportSearchStatus = useNoteSearchReport();
   const handleSearchChange = useCallback(
     (status: SearchStatus) => reportSearchStatus(path, status),
     [path, reportSearchStatus],
-  )
+  );
   // The registry entry this pane made, so unmount removes exactly it (a
   // remount of the same path may already have re-registered).
   const registeredHandle = useRef<{
-    path: string
-    handle: NoteEditorHandle
-  } | null>(null)
+    path: string;
+    handle: NoteEditorHandle;
+  } | null>(null);
   // The `/` menu's template rows insert into this pane's own editor, read
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
-  const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
-  const templateSlashItems = useTemplateSlashItems(getEditor, path)
-  const collectionSlashItems = useCollectionSlashItems(getEditor)
-  const calloutSlashItems = useCalloutSlashItems(getEditor)
-  const embedSlashItems = useEmbedSlashItems(getEditor)
-  const pageSlashItems = usePageSlashItems(getEditor)
+  const getEditor = useCallback(
+    () => registeredHandle.current?.handle ?? null,
+    [],
+  );
+  const templateSlashItems = useTemplateSlashItems(getEditor, path);
+  const collectionSlashItems = useCollectionSlashItems(getEditor);
+  const calloutSlashItems = useCalloutSlashItems(getEditor);
+  const embedSlashItems = useEmbedSlashItems(getEditor);
+  const pageSlashItems = usePageSlashItems(getEditor);
   const onSlashMenuSearch = useCallback(
     async (query: string) => [
       ...(await pageSlashItems(query)),
@@ -327,8 +372,14 @@ export function NotePaneComponent({
       ...(await embedSlashItems(query)),
       ...(await templateSlashItems(query)),
     ],
-    [pageSlashItems, collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
-  )
+    [
+      pageSlashItems,
+      collectionSlashItems,
+      calloutSlashItems,
+      embedSlashItems,
+      templateSlashItems,
+    ],
+  );
   // The embeds under the body: the typed ones while this session's seed is
   // unchanged, otherwise the snapshot's (a new session or an external
   // reload). Typing lands in state only when the embeds themselves change:
@@ -337,66 +388,71 @@ export function NotePaneComponent({
   const seedEmbeds = useMemo(
     () => parseBodyEmbeds(document.initialContent),
     [document.initialContent],
-  )
+  );
   const [typedEmbeds, setTypedEmbeds] = useState<{
-    embeds: BodyEmbeds
-    epoch: number
-    seed: string
-  } | null>(null)
+    embeds: BodyEmbeds;
+    epoch: number;
+    seed: string;
+  } | null>(null);
   const { transclusions: noteTransclusions, bases: baseEmbeds } =
     typedEmbeds !== null &&
     typedEmbeds.epoch === document.sessionEpoch &&
     typedEmbeds.seed === document.initialContent
       ? typedEmbeds.embeds
-      : seedEmbeds
+      : seedEmbeds;
   const handleEditorChange = useCallback(
     (markdown: string) => {
-      const next = parseBodyEmbeds(markdown)
-      const epoch = document.sessionEpoch
-      const seed = document.initialContent
+      const next = parseBodyEmbeds(markdown);
+      const epoch = document.sessionEpoch;
+      const seed = document.initialContent;
       setTypedEmbeds((current) => {
         const shown =
           current !== null && current.epoch === epoch && current.seed === seed
             ? current.embeds
-            : seedEmbeds
-        return sameBodyEmbeds(shown, next) ? current : { embeds: next, epoch, seed }
-      })
-      document.onEditorChange(markdown)
+            : seedEmbeds;
+        return sameBodyEmbeds(shown, next)
+          ? current
+          : { embeds: next, epoch, seed };
+      });
+      document.onEditorChange(markdown);
     },
     [document, seedEmbeds],
-  )
+  );
   const {
     menu: tagMenu,
     closeMenu: closeTagMenu,
     onTagClick,
     openTag,
     convertLineToNote,
-  } = useTagActions(path, getEditor, handleEditorChange)
+  } = useTagActions(path, getEditor, handleEditorChange);
   const handleRef = useCallback(
     (handle: NoteEditorHandle | null) => {
-      bindEditor(handle)
-      aiEditorRef.current = handle
+      bindEditor(handle);
+      aiEditorRef.current = handle;
       if (handle === null) {
         if (registeredHandle.current !== null) {
-          unregisterNoteEditorHandle(registeredHandle.current.path, registeredHandle.current.handle)
-          registeredHandle.current = null
+          unregisterNoteEditorHandle(
+            registeredHandle.current.path,
+            registeredHandle.current.handle,
+          );
+          registeredHandle.current = null;
         }
       } else {
-        registerNoteEditorHandle(path, handle, !openPagesOnNoteScreen)
-        registeredHandle.current = { path, handle }
+        registerNoteEditorHandle(path, handle, !openPagesOnNoteScreen);
+        registeredHandle.current = { path, handle };
       }
       if (dailyDate !== undefined) {
-        registerHandle?.(dailyDate, handle)
+        registerHandle?.(dailyDate, handle);
       }
       if (handle && autoFocus) {
         // By default the caret lands at the document start — for a seeded
         // new note that is the empty H1, so typing names the note. An `end`
         // selection moves it (and the scroll) to the note's content end.
-        handle.focus()
-        if (autoFocusSelection === 'end') {
-          handle.setSelection('end')
+        handle.focus();
+        if (autoFocusSelection === "end") {
+          handle.setSelection("end");
         }
-        onAutoFocused?.()
+        onAutoFocused?.();
       }
     },
     [
@@ -409,48 +465,52 @@ export function NotePaneComponent({
       onAutoFocused,
       openPagesOnNoteScreen,
     ],
-  )
+  );
 
   const aiMenu = useEditorAiMenu({
     path,
     sessionEpoch: document.sessionEpoch,
     editorRef: aiEditorRef,
-  })
+  });
 
   const handleExitBoundary: ExitBoundaryHandler | undefined = useMemo(() => {
     if (!dailyDate || !onExitBoundary) {
-      return
+      return;
     }
     return ({ direction }) => {
-      return onExitBoundary(dailyDate, direction)
-    }
-  }, [dailyDate, onExitBoundary])
+      return onExitBoundary(dailyDate, direction);
+    };
+  }, [dailyDate, onExitBoundary]);
 
   // The note a collection fence sits in, for its `key = this` filters.
   const embedHost = useMemo<EmbedHostNote>(
     () => ({ path, linkTarget: noteLinkTarget }),
     [path, noteLinkTarget],
-  )
+  );
   // Remote embeds render nothing in a private note.
   const privateNote = useMemo(
-    () => parseFrontmatter(splitFrontmatter(document.header).raw).data.private === true,
+    () =>
+      parseFrontmatter(splitFrontmatter(document.header).raw).data.private ===
+      true,
     [document.header],
-  )
+  );
   const renderCodeBlock = useCallback<CodeBlockRenderer>(
     ({ language, code, updateCode }) => {
-      if (language === 'mermaid') {
-        return <MermaidDiagram code={code} />
+      if (language === "mermaid") {
+        return <MermaidDiagram code={code} />;
       }
-      if (language === 'embed') {
-        const block = parseEmbedFenceBody(code)
-        return block === null ? null : <EmbedFence block={block} privateNote={privateNote} />
+      if (language === "embed") {
+        const block = parseEmbedFenceBody(code);
+        return block === null ? null : (
+          <EmbedFence block={block} privateNote={privateNote} />
+        );
       }
-      if (language !== 'collection') {
-        return null
+      if (language !== "collection") {
+        return null;
       }
-      const embed = parseCollectionEmbedBody(code)
+      const embed = parseCollectionEmbedBody(code);
       if (embed === null) {
-        return null
+        return null;
       }
       return (
         <EmbedHostContext value={embedHost}>
@@ -459,7 +519,9 @@ export function NotePaneComponent({
               <Suspense fallback={null}>
                 <EmbeddedCollection
                   embed={embed}
-                  onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+                  onChange={(updatedEmbed) =>
+                    updateCode(formatCollectionEmbedBody(updatedEmbed))
+                  }
                   // Touch has no block grip to delete the fence with; desktop
                   // keeps its grip menu and Backspace on the selected block.
                   onRemove={isTouchEditorSurface() ? remove : undefined}
@@ -468,12 +530,12 @@ export function NotePaneComponent({
             )}
           </CollectionFenceRemoval>
         </EmbedHostContext>
-      )
+      );
     },
     [embedHost, privateNote],
-  )
+  );
 
-  if (document.status === 'loading') {
+  if (document.status === "loading") {
     // Keep fast local reads invisible; a genuinely slow read gets a layout
     // skeleton instead of collapsing the editor's reserved space.
     return (
@@ -481,7 +543,7 @@ export function NotePaneComponent({
         role="status"
         aria-label="Opening note"
         className={cn(
-          'kore-note-loading flex flex-col px-1 py-2',
+          "kore-note-loading flex flex-col px-1 py-2",
           gutterClassName,
           editorClassName,
           className,
@@ -489,18 +551,23 @@ export function NotePaneComponent({
       >
         <NoteLoadingSkeleton />
       </div>
-    )
+    );
   }
 
-  if (document.status === 'error') {
+  if (document.status === "error") {
     return (
       <div
         role="alert"
-        className={cn('px-1 py-2 text-sm text-danger', gutterClassName, editorClassName, className)}
+        className={cn(
+          "px-1 py-2 text-sm text-danger",
+          gutterClassName,
+          editorClassName,
+          className,
+        )}
       >
         Couldn’t open {path}: {document.error}
       </div>
-    )
+    );
   }
 
   if (document.protected) {
@@ -509,7 +576,7 @@ export function NotePaneComponent({
     // view, and the file renders with each block's sides color-coded instead
     // of the generic read-only dump (whose converter-gap alert would only
     // double up on the conflict explanation).
-    const conflicted = detectConflictMarkers(document.initialContent)
+    const conflicted = detectConflictMarkers(document.initialContent);
     return (
       <div className={cn(gutterClassName, className)}>
         <NoteAppearance
@@ -536,7 +603,7 @@ export function NotePaneComponent({
           </>
         ) : null}
       </div>
-    )
+    );
   }
 
   // A note that opens with an empty body starts on an empty bullet when the
@@ -546,10 +613,13 @@ export function NotePaneComponent({
   const editorSeed = editorBodyWithDefaultBullet(
     document.initialContent,
     settings.editorDefaultBullet,
-  )
+  );
 
   return (
-    <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
+    <div
+      className={cn("group/note relative", className)}
+      aria-label={`Editing ${path}`}
+    >
       <div className={gutterClassName}>
         {weeklyWeek !== null ? (
           <WeekHeader week={weeklyWeek} />
@@ -559,20 +629,24 @@ export function NotePaneComponent({
 
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
-            Saving failed: {document.error}. Your edits are kept in the editor and the next
-            successful save will persist them.
+            Saving failed: {document.error}. Your edits are kept in the editor
+            and the next successful save will persist them.
           </InlineAlert>
         ) : null}
 
         {saveError !== null ? (
           <InlineAlert tone="error" className="mb-4">
-            Couldn’t save the {saveError.kind === 'image' ? 'pasted image' : 'file'}:{' '}
+            Couldn’t save the{" "}
+            {saveError.kind === "image" ? "pasted image" : "file"}:{" "}
             {saveError.message}. It was not added to the note.
           </InlineAlert>
         ) : null}
 
         {document.conflict !== null ? (
-          <NoteConflictBanner onKeepMine={document.keepMine} onLoadTheirs={document.loadTheirs} />
+          <NoteConflictBanner
+            onKeepMine={document.keepMine}
+            onLoadTheirs={document.loadTheirs}
+          />
         ) : null}
 
         <SyncConflictNotice path={path} className="mb-4" />
@@ -593,6 +667,7 @@ export function NotePaneComponent({
         onCoverChange={editableAppearance?.setCover}
         uploadCover={editableAppearance === null ? undefined : saveFile}
         onCoverPositionChange={editableAppearance?.setCoverPosition}
+        addParentFor={canAddParent ? path : undefined}
       />
 
       <NoteEditor
@@ -629,7 +704,9 @@ export function NotePaneComponent({
         resolveFileInfo={resolveFileInfo}
         onWikiLinkClick={onWikiLinkClick}
         onNoteLinkClick={onNoteLinkClick}
-        {...(generation !== null && !isTouchEditorSurface() ? { renderWikilinkHoverCard } : {})}
+        {...(generation !== null && !isTouchEditorSurface()
+          ? { renderWikilinkHoverCard }
+          : {})}
         onTagClick={onTagClick}
         onWikilinkSearch={onWikilinkSearch}
         onTagSearch={onTagSearch}
@@ -641,11 +718,11 @@ export function NotePaneComponent({
         onSlashMenuSearch={onSlashMenuSearch}
         // Periodic notes carry no title semantics (the date or week is their subject),
         // so an empty leading H1 there is just an empty heading.
-        {...(periodicNote ? {} : { titlePlaceholder: 'Untitled' })}
+        {...(periodicNote ? {} : { titlePlaceholder: "Untitled" })}
         // `kore-note-surface` opts this primary editor into the reading
         // text size (Settings → Editor); compact MarkdownView previews that
         // also carry `kore-editor` keep their own context size.
-        className={cn('kore-note-surface', gutterClassName, editorClassName)}
+        className={cn("kore-note-surface", gutterClassName, editorClassName)}
         handleRef={handleRef}
         onExitBoundary={handleExitBoundary}
       >
@@ -654,7 +731,9 @@ export function NotePaneComponent({
         {!dailyNote ? (
           <EditorNoteProperties
             path={path}
-            {...(gutterClassName !== undefined ? { className: gutterClassName } : {})}
+            {...(gutterClassName !== undefined
+              ? { className: gutterClassName }
+              : {})}
           />
         ) : null}
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
@@ -688,10 +767,14 @@ export function NotePaneComponent({
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
-        {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
+        {isTouchEditorSurface() ? (
+          <BlockSwipeGestures onAskAi={aiMenu.openMenu} />
+        ) : null}
         {/* Every surface: a sub page reads as a card, a tap zooms into it. */}
         <PageBlocks
-          {...(openPageOnItsScreen !== undefined ? { onOpenPage: openPageOnItsScreen } : {})}
+          {...(openPageOnItsScreen !== undefined
+            ? { onOpenPage: openPageOnItsScreen }
+            : {})}
         />
         {/* Touch only: closing the keyboard blurs the editor, and an open
             [[ / slash menu must not outlive it (pointer users dismiss it by
@@ -704,7 +787,7 @@ export function NotePaneComponent({
         onClose={closeTagMenu}
         onOpenTag={openTag}
         onConvert={() => {
-          void convertLineToNote()
+          void convertLineToNote();
         }}
       />
 
@@ -712,7 +795,7 @@ export function NotePaneComponent({
         <div className={gutterClassName}>
           {noteTransclusions.map((embed, index) => (
             <EmbeddedNote
-              key={`${embed.target}:${embed.heading ?? ''}:${index}`}
+              key={`${embed.target}:${embed.heading ?? ""}:${index}`}
               embed={embed}
               sourcePath={path}
               resolveImageUrl={resolveImageUrl}
@@ -724,7 +807,10 @@ export function NotePaneComponent({
       {baseEmbeds.length > 0 ? (
         <div className={gutterClassName}>
           {baseEmbeds.map((embed, index) => (
-            <EmbeddedBase key={`${embed.target}:${embed.view ?? ''}:${index}`} embed={embed} />
+            <EmbeddedBase
+              key={`${embed.target}:${embed.view ?? ""}:${index}`}
+              embed={embed}
+            />
           ))}
         </div>
       ) : null}
@@ -742,16 +828,16 @@ export function NotePaneComponent({
           assetPath={viewerAssetPath}
           url={resolveImageUrl(viewerAssetPath)}
           onClose={() => {
-            setViewerAssetPath(null)
+            setViewerAssetPath(null);
           }}
           onOpenExternally={() => {
-            void openAsset(viewerAssetPath)
-            setViewerAssetPath(null)
+            void openAsset(viewerAssetPath);
+            setViewerAssetPath(null);
           }}
         />
       ) : null}
     </div>
-  )
+  );
 }
 
-export const NotePane = memo(NotePaneComponent)
+export const NotePane = memo(NotePaneComponent);

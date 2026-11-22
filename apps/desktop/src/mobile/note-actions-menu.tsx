@@ -1,28 +1,47 @@
-import { useState, type ReactElement } from 'react'
-import { Hash, Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
-import { errorMessage, isTemplatePath } from '@kore/core'
-import { Button } from '@/components/ui/button'
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
-import { useNoteRowState } from '@/hooks/use-note-row'
-import { usePinnedNotes } from '@/hooks/use-pinned-notes'
-import { toggleNotePinned } from '@/lib/note-pin'
-import { toggleNotePrivate } from '@/lib/note-private'
-import { useBridgedNoteToggle } from '@/lib/notes/use-bridged-note-toggle'
-import { NoteDeleteDialog } from '@/mobile/note-delete-dialog'
-import { shareNote } from '@/mobile/share'
-import { useGraph } from '@/providers/graph-provider'
+import { useState, type ReactElement } from "react";
+import {
+  Hash,
+  Lock,
+  LockOpen,
+  MoreHorizontal,
+  Note,
+  Pin,
+  PinOff,
+  Share,
+  Trash,
+} from "@/components/icons";
+import { displayNoteTitle, errorMessage, isTemplatePath } from "@kore/core";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { useNoteAncestors } from "@/hooks/use-note-hierarchy";
+import { useNoteRowState } from "@/hooks/use-note-row";
+import { usePinnedNotes } from "@/hooks/use-pinned-notes";
+import { toggleNotePinned } from "@/lib/note-pin";
+import { toggleNotePrivate } from "@/lib/note-private";
+import { useBridgedNoteToggle } from "@/lib/notes/use-bridged-note-toggle";
+import { NoteDeleteDialog } from "@/mobile/note-delete-dialog";
+import { shareNote } from "@/mobile/share";
+import { useGraph } from "@/providers/graph-provider";
 
 interface NoteActionsMenuProps {
   /** Graph-relative path of the note the actions operate on. */
-  path: string
+  path: string;
   /** Called after the note is deleted, so the screen can navigate away. */
-  onDeleted: () => void
+  onDeleted: () => void;
   /** Open the note's native Add tag sheet (omitted on template notes). */
-  onOpenTagPicker?: () => void
+  onOpenTagPicker?: () => void;
+  /** Open the note's Parent note sheet (omitted on template notes). */
+  onOpenParentPicker?: () => void;
 }
 
 /**
- * The note screen's "⋯" action sheet (Plan 19): pin/unpin, lock/unlock from
+ * The note screen's "⋯" action sheet (Plan 19): tags, the parent note (its
+ * current one named on the row), pin/unpin, lock/unlock from
  * external services, share, and delete-to-trash. Pin reflects the index's
  * pinned set; privacy reflects the note's indexed `private: true` flag,
  * bridged by the last toggle result while the mobile write echo and index
@@ -35,12 +54,14 @@ export function NoteActionsMenu({
   path,
   onDeleted,
   onOpenTagPicker,
+  onOpenParentPicker,
 }: NoteActionsMenuProps): ReactElement {
-  const { graph } = useGraph()
-  const isPinned = usePinnedNotes().some((note) => note.path === path)
-  const { row: noteRow, settled: privacyReady } = useNoteRowState(path)
-  const [actionsOpen, setActionsOpen] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const { graph } = useGraph();
+  const parent = useNoteAncestors(path).at(-1);
+  const isPinned = usePinnedNotes().some((note) => note.path === path);
+  const { row: noteRow, settled: privacyReady } = useNoteRowState(path);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     isActive: isPrivate,
     isToggling: isTogglingPrivate,
@@ -49,30 +70,37 @@ export function NoteActionsMenu({
     path,
     indexActive: noteRow?.isPrivate ?? false,
     toggle: toggleNotePrivate,
-    failureLabel: (active) => (active ? 'Unlocking note' : 'Locking note'),
-  })
+    failureLabel: (active) => (active ? "Unlocking note" : "Locking note"),
+  });
   const privacyActionLabel = !privacyReady
-    ? 'Loading privacy…'
+    ? "Loading privacy…"
     : isPrivate
-      ? 'Unlock note'
-      : 'Lock note'
+      ? "Unlock note"
+      : "Lock note";
 
   const pin = (): void => {
     if (graph !== null) {
-      void toggleNotePinned(path, graph.generation).catch(() => {})
+      void toggleNotePinned(path, graph.generation).catch(() => {});
     }
-  }
+  };
 
   const share = (): void => {
-    void shareNote(path).catch((cause) => console.error('share failed:', errorMessage(cause)))
-  }
+    void shareNote(path).catch((cause) =>
+      console.error("share failed:", errorMessage(cause)),
+    );
+  };
 
   return (
     <>
       <Drawer open={actionsOpen} onOpenChange={setActionsOpen}>
         <DrawerTrigger
           render={
-            <Button variant="ghost" size="icon" className="size-11" aria-label="Note actions" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11"
+              aria-label="Note actions"
+            />
           }
         >
           <MoreHorizontal />
@@ -86,12 +114,31 @@ export function NoteActionsMenu({
                 size="lg"
                 className="h-12 justify-start gap-3 text-base"
                 onClick={() => {
-                  setActionsOpen(false)
-                  onOpenTagPicker()
+                  setActionsOpen(false);
+                  onOpenTagPicker();
                 }}
               >
                 <Hash />
                 Add tag
+              </Button>
+            ) : null}
+            {onOpenParentPicker !== undefined && !isTemplatePath(path) ? (
+              <Button
+                variant="ghost"
+                size="lg"
+                className="h-12 justify-start gap-3 text-base"
+                onClick={() => {
+                  setActionsOpen(false);
+                  onOpenParentPicker();
+                }}
+              >
+                <Note />
+                Parent note
+                {parent === undefined ? null : (
+                  <span className="ml-auto min-w-0 truncate text-sm text-text-muted">
+                    {displayNoteTitle(parent.title)}
+                  </span>
+                )}
               </Button>
             ) : null}
             <Button
@@ -99,12 +146,12 @@ export function NoteActionsMenu({
               size="lg"
               className="h-12 justify-start gap-3 text-base"
               onClick={() => {
-                pin()
-                setActionsOpen(false)
+                pin();
+                setActionsOpen(false);
               }}
             >
               {isPinned ? <PinOff /> : <Pin />}
-              {isPinned ? 'Unpin' : 'Pin'}
+              {isPinned ? "Unpin" : "Pin"}
             </Button>
             <Button
               variant="ghost"
@@ -112,11 +159,15 @@ export function NoteActionsMenu({
               className="h-12 justify-start gap-3 text-base"
               disabled={!privacyReady || isTogglingPrivate}
               onClick={() => {
-                void togglePrivate()
-                setActionsOpen(false)
+                void togglePrivate();
+                setActionsOpen(false);
               }}
             >
-              {privacyReady && isPrivate ? <LockOpen aria-hidden /> : <Lock aria-hidden />}
+              {privacyReady && isPrivate ? (
+                <LockOpen aria-hidden />
+              ) : (
+                <Lock aria-hidden />
+              )}
               {privacyActionLabel}
             </Button>
             <Button
@@ -124,8 +175,8 @@ export function NoteActionsMenu({
               size="lg"
               className="h-12 justify-start gap-3 text-base"
               onClick={() => {
-                share()
-                setActionsOpen(false)
+                share();
+                setActionsOpen(false);
               }}
             >
               <Share />
@@ -136,8 +187,8 @@ export function NoteActionsMenu({
               size="lg"
               className="h-12 justify-start gap-3 text-base text-destructive hover:text-destructive"
               onClick={() => {
-                setActionsOpen(false)
-                setConfirmingDelete(true)
+                setActionsOpen(false);
+                setConfirmingDelete(true);
               }}
             >
               <Trash />
@@ -154,5 +205,5 @@ export function NoteActionsMenu({
         onDeleted={onDeleted}
       />
     </>
-  )
+  );
 }

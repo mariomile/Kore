@@ -1,5 +1,11 @@
 # Kore working state
 
+## Parent-note breadcrumb, 2026-11-22 (0.133.0)
+
+- [x] The breadcrumb above a note title carries the note glyph, so it reads as
+  the parent note rather than a folder (#599).
+- [x] Dependencies: zip 9.8, rusqlite 0.41 (#597).
+
 ## Folders menu, collapsed icon rails, and daily scroll perf, 2026-11-20 (0.129.0)
 
 - [x] Folders sidebar context menu with real disk operations (New note, New subfolder, Rename, Move, Reveal in Finder, Copy path, Move to Trash), empty-folder visibility, session/shadow/link consistency, and bulk-move path-link rewriting (#581).

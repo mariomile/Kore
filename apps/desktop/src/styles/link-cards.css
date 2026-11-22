@@ -288,9 +288,9 @@
       > p:first-child
       a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
   ):has(> .list-content > blockquote) {
-  /* The card takes the text column, where a pasted link's card sits, and
-     the item's own bullet column stays empty. */
-  margin: 0.5em 0 0.5em 1lh;
+  /* Full width, bullet column included: a shared page's card under it is a
+     plain paragraph's, and the two share their left edge. */
+  margin: 0.5em 0;
   padding: 0.85rem 1.05rem 0.9rem;
   border-radius: var(--radius-xl, 12px);
   background-color: var(--surface-hover);

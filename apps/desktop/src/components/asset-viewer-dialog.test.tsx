@@ -1,7 +1,8 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
-import { AssetViewerDialog, viewableAssetKind } from './asset-viewer-dialog'
+import { setPlatformSurface } from '@/lib/platform-surface'
+import { AssetViewerDialog, opensInAssetViewer, viewableAssetKind } from './asset-viewer-dialog'
 
 describe('viewableAssetKind', () => {
   it('routes viewable kinds to the viewer, everything else externally', () => {
@@ -18,6 +19,20 @@ describe('viewableAssetKind', () => {
     expect(viewableAssetKind('assets/config.json')).toBe('text')
     expect(viewableAssetKind('assets/archive.zip')).toBeNull()
     expect(viewableAssetKind('assets/notes.pdf.bak')).toBeNull()
+  })
+})
+
+describe('opensInAssetViewer', () => {
+  it('leaves a PDF to the system preview on the mobile app only', () => {
+    expect(opensInAssetViewer('assets/report.pdf')).toBe(true)
+    expect(opensInAssetViewer('assets/archive.zip')).toBe(false)
+    setPlatformSurface({ mobileApp: true })
+    try {
+      expect(opensInAssetViewer('assets/report.pdf')).toBe(false)
+      expect(opensInAssetViewer('assets/data.csv')).toBe(true)
+    } finally {
+      setPlatformSurface({ mobileApp: false })
+    }
   })
 })
 

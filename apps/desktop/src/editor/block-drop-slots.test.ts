@@ -72,13 +72,25 @@ describe('buildDropRows and dropSlotAt', () => {
     expect(dropSlotAt(rows, 200, 70)?.pos).toBe(posOf('second'))
   })
 
-  it('skips the dragged blocks and clamps past either end', () => {
-    const dragged = blockRangeAt(doc, posOf('second') + 2)
-    const rows = buildDropRows(doc, dragged === null ? [] : [dragged], boxOf, true)
-    expect(rows).toHaveLength(4)
+  it('drops nowhere while the finger is over the dragged block’s own place', () => {
+    // The last nested item, lifted and barely moved: it must not leave its nest.
+    const nestedTwo = blockRangeAt(doc, posOf('nested two') + 2)
+    const rows = buildDropRows(doc, nestedTwo === null ? [] : [nestedTwo], boxOf, true)
+    expect(rows).toHaveLength(5)
+    // "nested two" owns 60..80.
+    expect(dropSlotAt(rows, 200, 62)).toBeNull()
+    expect(dropSlotAt(rows, 200, 78)).toBeNull()
+    // A dragged item takes its children's rows with it.
+    const first = blockRangeAt(doc, posOf('first') + 2)
+    const without = buildDropRows(doc, first === null ? [] : [first], boxOf, true)
+    expect(without).toHaveLength(3)
+    expect(dropSlotAt(without, 200, 50)).toBeNull()
+  })
+
+  it('clamps past either end', () => {
+    const rows = buildDropRows(doc, [], boxOf, true)
     expect(dropSlotAt(rows, 200, -50)?.pos).toBe(0)
-    // Past the end, the last row left is "nested two": still nested by default.
-    expect(dropSlotAt(rows, 200, 900)?.pos).toBe(posOf('second') - 1)
+    expect(dropSlotAt(rows, 200, 900)?.pos).toBe(doc.content.size)
     expect(dropSlotAt([], 0, 0)).toBeNull()
   })
 })

@@ -5,10 +5,11 @@ import { isListNode, type BlockRange } from './block-selection-plugin'
  * Where a dragged block may land, worked out once when the drag starts so the
  * finger's every move is a lookup with no layout read.
  *
- * The note is cut into rows, one per block that is not being dragged: a
- * top-level block is one row, and a list item is the row of its own line with
- * its nested items as rows of their own. The upper half of a row drops above
- * its block; the lower half drops below it, at the row's own level. Under the
+ * The note is cut into rows: a top-level block is one row, and a list item is
+ * the row of its own line with its nested items as rows of their own. The
+ * upper half of a row drops above its block; the lower half drops below it,
+ * at the row's own level. A dragged block keeps its row with no gap in it, so
+ * a finger still over the place it was lifted from drops nowhere. Under the
  * last item of a nested list "below" is ambiguous (still nested, or out at
  * one of the levels above), so that row offers every level and the finger's
  * horizontal position picks: slide left to step out.
@@ -30,8 +31,9 @@ interface Gap {
 export interface DropRow {
   top: number
   bottom: number
-  before: Gap
-  /** Deepest level first. */
+  /** Null on a dragged block's own row. */
+  before: Gap | null
+  /** Deepest level first; empty on a dragged block's own row. */
   after: readonly Gap[]
 }
 
@@ -43,7 +45,7 @@ export interface DropSlot {
 }
 
 /**
- * The rows of `doc`, top to bottom, skipping the dragged blocks. `boxOf`
+ * The rows of `doc`, top to bottom. `boxOf`
  * measures the block starting at a position (null when it is not on screen
  * as an element). List items nest only when `nest` is on: a paragraph or a
  * heading lands between top-level blocks, never inside a list item.
@@ -54,13 +56,16 @@ export function buildDropRows(
   boxOf: (pos: number) => BlockBox | null,
   nest: boolean,
 ): DropRow[] {
-  const skip = new Set(dragged.map((block) => block.from))
+  const lifted = new Set(dragged.map((block) => block.from))
   const rows: DropRow[] = []
 
   const visit = (node: ProseMirrorNode, pos: number, tails: readonly Gap[]): void => {
-    if (skip.has(pos)) return
     const box = boxOf(pos)
     if (box === null) return
+    if (lifted.has(pos)) {
+      rows.push({ top: box.top, bottom: box.bottom, before: null, after: [] })
+      return
+    }
     const end: Gap = { pos: pos + node.nodeSize, left: box.left }
     const nested: Array<{ node: ProseMirrorNode; pos: number }> = []
     if (nest && isListNode(node)) {
@@ -109,6 +114,7 @@ export function dropSlotAt(rows: readonly DropRow[], x: number, y: number): Drop
   const row = rows[index]
   if (row === undefined) return null
   if (y < (row.top + row.bottom) / 2) {
+    if (row.before === null) return null
     const above = rows[index - 1]
     const edge = above === undefined ? row.top : (above.bottom + row.top) / 2
     return { pos: row.before.pos, left: row.before.left, y: edge }

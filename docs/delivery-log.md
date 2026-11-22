@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Properties: Notion-style typed values and animated mobile sheets (#609).
+- Collections: configurable frozen table columns (#604); iPhone Kanban swipe
+  (#607); iPhone Views sheet redesign and Timeline empty state (#608).
+- Share: X post photos kept in the vault; PDFs open in system preview on
+  iPhone (#612).
 - Share sheet: photos and PDFs from iPhone, X posts saved as readable cards
   (#598).
 - Notes: folder path above the title, tap to open the folder; parent label and

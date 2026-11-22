@@ -1,5 +1,17 @@
 # Kore working state
 
+## Notion-style properties and collections, 2026-11-22 (0.136.0)
+
+- [x] Note properties redesigned with rich typed values and animated mobile
+  sheets (#609).
+- [x] Collection tables: per-collection frozen columns, none by default, on
+  desktop and iPhone (#604).
+- [x] iPhone Kanban board scrolls horizontally with snap across lanes (#607).
+- [x] iPhone collection Views sheet redesigned; empty Timeline layout fixed
+  (#608).
+- [x] Shared X post photos are kept in the vault; X card spacing and pill
+  fixed; PDFs on iPhone open in the system preview (#612).
+
 ## Share photos and PDFs from iPhone, 2026-11-22 (0.135.0)
 
 - [x] The iPhone share sheet accepts photos and PDFs (up to 10 files), saved as

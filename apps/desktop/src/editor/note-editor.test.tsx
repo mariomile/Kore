@@ -409,6 +409,14 @@ describe('NoteEditor image lightbox', () => {
     await expectLocatorToHaveCount(page.getByRole('dialog'), 0)
   })
 
+  it('leaves a picture to its block while blocks are selected', async () => {
+    await renderEditor()
+    pmRoot.element().setAttribute('data-block-selecting', '')
+
+    await pmRoot.getByAltText('Cat').click()
+    await expectLocatorToHaveCount(page.getByRole('dialog'), 0)
+  })
+
   it('opens a local image through the graph asset opener', async () => {
     const openImage = vi.fn(async () => {})
     await renderEditor(openImage)

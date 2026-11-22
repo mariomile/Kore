@@ -8,6 +8,9 @@ import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
 import { currentBlockSelection } from './block-selection-store'
 import { PageBlocks } from './page-blocks'
 import { BlockZoom } from './block-zoom'
+import { hapticImpactLight } from '@/mobile/haptics'
+
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 
 /**
  * The swipe wired to the live editor: left selects a block, right completes
@@ -160,6 +163,75 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     await vi.waitFor(() => {
       expect(currentBlockSelection()?.state.count).toBe(1)
     })
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('drags a held block to another place in the note', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange, 'intro\n\n- first\n- second\n')
+    onChange.mockClear()
+    vi.mocked(hapticImpactLight).mockClear()
+    const intro = view.getByText('intro').element().getBoundingClientRect()
+    const second = view.getByText('second').element().getBoundingClientRect()
+    const x = intro.left + 20
+    const y = intro.top + intro.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    await new Promise((resolve) => setTimeout(resolve, 450))
+    // Held, then moved: the paragraph lifts and the list closes up over the
+    // place it left, which opens its landing place under "second".
+    const move = touchEventOn(editable, 'touchmove', x, second.bottom - 2)
+    editable.dispatchEvent(move)
+    expect(move.defaultPrevented).toBe(true)
+    const firstItem = view.getByText('first').element().closest('.prosemirror-flat-list')
+    expect(firstItem?.getAnimations()).toHaveLength(1)
+    // One tick for the lift, one for the place that opened.
+    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(onChange).not.toHaveBeenCalled()
+
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x, second.bottom - 2))
+    await vi.waitFor(() => {
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe('- first\n- second\n\nintro\n')
+    })
+    // It lands still selected.
+    expect(currentBlockSelection()?.state.count).toBe(1)
+    expect(document.querySelector('.kore-block-selected')?.textContent).toBe('intro')
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('settles a held block back when it is let go where it was', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange)
+    onChange.mockClear()
+    const first = view.getByText('first').element().getBoundingClientRect()
+    const x = first.left + 20
+    const y = first.top + first.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    await new Promise((resolve) => setTimeout(resolve, 450))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x, y + 8))
+    // Still over its own place: nothing around it makes room.
+    const secondItem = view.getByText('second').element().closest('.prosemirror-flat-list')
+    expect(secondItem?.getAnimations()).toHaveLength(0)
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x, y + 8))
+    expect(onChange).not.toHaveBeenCalled()
+    expect(currentBlockSelection()?.state.count).toBe(1)
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('steps any selected block with the arrows, a paragraph included', async () => {
+    const onChange = vi.fn<(markdown: string) => void>()
+    const { view, editable } = await renderList(onChange, 'intro\n\n- first\n- second\n')
+    onChange.mockClear()
+    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('intro').element())
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(1)
+    })
+    expect(currentBlockSelection()?.state.canMoveUp).toBe(false)
+    expect(currentBlockSelection()?.state.canMoveDown).toBe(true)
+    currentBlockSelection()?.commands.moveDown()
+    await vi.waitFor(() => {
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe('- first\n\nintro\n\n- second\n')
+    })
+    expect(currentBlockSelection()?.state.count).toBe(1)
     currentBlockSelection()?.commands.clear()
   })
 

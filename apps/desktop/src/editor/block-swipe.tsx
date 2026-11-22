@@ -1,21 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { docToMarkdown, type EditorExtension } from '@meowdown/core'
-import { startOperation } from '@/lib/operations'
-import { allowCaretInPage, pageBlockOf } from './page-block-plugin'
-import {
-  copyWithoutLineIds,
-  freshPageId,
-  lineIdTail,
-  turnIntoPage,
-  unmarkPage,
-} from './page-block-commands'
+import type { EditorExtension } from '@meowdown/core'
 import { useEditor, useExtension } from '@meowdown/react'
 import { definePlugin } from '@prosekit/core'
-import { TextSelection, type EditorState } from '@prosekit/pm/state'
-import { addDays, format } from 'date-fns'
-import { setBlockKind } from './block-kind'
-import { zoomIntoBlockAt } from './block-zoom-plugin'
-import { openMoveBranch } from './move-branch-opener'
+import { TextSelection } from '@prosekit/pm/state'
+import { hapticImpactLight } from '@/mobile/haptics'
+import { startBlockDrag, type BlockDrag } from './block-drag'
+import { createBlockSelectionCommands, readSelectionState } from './block-selection-commands'
 import {
   blockRangeAt,
   createBlockSelectionPlugin,
@@ -23,16 +13,12 @@ import {
   selectedBlocks,
   setBlockPressGuard,
   withBlockSelection,
-  type BlockRange,
 } from './block-selection-plugin'
 import {
   clearBlockSelection,
   publishBlockSelection,
-  type BlockReminder,
   type BlockSelectionCommands,
-  type BlockSelectionState,
 } from './block-selection-store'
-import type { FormattingBlockKind } from './formatting-toolbar-store'
 import {
   classifyBlockSwipe,
   isHorizontalDrag,
@@ -53,64 +39,8 @@ const PRESS_GUARD_RELEASE_MS = 400
 /** Finger travel under which a touch on a selecting editor counts as a tap. */
 const TAP_SLOP_PX = 10
 
-function kindOf(range: BlockRange): FormattingBlockKind {
-  const name = range.node.type.name
-  if (name === 'list') {
-    return (range.node.attrs as { kind?: string }).kind === 'task' ? 'task' : 'bullet'
-  }
-  if (name === 'heading') return 'heading'
-  if (name === 'blockquote') return 'quote'
-  return 'text'
-}
-
-/** The page a selected block is (a list item marked `^page-…`), or null. */
-function pageOf(range: BlockRange): ReturnType<typeof pageBlockOf> {
-  return pageBlockOf(range.node, range.from)
-}
-
-function readSelectionState(state: EditorState): BlockSelectionState {
-  const blocks = selectedBlocks(state)
-  const kinds = new Set(blocks.map(kindOf))
-  const single = blocks.length === 1 ? blocks[0] : undefined
-  const siblings = (range: BlockRange): { before: boolean; after: boolean; nested: boolean } => {
-    const $pos = state.doc.resolve(range.from)
-    const index = $pos.index()
-    const parent = $pos.parent
-    const prev = index > 0 ? parent.child(index - 1) : null
-    const next = index + 1 < parent.childCount ? parent.child(index + 1) : null
-    return {
-      before: prev?.type.name === 'list',
-      after: next?.type.name === 'list',
-      nested: parent.type.name === 'list',
-    }
-  }
-  const lists = blocks.filter((block) => block.node.type.name === 'list')
-  const dates = new Set(
-    blocks.map(
-      (block) =>
-        /\[\[(\d{4}-\d{2}-\d{2})\]\]/.exec(
-          block.node.firstChild?.textContent ?? block.node.textContent,
-        )?.[1] ?? null,
-    ),
-  )
-  return {
-    count: blocks.length,
-    kind: kinds.size === 1 ? ([...kinds][0] ?? null) : null,
-    canIndent: lists.length === blocks.length && lists.every((block) => siblings(block).before),
-    canOutdent: blocks.some((block) => siblings(block).nested),
-    canMoveUp: single !== undefined && single.node.type.name === 'list' && siblings(single).before,
-    canMoveDown: single !== undefined && single.node.type.name === 'list' && siblings(single).after,
-    date: dates.size === 1 ? ([...dates][0] ?? null) : null,
-    isPage: single !== undefined && pageOf(single) !== null,
-    hasPage: blocks.some((block) => pageOf(block) !== null),
-  }
-}
-
-function reminderDate(when: BlockReminder | Date): string {
-  if (when instanceof Date) return format(when, 'yyyy-MM-dd')
-  const days = when === 'today' ? 0 : when === 'tomorrow' ? 1 : 7
-  return format(addDays(new Date(), days), 'yyyy-MM-dd')
-}
+/** Finger travel that turns a held block into a dragged one. */
+const DRAG_SLOP_PX = 6
 
 /**
  * Craft-style block handling on touch.
@@ -122,6 +52,10 @@ function reminderDate(when: BlockReminder | Date): string {
  * bar's place; drag right to complete a task or nest the block under the one
  * above. While blocks are selected the keyboard stays down and a tap on any
  * block adds it to the selection or drops it.
+ *
+ * Reordering is the hold: keep a finger on a block and it is selected, keep
+ * it down and move, and the selected blocks lift and follow the finger to
+ * another place in the note ({@link startBlockDrag}).
  *
  * On the daily carousel with the keyboard down, horizontal drags belong to
  * the day swipe, so the block swipe waits for the editor to have focus.
@@ -172,121 +106,7 @@ export function BlockSwipeGestures({
       const view = editor.view
       const dom = view.dom
 
-      /** Run `step` with the caret inside each selected block, last block first. */
-      const eachBlock = (step: () => void): void => {
-        const blocks = selectedBlocks(view.state).reverse()
-        for (const block of blocks) {
-          const near = TextSelection.near(view.state.doc.resolve(block.from + 1), 1)
-          view.dispatch(allowCaretInPage(view.state.tr.setSelection(near)))
-          step()
-        }
-        // The caret moved for the commands' sake; the keyboard stays down.
-        if (view.hasFocus()) editor.blur()
-      }
-
-      /** Drop the page marker from every selected page (one undoable step). */
-      const unmarkPages = (): void => {
-        let tr = view.state.tr
-        for (const block of selectedBlocks(view.state).reverse()) tr = unmarkPage(tr, block.from)
-        if (tr.docChanged) view.dispatch(tr)
-      }
-
-      const commands: BlockSelectionCommands = {
-        setKind: (kind) => {
-          // Any kind takes a page back to an ordinary block: the marker goes,
-          // the children stay where they are.
-          unmarkPages()
-          eachBlock(() => setBlockKind(editor, kind))
-        },
-        remind: (when) => {
-          const date = reminderDate(when)
-          eachBlock(() => {
-            setBlockKind(editor, 'task')
-            const { $from } = view.state.selection
-            const end = $from.end()
-            const text = $from.parent.textContent
-            // A block that already has a date gets the new one in its place.
-            const existing = /\[\[\d{4}-\d{2}-\d{2}\]\]/.exec(text)
-            if (existing !== null) {
-              const from = $from.start() + existing.index
-              view.dispatch(
-                view.state.tr.insertText(`[[${date}]]`, from, from + existing[0].length),
-              )
-              return
-            }
-            // Before a hidden `^id`, which must stay last on the line.
-            const tail = lineIdTail($from.parent, $from.before())
-            const at = tail === null ? end : tail.from
-            const before = view.state.doc.textBetween($from.start(), at)
-            const lead = before.length > 0 && !before.endsWith(' ') ? ' ' : ''
-            view.dispatch(view.state.tr.insertText(`${lead}[[${date}]]`, at))
-          })
-        },
-        indent: () => eachBlock(() => editor.commands.indentList()),
-        outdent: () => eachBlock(() => editor.commands.dedentList()),
-        moveUp: () => eachBlock(() => editor.commands.moveList('up')),
-        moveDown: () => eachBlock(() => editor.commands.moveList('down')),
-        duplicate: () => {
-          const blocks = selectedBlocks(view.state).reverse()
-          let tr = view.state.tr
-          const { schema } = view.state
-          for (const block of blocks) {
-            const fresh = (): string => freshPageId(tr.doc)
-            tr = tr.insert(block.to, copyWithoutLineIds(block.node, schema, fresh))
-          }
-          view.dispatch(tr)
-        },
-        copy: async () => {
-          const blocks = selectedBlocks(view.state)
-          const doc = view.state.schema.topNodeType.create(
-            null,
-            blocks.map((block) => block.node),
-          )
-          await navigator.clipboard.writeText(docToMarkdown(doc).trim())
-        },
-        remove: () => {
-          const blocks = selectedBlocks(view.state).reverse()
-          let tr = view.state.tr
-          for (const block of blocks) tr = tr.delete(block.from, block.to)
-          view.dispatch(withBlockSelection(tr, { type: 'clear' }))
-        },
-        zoom: () => {
-          const first = selectedBlocks(view.state)[0]
-          if (first === undefined) return
-          view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
-          zoomIntoBlockAt(view, first.from)
-        },
-        makePage: () => {
-          const blocks = selectedBlocks(view.state)
-          const picked = blocks[0]
-          if (picked === undefined || blocks.length !== 1 || pageOf(picked) !== null) return
-          view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
-          const why = turnIntoPage(editor, picked.from)
-          if (why !== null) startOperation('Turning into a page').fail(why)
-        },
-        moveToNote: () => {
-          const first = selectedBlocks(view.state)[0]
-          if (first === undefined) return
-          view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' }))
-          openMoveBranch(view, first.from + 1)
-        },
-        askAi: () => {
-          const blocks = selectedBlocks(view.state)
-          const first = blocks[0]
-          const last = blocks[blocks.length - 1]
-          if (first === undefined || last === undefined) return
-          const selection = TextSelection.between(
-            view.state.doc.resolve(first.from + 1),
-            view.state.doc.resolve(last.to - 1),
-          )
-          view.dispatch(
-            withBlockSelection(view.state.tr.setSelection(selection), { type: 'clear' }),
-          )
-          view.focus()
-          askAiRef.current?.()
-        },
-        clear: () => view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' })),
-      }
+      const commands = createBlockSelectionCommands(editor, () => askAiRef.current?.())
       commandsRef.current = commands
 
       let startX: number | null = null
@@ -301,6 +121,7 @@ export function BlockSwipeGestures({
       let pressTimer: ReturnType<typeof setTimeout> | null = null
       let guardTimer: ReturnType<typeof setTimeout> | null = null
       let pressed = false
+      let drag: BlockDrag | null = null
       // iOS runs its own hold gesture on editable text (~500 ms: caret,
       // loupe, word selection, keyboard). A finger still down after a tap's
       // length makes the editor read-only for the moment (the selection
@@ -347,6 +168,8 @@ export function BlockSwipeGestures({
         if (pressTimer !== null) clearTimeout(pressTimer)
         pressTimer = null
         releaseDrag()
+        drag?.cancel()
+        drag = null
       }
 
       const blockElement = (position: number): HTMLElement | null => {
@@ -408,7 +231,16 @@ export function BlockSwipeGestures({
           pressTimer = null
           clearGuard()
         }
-        if (pressed && event.cancelable) event.preventDefault()
+        if (pressed) {
+          // A held block that moves is being dragged to another place.
+          if (event.cancelable) event.preventDefault()
+          if (drag === null && Math.hypot(deltaX, touch.clientY - startY) > DRAG_SLOP_PX) {
+            drag = startBlockDrag(view, startY, hapticImpactLight)
+            if (drag !== null) hapticImpactLight()
+          }
+          drag?.move(touch.clientX, touch.clientY)
+          return
+        }
         if (!claimed && swipeAllowed() && isHorizontalDrag(deltaX, touch.clientY - startY)) {
           claimed = true
           const element =
@@ -478,6 +310,8 @@ export function BlockSwipeGestures({
         // lands, and keep the guard a beat longer than iOS's own hold timer.
         if (pressed) {
           pressed = false
+          drag?.drop()
+          drag = null
           reset()
           if (event.cancelable) event.preventDefault()
           window.getSelection()?.removeAllRanges()
@@ -550,6 +384,7 @@ export function BlockSwipeGestures({
         window.removeEventListener('touchmove', onTouchMove)
         window.removeEventListener('touchend', onTouchEnd)
         window.removeEventListener('touchcancel', onTouchCancel)
+        drag?.cancel()
         clearGuard()
       }
     })

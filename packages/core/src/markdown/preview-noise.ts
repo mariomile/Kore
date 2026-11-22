@@ -54,7 +54,7 @@ const REFERENCE = String.raw`(?:${TAG}|\[\[[^\]\n]*\]\]|\[[^\]\n]*\]\([^)\n]*\)|
 /** A property's name: one or two words (`Type`, `Due date`). Longer is a sentence. */
 const LABEL = String.raw`\p{L}[\p{L}\p{N}_-]*(?: [\p{L}\p{N}_-]+)?`
 /**
- * A property line, after an optional list marker: tags alone (`#meeting
+ * A property line, after any quote marks and an optional list marker: tags alone (`#meeting
  * #work`, the line that gives a note its type), a label holding only
  * references (`Type: #meeting`, `Author: [[James Clear]]`, `URL: https://…`),
  * or a Dataview field (`status:: active`). Metadata the app shows as fields,
@@ -62,9 +62,20 @@ const LABEL = String.raw`\p{L}[\p{L}\p{N}_-]*(?: [\p{L}\p{N}_-]+)?`
  * does `We met for the first time: [[Sarah Chen]]`, whose lead is no label.
  */
 const PROPERTY_LINE = new RegExp(
-  String.raw`^[ \t]*(?:[-*+][ \t]+)?(?:(?:${TAG}[ \t]*)+|${LABEL}:[ \t]*(?:${REFERENCE}[ \t,]*)+|${LABEL}::[ \t].*)$`,
+  String.raw`^[ \t]*(?:>[ \t]*)*(?:[-*+][ \t]+)?(?:(?:${TAG}[ \t]*)+|${LABEL}:[ \t]*(?:${REFERENCE}[ \t,]*)+|${LABEL}::[ \t].*)$`,
   'gmu',
 )
+
+/** A line break written as HTML: `<br>`, `<br/>`, `<BR >`. */
+const HTML_LINE_BREAK = /^<br\b/i
+
+/**
+ * Does cutting this noise node part two words? Only a `<br>` does: `<b>` and
+ * its kin wrap words (`<b>bold</b>ly` reads `boldly`), a break separates them.
+ */
+export function isPreviewWordBreak(name: string, text: string): boolean {
+  return name === 'HTMLTag' && HTML_LINE_BREAK.test(text)
+}
 
 /** Is the tree node `name`, whose source is `text`, preview noise as a whole? */
 export function isPreviewNoiseNode(name: string, text: string): boolean {

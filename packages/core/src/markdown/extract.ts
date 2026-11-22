@@ -13,7 +13,7 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import { buildPlainText, plainTextOfRange, unescapeMarkdownText, type Cut } from './plain-text'
-import { isPreviewNoiseNode, previewNoiseSpans } from './preview-noise'
+import { isPreviewNoiseNode, isPreviewWordBreak, previewNoiseSpans } from './preview-noise'
 import { taskListBullet } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
 import { firstDue } from './task-due'
@@ -447,7 +447,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const cuts: Cut[] = [] // body coords — syntax to drop from plain text
   const tagExcluded: Span[] = [] // body coords — regions that don't yield tags
   const literalPlainText: Span[] = [] // body coords — regions that render backslashes literally
-  const previewCuts: Span[] = [] // body coords — noise the list-row preview also drops
+  const previewCuts: Cut[] = [] // body coords — noise the list-row preview also drops
   const taskNodes: SyntaxNode[] = [] // body coords — `Task` nodes, resolved after the walk
   const embedSnapshots: (Span & { text: string })[] = [] // body coords — saved post-embed comments
 
@@ -479,8 +479,11 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
           embedSnapshots.push({ from, to, text: embedText })
         }
       }
-      if (isPreviewNoiseNode(name, body.slice(from, Math.min(to, from + 8)))) {
-        previewCuts.push({ from, to })
+      const nodeStart = body.slice(from, Math.min(to, from + 8))
+      if (isPreviewNoiseNode(name, nodeStart)) {
+        previewCuts.push(
+          isPreviewWordBreak(name, nodeStart) ? { from, to, gap: true } : { from, to },
+        )
       }
 
       if (isWikiNodeName(name)) {

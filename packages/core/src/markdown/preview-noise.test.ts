@@ -169,6 +169,10 @@ describe('parseNote — previewText', () => {
       preview('- Author: [[James Clear]]\n- URL: https://example.com/a\n- Site: [x](http://x.io)'),
     ).toBe('')
     expect(preview('Attendees: [[Sarah Chen]], [[James Clear]]\n\nWe agreed.')).toBe('We agreed.')
+    expect(preview('> Type: #meeting\n> status:: done\n> The quote itself.')).toBe(
+      'The quote itself.',
+    )
+    expect(preview('> [!info]\n> - Author: [[James Clear]]\n> > #nested')).toBe('')
   })
 
   it('keeps a tag or a colon inside a sentence', () => {
@@ -201,8 +205,8 @@ describe('parseNote — previewText', () => {
   })
 
   it('drops inline HTML tags but keeps the words they wrap', () => {
-    expect(preview('A <b>bold</b> word<br>and <span class="x">more</span>.')).toBe(
-      'A bold wordand more.',
+    expect(preview('A <b>bold</b>ly set word<br>and <span class="x">more</span>.<BR/>End')).toBe(
+      'A boldly set word and more. End',
     )
   })
 

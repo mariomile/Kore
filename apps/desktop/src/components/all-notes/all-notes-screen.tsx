@@ -163,9 +163,11 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     setTableGroup,
     hiddenColumns,
     columnWidths,
+    frozenColumns,
     visibleTagType,
     setColumnWidth,
     toggleColumnHidden,
+    setFrozenColumns,
   } = useCollectionViewSettings(tagKey, collectionAvailable ? tagType : null)
   // The schema dialog, opened from the header gear or a column's menu.
   const [editingSchema, setEditingSchema] = useState(false)
@@ -568,32 +570,78 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               match={filterMatch}
               onMatchChange={setFilterMatch}
             />
-            {view === 'table' && tagType.properties.length > 0 ? (
+            {view === 'table' && visibleTagType !== null ? (
               <Popover>
                 <PopoverTrigger
                   aria-label="Columns"
-                  title="Show or hide columns"
+                  title="Columns and freeze"
                   className="app-icon-button text-text-muted hover:text-text"
                 >
                   <Sliders aria-hidden className="size-3.5" />
                 </PopoverTrigger>
                 <PopoverContent align="end" sideOffset={4} className="w-56 p-1">
-                  {tagType.properties.map((property) => {
-                    const hidden = hiddenColumns.has(property.key)
+                  {tagType.properties.length > 0 ? (
+                    <>
+                      <p className="px-2 pt-1 pb-0.5 text-2xs font-medium text-text-muted">
+                        Visible columns
+                      </p>
+                      {tagType.properties.map((property) => {
+                        const hidden = hiddenColumns.has(property.key)
+                        return (
+                          <button
+                            key={property.key}
+                            type="button"
+                            role="menuitemcheckbox"
+                            aria-checked={!hidden}
+                            onClick={() => toggleColumnHidden(property.key)}
+                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-hover"
+                          >
+                            <Check
+                              aria-hidden
+                              className={cn(
+                                'size-3.5 shrink-0',
+                                hidden ? 'opacity-0' : 'opacity-100',
+                              )}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-left">
+                              {property.name}
+                            </span>
+                          </button>
+                        )
+                      })}
+                      <div aria-hidden className="my-1 border-t border-border" />
+                    </>
+                  ) : null}
+                  <p className="px-2 pt-1 pb-0.5 text-2xs font-medium text-text-muted">
+                    Freeze columns
+                  </p>
+                  {[
+                    { count: 0, label: 'None' },
+                    { count: 1, label: 'Title' },
+                    ...visibleTagType.properties.map((property, index) => ({
+                      count: index + 2,
+                      label: `Up to ${property.name}`,
+                    })),
+                  ].map((option) => {
+                    const effectiveFrozen = Math.min(
+                      frozenColumns,
+                      1 + visibleTagType.properties.length,
+                    )
+                    const active = effectiveFrozen === option.count
                     return (
                       <button
-                        key={property.key}
+                        key={option.count}
                         type="button"
-                        role="menuitemcheckbox"
-                        aria-checked={!hidden}
-                        onClick={() => toggleColumnHidden(property.key)}
+                        role="menuitemradio"
+                        aria-checked={active}
+                        onClick={() => setFrozenColumns(option.count)}
                         className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-hover"
                       >
                         <Check
                           aria-hidden
-                          className={cn('size-3.5 shrink-0', hidden ? 'opacity-0' : 'opacity-100')}
+                          className={cn('size-3.5 shrink-0', active ? 'opacity-100' : 'opacity-0')}
                         />
-                        <span className="min-w-0 flex-1 truncate text-left">{property.name}</span>
+                        <span className="min-w-0 flex-1 truncate text-left">{option.label}</span>
                       </button>
                     )
                   })}
@@ -693,6 +741,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 onSortChange={setCollectionSorts}
                 columnWidths={columnWidths}
                 onColumnWidthChange={setColumnWidth}
+                frozenColumns={frozenColumns}
+                onFrozenColumnsChange={setFrozenColumns}
                 onEditSchema={() => setEditingSchema(true)}
                 onAddProperty={addProperty}
                 onDeleteProperty={deleteProperty}

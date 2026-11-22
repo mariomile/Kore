@@ -592,6 +592,70 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     expect(onColumnWidthChange).toHaveBeenCalledWith('author', 11.5)
   })
 
+  it('defaults to no frozen columns and freezes/unfreezes up to any column from its menu', async () => {
+    const onFrozenColumnsChange = vi.fn()
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        frozenColumns={0}
+        onFrozenColumnsChange={onFrozenColumnsChange}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    const titleHeader = view.getByRole('button', { name: 'Sort by Title' }).element()
+      .parentElement as HTMLElement
+    expect(titleHeader.style.position).toBe('')
+
+    await view.getByRole('button', { name: 'Column options for Author' }).click()
+    await page.getByRole('menuitem', { name: 'Freeze up to column' }).click()
+    expect(onFrozenColumnsChange).toHaveBeenCalledWith(2)
+    await view.unmount()
+
+    const frozenView = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        frozenColumns={2}
+        onFrozenColumnsChange={onFrozenColumnsChange}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    const authorHeader = frozenView.getByRole('button', { name: 'Sort by Author' }).element()
+      .parentElement as HTMLElement
+    expect(authorHeader.style.position).toBe('sticky')
+    expect(authorHeader.style.left).toBe('20rem')
+    expect(authorHeader.className).toContain('collection-sticky-col')
+
+    await frozenView.getByRole('button', { name: 'Column options for Author' }).click()
+    await page.getByRole('menuitem', { name: 'Unfreeze columns' }).click()
+    expect(onFrozenColumnsChange).toHaveBeenLastCalledWith(0)
+  })
+
   it('renders shelf headers with counts between the grouped rows (Plan 29 V1b)', async () => {
     const view = await render(
       <CollectionTable

@@ -128,7 +128,9 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
     tableGroupProperties,
     setTableGroup,
     hiddenColumns,
+    frozenColumns,
     toggleColumnHidden,
+    setFrozenColumns,
     visibleTagType,
   } = useCollectionViewSettings(tagKey, tagType ?? null)
   const collection = useCollection(tag, collectionSorts)
@@ -426,6 +428,7 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           groupProperty={tableGroupProperty}
           sorts={collectionSorts}
           onSortChange={setCollectionSorts}
+          frozenColumns={frozenColumns}
           label={name}
           onOpen={open}
           onCreate={createRow}
@@ -503,6 +506,8 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           grouping={grouping}
           hiddenFields={hiddenColumns}
           onToggleField={toggleColumnHidden}
+          frozenColumns={frozenColumns}
+          onFrozenColumnsChange={setFrozenColumns}
         />
       ) : null}
       {configuring ? (

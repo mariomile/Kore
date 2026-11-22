@@ -19,6 +19,10 @@ interface CollectionRowProps {
   openTasks: number
   /** Compact left selection gutter for embedded tables inside a note. */
   embedded: boolean
+  /** Whether the Title column is frozen on horizontal scroll (`frozenColumns >= 1`). */
+  titleFrozen: boolean
+  /** Whether Title is the rightmost frozen column (`frozenColumns === 1`). */
+  titleFrozenEdge: boolean
   /** Reserves the trailing "+" column cell so the grid stays aligned. */
   showAddColumn: boolean
   onSelect: (path: string, event: Pick<MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>) => void
@@ -40,6 +44,8 @@ export const CollectionRow = memo(function CollectionRow({
   selected,
   openTasks,
   embedded,
+  titleFrozen,
+  titleFrozenEdge,
   showAddColumn,
   onSelect,
   onToggle,
@@ -66,18 +72,23 @@ export const CollectionRow = memo(function CollectionRow({
       )}
     >
       <div
+        style={titleFrozen ? { position: 'sticky', left: 0 } : undefined}
         className={cn(
-          'collection-sticky-col z-10 flex h-full min-w-0 items-center border-r border-border bg-surface pr-2',
+          'relative flex h-full min-w-0 items-center border-r pr-2',
+          titleFrozen ? 'z-10 bg-surface' : 'border-border',
+          titleFrozenEdge ? 'collection-sticky-col border-border-strong/70' : 'border-border',
           embedded ? 'pl-8' : 'pl-12',
         )}
       >
-        <span
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute inset-0 transition-colors duration-75',
-            selected ? 'bg-accent-soft' : 'group-hover/row:bg-surface-hover/55',
-          )}
-        />
+        {titleFrozen ? (
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute inset-0 transition-colors duration-75',
+              selected ? 'bg-accent-soft' : 'group-hover/row:bg-surface-hover/55',
+            )}
+          />
+        ) : null}
         <button
           type="button"
           aria-label={selected ? 'Deselect note' : 'Select note'}

@@ -166,6 +166,7 @@ function EmbeddedTagCollection({
   // The fence's own arrangement seeds the widget; a header click still
   // re-sorts this render of it (the fence text is not rewritten).
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+  const [frozenColumns, setFrozenColumns] = useState(0)
   const [editingSchema, setEditingSchema] = useState(false)
   const { graph } = useGraph()
   const queryClient = useQueryClient()
@@ -432,6 +433,8 @@ function EmbeddedTagCollection({
             onColumnWidthChange={(key, rem) =>
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
+            frozenColumns={frozenColumns}
+            onFrozenColumnsChange={setFrozenColumns}
             onEditSchema={() => setEditingSchema(true)}
             onAddProperty={async (name, propertyType) => {
               if (graph === null) {
@@ -477,6 +480,7 @@ function EmbeddedReusableCollection({
   const reference = embed.selection.kind === 'definition' ? embed.selection.reference : ''
   const state = useReusableCollection(reference, embed.sorts)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+  const [frozenColumns, setFrozenColumns] = useState(0)
   const [editingDefinition, setEditingDefinition] = useState(false)
   const { graph } = useGraph()
   const navigateNoteLink = useNoteLinkNavigation()
@@ -774,6 +778,8 @@ function EmbeddedReusableCollection({
             onColumnWidthChange={(key, rem) =>
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
+            frozenColumns={frozenColumns}
+            onFrozenColumnsChange={setFrozenColumns}
             onHideColumn={(key) =>
               onChange?.({ ...embed, hidden: [...new Set([...(embed.hidden ?? []), key])] })
             }

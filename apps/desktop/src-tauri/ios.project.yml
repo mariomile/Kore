@@ -81,6 +81,8 @@ targets:
       # quick-note intent (Plan 24) spools envelopes from the app process
       # through the same atomic App Group writer the share sheet uses.
       - path: ShareExtension/CaptureInbox.swift
+      # `SharedFile`, the type the inbox's file spool takes.
+      - path: ShareExtension/SharedFiles.swift
       - path: ShareExtension/ShareChoices.swift
     info:
       path: kore-open_iOS/Info.plist

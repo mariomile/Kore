@@ -15,6 +15,7 @@
 		4DA1FFC0E15797521EE39A94 /* StopRecordingLiveActivityIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */; };
 		5693613DE956199D6486EA26 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8D0D6D72E614086946EBF890 /* LaunchScreen.storyboard */; };
 		5C88834F22D37FFC49CBD2F1 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 38829A9D2116D0D324C18C4B /* main.mm */; };
+		09495D4EF91DA0CED09BBEF8 /* SharedFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5551B2C4998374915FB4703 /* SharedFiles.swift */; };
 		6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357D2D54012FD394DF9423E /* CaptureInbox.swift */; };
 		A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
 		A1C4E7F20B3D5E6F7A8B9C03 /* ShareChoices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */; };
@@ -700,6 +701,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */,
+				09495D4EF91DA0CED09BBEF8 /* SharedFiles.swift in Sources */,
 				A1C4E7F20B3D5E6F7A8B9C02 /* ShareChoices.swift in Sources */,
 				134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */,
 				C3F8EB03E386D36B71BF8772 /* RecordingIntents.swift in Sources */,

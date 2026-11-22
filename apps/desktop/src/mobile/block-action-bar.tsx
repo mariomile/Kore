@@ -101,7 +101,25 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
           paddingRight: 'max(env(safe-area-inset-right), 0.75rem)',
         }}
       >
-        <div className="flex w-full max-w-md items-center justify-end">
+        <div className="flex w-full max-w-md items-center justify-between">
+          <div
+            role="group"
+            aria-label="Move"
+            className="mobile-nav-capsule flex h-11 items-center gap-0.5 px-1"
+          >
+            <NudgeButton
+              label="Move up"
+              icon={<ArrowUp />}
+              disabled={!state.canMoveUp}
+              onPress={() => act(commands.moveUp)}
+            />
+            <NudgeButton
+              label="Move down"
+              icon={<ArrowDown />}
+              disabled={!state.canMoveDown}
+              onPress={() => act(commands.moveDown)}
+            />
+          </div>
           <button
             type="button"
             onClick={() => act(commands.clear)}
@@ -185,7 +203,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 }}
               />
             </div>
-            <div role="group" aria-label="List and position" className="grid grid-cols-6 gap-2">
+            <div role="group" aria-label="List and position" className="grid grid-cols-4 gap-2">
               <IconTile
                 label="To-do"
                 icon={<Circle />}
@@ -203,18 +221,6 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                   act(() => commands.setKind('bullet'))
                   setSheet(null)
                 }}
-              />
-              <IconTile
-                label="Move up"
-                icon={<ArrowUp />}
-                disabled={!state.canMoveUp}
-                onPress={() => act(commands.moveUp)}
-              />
-              <IconTile
-                label="Move down"
-                icon={<ArrowDown />}
-                disabled={!state.canMoveDown}
-                onPress={() => act(commands.moveDown)}
               />
               <IconTile
                 label="Outdent"
@@ -356,6 +362,31 @@ function BarButton({
   )
 }
 
+/** One arrow of the move capsule over the bar: a block steps a place per tap. */
+function NudgeButton({
+  label,
+  icon,
+  disabled,
+  onPress,
+}: {
+  label: string
+  icon: ReactElement
+  disabled: boolean
+  onPress: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onPress}
+      className="flex size-9 items-center justify-center rounded-full text-text transition-[transform,background-color] active:scale-90 active:bg-foreground/5 disabled:opacity-30 [&>svg]:size-[22px]"
+    >
+      {icon}
+    </button>
+  )
+}
+
 /** One segment of the style row: the lit one is raised, as iOS segmented controls are. */
 function Segment({
   label,
@@ -390,7 +421,7 @@ function Segment({
   )
 }
 
-/** A square glyph tile; the label is for VoiceOver, the glyph says it. */
+/** A glyph tile; the label is for VoiceOver, the glyph says it. */
 function IconTile({
   label,
   icon,
@@ -412,7 +443,7 @@ function IconTile({
       disabled={disabled}
       onClick={onPress}
       className={cn(
-        'flex aspect-square min-h-11 items-center justify-center rounded-xl transition-transform active:scale-95 disabled:opacity-30 [&_svg]:size-[22px]',
+        'flex h-12 items-center justify-center rounded-xl transition-transform active:scale-95 disabled:opacity-30 [&_svg]:size-[22px]',
         pressed === true ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
       )}
     >

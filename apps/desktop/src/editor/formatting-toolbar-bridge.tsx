@@ -3,6 +3,7 @@ import { useEditor } from '@meowdown/react'
 import { buildFileMarkdown, type EditorExtension } from '@meowdown/core'
 import { toPortableImageFile } from '@/lib/image-file'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
+import { moveCaretBlock, type MoveDirection } from './block-move'
 import { whenEditorMounted } from './when-editor-mounted'
 import {
   clearFormattingToolbar,
@@ -63,12 +64,27 @@ export function FormattingToolbarBridge({
     const cancel = whenEditorMounted(editor, () => {
       const dom = editor.view.dom
 
+      // A list item moves the list's own way (out of its parent at the
+      // parent's edge); any other block steps over the block next to it.
+      function canMove(direction: MoveDirection): boolean {
+        return (
+          editor.commands.moveList.canExec(direction) ||
+          moveCaretBlock(editor.view.state, direction) !== null
+        )
+      }
+
+      function move(direction: MoveDirection): void {
+        if (editor.commands.moveList(direction)) return
+        const tr = moveCaretBlock(editor.view.state, direction)
+        if (tr !== null) editor.view.dispatch(tr)
+      }
+
       function readCapabilities(): FormattingToolbarCapabilities {
         return {
           canIndent: editor.commands.indentList.canExec(),
           canDedent: editor.commands.dedentList.canExec(),
-          canMoveUp: editor.commands.moveList.canExec('up'),
-          canMoveDown: editor.commands.moveList.canExec('down'),
+          canMoveUp: canMove('up'),
+          canMoveDown: canMove('down'),
           canAttachFiles,
         }
       }
@@ -87,8 +103,8 @@ export function FormattingToolbarBridge({
         cycleCheckableList: () => run(() => editor.commands.cycleCheckableList()),
         indent: () => run(() => editor.commands.indentList()),
         dedent: () => run(() => editor.commands.dedentList()),
-        moveUp: () => run(() => editor.commands.moveList('up')),
-        moveDown: () => run(() => editor.commands.moveList('down')),
+        moveUp: () => run(() => move('up')),
+        moveDown: () => run(() => move('down')),
         insertTrigger: (text: FormattingTriggerText) =>
           run(() => editor.commands.insertTrigger(text)),
         dismissKeyboard: () => editor.blur(),

@@ -42,6 +42,11 @@ export const blockSelectionKey = new PluginKey<BlockSelectionPluginState>('kore-
 
 const EMPTY: BlockSelectionPluginState = { anchors: [], guard: false }
 
+/** A list item: the one block kind that holds other blocks. */
+export function isListNode(node: ProseMirrorNode): boolean {
+  return node.type.name === 'list'
+}
+
 /**
  * The block a position belongs to: the innermost list item around it (a
  * bullet with its children), else the top-level block.
@@ -51,7 +56,7 @@ export function blockRangeAt(doc: ProseMirrorNode, position: number): BlockRange
   const $pos = doc.resolve(bounded)
   for (let depth = $pos.depth; depth > 0; depth--) {
     const node = $pos.node(depth)
-    if (node.type.name === 'list') {
+    if (isListNode(node)) {
       return { from: $pos.before(depth), to: $pos.after(depth), node }
     }
   }

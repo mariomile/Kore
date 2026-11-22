@@ -12,8 +12,15 @@ import { parseBody } from './grammar'
 import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
-import { buildPlainText, plainTextOfRange, unescapeMarkdownText, type Cut } from './plain-text'
-import { isPreviewNoiseNode, isPreviewWordBreak, previewNoiseSpans } from './preview-noise'
+import {
+  buildPlainText,
+  plainTextOfRange,
+  unescapeMarkdownText,
+  WORD_BREAK,
+  type Cut,
+} from './plain-text'
+import { isPreviewNoiseNode, isPreviewWordBreak, previewSpans } from './preview-noise'
+import { buildPreviewText } from './preview-text'
 import { taskListBullet } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
 import { firstDue } from './task-due'
@@ -447,7 +454,9 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const cuts: Cut[] = [] // body coords — syntax to drop from plain text
   const tagExcluded: Span[] = [] // body coords — regions that don't yield tags
   const literalPlainText: Span[] = [] // body coords — regions that render backslashes literally
-  const previewCuts: Cut[] = [] // body coords — noise the list-row preview also drops
+  const previewNoise: Cut[] = [] // body coords — noise the preview drops on top of `cuts`
+  const previewHeadings: Span[] = [] // body coords — section headings, scaffolding to the preview
+  const tableNodes: SyntaxNode[] = [] // `Table` nodes, rewritten for the preview after the walk
   const taskNodes: SyntaxNode[] = [] // body coords — `Task` nodes, resolved after the walk
   const embedSnapshots: (Span & { text: string })[] = [] // body coords — saved post-embed comments
 
@@ -458,7 +467,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       if (isSyntaxNode(name)) {
         cuts.push({ from, to })
       } else if (isSeparatorSyntaxNode(name)) {
-        cuts.push({ from, to, gap: true })
+        cuts.push({ from, to, text: WORD_BREAK })
       }
       if (name === 'Task') {
         // Resolve after the walk: the child `TaskMarker`/emphasis cuts this task
@@ -481,9 +490,13 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       }
       const nodeStart = body.slice(from, Math.min(to, from + 8))
       if (isPreviewNoiseNode(name, nodeStart)) {
-        previewCuts.push(
-          isPreviewWordBreak(name, nodeStart) ? { from, to, gap: true } : { from, to },
+        previewNoise.push(
+          isPreviewWordBreak(name, nodeStart) ? { from, to, text: WORD_BREAK } : { from, to },
         )
+      }
+
+      if (name === 'Table') {
+        tableNodes.push(node.node)
       }
 
       if (isWikiNodeName(name)) {
@@ -493,7 +506,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
         // `[[target|` and `]]`, while the search text keeps both halves.
         if (name === 'Wikilink' && wiki.alias !== undefined) {
           const pipe = body.indexOf('|', bracketStart)
-          previewCuts.push({ from: bracketStart, to: pipe + 1 }, { from: to - 2, to })
+          previewNoise.push({ from: bracketStart, to: pipe + 1 }, { from: to - 2, to })
         }
         // `![[photo.png]]` names a file, not a note: it must never become a
         // backlink row or resolve through the note-key tiers. An unsafe
@@ -513,8 +526,9 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
 
       const headingLevel = headingLevelOf(node)
       if (headingLevel !== null) {
-        // A heading labels a section; the preview shows the prose under it.
-        previewCuts.push({ from, to })
+        // The H1 is the title, shown next to every preview; a deeper heading
+        // labels a section, and the preview shows the prose under it.
+        ;(headingLevel === 1 ? previewNoise : previewHeadings).push({ from, to })
         const text = cleanHeadingText(body.slice(from, to))
         // `isTop` is the `Document` node: a heading anywhere else is nested in a
         // blockquote or list item, so it never opens or ends a real section.
@@ -627,10 +641,12 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     assets,
     tasks,
     text: plainTextWithEmbeds(body, cuts, literalPlainText, embedSnapshots),
-    previewText: buildPlainText(
-      body,
-      [...cuts, ...previewCuts, ...previewNoiseSpans(body, literalPlainText)],
-      literalPlainText,
-    ),
+    previewText: buildPreviewText(body, {
+      noise: [...cuts, ...previewNoise],
+      headings: previewHeadings,
+      tables: tableNodes,
+      spans: previewSpans(body, literalPlainText),
+      literalRanges: literalPlainText,
+    }),
   }
 }

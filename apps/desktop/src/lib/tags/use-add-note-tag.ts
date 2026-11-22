@@ -10,6 +10,7 @@ import {
 import { toast } from '@/components/ui/toast'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { useGraph } from '@/providers/graph-provider'
+import { maybeMoveTaggedInboxNote } from './auto-move-tagged-note'
 import { invalidateOnNextIndexApply } from './use-commit-note-property'
 
 /**
@@ -37,6 +38,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
         // an untyped tag simply has none.
         const type = await getTagType(tag)
         const starting = await startingValuesFor(tag, type)
+        let tagAdded = false
         await commitNoteBodyTransform(
           path,
           (source) => {
@@ -44,10 +46,14 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
             if (tagged === null) {
               return source
             }
+            tagAdded = true
             return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
           },
           generation,
         )
+        if (tagAdded && type?.folder !== undefined) {
+          await maybeMoveTaggedInboxNote(path, type.folder, generation)
+        }
         invalidateOnNextIndexApply()
       } catch (error: unknown) {
         toast.add({

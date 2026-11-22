@@ -94,9 +94,11 @@ export function MarkdownPreview({
   // `^id` markers are Obsidian anchors, never text a reader sees (Plan 33 C3).
   const markdown = useMemo(() => separateCalloutTitles(withoutBlockIds(content)), [content])
   const hostRef = useRef<HTMLDivElement>(null)
+  // Dates first: a callout stamps its title by the text it reads, so the
+  // date chips must already be in that text or the stamp goes stale.
+  useDateChipDom(hostRef, dateFormat)
   // A passive preview can't be clicked open, so it shows folded callouts open.
   useCalloutDom(hostRef, interactive)
-  useDateChipDom(hostRef, dateFormat)
 
   // Previews float outside the panes (palette, hover cards, chat), so a note
   // that cannot render gets its own boundary here rather than blanking the app.

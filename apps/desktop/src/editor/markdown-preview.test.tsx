@@ -67,4 +67,16 @@ describe('MarkdownPreview date links', () => {
       { text: 'Lisbon', chip: false },
     ])
   })
+
+  it('keeps a callout whose title holds a date link', async () => {
+    const view = await render(
+      <MarkdownPreview content={'> [!note] Due [[2026-11-16]]\n> Body'} dateFormat="dmy" />,
+    )
+    const quote = view.container.querySelector('blockquote')!
+    await expect
+      .poll(() => quote.querySelector('.kore-date-chip')?.textContent)
+      .toBe(formatDateChip('2026-11-16', 'dmy'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(quote).toHaveAttribute('data-callout', 'note')
+  })
 })

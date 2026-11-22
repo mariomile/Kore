@@ -20,7 +20,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -85,6 +85,51 @@ fn split_name(name: &str) -> (&str, &str) {
     }
 }
 
+/// The name the `attempt`th collision probe tries: `desired` itself, then
+/// `stem-2.ext`, `stem-3.ext`, …
+fn probe_name(desired: &str, attempt: u32) -> String {
+    if attempt == 1 {
+        return desired.to_string();
+    }
+    let (stem, ext) = split_name(desired);
+    format!("{stem}-{attempt}{ext}")
+}
+
+/// Whether two files hold the same bytes.
+fn same_bytes(left: &Path, right: &Path) -> std::io::Result<bool> {
+    let mut left = std::io::BufReader::new(fs::File::open(left)?);
+    let mut right = std::io::BufReader::new(fs::File::open(right)?);
+    let (mut a, mut b) = ([0u8; 64 * 1024], [0u8; 64 * 1024]);
+    loop {
+        let read = left.read(&mut a)?;
+        if read == 0 {
+            return Ok(right.read(&mut b)? == 0);
+        }
+        if right.read_exact(&mut b[..read]).is_err() || a[..read] != b[..read] {
+            return Ok(false);
+        }
+    }
+}
+
+/// The asset an earlier import of `source` as `desired` left in
+/// `assets_dir`: the first name along [`persist_unique`]'s probe order that
+/// holds exactly `source`'s bytes. `None` once a free name is reached,
+/// which is the name a fresh import would take.
+fn identical_asset(assets_dir: &Path, desired: &str, source: &Path) -> AppResult<Option<String>> {
+    let size = fs::metadata(source)?.len();
+    for attempt in 1..=MAX_NAME_PROBES {
+        let candidate = probe_name(desired, attempt);
+        let path = assets_dir.join(&candidate);
+        let Ok(metadata) = fs::metadata(&path) else {
+            return Ok(None);
+        };
+        if metadata.is_file() && metadata.len() == size && same_bytes(&path, source)? {
+            return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
+}
+
 /// Persist `temp` under `assets_dir` as `desired`, probing `-2`, `-3`, …
 /// suffixes until a name is free. `persist_noclobber` is the collision check
 /// *and* the claim (`O_EXCL` semantics), so two concurrent intakes of the
@@ -95,13 +140,8 @@ fn persist_unique(
     desired: &str,
 ) -> AppResult<String> {
     temp.as_file().sync_all()?;
-    let (stem, ext) = split_name(desired);
     for attempt in 1..=MAX_NAME_PROBES {
-        let candidate = if attempt == 1 {
-            desired.to_string()
-        } else {
-            format!("{stem}-{attempt}{ext}")
-        };
+        let candidate = probe_name(desired, attempt);
         match temp.persist_noclobber(assets_dir.join(&candidate)) {
             Ok(_) => return Ok(candidate),
             Err(err) if err.error.kind() == std::io::ErrorKind::AlreadyExists => {
@@ -328,23 +368,61 @@ pub async fn asset_import<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
     crate::blocking::run_blocking(move || {
-        let source = Path::new(&source_path);
-        if !source.is_file() {
-            return Err(AppError::not_found(format!(
-                "import source is not a file: {source_path}"
-            )));
-        }
-        let state = app.state::<GraphState>();
-        let root = root_for_generation(&state, generation)?;
-        let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
-        std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
-        let (assets_dir, rel_dir) =
-            assets_dir_for(&state, generation, &desired_name, dir.as_deref())?;
-        let final_name = persist_unique(temp, &assets_dir, &desired_name)?;
-        super::invalidate_file_catalog(&state, &root);
-        Ok(format!("{rel_dir}/{final_name}"))
+        import_file(
+            &app.state::<GraphState>(),
+            generation,
+            Path::new(&source_path),
+            &desired_name,
+            dir.as_deref(),
+        )
     })
     .await
+}
+
+/// Copy `source` into the graph's `assets/` folder (or `dir`) as
+/// `desired_name`, file to file, with [`persist_unique`]'s collision policy.
+/// Returns the graph-relative path. Shared by [`asset_import`] and the
+/// capture drain's import of shared files.
+pub(crate) fn import_file(
+    state: &State<GraphState>,
+    generation: u64,
+    source: &Path,
+    desired_name: &str,
+    dir: Option<&str>,
+) -> AppResult<String> {
+    if !source.is_file() {
+        return Err(AppError::not_found(format!(
+            "import source is not a file: {}",
+            source.display()
+        )));
+    }
+    let root = root_for_generation(state, generation)?;
+    let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
+    std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
+    let (assets_dir, rel_dir) = assets_dir_for(state, generation, desired_name, dir)?;
+    let final_name = persist_unique(temp, &assets_dir, desired_name)?;
+    super::invalidate_file_catalog(state, &root);
+    Ok(format!("{rel_dir}/{final_name}"))
+}
+
+/// [`import_file`], unless an earlier import of the same bytes under the
+/// same name is already there, whose path is returned instead: importing
+/// twice is importing once. For the capture drain, which retries a whole
+/// share when anything after the copy fails.
+pub(crate) fn import_file_once(
+    state: &State<GraphState>,
+    generation: u64,
+    source: &Path,
+    desired_name: &str,
+    dir: Option<&str>,
+) -> AppResult<String> {
+    if source.is_file() {
+        let (assets_dir, rel_dir) = assets_dir_for(state, generation, desired_name, dir)?;
+        if let Some(existing) = identical_asset(&assets_dir, desired_name, source)? {
+            return Ok(format!("{rel_dir}/{existing}"));
+        }
+    }
+    import_file(state, generation, source, desired_name, dir)
 }
 
 #[cfg(test)]
@@ -402,6 +480,26 @@ mod tests {
         // Nothing existing was touched.
         assert_eq!(fs::read(assets.join("report.pdf")).unwrap(), b"first");
         assert_eq!(fs::read(assets.join("report-2.pdf")).unwrap(), b"second");
+    }
+
+    #[test]
+    fn identical_asset_finds_an_earlier_import_of_the_same_bytes() {
+        let graph = tempdir().unwrap();
+        bootstrap(graph.path()).unwrap();
+        let assets = graph.path().join("assets");
+        let source = graph.path().join("spool.jpg");
+        fs::write(&source, b"photo").unwrap();
+        // Nothing there yet: a fresh import takes the name.
+        assert_eq!(identical_asset(&assets, "IMG.jpg", &source).unwrap(), None);
+        // Another photo holds the name: still a fresh import.
+        fs::write(assets.join("IMG.jpg"), b"other").unwrap();
+        assert_eq!(identical_asset(&assets, "IMG.jpg", &source).unwrap(), None);
+        // The earlier import landed on the `-2` name.
+        fs::write(assets.join("IMG-2.jpg"), b"photo").unwrap();
+        assert_eq!(
+            identical_asset(&assets, "IMG.jpg", &source).unwrap(),
+            Some("IMG-2.jpg".to_string())
+        );
     }
 
     #[test]

@@ -39,6 +39,29 @@ struct TextCaptureEnvelope: Encodable {
     var source: String
 }
 
+/// Shared files, as `fileCaptureEnvelopeSchema`: each file is copied into the
+/// inbox beside the envelope as `<id>.<n>.<ext>` (its `ref`) before the
+/// envelope commits, so a committed envelope's files are always there.
+struct FileCaptureEnvelope: Encodable {
+    struct File: Encodable, Equatable {
+        /// The spooled copy's filename in the inbox.
+        var ref: String
+        /// The file's own name, the attachment's name in the vault.
+        var name: String
+    }
+
+    var version = 1
+    var id: String
+    var kind = "file"
+    var files: [File]
+    /// The user's own words from the sheet's "Add a thought" field.
+    var note: String?
+    var capturedAt: String
+    var source = "ios-share"
+    /// Where to write the files (`captureDestinationSchema`); nil is today's daily.
+    var destination: ShareDestination?
+}
+
 enum CaptureInboxError: Error {
     /// The App Group container is unreachable — an entitlements mismatch, not
     /// a user-fixable state.
@@ -47,6 +70,9 @@ enum CaptureInboxError: Error {
     /// shedding optional fields — spooling it would only feed the
     /// quarantine, so the share fails honestly instead.
     case envelopeTooLarge
+    /// A shared file is over `maxFileBytes`: too big to keep in a vault that
+    /// Git backs up (GitHub refuses files over 100 MB).
+    case fileTooLarge
 }
 
 /// Field caps in UTF-16 code units — the unit zod's `.max()` counts on the
@@ -59,6 +85,8 @@ private enum FieldCap {
     static let description = 2_000
     static let note = 10_000
     static let textMax = 10_000
+    /// `fileCaptureEnvelopeSchema`'s `files[].name` cap.
+    static let fileName = 255
 }
 
 enum CaptureInbox {
@@ -81,6 +109,14 @@ enum CaptureInbox {
     /// envelope over it is quarantined unread, so it must never be spooled.
     static let spoolMaxBytes = 64 * 1024
 
+    /// Files one share can carry: `FILE_CAPTURE_MAX_FILES` in the schema.
+    static let maxFiles = 10
+
+    /// The largest file a share may carry. GitHub refuses files over 100 MB,
+    /// and the vault is backed up through Git; the relay's own cap
+    /// (`SHARED_FILE_MAX_BYTES`) sits above this.
+    static let maxFileBytes = 100 * 1024 * 1024
+
     /// Spool a link capture. Empty titles are allowed (the drain falls back
     /// to the URL's host); empty selections and descriptions are dropped.
     /// `look` and `destination` are the share sheet's choices; a new
@@ -95,13 +131,6 @@ enum CaptureInbox {
         destination: ShareDestination? = nil
     ) throws {
         let id = envelopeId()
-        var target = destination
-        if case let .new(newTitle, folder) = destination {
-            let name = capped(newTitle, at: FieldCap.title)
-            let resolved = name.isEmpty ? capped(title, at: FieldCap.title) : name
-            // Nothing to name the note with: today's daily instead.
-            target = resolved.isEmpty ? .daily : .new(title: resolved, folder: folder)
-        }
         var envelope = LinkCaptureEnvelope(
             id: id,
             url: url,
@@ -111,7 +140,7 @@ enum CaptureInbox {
             note: nonEmpty(capped(note ?? "", at: FieldCap.note)),
             capturedAt: capturedAt(),
             look: look,
-            destination: target
+            destination: resolved(destination, fallbackTitle: title)
         )
         // The URL is the one uncapped field (truncating it would save a
         // broken link): a pathological one can outgrow the spool cap. Shed
@@ -131,6 +160,53 @@ enum CaptureInbox {
             throw CaptureInboxError.envelopeTooLarge
         }
         try spool(data, id: id)
+    }
+
+    /// Spool shared files: each is copied into the inbox as `<id>.<n>.<ext>`
+    /// (committed through a `.tmp` sibling, like an envelope), then the
+    /// envelope naming them commits last. Anything over `maxFiles` is left
+    /// out; a file over `maxFileBytes` fails the share honestly, and a
+    /// failure part-way removes what this call already wrote.
+    static func spoolFiles(
+        _ files: [SharedFile],
+        note: String? = nil,
+        destination: ShareDestination? = nil
+    ) throws {
+        let id = envelopeId()
+        let inbox = try inboxUrl()
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        var written: [URL] = []
+        do {
+            var spooled: [FileCaptureEnvelope.File] = []
+            for (index, file) in files.prefix(maxFiles).enumerated() {
+                let size = try file.url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard size <= maxFileBytes else {
+                    throw CaptureInboxError.fileTooLarge
+                }
+                let ref = "\(id).\(index + 1).\(spoolExtension(of: file.url))"
+                let tmp = inbox.appendingPathComponent("\(ref).tmp")
+                let committed = inbox.appendingPathComponent(ref)
+                try FileManager.default.copyItem(at: file.url, to: tmp)
+                written.append(tmp)
+                try FileManager.default.moveItem(at: tmp, to: committed)
+                written[written.count - 1] = committed
+                let name = capped(file.name, at: FieldCap.fileName)
+                spooled.append(.init(ref: ref, name: name.isEmpty ? ref : name))
+            }
+            let envelope = FileCaptureEnvelope(
+                id: id,
+                files: spooled,
+                note: nonEmpty(capped(note ?? "", at: FieldCap.note)),
+                capturedAt: capturedAt(),
+                destination: resolved(destination, fallbackTitle: files.first?.title ?? "")
+            )
+            try spool(try JSONEncoder().encode(envelope), id: id)
+        } catch {
+            for url in written {
+                try? FileManager.default.removeItem(at: url)
+            }
+            throw error
+        }
     }
 
     /// Spool text as an append capture — the daily note gets a bullet.
@@ -189,6 +265,26 @@ enum CaptureInbox {
     }
 
     // MARK: - field shaping
+
+    /// A new note's title, capped like a page title and falling back to
+    /// `fallbackTitle`; with nothing to name the note, today's daily instead.
+    private static func resolved(
+        _ destination: ShareDestination?, fallbackTitle: String
+    ) -> ShareDestination? {
+        guard case let .new(title, folder) = destination else {
+            return destination
+        }
+        let name = capped(title, at: FieldCap.title)
+        let resolved = name.isEmpty ? capped(fallbackTitle, at: FieldCap.title) : name
+        return resolved.isEmpty ? .daily : .new(title: resolved, folder: folder)
+    }
+
+    /// The spooled copy's extension: the file's own, lowercased and reduced
+    /// to what the schema's `ref` pattern allows (`[a-z0-9]{1,8}`).
+    static func spoolExtension(of url: URL) -> String {
+        let cleaned = url.pathExtension.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
+        return cleaned.isEmpty ? "bin" : String(cleaned.prefix(8))
+    }
 
     /// Lowercased to match the producer convention (the drain's identity
     /// slice and the spool filename both derive from it).

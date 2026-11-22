@@ -120,3 +120,25 @@ export async function importAsset(
   noteAttachmentAdded(path)
   return path
 }
+
+/**
+ * Copy a file the capture inbox holds (one the iOS share sheet spooled) into
+ * the vault's attachment folder as `desiredName`, with the same collision
+ * policy and return value as {@link createAsset}. File-to-file in Rust, like
+ * {@link importAsset}; the spooled copy stays until the drain removes it, so
+ * a crash between the two only ever costs a retry.
+ */
+export async function importCaptureSpool(
+  spoolName: string,
+  desiredName: string,
+  generation: number,
+): Promise<string> {
+  const path = await call(
+    'capture_inbox_import',
+    { spoolName, desiredName, generation, dir: attachmentDir() },
+    z.string(),
+  )
+  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
+  noteAttachmentAdded(path)
+  return path
+}

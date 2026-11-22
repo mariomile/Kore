@@ -3,6 +3,7 @@
  */
 
 import type { HtmlElement, HtmlNode } from './html-to-markdown-parse'
+import { markdownLinkDestination } from './link-destination'
 
 export interface MarkdownRenderContext {
   readonly baseUrl: string | undefined
@@ -325,7 +326,7 @@ function renderLink(element: HtmlElement, context: MarkdownRenderContext): strin
   if (label === '') {
     return `<${resolved}>`
   }
-  return `[${label}](${escapeUrl(resolved)})`
+  return `[${label}](${markdownLinkDestination(resolved)})`
 }
 
 function renderImage(element: HtmlElement, context: MarkdownRenderContext): string {
@@ -340,7 +341,7 @@ function renderImage(element: HtmlElement, context: MarkdownRenderContext): stri
   }
   const resolved = resolveUrl(src, context.baseUrl)
   const alt = collapseInlineWhitespace(element.attrs['alt'] ?? '').trim()
-  return `![${alt}](${escapeUrl(resolved)})`
+  return `![${alt}](${markdownLinkDestination(resolved)})`
 }
 
 function isSafeUrl(value: string, allowed: readonly string[]): boolean {
@@ -360,10 +361,6 @@ function resolveUrl(value: string, baseUrl: string | undefined): string {
   } catch {
     return value
   }
-}
-
-function escapeUrl(value: string): string {
-  return value.replaceAll('(', '%28').replaceAll(')', '%29').replaceAll(' ', '%20')
 }
 
 function escapeInline(text: string): string {

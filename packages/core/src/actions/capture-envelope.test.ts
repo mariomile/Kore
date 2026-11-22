@@ -3,6 +3,8 @@ import {
   captureAckSchema,
   captureEnvelopeSchema,
   captureWireMessageSchema,
+  FILE_CAPTURE_MAX_FILES,
+  fileCaptureEnvelopeSchema,
   inboxEnvelopeSchema,
   textCaptureEnvelopeSchema,
   TEXT_CAPTURE_MAX_LENGTH,
@@ -168,5 +170,46 @@ describe('inboxEnvelopeSchema', () => {
     expect('kind' in link).toBe(false)
     const text = inboxEnvelopeSchema.parse(swiftText)
     expect('kind' in text && text.kind).toBe('append')
+  })
+})
+
+describe('fileCaptureEnvelopeSchema', () => {
+  const ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+  const FILE = {
+    version: 1,
+    id: ID,
+    kind: 'file',
+    files: [
+      { ref: `${ID}.1.jpg`, name: 'IMG_0042.JPG' },
+      { ref: `${ID}.2.pdf`, name: 'Q3 report.pdf' },
+    ],
+    capturedAt: '2026-06-12T15:30:22.845Z',
+    source: 'ios-share',
+  }
+
+  it('accepts shared files, and the inbox reads them as files', () => {
+    expect(fileCaptureEnvelopeSchema.safeParse(FILE).success).toBe(true)
+    expect(inboxEnvelopeSchema.parse(FILE)).toMatchObject({ kind: 'file' })
+  })
+
+  it.each([
+    [
+      'a ref of another envelope',
+      { files: [{ ref: `${ID.replace('7c', '00')}.1.jpg`, name: 'a.jpg' }] },
+    ],
+    ['a ref that could leave the inbox', { files: [{ ref: `../${ID}.1.jpg`, name: 'a.jpg' }] }],
+    ['no files', { files: [] }],
+    [
+      'more files than the share sheet allows',
+      {
+        files: Array.from({ length: FILE_CAPTURE_MAX_FILES + 1 }, (_, index) => ({
+          ref: `${ID}.${index + 1}.png`,
+          name: 'a.png',
+        })),
+      },
+    ],
+    ['another source', { source: 'extension' }],
+  ])('rejects %s', (_name, overrides) => {
+    expect(fileCaptureEnvelopeSchema.safeParse({ ...FILE, ...overrides }).success).toBe(false)
   })
 })

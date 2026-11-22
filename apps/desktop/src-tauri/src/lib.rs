@@ -21,6 +21,7 @@ mod blocking;
 mod calendar;
 mod capture;
 mod capture_fetch;
+mod capture_shared;
 mod conflict;
 mod contacts;
 mod db;
@@ -496,8 +497,9 @@ pub fn run() {
             capture::capture_inbox_read,
             capture::capture_inbox_remove,
             capture::capture_inbox_reject,
-            capture::capture_shared_inbox_relay,
-            capture::share_targets_write,
+            capture::capture_inbox_import,
+            capture_shared::capture_shared_inbox_relay,
+            capture_shared::share_targets_write,
             capture::capture_screenshot_promote,
             capture::capture_link_preview,
             capture_fetch::capture_meta_fetch,

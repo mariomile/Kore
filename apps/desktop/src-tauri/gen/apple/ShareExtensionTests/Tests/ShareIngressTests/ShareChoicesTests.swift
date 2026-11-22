@@ -14,7 +14,10 @@ final class ShareChoicesTests: XCTestCase {
         XCTAssertEqual(ShareContentKind.of(url: "https://youtu.be/abc"), .video)
         XCTAssertEqual(ShareContentKind.of(url: "https://example.com/x.com/a/status/1"), .page)
         XCTAssertEqual(ShareContentKind.xHandle(of: "https://x.com/someone/status/123"), "someone")
-        XCTAssertEqual(ShareContentKind.post.defaultLook, .embed)
+        XCTAssertEqual(ShareContentKind.post.defaultLook, .text)
+        XCTAssertEqual(ShareContentKind.post.looks, [.link, .text, .embed])
+        XCTAssertEqual(ShareLook.text.label(for: .post), "Post")
+        XCTAssertEqual(ShareLook.embed.label(for: .post), "Embed")
         XCTAssertEqual(ShareContentKind.page.looks, [.link, .compact, .card, .large, .text])
     }
 
@@ -81,6 +84,11 @@ final class ShareChoicesTests: XCTestCase {
         preferences.remember(look: .large, for: .page)
         preferences.remember(destination: .note(path: "Kore.md", title: "Kore"))
         XCTAssertEqual(preferences.look(for: .page), .large)
+        XCTAssertEqual(preferences.look(for: .post), .text)
+        // The embed an older sheet remembered as its default is not a choice.
+        defaults.set("embed", forKey: "share.look.post")
+        XCTAssertEqual(preferences.look(for: .post), .text)
+        preferences.remember(look: .embed, for: .post)
         XCTAssertEqual(preferences.look(for: .post), .embed)
         XCTAssertEqual(
             preferences.destination(pageTitle: "Page", targets: targets),

@@ -63,51 +63,57 @@ export function PropertyFieldLabel({
     ? QUICK_PROPERTY_TYPES
     : [property.type, ...QUICK_PROPERTY_TYPES]
 
-  const changeType = async (type: TagPropertyType): Promise<void> => {
+  const changeType = async (type: TagPropertyType): Promise<boolean> => {
     if (ownerTag === null || graph === null || type === property.type) {
-      return
+      return false
     }
     try {
       await setTagPropertyType(ownerTag, graph.generation, property.key, type)
       invalidateOnNextIndexApply()
+      return true
     } catch (error) {
       toast.add({
         type: 'error',
         title: "Couldn't change the property type",
         description: errorMessage(error),
       })
+      return false
     }
   }
 
-  const rename = async (nextName: string): Promise<void> => {
+  const rename = async (nextName: string): Promise<boolean> => {
     if (ownerTag === null || graph === null) {
-      return
+      return false
     }
     try {
       await renameTagProperty(ownerTag, graph.generation, property.key, nextName)
       invalidateOnNextIndexApply()
+      return true
     } catch (error) {
       toast.add({
         type: 'error',
         title: "Couldn't rename the property",
         description: errorMessage(error),
       })
+      return false
     }
   }
 
-  const remove = async (): Promise<void> => {
+  const remove = async (): Promise<boolean> => {
     if (ownerTag === null || graph === null) {
-      return
+      return false
     }
     try {
       await removeTagProperty(ownerTag, graph.generation, property.key)
       invalidateOnNextIndexApply()
+      return true
     } catch (error) {
       toast.add({
         type: 'error',
         title: "Couldn't delete the property",
         description: errorMessage(error),
       })
+      return false
     }
   }
 

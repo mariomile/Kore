@@ -13,10 +13,10 @@ interface PropertyLabelSheetProps {
   onOpenChange: (open: boolean) => void
   property: TagProperty
   ownerTag: string | null
-  onRename: (nextName: string) => Promise<void>
-  onChangeType: (nextType: TagPropertyType) => Promise<void>
+  onRename: (nextName: string) => Promise<boolean>
+  onChangeType: (nextType: TagPropertyType) => Promise<boolean>
   onEditSchema: () => void
-  onDelete: () => Promise<void>
+  onDelete: () => Promise<boolean>
 }
 
 type SheetPage = 'root' | 'rename' | 'type'
@@ -60,7 +60,11 @@ export function PropertyLabelSheet({
     if (trimmed === '') {
       return
     }
-    void onRename(trimmed).then(close)
+    void onRename(trimmed).then((ok) => {
+      if (ok) {
+        close()
+      }
+    })
   }
 
   const title =
@@ -142,7 +146,11 @@ export function PropertyLabelSheet({
                   type="button"
                   onClick={() => {
                     hapticImpactLight()
-                    void onDelete().then(close)
+                    void onDelete().then((ok) => {
+                      if (ok) {
+                        close()
+                      }
+                    })
                   }}
                   className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left text-[16px] text-destructive active:bg-surface-hover"
                 >
@@ -183,7 +191,11 @@ export function PropertyLabelSheet({
                     type="button"
                     onClick={() => {
                       hapticImpactLight()
-                      void onChangeType(type).then(close)
+                      void onChangeType(type).then((ok) => {
+                        if (ok) {
+                          close()
+                        }
+                      })
                     }}
                     className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left text-[16px] text-text active:bg-surface-hover"
                   >

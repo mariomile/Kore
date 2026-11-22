@@ -65,6 +65,7 @@ interface NoteFieldSummaryProps {
 export function NoteFieldSummary({ fields, children }: NoteFieldSummaryProps): ReactElement {
   const { settings } = useSettings()
   const [open, setOpen] = useState(false)
+  const [rendered, setRendered] = useState(false)
   const previews = fields.properties
     .filter((property) => fields.ownerTagOf(property.key) !== null)
     .map((property) => summaryPreview(property, fields.values?.[property.key], settings.dateFormat))
@@ -78,7 +79,13 @@ export function NoteFieldSummary({ fields, children }: NoteFieldSummaryProps): R
         aria-expanded={open}
         onClick={() => {
           hapticImpactLight()
-          setOpen((value) => !value)
+          setOpen((value) => {
+            const next = !value
+            if (next) {
+              setRendered(true)
+            }
+            return next
+          })
         }}
         className="flex min-h-9 w-full items-center gap-2 rounded-lg py-1 text-left text-[13px] font-medium text-text-muted active:opacity-70"
       >
@@ -139,13 +146,18 @@ export function NoteFieldSummary({ fields, children }: NoteFieldSummaryProps): R
         />
       </button>
       <div
+        onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && !open) {
+            setRendered(false)
+          }
+        }}
         className={cn(
           'grid transition-[grid-template-rows,opacity] duration-200 ease-swift motion-reduce:transition-none',
           open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
         )}
       >
-        <div className="overflow-hidden">
-          {open ? <div className="mt-2 border-b border-border pb-3">{children}</div> : null}
+        <div className="overflow-hidden" aria-hidden={!open} inert={!open}>
+          {rendered ? <div className="mt-2 border-b border-border pb-3">{children}</div> : null}
         </div>
       </div>
     </section>

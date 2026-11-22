@@ -80,14 +80,20 @@ function postWords(post: XPost): string {
     .trim()
 }
 
+/** The note every shared X post links to, so its backlinks list the posts. */
+const X_POSTS_NOTE_TITLE = 'X posts'
+
 /**
- * An X post as a plain Markdown card, a quote any Markdown reader (Obsidian,
- * an agent, `cat`) shows as the post: who wrote it, linked to the post, then
- * what they wrote and the photos (a video by its poster). Offline or for a
- * post that is gone, the card is the author line alone, so the save never
+ * An X post as a plain Markdown card any Markdown reader (Obsidian, an
+ * agent, `cat`) shows as the post: a list item whose line says who wrote it,
+ * linked to the post, and links the [[X posts]] note; under it, quoted, what
+ * they wrote and the photos (a video by its poster), then the user's own
+ * note. A list item, not a bare quote, because a backlink's context is the
+ * whole item: the X posts note then shows each post in full. Offline or for
+ * a post that is gone, the card is the author line alone, so the save never
  * waits on X and never loses the link.
  */
-async function postCard(envelope: CaptureEnvelope): Promise<string> {
+async function postCard(envelope: CaptureEnvelope, generation: number): Promise<string> {
   let post: XPost | undefined
   try {
     post = await resolveXPostEmbed(envelope.url)
@@ -97,18 +103,26 @@ async function postCard(envelope: CaptureEnvelope): Promise<string> {
   const handle = post?.author.handle ?? urlHandle(envelope.url)
   const name = post?.author.name.trim()
   const byline = name ? `**${name.replaceAll(/[\\*_`[\]]/g, String.raw`\$&`)}** · ` : ''
-  const lines = [`${byline}${markdownLink(envelope.url, handle ? `@${handle}` : 'Post on X')}`]
+  const postsNote = await ensureBacklinkTarget(X_POSTS_NOTE_TITLE, generation)
+  const quote: string[] = []
   const words = envelope.selection?.trim() || (post ? postWords(post) : '')
   if (words) {
-    lines.push('', words)
+    quote.push(words)
   }
   for (const media of post?.media ?? []) {
     const image = media.type === 'photo' ? media.url : media.poster
     if (image && media.unavailable !== true) {
-      lines.push('', `![](${markdownLinkDestination(image)})`)
+      quote.push(`![](${markdownLinkDestination(image)})`)
     }
   }
-  return quoted(lines.join('\n'))
+  const children = quote.length > 0 ? [quoted(quote.join('\n\n'))] : []
+  const note = envelope.note?.trim()
+  if (note) {
+    children.push(note)
+  }
+  const head = `- ${byline}${markdownLink(envelope.url, handle ? `@${handle}` : 'Post on X')} [[${postsNote}]]`
+  const body = children.join('\n\n').replaceAll(/^(?=.)/gm, '  ')
+  return body === '' ? head : `${head}\n${body}`
 }
 
 /**
@@ -137,7 +151,10 @@ async function capturedWords(envelope: CaptureEnvelope): Promise<string | null> 
  * The Markdown block one placed capture writes: the link in its look, then
  * the user's own note (the share sheet's "add a thought") as a paragraph.
  */
-export async function placedCaptureBlock(envelope: CaptureEnvelope): Promise<string> {
+export async function placedCaptureBlock(
+  envelope: CaptureEnvelope,
+  generation: number,
+): Promise<string> {
   const look = effectiveLook(envelope.url, envelope.look ?? 'card')
   const title = displayTitle(envelope)
   const parts: string[] = []
@@ -164,8 +181,8 @@ export async function placedCaptureBlock(envelope: CaptureEnvelope): Promise<str
       break
     case 'text': {
       if (xPostId(envelope.url) !== null) {
-        parts.push(await postCard(envelope))
-        break
+        // The card carries the user's note inside its own list item.
+        return await postCard(envelope, generation)
       }
       parts.push(envelope.url)
       const words = await capturedWords(envelope)
@@ -203,7 +220,7 @@ export interface PlacedCaptureOutcome {
 export type DailySpot =
   /** At the end of the daily's Links section, which it creates when missing. */
   | 'links'
-  /** In the daily's own body, above its Links section (posts, photos, PDFs). */
+  /** In the daily's own body, above its Links section (photos, PDFs). */
   | 'body'
 
 /** One block to write where the share sheet's "Where" choice says. */
@@ -258,8 +275,8 @@ export async function placeCapture(
     }
   }
 
-  // Only the Links spot needs the category note; a post or a photo must not
-  // create it as a side effect.
+  // Only the Links spot needs the category note; a photo must not create it
+  // as a side effect.
   const linksTitle =
     placement.dailySpot === 'links'
       ? await ensureBacklinkTarget(LINKS_NOTE_TITLE, generation)
@@ -295,8 +312,8 @@ export async function placeCapture(
 }
 
 /**
- * Write one shared link where the share sheet said. A post is not a link:
- * it goes in the daily's own body, not under Links.
+ * Write one shared link where the share sheet said: in the daily, under its
+ * Links section, posts included.
  */
 export async function drainPlacedCapture(
   envelope: CaptureEnvelope,
@@ -307,9 +324,9 @@ export async function drainPlacedCapture(
       destination: envelope.destination,
       capturedAt: envelope.capturedAt,
       title: displayTitle(envelope),
-      dailySpot: xPostId(envelope.url) === null ? 'links' : 'body',
+      dailySpot: 'links',
       identity: envelope.url,
-      block: async () => await placedCaptureBlock(envelope),
+      block: async () => await placedCaptureBlock(envelope, generation),
     },
     generation,
   )

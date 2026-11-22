@@ -21,6 +21,7 @@ import {
   writeNoteMock,
 } from './capture-harness'
 import type { FileCaptureEnvelope, TextCaptureEnvelope } from './capture-envelope'
+import { blockContextAt } from '../indexing/block-context'
 
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
 const importSpoolMock = vi.hoisted(() => vi.fn())
@@ -66,7 +67,7 @@ vi.mock('./post-embed', () => ({
 
 beforeEach(() => {
   wireCaptureMocks()
-  ensureBacklinkTargetMock.mockResolvedValue('Links')
+  ensureBacklinkTargetMock.mockImplementation((title: string) => Promise.resolve(title))
   xPostMock.mockResolvedValue(undefined)
   // The vault's attachment folder: the spooled copy lands under its
   // desired name, `-2` on a collision, as Rust's `persist_unique` does.
@@ -876,7 +877,7 @@ describe('drainCaptureInbox: shared X posts', () => {
   const post = (overrides: Partial<Parameters<typeof envelope>[0]> = {}) =>
     envelope({ source: 'ios-share', url: POST_URL, title: '', look: 'text', ...overrides })
 
-  it('writes a post as a Markdown card in the daily body, above the Links section', async () => {
+  it('writes a post as a list-item card under Links, linked to the X posts note', async () => {
     files.set(DAILY, '# plans\n\nMorning notes\n\n## [[Links]]\n\n- [[old|Old]]\n')
     xPostMock.mockResolvedValue({
       id: '1886192184808149383',
@@ -893,28 +894,32 @@ describe('drainCaptureInbox: shared X posts', () => {
 
     await drain()
 
-    expect(files.get(DAILY)).toBe(
+    const daily = files.get(DAILY) ?? ''
+    expect(daily).toBe(
       [
         '# plans',
         '',
         'Morning notes',
         '',
-        `> **Andrej Karpathy** · [@karpathy](${POST_URL})`,
-        '>',
-        '> Vibe coding, see [this](https://example.com/vibe).',
-        '> Second line',
-        '>',
-        '> ![](https://pbs.twimg.com/media/a.jpg)',
-        '',
-        'Worth a read',
-        '',
         '## [[Links]]',
         '',
         '- [[old|Old]]',
         '',
+        `- **Andrej Karpathy** · [@karpathy](${POST_URL}) [[X posts]]`,
+        '  > Vibe coding, see [this](https://example.com/vibe).',
+        '  > Second line',
+        '  >',
+        '  > ![](https://pbs.twimg.com/media/a.jpg)',
+        '',
+        '  Worth a read',
+        '',
       ].join('\n'),
     )
-    expect(ensureBacklinkTargetMock).not.toHaveBeenCalled()
+    expect(ensureBacklinkTargetMock).toHaveBeenCalledWith('X posts', expect.any(Number))
+    // The X posts note's backlink shows the post whole: byline, words, photo, note.
+    expect(blockContextAt(daily, daily.indexOf('[[X posts]]') + 2)).toBe(
+      daily.slice(daily.indexOf('- **Andrej')).trimEnd(),
+    )
   })
 
   it('keeps the author line and the link when the post cannot be read', async () => {
@@ -923,15 +928,15 @@ describe('drainCaptureInbox: shared X posts', () => {
 
     await drain()
 
-    expect(files.get(DAILY)).toBe(`> [@karpathy](${POST_URL})\n`)
+    expect(files.get(DAILY)).toBe(`## [[Links]]\n\n- [@karpathy](${POST_URL}) [[X posts]]\n`)
   })
 
-  it('never files a post embed under Links either', async () => {
+  it('files a post embed under Links too', async () => {
     addSpool(post({ look: 'embed' }), { screenshot: false })
 
     await drain()
 
-    expect(files.get(DAILY)).toBe(`![](${POST_URL})\n`)
+    expect(files.get(DAILY)).toBe(`## [[Links]]\n\n![](${POST_URL})\n`)
   })
 })
 

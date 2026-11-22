@@ -83,11 +83,11 @@ final class ShareState: ObservableObject {
         kind != nil || !files.isEmpty
     }
 
-    /// Whether today's daily files it under its Links section: web pages
-    /// and videos do; a post, a photo or a PDF goes in the day's own notes
+    /// Whether today's daily files it under its Links section: every link
+    /// does, posts included; a photo or a PDF goes in the day's own notes
     /// (`DailySpot` in core's `placed-capture.ts`).
     var landsUnderLinks: Bool {
-        kind == .page || kind == .video
+        kind != nil
     }
 
     /// What was shared, as the sheet's small print names it

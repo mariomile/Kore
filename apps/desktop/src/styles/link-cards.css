@@ -284,7 +284,9 @@
    it alike, with no plugin and no extra work while typing. */
 .kore-editor
   .prosemirror-flat-list[data-list-kind='bullet']:has(
-    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+    > .list-content
+      > p:first-child
+      a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
   ):has(> .list-content > blockquote) {
   /* The card takes the text column, where a pasted link's card sits, and
      the item's own bullet column stays empty. */
@@ -295,14 +297,18 @@
 }
 .kore-editor
   .prosemirror-flat-list[data-list-kind='bullet']:has(
-    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+    > .list-content
+      > p:first-child
+      a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
   ):has(> .list-content > blockquote)
   > .list-marker {
   display: none;
 }
 .kore-editor
   .prosemirror-flat-list[data-list-kind='bullet']:has(
-    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+    > .list-content
+      > p:first-child
+      a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
   ):has(> .list-content > blockquote)
   > .list-content {
   margin-inline-start: 0;

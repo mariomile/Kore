@@ -1,3 +1,4 @@
+import { importRemoteImage } from '../graph/assets'
 import { writeNote } from '../graph/commands'
 import { createNoteWithSource, newNoteSource } from '../graph/create-note'
 import { dailyPath, isNotePath, isSafeVisibleGraphPath, noteFileStem } from '../graph/paths'
@@ -80,6 +81,32 @@ function postWords(post: XPost): string {
     .trim()
 }
 
+/** The file extension X serves a photo as: the URL's own, else its `format` parameter. */
+function postImageExtension(url: string): string {
+  const parsed = new URL(url)
+  const named = /\.(jpe?g|png|webp|gif)$/i.exec(parsed.pathname)?.[1]
+  return (named ?? parsed.searchParams.get('format') ?? 'jpg').toLowerCase()
+}
+
+/**
+ * A post's photo kept in the vault (`x-<post id>-<n>.jpg` in the attachment
+ * folder), so the card reads offline and after X drops the photo. When the
+ * photo cannot be fetched now the card keeps X's own link to it instead.
+ */
+async function keptPostImage(
+  url: string,
+  postId: string | null,
+  position: number,
+  generation: number,
+): Promise<string> {
+  try {
+    const name = `x-${postId ?? 'post'}-${position}.${postImageExtension(url)}`
+    return await importRemoteImage(url, name, generation)
+  } catch {
+    return url
+  }
+}
+
 /** The note every shared X post links to, so its backlinks list the posts. */
 const X_POSTS_NOTE_TITLE = 'X posts'
 
@@ -87,8 +114,8 @@ const X_POSTS_NOTE_TITLE = 'X posts'
  * An X post as a plain Markdown card any Markdown reader (Obsidian, an
  * agent, `cat`) shows as the post: a list item whose line says who wrote it,
  * linked to the post, and links the [[X posts]] note; under it, quoted, what
- * they wrote and the photos (a video by its poster), then the user's own
- * note. A list item, not a bare quote, because a backlink's context is the
+ * they wrote and the photos (a video by its poster), each kept in the vault,
+ * then the user's own note. A list item, not a bare quote, because a backlink's context is the
  * whole item: the X posts note then shows each post in full. Offline or for
  * a post that is gone, the card is the author line alone, so the save never
  * waits on X and never loses the link.
@@ -109,11 +136,13 @@ async function postCard(envelope: CaptureEnvelope, generation: number): Promise<
   if (words) {
     quote.push(words)
   }
-  for (const media of post?.media ?? []) {
+  const images = (post?.media ?? []).flatMap((media) => {
     const image = media.type === 'photo' ? media.url : media.poster
-    if (image && media.unavailable !== true) {
-      quote.push(`![](${markdownLinkDestination(image)})`)
-    }
+    return image && media.unavailable !== true ? [image] : []
+  })
+  for (const [index, image] of images.entries()) {
+    const kept = await keptPostImage(image, xPostId(envelope.url), index + 1, generation)
+    quote.push(`![](${markdownLinkDestination(kept)})`)
   }
   const children = quote.length > 0 ? [quoted(quote.join('\n\n'))] : []
   const note = envelope.note?.trim()

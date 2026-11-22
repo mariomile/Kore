@@ -142,3 +142,25 @@ export async function importCaptureSpool(
   noteAttachmentAdded(path)
   return path
 }
+
+/**
+ * Fetch a remote image (a saved post's photo) and keep it in the vault's
+ * attachment folder as `desiredName`, with the same collision policy and
+ * return value as {@link createAsset}; asking again for an image already
+ * kept under that name returns it. Fetched and written in Rust (bounded:
+ * https, raster images, a byte cap), so the bytes never enter the webview.
+ */
+export async function importRemoteImage(
+  url: string,
+  desiredName: string,
+  generation: number,
+): Promise<string> {
+  const path = await call(
+    'capture_image_fetch',
+    { url, desiredName, generation, dir: attachmentDir() },
+    z.string(),
+  )
+  echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
+  noteAttachmentAdded(path)
+  return path
+}

@@ -52,6 +52,12 @@ dependency floors rather than local workarounds:
   warns `Xcode Simulator SDK 27.2 is not installed`, opens Xcode and waits
   without building. Install it with `xcodebuild -downloadPlatform iOS` (or
   Xcode > Settings > Components) and run the iPhone 17 Pro on it.
+- An app built with the iOS 27 SDK must adopt the UIScene lifecycle, or
+  UIKit kills it a few seconds after launch (`EXC_BREAKPOINT` in
+  `_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`). The
+  `adopt-scene-lifecycle.sh` build phase adds the scene manifest to the
+  built Info.plist on that SDK only; TestFlight builds use the iOS 26 SDK
+  and keep the app-delegate path (see `ios.project.yml`).
 
 To see simulator names:
 

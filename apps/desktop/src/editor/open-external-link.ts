@@ -5,6 +5,7 @@ import { openInAppBrowser } from '@/lib/browser-session'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { openUrlSync } from '@/lib/open-url'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useSettings } from '@/providers/settings-provider'
 
 /**
@@ -48,12 +49,16 @@ export function isWebUrl(href: string): boolean {
  * `osBrowser` (the Alt-click escape hatch) and every non-web app scheme go
  * to the OS opener, which owns its handler. Unsafe schemes never open
  * anything.
+ *
+ * The mobile app has no built-in browser: its one fullscreen webview is the
+ * app itself, and a second one would cover it. Every link there goes to the
+ * OS opener (Safari, or the app that owns a universal link).
  */
 export function openExternalUrl(href: string, options?: { osBrowser?: boolean }): void {
   if (!isOpenableExternalUrl(href)) {
     return
   }
-  if (options?.osBrowser !== true && isWebUrl(href)) {
+  if (options?.osBrowser !== true && isWebUrl(href) && !isMobileSurface()) {
     // The workspace hosts the built-in browser (a tab / the context rail);
     // a chrome-free note window has no such surface and keeps the separate
     // browser window instead.

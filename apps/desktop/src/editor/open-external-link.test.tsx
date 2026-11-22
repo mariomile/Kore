@@ -4,6 +4,7 @@ import type { LinkClickHandler } from '@meowdown/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { registerInAppBrowserOpener, resetBrowserSessionForTests } from '@/lib/browser-session'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
+import { setPlatformSurface } from '@/lib/platform-surface'
 import { useOpenExternalLink, preferOsBrowser } from '@/editor/open-external-link'
 import { act } from '@/test-utils/act'
 
@@ -47,6 +48,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
+  setPlatformSurface({ mobileApp: false })
   resetBrowserSessionForTests()
   cleanup()
 })
@@ -116,6 +118,14 @@ describe('openExternalLink', () => {
 
     expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
     expect(openUrl).not.toHaveBeenCalled()
+  })
+
+  it('opens web links in the OS browser on the mobile app, which has no in-app browser', async () => {
+    setPlatformSurface({ mobileApp: true })
+    await click('https://x.com/kore/status/1')
+
+    expect(openUrl).toHaveBeenCalledWith('https://x.com/kore/status/1')
+    expect(openBrowserWindow).not.toHaveBeenCalled()
   })
 
   it('falls back to the OS browser when the in-app window cannot open', async () => {

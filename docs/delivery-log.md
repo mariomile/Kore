@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- iPhone: hold and drag blocks to reorder, Move up / Move down for every
+  block (#623).
+- iPhone: web links open in Safari (#626).
 - Notes: previews show only prose, never Markdown syntax (#619).
 - Tags: tagging an inbox note moves it into the tag's default folder (#615).
 - Editor: dates in notes show as weekday chips, Mac and iPhone (#600).

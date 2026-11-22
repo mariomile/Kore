@@ -15,11 +15,11 @@ const ROW_SEPARATOR = ' · '
  * A table as one line of plain text, from its rows' cell texts (header row
  * first). A two-column table is a list of fields: each row reads `name:
  * value`, the header (`Field | Value`) says nothing and goes, and so does a
- * row left blank. A wider table keeps every row, cells comma-separated.
+ * row left blank. Any other table keeps every row, cells comma-separated.
  * Empty when no cell has anything to say (a template nobody filled in).
  */
 export function tablePreviewText(rows: readonly (readonly string[])[]): string {
-  const isFieldList = rows.every((row) => row.length <= 2)
+  const isFieldList = rows[0]?.length === 2
   const lines = isFieldList
     ? rows.slice(1).flatMap(([name = '', value = '']) => {
         return name === '' || value === '' ? [] : [`${name}: ${value}`]

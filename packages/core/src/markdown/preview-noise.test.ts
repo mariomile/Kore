@@ -190,6 +190,7 @@ describe('parseNote — previewText', () => {
     expect(preview('| Name | Role | City |\n| - | - | - |\n| Ada | CTO | |\n| Bo | | Rome |')).toBe(
       'Name, Role, City · Ada, CTO · Bo, Rome',
     )
+    expect(preview('| Books |\n| - |\n| Dune |\n| Emma |')).toBe('Books · Dune · Emma')
     // A template nobody filled in says nothing.
     expect(preview('Text.\n\n| Campo | Valore |\n| --- | --- |\n| Industry | |')).toBe('Text.')
   })

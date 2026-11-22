@@ -886,7 +886,7 @@ describe('drainCaptureInbox: shared X posts', () => {
     files.set(DAILY, '# plans\n\nMorning notes\n\n## [[Links]]\n\n- [[old|Old]]\n')
     xPostMock.mockResolvedValue({
       id: '1886192184808149383',
-      createdAt: '2026-02-02T12:00:00Z',
+      createdAt: '2026-02-02T23:30:00Z',
       author: {
         name: 'Andrej Karpathy',
         handle: 'karpathy',

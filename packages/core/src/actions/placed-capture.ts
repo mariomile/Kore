@@ -110,13 +110,18 @@ function largeAvatar(url: string): string {
   return url.replace(/_normal(\.\w+)$/, '_200x200$1')
 }
 
+/**
+ * Pinned to UTC: the day is written into the note, so the same post must read
+ * the same whichever device, and whichever time zone, saved it.
+ */
 const POST_DATE = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
+  timeZone: 'UTC',
 })
 
-/** `21 Nov 2026`, or null for a post with no readable date. */
+/** `21 Nov 2026` (the UTC day), or null for a post with no readable date. */
 function postDay(iso: string): string | null {
   const time = Date.parse(iso)
   return Number.isNaN(time) ? null : POST_DATE.format(time)

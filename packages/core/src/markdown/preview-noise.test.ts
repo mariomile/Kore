@@ -179,6 +179,18 @@ describe('parseNote — previewText', () => {
     expect(preview('Owner: [[Sarah Chen]] until June')).toBe('Owner: Sarah Chen until June')
   })
 
+  it('keeps a sentence that ends like a property', () => {
+    expect(preview('We talked about pricing Type: #meeting')).toBe(
+      'We talked about pricing Type: #meeting',
+    )
+    expect(preview('We met for the first time: [[Sarah Chen]]')).toBe(
+      'We met for the first time: Sarah Chen',
+    )
+    expect(preview('The plan for next week status:: active')).toBe(
+      'The plan for next week status:: active',
+    )
+  })
+
   it('drops images and embeds, keeps links as their words', () => {
     expect(preview('Before ![alt text](shot.png) ![[photo.png]] ![[Other note]] after.')).toBe(
       'Before after.',

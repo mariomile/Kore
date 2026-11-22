@@ -51,13 +51,15 @@ const FOOTNOTE = /^[ \t]*\[\^[^\]\s]+\]:.*$|\[\^[^\]\s]+\]/gm
 const TAG = String.raw`#[^\s#]+`
 /** What a property holds instead of words: a tag, a wiki or Markdown link, a bare URL. */
 const REFERENCE = String.raw`(?:${TAG}|\[\[[^\]\n]*\]\]|\[[^\]\n]*\]\([^)\n]*\)|<?https?:\/\/\S+)`
-const LABEL = String.raw`\p{L}[\p{L}\p{N} _-]{0,40}`
+/** A property's name: one or two words (`Type`, `Due date`). Longer is a sentence. */
+const LABEL = String.raw`\p{L}[\p{L}\p{N}_-]*(?: [\p{L}\p{N}_-]+)?`
 /**
  * A property line, after an optional list marker: tags alone (`#meeting
  * #work`, the line that gives a note its type), a label holding only
  * references (`Type: #meeting`, `Author: [[James Clear]]`, `URL: https://…`),
  * or a Dataview field (`status:: active`). Metadata the app shows as fields,
- * never a sentence: `Decision: ship it on Monday` has words and stays.
+ * never a sentence: `Decision: ship it on Monday` has words and stays, and so
+ * does `We met for the first time: [[Sarah Chen]]`, whose lead is no label.
  */
 const PROPERTY_LINE = new RegExp(
   String.raw`^[ \t]*(?:[-*+][ \t]+)?(?:(?:${TAG}[ \t]*)+|${LABEL}:[ \t]*(?:${REFERENCE}[ \t,]*)+|${LABEL}::[ \t].*)$`,

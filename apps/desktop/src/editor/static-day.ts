@@ -64,7 +64,7 @@ export function staticDayBody(source: string): string | null {
   if (text === null || UNSAFE.test(text) || detectConflictMarkers(body)) {
     return null
   }
-  if (bareDateRanges(text.replaceAll(WIKILINK, '')).length > 0) {
+  if (bareDateRanges(text.replaceAll(WIKILINK, '').replaceAll(EMPHASIS, ' ')).length > 0) {
     return null
   }
   const embeds = parseBodyEmbeds(body)
@@ -123,6 +123,12 @@ const UNSAFE = new RegExp(
  */
 const MARKDOWN_IMAGE =
   /!\[[^\]\n]*\]\(\s*(?:<([^<>\n]*)>|((?:[^()\s<>]|\([^()\s]*\))+))(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\s*\)/g
+/**
+ * Emphasis delimiters, read as spaces when looking for plain dates: in the
+ * source `_2026-11-16_` the underscores are word characters, while the editor
+ * shows (and chips) the emphasized date.
+ */
+const EMPHASIS = /[_*~=]/g
 /** A `[[wiki link]]`: a date inside one is a link, not plain text. */
 const WIKILINK = /\[\[[^\]\n]*\]\]/g
 /** `![[target|size]]`, capturing what is inside. */

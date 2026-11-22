@@ -25,6 +25,11 @@ describe('staticDayBody', () => {
     expect(staticDayBody(source)).toBe(source)
   })
 
+  it('draws a day whose dates are links or parts of longer names', () => {
+    const body = '- see [[2026-11-24]] and daily/2026-11-24.md at 2026-11-24T09:00\n'
+    expect(staticDayBody(body)).toBe(body)
+  })
+
   it('draws an empty day', () => {
     expect(staticDayBody('')).toBe('')
   })
@@ -47,6 +52,8 @@ describe('staticDayBody', () => {
     ['a callout', '> [!note] Title\n> body\n'],
     ['raw HTML', 'a <details>b</details>\n'],
     ['an attached file', '[report.pdf](assets/report.pdf)\n'],
+    ['a plain date', 'call on 2026-11-24\n'],
+    ['an emphasized plain date', 'call on _2026-11-24_ and __2026-11-25__\n'],
     ['conflict markers', '<<<<<<< this device\na\n=======\nb\n>>>>>>> other device\n'],
   ])('keeps the editor for %s', (_, source) => {
     expect(staticDayBody(source)).toBeNull()

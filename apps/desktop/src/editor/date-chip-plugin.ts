@@ -26,7 +26,7 @@ const PLAIN_MARKS = new Set(['mdStrong', 'mdEm', 'mdDel', 'mdHighlight'])
  * A free-standing `YYYY-MM-DD`: not part of a longer token such as a
  * timestamp (`2026-11-16T09:00`), a version, a path or a file name.
  */
-const BARE_DATE = /(?<![\w./:@#-])\d{4}-\d{2}-\d{2}(?![\w/:@-]|\.\d)/g
+const BARE_DATE = /(?<![\w./:@#-])\d{4}-\d{2}-\d{2}(?![\w/:@-]|\.\w)/g
 
 /** Where a plain date sits, as offsets into a text. */
 export interface DateRange {

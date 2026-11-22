@@ -8,9 +8,9 @@ const LINK_SOURCE = /^\[\[([^\]|#]+)\]\]$/
 /**
  * Draw the date links of a read-only rendering (`MarkdownView`) as the
  * editor's date chips (`date-chips.tsx`), so a day drawn statically in the
- * daily stream reads its dates the way the editor does. The label's text node is edited in place, as `callout-dom.ts` does,
- * so the renderer's own tree stays intact; the view is never editable, so
- * nothing reaches the disk.
+ * daily stream reads its dates the way the editor does. The label's text
+ * node is edited in place, as `callout-dom.ts` does, so the renderer's own
+ * tree stays intact; the view is never editable, so nothing reaches the disk.
  */
 function decorateDateLinks(host: Element, label: (date: string) => string): void {
   for (const link of host.querySelectorAll('.md-wikilink-view')) {
@@ -32,9 +32,9 @@ function decorateDateLinks(host: Element, label: (date: string) => string): void
 
 /**
  * Keep the date links under `hostRef` drawn as chips in `dateFormat` for as
- * long as it is mounted; without a format they keep the plain key. The host wraps a `MarkdownView`, which may re-render after this
- * commit; the observer catches that, and our own edit is a no-op on the
- * second pass.
+ * long as it is mounted; without a format they keep the plain key. The host
+ * wraps a `MarkdownView`, which may re-render after this commit; the
+ * observer catches that, and our own edit is a no-op on the second pass.
  */
 export function useDateChipDom(
   hostRef: RefObject<HTMLElement | null>,

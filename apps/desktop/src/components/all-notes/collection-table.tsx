@@ -36,6 +36,7 @@ import { ColumnHeaderMenu } from './column-header-menu'
 import {
   COLLECTION_GRID_CLASS,
   COLLECTION_ROW_HEIGHT,
+  collectionColumnLeftRems,
   collectionGridStyle,
   defaultColumnRem,
   defaultTitleRem,
@@ -58,6 +59,9 @@ interface CollectionTableProps {
   /** Manual column widths (rem, per property key or `$title`) — a header-edge drag. */
   columnWidths: Record<string, number>
   onColumnWidthChange: (key: string, rem: number) => void
+  /** How many leading columns stay frozen on horizontal scroll (`0` = none). */
+  frozenColumns?: number
+  onFrozenColumnsChange?: ((count: number) => void) | undefined
   /** Open the tag's schema dialog (options, targets, rollups, formulas). */
   onEditSchema?: (() => void) | undefined
   /** Append a property from the header's "+" (name and type, nothing else). */
@@ -123,6 +127,8 @@ export function CollectionTable({
   onSortChange,
   columnWidths,
   onColumnWidthChange,
+  frozenColumns = 0,
+  onFrozenColumnsChange,
   onEditSchema,
   onAddProperty,
   onDeleteProperty,
@@ -147,9 +153,14 @@ export function CollectionTable({
   const [resizingKey, setResizingKey] = useState<string | null>(null)
   const effectiveWidths = draftWidths ?? columnWidths
   const showAddColumn = onAddProperty !== undefined && onEditSchema !== undefined
+  const frozenCount = Math.min(Math.max(0, frozenColumns), 1 + type.properties.length)
   const gridStyle = useMemo(
     () => collectionGridStyle(type, effectiveWidths, { embedded, showAddColumn }),
     [type, effectiveWidths, embedded, showAddColumn],
+  )
+  const columnLeftRems = useMemo(
+    () => collectionColumnLeftRems(type, effectiveWidths, { embedded }),
+    [type, effectiveWidths, embedded],
   )
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
@@ -475,8 +486,11 @@ export function CollectionTable({
         )}
       >
         <span
+          style={frozenCount >= 1 ? { position: 'sticky', left: 0 } : undefined}
           className={cn(
-            'collection-sticky-col group/header relative z-30 flex h-full min-w-0 items-center border-r border-border bg-surface pr-2 transition-colors hover:bg-surface-hover/60',
+            'group/header relative flex h-full min-w-0 items-center gap-1 border-r bg-surface pr-2 transition-colors hover:bg-surface-hover/60',
+            frozenCount >= 1 && 'z-30',
+            frozenCount === 1 ? 'collection-sticky-col border-border-strong/70' : 'border-border',
             gutterClass,
           )}
         >
@@ -484,6 +498,15 @@ export function CollectionTable({
             TITLE_SORT_KEY,
             'Title',
             <Note aria-hidden className="size-3.5 shrink-0 text-text-muted" />,
+          )}
+          {onFrozenColumnsChange === undefined ? null : (
+            <ColumnHeaderMenu
+              columnName="Title"
+              onSort={(direction, then) => sortBy(TITLE_SORT_KEY, direction, then)}
+              sorted={sorts.length > 0}
+              isFrozenBoundary={frozenCount === 1}
+              onToggleFreeze={() => onFrozenColumnsChange(frozenCount === 1 ? 0 : 1)}
+            />
           )}
           <span
             role="separator"
@@ -511,12 +534,24 @@ export function CollectionTable({
             />
           </span>
         </span>
-        {type.properties.map((property) => {
+        {type.properties.map((property, index) => {
           const TypeIcon = PROPERTY_TYPE_ICONS[property.type]
+          const colIndex = index + 1
+          const isFrozen = colIndex < frozenCount
+          const isFrozenEdge = colIndex === frozenCount - 1
           return (
             <span
               key={property.key}
-              className="group/header relative flex h-full min-w-0 items-center gap-1 border-r border-border px-2.5 transition-colors hover:bg-surface-hover/60"
+              style={
+                isFrozen
+                  ? { position: 'sticky', left: `${columnLeftRems[colIndex] ?? 0}rem` }
+                  : undefined
+              }
+              className={cn(
+                'group/header relative flex h-full min-w-0 items-center gap-1 border-r px-2.5 transition-colors hover:bg-surface-hover/60',
+                isFrozen && 'z-30 bg-surface',
+                isFrozenEdge ? 'collection-sticky-col border-border-strong/70' : 'border-border',
+              )}
             >
               {sortButton(
                 property.key,
@@ -527,9 +562,15 @@ export function CollectionTable({
                   : undefined,
               )}
               <ColumnHeaderMenu
-                property={property}
+                columnName={property.name}
                 onSort={(direction, then) => sortBy(property.key, direction, then)}
                 sorted={sorts.length > 0}
+                isFrozenBoundary={isFrozenEdge}
+                onToggleFreeze={
+                  onFrozenColumnsChange === undefined
+                    ? undefined
+                    : () => onFrozenColumnsChange(isFrozenEdge ? 0 : colIndex + 1)
+                }
                 onHide={onHideColumn === undefined ? undefined : () => onHideColumn(property.key)}
                 onEditSchema={onEditSchema}
                 onDelete={
@@ -623,12 +664,24 @@ export function CollectionTable({
                   selected={isSelected(item.entry.path)}
                   openTasks={taskCounts[item.entry.path] ?? 0}
                   embedded={embedded}
+                  titleFrozen={frozenCount >= 1}
+                  titleFrozenEdge={frozenCount === 1}
                   showAddColumn={showAddColumn}
                   onSelect={clickSelect}
                   onToggle={handleToggle}
                   onOpen={onOpen}
                 >
-                  {type.properties.map((property) => {
+                  {type.properties.map((property, propIndex) => {
+                    const colIndex = propIndex + 1
+                    const isFrozen = colIndex < frozenCount
+                    const isFrozenEdge = colIndex === frozenCount - 1
+                    const stickyStyle = isFrozen
+                      ? ({
+                          position: 'sticky',
+                          left: `${columnLeftRems[colIndex] ?? 0}rem`,
+                        } as const)
+                      : undefined
+                    const rowSelected = isSelected(item.entry.path)
                     const value = item.entry.properties[property.key]
                     const isReadOnlyField =
                       editableKeys !== undefined && !editableKeys.has(property.key)
@@ -637,20 +690,34 @@ export function CollectionTable({
                         {value?.value ?? '—'}
                       </span>
                     ) : (
-                      <CollectionCell
-                        property={property}
-                        value={value}
-                        selected={isSelected(item.entry.path)}
-                      />
+                      <CollectionCell property={property} value={value} selected={rowSelected} />
                     )
                     if (isReadOnlyField) {
                       return (
                         <span
                           key={property.key}
+                          style={stickyStyle}
                           title="Read-only because this collection has conflicting property types"
-                          className="flex h-full min-w-0 items-center border-r border-border px-2.5"
+                          className={cn(
+                            'relative flex h-full min-w-0 items-center border-r px-2.5',
+                            isFrozen && 'z-10 bg-surface',
+                            isFrozenEdge
+                              ? 'collection-sticky-col border-border-strong/70'
+                              : 'border-border',
+                          )}
                         >
-                          {cell}
+                          {isFrozen ? (
+                            <span
+                              aria-hidden
+                              className={cn(
+                                'pointer-events-none absolute inset-0 transition-colors duration-75',
+                                rowSelected
+                                  ? 'bg-accent-soft'
+                                  : 'group-hover/row:bg-surface-hover/55',
+                              )}
+                            />
+                          ) : null}
+                          <span className="relative z-10 flex min-w-0 items-center">{cell}</span>
                         </span>
                       )
                     }
@@ -659,6 +726,7 @@ export function CollectionTable({
                     return (
                       <div
                         key={property.key}
+                        style={stickyStyle}
                         data-collection-cell={isInteractiveType ? '' : undefined}
                         data-inline-cell={isInline ? 'true' : undefined}
                         onKeyDown={(event) => {
@@ -676,24 +744,43 @@ export function CollectionTable({
                             stepFromCell(event.currentTarget, 'prev', false)
                           }
                         }}
-                        className="flex h-full min-w-0 items-stretch border-r border-border"
+                        className={cn(
+                          'relative flex h-full min-w-0 items-stretch border-r',
+                          isFrozen && 'z-10 bg-surface',
+                          isFrozenEdge
+                            ? 'collection-sticky-col border-border-strong/70'
+                            : 'border-border',
+                        )}
                       >
-                        <PropertyValueEditor
-                          property={property}
-                          value={value}
-                          variant="table-cell"
-                          onCommit={(next) => commitProperty(item.entry.path, property.key, next)}
-                          onOpenRelation={openRelation}
-                          onStepCell={(direction) => {
-                            const activeCell =
-                              (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
-                                '[data-collection-cell]',
-                              ) ?? null
-                            stepFromCell(activeCell, direction, true)
-                          }}
-                        >
-                          {cell}
-                        </PropertyValueEditor>
+                        {isFrozen ? (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'pointer-events-none absolute inset-0 transition-colors duration-75',
+                              rowSelected
+                                ? 'bg-accent-soft'
+                                : 'group-hover/row:bg-surface-hover/55',
+                            )}
+                          />
+                        ) : null}
+                        <div className="relative z-10 flex h-full w-full min-w-0 items-stretch">
+                          <PropertyValueEditor
+                            property={property}
+                            value={value}
+                            variant="table-cell"
+                            onCommit={(next) => commitProperty(item.entry.path, property.key, next)}
+                            onOpenRelation={openRelation}
+                            onStepCell={(direction) => {
+                              const activeCell =
+                                (
+                                  document.activeElement as HTMLElement | null
+                                )?.closest<HTMLElement>('[data-collection-cell]') ?? null
+                              stepFromCell(activeCell, direction, true)
+                            }}
+                          >
+                            {cell}
+                          </PropertyValueEditor>
+                        </div>
                       </div>
                     )
                   })}
@@ -710,25 +797,40 @@ export function CollectionTable({
             )}
           >
             <span
+              style={frozenCount >= 1 ? { position: 'sticky', left: 0 } : undefined}
               className={cn(
-                'collection-sticky-col z-10 flex h-full items-center bg-surface pr-2',
+                'flex h-full items-center bg-surface pr-2',
+                frozenCount >= 1 && 'z-10',
+                frozenCount === 1 && 'collection-sticky-col',
                 gutterClass,
               )}
             >
               {`${entries.length} ${entries.length === 1 ? 'note' : 'notes'}`}
             </span>
-            {type.properties.map((property, index) => (
-              <span
-                key={property.key}
-                className={cn(
-                  'flex h-full min-w-0 items-center truncate px-2.5',
-                  (property.type === 'number' || property.type === 'rating') &&
-                    'justify-end text-right',
-                )}
-              >
-                <span className="truncate">{aggregates[index]}</span>
-              </span>
-            ))}
+            {type.properties.map((property, index) => {
+              const colIndex = index + 1
+              const isFrozen = colIndex < frozenCount
+              const isFrozenEdge = colIndex === frozenCount - 1
+              return (
+                <span
+                  key={property.key}
+                  style={
+                    isFrozen
+                      ? { position: 'sticky', left: `${columnLeftRems[colIndex] ?? 0}rem` }
+                      : undefined
+                  }
+                  className={cn(
+                    'flex h-full min-w-0 items-center truncate px-2.5',
+                    isFrozen && 'z-10 bg-surface',
+                    isFrozenEdge && 'collection-sticky-col',
+                    (property.type === 'number' || property.type === 'rating') &&
+                      'justify-end text-right',
+                  )}
+                >
+                  <span className="truncate">{aggregates[index]}</span>
+                </span>
+              )
+            })}
             <span />
             {showAddColumn ? <span /> : null}
             <span />

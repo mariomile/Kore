@@ -54,10 +54,13 @@ export interface CollectionViewSettings {
   setTableGroup: (key: string | null) => void
   hiddenColumns: Set<string>
   columnWidths: Record<string, number>
+  /** How many leading columns stay frozen on horizontal scroll (`0` = none). */
+  frozenColumns: number
   /** The tag's schema with hidden columns filtered out (the table renders this). */
   visibleTagType: TagType | null
   setColumnWidth: (key: string, rem: number) => void
   toggleColumnHidden: (key: string) => void
+  setFrozenColumns: (count: number) => void
 }
 
 /**
@@ -183,11 +186,12 @@ export function useCollectionViewSettings(
     },
     [tagKey, updateSettingsWith],
   )
-  // Column layout (hidden keys, manual widths) is a persisted per-tag view
-  // preference like the sort; the table renders the visible subset.
+  // Column layout (hidden keys, manual widths, frozen columns) is a persisted
+  // per-tag view preference like the sort; the table renders the visible subset.
   const columnsSetting = tagKey === null ? undefined : settings.collectionColumns[tagKey]
   const hiddenColumns = useMemo(() => new Set(columnsSetting?.hidden ?? []), [columnsSetting])
   const columnWidths = columnsSetting?.widths ?? EMPTY_WIDTHS
+  const frozenColumns = columnsSetting?.frozen ?? 0
   const visibleTagType = useMemo(
     () =>
       collectionAvailable
@@ -229,6 +233,25 @@ export function useCollectionViewSettings(
     },
     [tagKey, updateSettingsWith],
   )
+  const setFrozenColumns = useCallback(
+    (count: number) => {
+      if (tagKey === null) {
+        return
+      }
+      const nextCount = Math.max(0, Math.floor(count))
+      updateSettingsWith((current) => {
+        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
+        const { frozen: _drop, ...rest } = entry
+        return {
+          collectionColumns: {
+            ...current.collectionColumns,
+            [tagKey]: nextCount === 0 ? rest : { ...rest, frozen: nextCount },
+          },
+        }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
   return {
     boardProperties,
     boardGroupProperty,
@@ -246,9 +269,11 @@ export function useCollectionViewSettings(
     setTableGroup,
     hiddenColumns,
     columnWidths,
+    frozenColumns,
     visibleTagType,
     setColumnWidth,
     toggleColumnHidden,
+    setFrozenColumns,
   }
 }
 

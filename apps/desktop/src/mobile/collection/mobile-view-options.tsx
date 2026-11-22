@@ -68,6 +68,9 @@ interface MobileViewOptionsProps {
   grouping: ViewGrouping | null
   hiddenFields: ReadonlySet<string>
   onToggleField: (key: string) => void
+  /** How many leading table columns stay frozen while panning (`0` = none). */
+  frozenColumns?: number
+  onFrozenColumnsChange?: ((count: number) => void) | undefined
 }
 
 type Page =
@@ -77,6 +80,7 @@ type Page =
   | { kind: 'sort' }
   | { kind: 'group' }
   | { kind: 'fields' }
+  | { kind: 'freeze' }
 
 const ROOT: Page = { kind: 'root' }
 
@@ -133,6 +137,8 @@ function pageTitle(page: Page, type: TagType): string {
       return 'Group'
     case 'fields':
       return 'Fields'
+    case 'freeze':
+      return 'Freeze columns'
   }
 }
 
@@ -182,7 +188,20 @@ function PageBody({
       return <GroupPage {...props} />
     case 'fields':
       return <FieldsPage {...props} />
+    case 'freeze':
+      return <FreezePage {...props} />
   }
+}
+
+function freezeSummary(visibleProperties: readonly TagProperty[], frozenColumns: number): string {
+  const clamped = Math.min(Math.max(0, frozenColumns), 1 + visibleProperties.length)
+  if (clamped === 0) {
+    return 'None'
+  }
+  if (clamped === 1) {
+    return 'Title'
+  }
+  return `Up to ${visibleProperties[clamped - 2]?.name ?? 'Title'}`
 }
 
 function RootPage({
@@ -195,7 +214,12 @@ function RootPage({
   sorts,
   grouping,
   hiddenFields,
+  frozenColumns = 0,
+  onFrozenColumnsChange,
 }: MobileViewOptionsProps & { go: (page: Page) => void }): ReactElement {
+  const visibleProperties = type.properties.filter((property) => !hiddenFields.has(property.key))
+  const showFields = layout !== 'board' && type.properties.length > 0
+  const showFreeze = layout === 'table' && onFrozenColumnsChange !== undefined
   return (
     <>
       <SettingsGroup
@@ -224,18 +248,61 @@ function RootPage({
           />
         ) : null}
       </SettingsGroup>
-      {layout !== 'board' && type.properties.length > 0 ? (
-        <SettingsGroup
-          footer={scope === 'note' ? null : 'Which fields show is kept on this iPhone.'}
-        >
-          <SettingsNavRow
-            label="Fields"
-            value={fieldsSummary(type, hiddenFields)}
-            onPress={() => go({ kind: 'fields' })}
-          />
+      {showFields || showFreeze ? (
+        <SettingsGroup footer={scope === 'note' ? null : 'Column layout is kept on this iPhone.'}>
+          {showFields ? (
+            <SettingsNavRow
+              label="Fields"
+              value={fieldsSummary(type, hiddenFields)}
+              onPress={() => go({ kind: 'fields' })}
+            />
+          ) : null}
+          {showFreeze ? (
+            <SettingsNavRow
+              label="Freeze columns"
+              value={freezeSummary(visibleProperties, frozenColumns)}
+              onPress={() => go({ kind: 'freeze' })}
+            />
+          ) : null}
         </SettingsGroup>
       ) : null}
     </>
+  )
+}
+
+function FreezePage({
+  type,
+  hiddenFields,
+  frozenColumns = 0,
+  onFrozenColumnsChange,
+}: MobileViewOptionsProps): ReactElement {
+  const visibleProperties = type.properties.filter((property) => !hiddenFields.has(property.key))
+  const effective = Math.min(Math.max(0, frozenColumns), 1 + visibleProperties.length)
+  const options = [
+    { count: 0, label: 'None' },
+    { count: 1, label: 'Title' },
+    ...visibleProperties.map((property, index) => ({
+      count: index + 2,
+      label: `Up to ${property.name}`,
+    })),
+  ]
+  return (
+    <SettingsGroup
+      header="Keep visible while scrolling sideways"
+      footer="Frozen columns stay anchored on the left edge."
+    >
+      {options.map((option) => (
+        <SettingsSelectRow
+          key={option.count}
+          label={option.label}
+          selected={effective === option.count}
+          onPress={() => {
+            hapticImpactLight()
+            onFrozenColumnsChange?.(option.count)
+          }}
+        />
+      ))}
+    </SettingsGroup>
   )
 }
 

@@ -217,4 +217,52 @@ describe('MobileCollectionTable', () => {
     expect(scroller.style.getPropertyValue('--table-scroll-x')).toBe('0px')
     expect(scroller.hasAttribute('data-scrolled-x')).toBe(false)
   })
+
+  it('pans all columns by default and freezes up to the requested column count', async () => {
+    const flat = await render(
+      <div style={{ width: 390, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable entries={ENTRIES} type={PROJECT} label="Project" onOpen={() => {}} />
+      </div>,
+    )
+    const flatTitleHeader = flat.getByRole('columnheader', { name: 'Title' }).element()
+    expect(flatTitleHeader.closest('.mobile-table-pan-track')).not.toBeNull()
+    expect(flat.container.querySelector('.mobile-table-frozen-edge')).toBeNull()
+    await flat.unmount()
+
+    const frozen = await render(
+      <div style={{ width: 390, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={ENTRIES}
+          type={PROJECT}
+          frozenColumns={2}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    const statusHeader = frozen.getByRole('columnheader', { name: 'Status' }).element()
+    const dueHeader = frozen.getByRole('columnheader', { name: 'Due' }).element()
+    expect(statusHeader.closest('.mobile-table-pan-track')).toBeNull()
+    expect(statusHeader.className).toContain('mobile-table-frozen-edge')
+    expect(dueHeader.closest('.mobile-table-pan-track')).not.toBeNull()
+    await frozen.unmount()
+
+    // Freezing more columns than fit on a 390px phone steps down so remaining columns stay reachable.
+    const NOTES: TagProperty = { name: 'Notes', key: 'notes', type: 'text' }
+    const overflow = await render(
+      <div style={{ width: 390, height: 600, display: 'flex', flexDirection: 'column' }}>
+        <MobileCollectionTable
+          entries={ENTRIES}
+          type={{ properties: [STATUS, DUE, NOTES] }}
+          frozenColumns={3}
+          label="Project"
+          onOpen={() => {}}
+        />
+      </div>,
+    )
+    await vi.waitFor(() => {
+      const overflowDue = overflow.getByRole('columnheader', { name: 'Due' }).element()
+      expect(overflowDue.closest('.mobile-table-pan-track')).not.toBeNull()
+    })
+  })
 })

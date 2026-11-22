@@ -51,17 +51,20 @@ function Harness({
   onSorts,
   onGroup,
   onToggleField,
+  onFreeze,
 }: {
   onFilters: (filters: CollectionFilter[]) => void
   onSorts: (sorts: readonly CollectionSort[]) => void
   onGroup: (key: string | null) => void
   onToggleField: (key: string) => void
+  onFreeze: (count: number) => void
 }) {
   const [filters, setFilters] = useState<CollectionFilter[]>([])
   const [match, setMatch] = useState<CollectionFilterMatch>('all')
   const [sorts, setSorts] = useState<readonly CollectionSort[]>([])
   const [group, setGroup] = useState<string | null>(null)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [frozen, setFrozen] = useState(0)
   return (
     <MobileViewOptions
       open
@@ -104,6 +107,11 @@ function Harness({
         })
         onToggleField(key)
       }}
+      frozenColumns={frozen}
+      onFrozenColumnsChange={(count) => {
+        setFrozen(count)
+        onFreeze(count)
+      }}
     />
   )
 }
@@ -114,6 +122,7 @@ async function mount() {
     onSorts: vi.fn(),
     onGroup: vi.fn(),
     onToggleField: vi.fn(),
+    onFreeze: vi.fn(),
   }
   const view = await render(<Harness {...spies} />)
   return { view, ...spies }
@@ -159,5 +168,14 @@ describe('MobileViewOptions', () => {
     await userEvent.click(view.getByRole('button', { name: /^Fields/ }))
     await userEvent.click(view.getByRole('switch', { name: 'Due' }))
     expect(onToggleField).toHaveBeenCalledWith('due')
+  })
+
+  it('picks how many leading columns stay frozen', async () => {
+    const { view, onFreeze } = await mount()
+    await userEvent.click(view.getByRole('button', { name: /^Freeze columns/ }))
+    await userEvent.click(view.getByRole('button', { name: 'Up to Status' }))
+    expect(onFreeze).toHaveBeenLastCalledWith(2)
+    await userEvent.click(view.getByRole('button', { name: 'None' }))
+    expect(onFreeze).toHaveBeenLastCalledWith(0)
   })
 })

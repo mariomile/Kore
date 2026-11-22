@@ -274,3 +274,77 @@
     display: none;
   }
 }
+
+/* A shared X post (share sheet): a list item whose first line is the byline,
+   `**Name** · [@handle](status URL) [[X posts]]`, with the post quoted under
+   it. Kept as a list item so a backlink to [[X posts]] lifts the whole post
+   (the backlink context of a list item is the item with its children), and
+   drawn as the same soft card as a pasted post's preview. Pure CSS on the
+   markdown's own DOM, so the editor and the read-only backlink snippets draw
+   it alike, with no plugin and no extra work while typing. */
+.kore-editor
+  .prosemirror-flat-list[data-list-kind='bullet']:has(
+    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+  ):has(> .list-content > blockquote) {
+  /* The card takes the text column, where a pasted link's card sits, and
+     the item's own bullet column stays empty. */
+  margin: 0.5em 0 0.5em 1lh;
+  padding: 0.85rem 1.05rem 0.9rem;
+  border-radius: var(--radius-xl, 12px);
+  background-color: var(--surface-hover);
+}
+.kore-editor
+  .prosemirror-flat-list[data-list-kind='bullet']:has(
+    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+  ):has(> .list-content > blockquote)
+  > .list-marker {
+  display: none;
+}
+.kore-editor
+  .prosemirror-flat-list[data-list-kind='bullet']:has(
+    > .list-content > p:first-child a:is([href*='//x.com/'], [href*='//twitter.com/'])[href*='/status/']
+  ):has(> .list-content > blockquote)
+  > .list-content {
+  margin-inline-start: 0;
+
+  & > p:first-child {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    line-height: 1.4;
+  }
+  & > p:first-child strong {
+    color: var(--text);
+    font-weight: 650;
+  }
+  & > p:first-child a.md-link {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  & > p:first-child .md-wikilink-view-preview {
+    float: right;
+    margin-left: 0.5rem;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    background-color: var(--surface-active);
+    color: var(--text-secondary);
+    font-size: 0.85em;
+  }
+  & > blockquote {
+    margin: 0.45em 0 0;
+    padding-left: 0;
+    border-left: 0;
+    color: var(--text);
+  }
+  & > blockquote > :last-child {
+    margin-bottom: 0;
+  }
+  /* A photo's preview is a block, so the photo's hidden source would sit on
+     an empty line of its own under it: no line box there, so the card ends
+     at the photo. */
+  & > blockquote > p:has(> .md-pack[data-key='image']) {
+    line-height: 0;
+  }
+  & > blockquote img {
+    border-radius: var(--radius-lg, 10px);
+  }
+}

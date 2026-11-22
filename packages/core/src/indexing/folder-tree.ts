@@ -243,3 +243,25 @@ function findNoteTitle(tree: FolderTreeFolder, path: string): string | null {
   const folder = findFolder(tree, slash === -1 ? '' : path.slice(0, slash))
   return folder?.notes.find((note) => note.path === path)?.title ?? null
 }
+
+/** One folder a note lives in, as the breadcrumb above its title shows it. */
+export interface FolderCrumb {
+  /** The folder's display name (its last segment). */
+  readonly name: string
+  /** Graph-relative folder path, what opening the crumb filters by. */
+  readonly path: string
+}
+
+/**
+ * The folders a note lives in, root first: `CRM/People/Ada.md` →
+ * `CRM`, `CRM/People`. Empty for a note at the vault root or directly in
+ * Kore's own `notes/` folder, where a crumb would only repeat the default
+ * every new note lands in.
+ */
+export function noteFolderCrumbs(notePath: string): FolderCrumb[] {
+  const segments = notePath.split('/').slice(0, -1)
+  if (segments.length === 0 || (segments.length === 1 && segments[0] === NOTES_DIR)) {
+    return []
+  }
+  return segments.map((name, index) => ({ name, path: segments.slice(0, index + 1).join('/') }))
+}

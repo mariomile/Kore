@@ -13,13 +13,6 @@ export {
   type BacklinkSourceCursor,
 } from './queries-backlinks'
 export {
-  PARENT_PROPERTY_KEY,
-  getNoteAncestors,
-  getNoteChildren,
-  getNoteParents,
-  type HierarchyNote,
-} from './queries-hierarchy'
-export {
   countOpenTasksForNotes,
   getCompletedTasks,
   getOpenTasks,

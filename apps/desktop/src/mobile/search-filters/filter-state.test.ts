@@ -3,6 +3,7 @@ import { emptySearchFilters } from '@kore/core'
 import {
   EMPTY_ALL_NOTES_FILTERS,
   buildAllNotesSearch,
+  folderSearchQuery,
   hasActiveFilters,
   pendingTagToken,
   searchPlanFor,
@@ -102,6 +103,18 @@ describe('buildAllNotesSearch', () => {
     const typedAfter = new Date(2026, 0, 5).getTime()
     expect(parsed.filters.updatedAfterMs).toBe(Math.max(typedAfter, 500))
     expect(parsed.filters.updatedBeforeMs).toBe(2000)
+  })
+})
+
+describe('folderSearchQuery', () => {
+  it('filters to the folder and its subfolders, not a sibling sharing the prefix', () => {
+    const parsed = buildAllNotesSearch(
+      folderSearchQuery('Active Projects/Kore'),
+      EMPTY_ALL_NOTES_FILTERS,
+      null,
+    )
+    expect(parsed.text).toBe('')
+    expect(parsed.filters.paths).toEqual(['Active Projects/Kore/'])
   })
 })
 

@@ -12,7 +12,6 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAppError, loadLinkPreview, readNote } from '@kore/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
-import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane, type NotePaneProps } from '@/components/note-pane'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
 import { linkCardElement } from '@/editor/link-card-dom'
@@ -264,7 +263,7 @@ function StaticDay({ path, body, gutterClassName, editorClassName }: StaticDayPr
   const { graph } = useGraph()
   const { resolveImageUrl } = useAssetPersistence(graph?.generation ?? null, path)
   const hostRef = useRef<HTMLDivElement>(null)
-  // A day scrolled past in <120ms skips note-row, backlink, children, and
+  // A day scrolled past in <120ms skips note-row, backlink, and
   // link-preview work entirely, avoiding a SQLite/disk/HTTP burst mid-scroll.
   const [dwelt, setDwelt] = useState(false)
   useEffect(() => {
@@ -357,7 +356,6 @@ function StaticDayExtras({
 
   return (
     <div className={gutterClassName}>
-      <NoteChildrenPanel key={path} path={path} />
       <BacklinksPanel path={path} />
     </div>
   )

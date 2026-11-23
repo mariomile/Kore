@@ -1,5 +1,12 @@
 # Kore working state
 
+## One page header and empty state across the app, 2026-11-23 (0.143.0)
+
+- [x] Insights, Activity, Memory, Canvases and Bases share one page header and
+  designed empty states; Tasks header with view pills; note types as colored
+  chips in the Notes table and cards; Mermaid previews that can't render fall
+  back to code. Mac (#644).
+
 ## Suggest a tag's properties with AI, 2026-11-23 (0.142.0)
 
 - [x] A tag with no properties offers Suggest with AI in its settings; it

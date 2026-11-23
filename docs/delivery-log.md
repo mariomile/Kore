@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- UI: one page header and empty state across the app, tag chips in the notes
+  table (#644).
 - Tags: Suggest with AI proposes a tag's properties from its settings (#637).
 - Folders: folder pages include subfolders by default, Folder settings gear,
   shared search pill and switch controls (#634).

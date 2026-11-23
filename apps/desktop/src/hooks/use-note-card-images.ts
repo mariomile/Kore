@@ -8,6 +8,15 @@ import { useGraph } from '@/providers/graph-provider'
 
 const NO_IMAGES: ReadonlyMap<string, string> = new Map()
 
+/**
+ * The body resolver of a card that leads with its picture: the band already
+ * shows the image, so the body loads none (hiding them with CSS alone would
+ * still fetch and decode every original behind the thumbnail).
+ */
+export function noImageUrl(): null {
+  return null
+}
+
 /** A vault image source as a URL a passive card may load: no network, no SVG. */
 export function usePassiveImageResolver(): (src: string) => string | null {
   const { graph } = useGraph()

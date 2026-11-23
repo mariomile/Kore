@@ -9,7 +9,7 @@ import {
 import { Notes, Pin } from '@/components/icons'
 import { TagChips } from '@/components/tags/tag-chips'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
+import { noImageUrl, useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatRecencyLabel } from '@/lib/dates'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
@@ -178,7 +178,7 @@ export function AllNotesGrid({
                       mtime={note.mtime}
                       snippet={note.snippet}
                       shownTags={shownTags}
-                      resolveImageUrl={resolvePreviewImageUrl}
+                      resolveImageUrl={picture !== undefined ? noImageUrl : resolvePreviewImageUrl}
                       // The picture band already shows the note's image.
                       className={picture !== undefined ? 'kore-card-preview-pictured' : ''}
                     />

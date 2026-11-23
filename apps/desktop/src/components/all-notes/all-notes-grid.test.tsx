@@ -5,6 +5,7 @@ import { AllNotesGrid } from './all-notes-grid'
 
 const pictures = new Map<string, string>()
 vi.mock('@/hooks/use-note-card-images', () => ({
+  noImageUrl: () => null,
   usePassiveImageResolver: () => () => null,
   useFirstImages: () => pictures,
 }))

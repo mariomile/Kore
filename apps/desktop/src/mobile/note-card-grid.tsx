@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
-import { useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
+import { noImageUrl, useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { CardPreviewSlot } from '@/mobile/card-preview-slot'
@@ -200,7 +200,7 @@ const NoteCard = memo(function NoteCard({
                   path={row.path}
                   mtime={row.mtime}
                   snippet={snippet}
-                  resolveImageUrl={resolveImageUrl}
+                  resolveImageUrl={imageUrl !== undefined ? noImageUrl : resolveImageUrl}
                   waitForScrollRest
                   nearMargin={PREPARE_MARGIN}
                   sourceBudget={SOURCE_BUDGET}

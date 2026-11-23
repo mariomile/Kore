@@ -303,10 +303,12 @@ export interface ParsedNote {
   /** Plain-text rendering of the body for FTS (Plan 08) + AI context (Plan 10). */
   text: string
   /**
-   * {@link text} minus everything that is not the note's own prose: headings,
-   * tables, property lines (`Type: #meeting`), embeds, footnotes, code and math
-   * blocks, HTML, Obsidian `%%` comments, Templater tags, inline Dataview
-   * queries, callout `[!type]` markers. Empty when the note has no prose.
+   * What a card says about the note in plain text: its prose, a table as one
+   * line (`Industry: SaaS · Stage: Seed`), fields that hold a value. Never
+   * the H1, code and math blocks, embeds, footnotes, HTML, Obsidian `%%`
+   * comments, Templater tags, inline Dataview queries or callout `[!type]`
+   * markers. Section headings and tag lines (`Type: #meeting`) appear only
+   * when the note has no prose, so it is empty only when the note says nothing.
    * Feeds the list-row preview only.
    */
   previewText: string

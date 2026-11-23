@@ -164,8 +164,12 @@ import {
  * (`Type: #meeting`), embeds and footnotes no longer reach a card, and the
  * search text drops `---` rules and table pipes, so a search snippet no longer
  * shows them either. Existing rows keep the old text until reprojected.
+ * 40 - `notes.preview` is never empty for a note that says something: a
+ * table reads as one line (`Industry: SaaS · Stage: Seed`), a field holding a
+ * word or a link stays, and section headings and tag lines stand in when the
+ * note has no prose.
  */
-export const PROJECTION_VERSION = 39
+export const PROJECTION_VERSION = 40
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

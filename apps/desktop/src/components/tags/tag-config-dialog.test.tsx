@@ -160,7 +160,7 @@ describe('TagConfigDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('shows the type folder and saves a change to it', async () => {
+  it('shows the type folder and keeps a per-note layout written in the tag file', async () => {
     definition.current = {
       path: 'tags/project.md',
       exists: true,
@@ -168,7 +168,7 @@ describe('TagConfigDialog', () => {
       properties: [],
       template: null,
       folder: 'Active/Projects/{title}',
-      icon: null,
+      icon: '📁',
       parents: [],
     }
     const view = await render(<Dialog tag="project" onClose={vi.fn()} />)
@@ -177,15 +177,18 @@ describe('TagConfigDialog', () => {
       .element(view.getByRole('combobox', { name: 'Folder for new notes' }))
       .toHaveTextContent('Active/Projects')
     await expect
-      .element(view.getByText('Active/Projects/<Name>/<Name>.md', { exact: true }))
+      .element(view.getByText('New notes go here, each in its own folder'))
       .toBeInTheDocument()
-    // One folder for all of them instead of one per note.
-    await view.getByRole('checkbox', { name: 'A folder for each note' }).click()
+    // The settings offer one folder per tag; the per-note layout is not a choice here.
+    expect(view.getByRole('switch').query()).toBeNull()
+
+    await view.getByRole('button', { name: 'Type icon' }).click()
+    await view.getByRole('button', { name: 'Remove icon' }).click()
     await view.getByRole('button', { name: 'Save' }).click()
 
     expect(saveTagType).toHaveBeenCalledWith('project', [], 7, {
       template: null,
-      folder: 'Active/Projects',
+      folder: 'Active/Projects/{title}',
       icon: null,
       parents: [],
     })
@@ -382,9 +385,9 @@ describe('TagConfigDialog', () => {
     await expect.element(nav.getByRole('button', { name: 'Status', exact: true })).toBeVisible()
     await expect.element(nav.getByRole('button', { name: 'Priority', exact: true })).toBeVisible()
     // The preset carries a status and a date, so Board and Calendar light
-    // up in the strip — named after the property powering each.
-    await expect.element(view.getByText('Board · Status')).toBeInTheDocument()
-    await expect.element(view.getByText('Calendar · Due')).toBeInTheDocument()
+    // up in the views list — named after the property powering each.
+    await expect.element(view.getByText('Grouped by Status')).toBeInTheDocument()
+    await expect.element(view.getByText('Placed by Due')).toBeInTheDocument()
     // With rows on screen the presets step aside.
     expect(view.getByRole('button', { name: /^Project Status/ }).query()).toBeNull()
 
@@ -461,7 +464,7 @@ describe('TagConfigDialog', () => {
     await expect.element(view.getByLabelText('route')).toHaveTextContent('chat')
   })
 
-  it('tells what the dark views still need while the schema cannot power them', async () => {
+  it('turns a missing view on with one button and saves the property it added', async () => {
     definition.current = {
       path: 'tags/book.md',
       exists: true,
@@ -474,11 +477,37 @@ describe('TagConfigDialog', () => {
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
-    // A lone text property powers the table and nothing else — each dark
-    // pill names the property type that would light it.
-    await expect.element(view.getByText('Table', { exact: true })).toBeInTheDocument()
-    await expect.element(view.getByText('Board — add a Select or Status')).toBeInTheDocument()
-    await expect.element(view.getByText('Calendar — add a Date')).toBeInTheDocument()
+    // A lone text property powers the table and nothing else: each view
+    // that is off names the property type it needs and offers to add it.
+    await expect.element(view.getByText('A column for each property')).toBeInTheDocument()
+    await expect.element(view.getByText('Needs a Select or Status')).toBeInTheDocument()
+    await expect.element(view.getByText('Needs a Date')).toBeInTheDocument()
+
+    await view.getByRole('button', { name: 'Add status' }).click()
+    // The new property opens for editing; back on the tag pane Board is on.
+    await expect.element(view.getByRole('textbox', { name: 'Property name' })).toHaveValue('Status')
+    await view
+      .getByRole('navigation', { name: 'Tag settings' })
+      .getByRole('button', { name: 'Tag', exact: true })
+      .click()
+    await expect.element(view.getByText('Grouped by Status')).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Add status' }).query()).toBeNull()
+
+    await view.getByRole('button', { name: 'Save' }).click()
+    expect(saveTagType).toHaveBeenCalledWith(
+      'book',
+      [
+        { name: 'Author', key: 'author', type: 'text' },
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['To do', 'In progress', 'Done'],
+        },
+      ],
+      7,
+      { template: null, folder: null, icon: null, parents: [] },
+    )
   })
 
   it('adds, deletes and colors select options and saves the colors by name', async () => {

@@ -97,6 +97,8 @@ export interface TagConfigDraft {
   moveDraftTo: (rowId: number, overRowId: number) => void
   /** Add an empty row and return its id. */
   addDraft: () => number
+  /** Append a ready-made property (a view's missing one); returns its row id. */
+  addProperty: (property: TagProperty) => number
   /** Delete a property from the draft; {@link removedDraft} keeps the way back. */
   removeDraft: (rowId: number) => void
   /** The property deleted last, until it is restored: the surfaces offer Undo for it. */
@@ -268,6 +270,13 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     return rowId
   }
 
+  const addProperty = (property: TagProperty): number => {
+    const rowId = nextRowId
+    setDrafts((current) => [...current, { ...draftsForNewSchema([property])[0]!, rowId }])
+    setNextRowId(rowId + 1)
+    return rowId
+  }
+
   const removeDraft = (rowId: number): void => {
     const index = drafts.findIndex((row) => row.rowId === rowId)
     const draft = drafts[index]
@@ -423,6 +432,7 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     moveDraft,
     moveDraftTo,
     addDraft,
+    addProperty,
     removeDraft,
     removedDraft: removed?.draft ?? null,
     restoreRemovedDraft,

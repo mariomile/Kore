@@ -5,13 +5,6 @@ import { foldTag, tagDisplayName } from '@kore/core'
 import { ChevronLeft, ChevronRight, Info, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
 import { useRouter } from '@/routing/router'
 import { TagIconPicker } from './tag-icon-picker'
@@ -24,8 +17,9 @@ import { TagSheetSection as Section } from './tag-sheet-section'
 import { TagSuggestRow } from './tag-suggest-row'
 import { useSuggestTagSchema } from './use-suggest-tag-schema'
 import { TagFieldPage } from './tag-field-page'
-import { TagViewsStrip } from './tag-views-strip'
 import { useDiscardGuard, type DiscardGuard } from './use-discard-guard'
+import { TagTemplateField } from './tag-template-field'
+import { TagViewsList } from './tag-views-list'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -362,48 +356,35 @@ function TypePage({
       ) : null}
 
       {loading ? null : (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 [--field-label-w:6rem]">
-          <TagViewsStrip properties={config.liveSchema} />
-          <label className="flex items-center gap-2">
-            <span className="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary">
-              Template
-            </span>
-            <Select
-              value={config.template ?? 'none'}
-              items={{
-                none: 'None',
-                ...Object.fromEntries(config.templates.map((entry) => [entry.path, entry.title])),
-              }}
-              onValueChange={(value) => config.setTemplate(value === 'none' ? null : value)}
-            >
-              <SelectTrigger aria-label="New-row template" className="min-w-0 flex-1">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {config.templates.map((entry) => (
-                  <SelectItem key={entry.path} value={entry.path}>
-                    {entry.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-          <TagFolderField
-            folder={config.folder}
-            folders={config.folders}
-            onChange={config.setFolder}
-            labelClassName="flex h-8 w-24 shrink-0 items-center text-xs font-medium text-text-secondary"
-            triggerClassName="min-w-0 flex-1"
-          />
+        <>
+          <Section title="New notes">
+            <TagTemplateField
+              template={config.template}
+              templates={config.templates}
+              onChange={config.setTemplate}
+              touch
+            />
+            <TagFolderField
+              folder={config.folder}
+              folders={config.folders}
+              onChange={config.setFolder}
+              touch
+            />
+          </Section>
+          <Section title="Views">
+            <TagViewsList
+              properties={config.liveSchema}
+              onAdd={(starter) => onOpenField(config.addProperty(starter))}
+              touch
+            />
+          </Section>
           <TagAdvancedSection
             tag={tagKey}
             parents={config.parents}
             candidates={config.parentCandidates}
             onChange={config.setParents}
-            className="border-t border-border/60 pt-2"
           />
-        </div>
+        </>
       )}
 
       <Section title="Notes">

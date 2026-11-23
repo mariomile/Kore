@@ -90,4 +90,33 @@ describe('migrateOptionRenames', () => {
       ['p/c.md', { properties: { status: ['To do', 'Done'] } }, 7],
     ])
   })
+
+  it('merges a deleted option into another and takes a removed one off the notes', async () => {
+    listNotesWithProperty.mockImplementation(async () => [
+      row('p/a.md', 'in pausa'),
+      row('p/b.md', 'Old'),
+      {
+        notePath: 'p/c.md',
+        value: { value: '["Old","paused"]', valueType: 'list', valueNumber: null },
+      },
+    ])
+    await migrateOptionRenames(
+      'project',
+      [
+        {
+          key: 'status',
+          renames: [
+            { from: 'in pausa', to: 'paused' },
+            { from: 'Old', to: null },
+          ],
+        },
+      ],
+      7,
+    )
+    expect(commitNoteFrontmatter.mock.calls).toEqual([
+      ['p/a.md', { properties: { status: 'paused' } }, 7],
+      ['p/b.md', { properties: { status: undefined } }, 7],
+      ['p/c.md', { properties: { status: ['paused'] } }, 7],
+    ])
+  })
 })

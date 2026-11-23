@@ -4,6 +4,7 @@ import {
   propertyRowValue,
   renameOptionValue,
   type CollectionValue,
+  type OptionChange,
 } from '@kore/core'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
@@ -57,26 +58,34 @@ export async function migratePropertyRenames(
     for (const note of rename.notes) {
       await commitNoteFrontmatter(
         note.notePath,
-        { properties: { [rename.from]: undefined, [rename.to]: propertyRowValue(note.value) } },
+        {
+          properties: {
+            [rename.from]: undefined,
+            [rename.to]: propertyRowValue(note.value),
+          },
+        },
         generation,
       )
     }
   }
 }
 
-/** One property's option renames, to land on the type's member notes. */
+/** One property's option changes, to land on the type's member notes. */
 export interface OptionRenames {
   /** The property's frontmatter key as saved. */
   key: string
-  renames: readonly { from: string; to: string }[]
+  /** Renames, merges (a rename onto another option) and removals (`to: null`). */
+  renames: readonly OptionChange[]
 }
 
 /**
- * Rewrite the option values a type settings save renamed, on the type's
- * own member notes only (another type may use the same key and the same
- * words with its own meaning). Unlike a key rename there is nothing to
- * decide: the user renamed the option, and a note left on the old text
- * would just fall out of the list. Returns how many notes changed.
+ * Rewrite the option values a type settings save renamed, merged or
+ * deleted, on the type's own member notes only (another type may use the
+ * same key and the same words with its own meaning). Unlike a key rename
+ * there is nothing left to decide at save time: the user renamed the option
+ * or chose where a deleted one's notes go, and a note left on the old text
+ * would just fall out of the list. A note left without a value loses the
+ * property. Returns how many notes changed.
  */
 export async function migrateOptionRenames(
   tag: string,
@@ -94,7 +103,11 @@ export async function migrateOptionRenames(
       if (next === undefined) {
         continue
       }
-      await commitNoteFrontmatter(note.notePath, { properties: { [key]: next } }, generation)
+      await commitNoteFrontmatter(
+        note.notePath,
+        { properties: { [key]: next === null ? undefined : next } },
+        generation,
+      )
       changed += 1
     }
   }

@@ -1,12 +1,13 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
 import {
-  foldTag,
-  propertyKeyForName,
-  tagDisplayName,
-  tagPropertyTypeSchema,
-  type TagPropertyType,
-} from '@kore/core'
-import { Close, Info, Pencil, Plus, Settings, Trash } from '@/components/icons'
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type RefObject,
+} from 'react'
+import { foldTag, tagDisplayName } from '@kore/core'
+import { Close, Info, Pencil, Plus, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,7 +16,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -25,8 +25,7 @@ import {
 } from '@/components/ui/select'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
-import { PROPERTY_TYPE_ICONS } from './property-type-icons'
-import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { FIELD_LABEL_CLASS } from './tag-config-drafts'
 import { SaveBar } from './tag-config-save-bar'
 import { TagConfigSheet } from './tag-config-sheet'
 import { TagRenameDialog } from './tag-rename-dialog'
@@ -34,9 +33,11 @@ import { TagPresetIcon } from './tag-preset-icon'
 import { TagFolderField } from './tag-folder-field'
 import { TagAdvancedSection } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
-import { TagPropertySettings } from './tag-property-settings'
+import { PropertyPane } from './tag-property-pane'
+import { RemovedPropertyNotice } from './removed-property-notice'
 import { TagViewsStrip } from './tag-views-strip'
 import { NavButton, PropertyNavList } from './tag-config-nav'
+import { useDiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -118,11 +119,14 @@ function TagConfigDesktopDialog({
   onRename,
   onRebound,
 }: TagConfigSurfaceProps): ReactElement {
+  // Escape, the backdrop and the close button all ask the settings first:
+  // with unsaved edits they confirm instead of closing.
+  const requestCloseRef = useRef<() => void>(onClose)
   return (
     <Dialog
       open
       onOpenChange={(isOpen) => {
-        if (!isOpen) onClose()
+        if (!isOpen) requestCloseRef.current()
       }}
     >
       <DialogContent
@@ -135,6 +139,7 @@ function TagConfigDesktopDialog({
           onClose={onClose}
           onRebound={onRebound}
           onRename={onRename}
+          requestCloseRef={requestCloseRef}
         />
       </DialogContent>
     </Dialog>
@@ -149,15 +154,22 @@ function TypeSettings({
   onClose,
   onRebound,
   onRename,
+  requestCloseRef,
 }: {
   tag: string
   onClose: () => void
   onRebound: (tag: string) => void
   onRename: () => void
+  /** Receives the guarded close, for the dialog's own dismiss gestures. */
+  requestCloseRef: RefObject<() => void>
 }): ReactElement {
   const config = useTagConfigDraft(tag, onClose)
   const binding = useTypeTagBinding(tag)
   const key = foldTag(tag)
+  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
+  useEffect(() => {
+    requestCloseRef.current = requestClose
+  })
   const [selection, setSelection] = useState<Selection>({ kind: 'type' })
   const selected =
     selection.kind === 'property'
@@ -237,6 +249,16 @@ function TypeSettings({
             selectedRowId={selected?.rowId ?? null}
             onSelect={(rowId) => setSelection({ kind: 'property', rowId })}
           />
+          {config.removedDraft === null ? null : (
+            <RemovedPropertyNotice
+              name={config.removedDraft.name.trim()}
+              className="h-8 pl-2 pr-1 text-xs"
+              onUndo={() => {
+                const rowId = config.restoreRemovedDraft()
+                if (rowId !== null) setSelection({ kind: 'property', rowId })
+              }}
+            />
+          )}
           <NavButton
             muted
             disabled={config.loading}
@@ -275,7 +297,13 @@ function TypeSettings({
         </section>
       </div>
 
-      <SaveBar config={config} onClose={onClose} />
+      <SaveBar
+        config={config}
+        onClose={requestClose}
+        discarding={discarding}
+        onKeepEditing={keepEditing}
+        onDiscard={onClose}
+      />
     </>
   )
 }
@@ -372,86 +400,6 @@ function TypePane({
         Stored in <code className="font-mono">tags/{tagKey}.md</code>, a note that syncs with the
         vault, so agents read the same schema.
       </p>
-    </div>
-  )
-}
-
-function PropertyPane({
-  draft,
-  config,
-  onRemove,
-}: {
-  draft: PropertyDraft
-  config: TagConfigDraft
-  onRemove: () => void
-}): ReactElement {
-  const nameInvalid = config.invalidNameRowIds.has(draft.rowId)
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 pt-1">
-        <Input
-          value={draft.name}
-          aria-label="Property name"
-          aria-invalid={nameInvalid || undefined}
-          placeholder="Property name"
-          autoFocus={config.focusRowId === draft.rowId}
-          className="h-9 flex-1 text-base font-medium"
-          onChange={(event) => {
-            const name = event.target.value
-            config.updateDraft(draft.rowId, {
-              name,
-              // Follow the name until the key was edited by hand.
-              ...(draft.key === propertyKeyForName(draft.name)
-                ? { key: propertyKeyForName(name) }
-                : {}),
-            })
-          }}
-        />
-        <Select
-          value={draft.type}
-          items={PROPERTY_TYPE_LABELS}
-          onValueChange={(value) => {
-            const parsed = tagPropertyTypeSchema.safeParse(value)
-            if (parsed.success) {
-              config.updateDraft(draft.rowId, { type: parsed.data })
-            }
-          }}
-        >
-          <SelectTrigger className="h-9 w-44 shrink-0" aria-label="Property type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => {
-              const Glyph = PROPERTY_TYPE_ICONS[value as TagPropertyType]
-              return (
-                <SelectItem key={value} value={value}>
-                  <Glyph aria-hidden className="size-3.5 text-text-muted" />
-                  {label}
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-3 pt-1">
-        <TagPropertySettings
-          draft={draft}
-          keyInvalid={config.invalidKeyRowIds.has(draft.rowId)}
-          updateDraft={config.updateDraft}
-        />
-      </div>
-      <div className="pt-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-destructive"
-          onClick={onRemove}
-        >
-          <Trash aria-hidden className="size-3.5" />
-          Delete property
-        </Button>
-      </div>
     </div>
   )
 }

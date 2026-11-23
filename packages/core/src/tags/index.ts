@@ -43,7 +43,13 @@ export {
   type ReverseConfig,
   type FormulaConfig,
 } from './tag-type'
-export { optionRenameMap, renameOptionValue, type OptionRenameMap } from './option-renames'
+export {
+  optionRenameMap,
+  optionUseCounts,
+  renameOptionValue,
+  type OptionChange,
+  type OptionRenameMap,
+} from './option-renames'
 export { suggestTypeTag, tagUseCount, type TagUse, type TypeTagSuggestion } from './tag-binding'
 export {
   normalizeTagInput,

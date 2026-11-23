@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
-import { optionsPatch, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
-import { OptionsListEditor } from './options-list-editor'
+import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import { PropertyOptionsField } from './property-options-field'
+import { DELETE_PROPERTY_HINT } from './removed-property-notice'
 import { TagPropertySettings } from './tag-property-settings'
 import type { TagConfigDraft } from './use-tag-config-draft'
 
@@ -72,13 +73,16 @@ export function TagFieldPage({
           <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-text-muted">
             Options
           </h3>
-          <OptionsListEditor
+          <PropertyOptionsField
             touch
-            options={draft.options}
-            onChange={(options) => config.updateDraft(draft.rowId, optionsPatch(draft, options))}
+            tag={config.tag}
+            draft={draft}
+            updateDraft={config.updateDraft}
           />
-          {draft.options.length > 1 ? (
-            <p className="px-1 text-xs text-text-muted">Drag to reorder. Tap the dot for color.</p>
+          {draft.options.length > 0 ? (
+            <p className="px-1 text-xs text-text-muted">
+              Tap a name to rename it, the dot for its color. Drag to reorder.
+            </p>
           ) : null}
         </section>
       ) : null}
@@ -122,6 +126,7 @@ export function TagFieldPage({
 
       <section className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 [--field-label-w:6.5rem]">
         <TagPropertySettings
+          tag={config.tag}
           draft={draft}
           keyInvalid={config.invalidKeyRowIds.has(draft.rowId)}
           updateDraft={config.updateDraft}
@@ -138,6 +143,9 @@ export function TagFieldPage({
         <Trash aria-hidden className="size-4" />
         Delete field
       </Button>
+      {draft.originalKey === null ? null : (
+        <p className="-mt-4 px-1 text-center text-xs text-text-muted">{DELETE_PROPERTY_HINT}</p>
+      )}
     </>
   )
 }

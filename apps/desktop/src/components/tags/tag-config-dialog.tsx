@@ -39,7 +39,7 @@ import { PropertyPane } from './tag-property-pane'
 import { RemovedPropertyNotice } from './removed-property-notice'
 import { TagViewsStrip } from './tag-views-strip'
 import { NavButton, PropertyNavList } from './tag-config-nav'
-import { useDiscardGuard } from './use-discard-guard'
+import { useDiscardGuard, type DiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -168,7 +168,10 @@ function TypeSettings({
   const config = useTagConfigDraft(tag, onClose)
   const binding = useTypeTagBinding(tag)
   const key = foldTag(tag)
-  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
+  const { discarding, requestClose, closeThen, keepEditing, discard } = useDiscardGuard(
+    config.dirty,
+    onClose,
+  )
   useEffect(() => {
     requestCloseRef.current = requestClose
   })
@@ -284,7 +287,7 @@ function TypeSettings({
               tagKey={key}
               config={config}
               onPicked={() => setSelection({ kind: 'type' })}
-              onClose={requestClose}
+              closeThen={closeThen}
             />
           ) : (
             <PropertyPane
@@ -305,7 +308,7 @@ function TypeSettings({
         onClose={requestClose}
         discarding={discarding}
         onKeepEditing={keepEditing}
-        onDiscard={onClose}
+        onDiscard={discard}
       />
     </>
   )
@@ -329,14 +332,14 @@ function TypePane({
   tagKey,
   config,
   onPicked,
-  onClose,
+  closeThen,
 }: {
   tagKey: string
   config: TagConfigDraft
   onPicked: () => void
-  onClose: () => void
+  closeThen: DiscardGuard['closeThen']
 }): ReactElement {
-  const suggestWithAi = useSuggestTagSchema(tagKey, config.dirty, onClose)
+  const suggestWithAi = useSuggestTagSchema(tagKey, closeThen)
   if (config.loading) {
     return <div aria-busy className="h-40" />
   }

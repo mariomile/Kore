@@ -25,7 +25,7 @@ import { TagSuggestRow } from './tag-suggest-row'
 import { useSuggestTagSchema } from './use-suggest-tag-schema'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
-import { useDiscardGuard } from './use-discard-guard'
+import { useDiscardGuard, type DiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -66,7 +66,10 @@ export function TagConfigSheet({
   const editing = config.drafts.find((draft) => draft.rowId === editingRowId) ?? null
   const key = foldTag(tag)
   // A close asked for with unsaved edits: the header confirms before losing them.
-  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
+  const { discarding, requestClose, closeThen, keepEditing, discard } = useDiscardGuard(
+    config.dirty,
+    onClose,
+  )
 
   const showNotes = (): void => {
     afterSaveRef.current = () => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
@@ -98,7 +101,7 @@ export function TagConfigSheet({
               type="button"
               variant="destructive"
               className="h-10 px-4 text-base"
-              onClick={onClose}
+              onClick={discard}
             >
               Discard
             </Button>
@@ -163,7 +166,7 @@ export function TagConfigSheet({
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
-              onClose={requestClose}
+              closeThen={closeThen}
             />
           ) : (
             <TagFieldPage
@@ -189,7 +192,7 @@ function TypePage({
   config,
   onOpenField,
   onShowNotes,
-  onClose,
+  closeThen,
 }: {
   tagKey: string
   tag: string
@@ -198,9 +201,9 @@ function TypePage({
   config: TagConfigDraft
   onOpenField: (rowId: number) => void
   onShowNotes: () => void
-  onClose: () => void
+  closeThen: DiscardGuard['closeThen']
 }): ReactElement {
-  const suggestWithAi = useSuggestTagSchema(tagKey, config.dirty, onClose)
+  const suggestWithAi = useSuggestTagSchema(tagKey, closeThen)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)

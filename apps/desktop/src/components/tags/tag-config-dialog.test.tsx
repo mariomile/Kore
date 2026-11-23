@@ -434,7 +434,7 @@ describe('TagConfigDialog', () => {
     expect(saveTagType).not.toHaveBeenCalled()
   })
 
-  it('Suggest with AI asks about unsaved edits before leaving for the chat', async () => {
+  it('Suggest with AI asks about unsaved edits, then leaves for the chat', async () => {
     definition.current = { ...definition.current, exists: true, icon: '📚' }
     const onClose = vi.fn()
     const setDraft = vi.fn()
@@ -453,6 +453,12 @@ describe('TagConfigDialog', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(setDraft).not.toHaveBeenCalled()
     await expect.element(view.getByLabelText('route')).not.toHaveTextContent('chat')
+
+    // Letting the edits go finishes what was asked: the chat opens with the draft.
+    await view.getByRole('button', { name: 'Discard' }).click()
+    expect(onClose).toHaveBeenCalled()
+    expect(setDraft).toHaveBeenCalledWith(expect.stringContaining('#book '))
+    await expect.element(view.getByLabelText('route')).toHaveTextContent('chat')
   })
 
   it('tells what the dark views still need while the schema cannot power them', async () => {

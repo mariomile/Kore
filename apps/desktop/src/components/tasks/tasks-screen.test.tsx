@@ -348,7 +348,7 @@ describe('TasksScreen', () => {
   it('shows an empty state when there are no open tasks', async () => {
     getOpenTasks.mockResolvedValue([])
     const view = await renderScreen()
-    await view.findByText('No tasks to show.')
+    await view.findByText('No tasks to show')
     await view.unmount()
   })
 
@@ -365,14 +365,14 @@ describe('TasksScreen', () => {
 
     // Open resolved to []; completed still loading → no false "empty" yet.
     await waitFor(() => expect(getOpenTasks).toHaveBeenCalled())
-    expect(view.queryByText('No tasks to show.')).toBeNull()
+    expect(view.queryByText('No tasks to show')).toBeNull()
 
     // Completed resolves with a task → it appears (was never reported empty).
     resolveCompleted([
       task({ notePath: 'notes/p.md', text: 'archived task', noteTitle: 'P', checked: true }),
     ])
     await view.findByText('archived task')
-    expect(view.queryByText('No tasks to show.')).toBeNull()
+    expect(view.queryByText('No tasks to show')).toBeNull()
     await view.unmount()
   })
 

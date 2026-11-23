@@ -1,5 +1,6 @@
 import { memo, type MouseEvent, type ReactElement } from 'react'
 import { displayNoteTitle, type NoteListEntry } from '@kore/core'
+import { TagChips } from '@/components/tags/tag-chips'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -11,7 +12,7 @@ import { useSettings } from '@/providers/settings-provider'
  * The selection indicator is positioned beside the row, outside the column flow.
  */
 export const ALL_NOTES_GRID =
-  'grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,8rem)_6rem] items-center gap-4 pl-12 pr-7'
+  'grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,11rem)_6rem] items-center gap-4 pl-12 pr-7'
 
 interface AllNotesRowProps {
   note: NoteListEntry
@@ -107,9 +108,7 @@ export const AllNotesRow = memo(function AllNotesRow({
       >
         {note.snippet}
       </span>
-      <span className="truncate text-right text-[13px] text-text-secondary">
-        {note.tags.map((tag) => `#${tag}`).join(' ')}
-      </span>
+      <TagChips tags={note.tags} className="justify-end" />
       <span className="whitespace-nowrap text-right text-[13px] tabular-nums text-text-secondary">
         {note.mtime > 0 ? formatRecencyLabel(note.mtime, settings) : '—'}
       </span>

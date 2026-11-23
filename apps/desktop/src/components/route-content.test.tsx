@@ -354,7 +354,7 @@ describe('RouteContent', () => {
     // once the (empty) index query settles.
     await expect.element(page.getByRole('button', { name: '#book' })).toBeVisible()
     await expect.element(page.getByText('Subject')).toBeVisible()
-    await expect.element(page.getByText('No notes yet.')).toBeVisible()
+    await expect.element(page.getByText('No notes yet')).toBeVisible()
     await view.unmount()
   })
 

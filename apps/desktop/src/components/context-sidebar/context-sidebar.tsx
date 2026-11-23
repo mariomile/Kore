@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactElement, type ReactNode } from 'react'
-import { Close, Plus } from '@/components/icons'
+import { Close, Note, Plus } from '@/components/icons'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ChatContextOverview } from '@/components/chat/chat-context-overview'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
@@ -84,9 +85,16 @@ const PANEL_BODIES: Record<ContextPanel, ContextPanelBody> = {
         ) : peekPath !== null ? (
           <NotePeek path={peekPath} />
         ) : routeKind === undefined || routeKind === 'allNotes' ? (
-          // A list that peeks: the hint names the gesture that fills it.
-          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
-            Select a note to preview it here.
+          // A list that peeks: the hint names the gesture that fills it, under
+          // the same shortcuts every other page's Details offers.
+          <div className="flex h-full flex-col">
+            <DetailsEmpty routeKind={routeKind ?? 'allNotes'} openPanel={openPanel} />
+            <EmptyState
+              icon={Note}
+              title="Preview"
+              description="Select a note to preview it here."
+              className="my-auto"
+            />
           </div>
         ) : (
           <DetailsEmpty routeKind={routeKind} openPanel={openPanel} />

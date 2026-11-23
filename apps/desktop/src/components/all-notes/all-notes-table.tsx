@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, type MouseEvent, type ReactElement } fr
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { DENSITY_ROW_HEIGHT, type NoteListEntry } from '@kore/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
+import { Notes } from '@/components/icons'
+import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -81,9 +83,11 @@ export function AllNotesTable({
         <span className="text-right">Updated</span>
       </div>
       {notes.length === 0 ? (
-        <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
-          {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
-        </p>
+        <EmptyState
+          icon={Notes}
+          title={tag === null ? 'No notes yet' : `No #${tag} notes yet`}
+          description="Notes that belong here show up as soon as they exist."
+        />
       ) : (
         <Virtualizer
           ref={virtualizerRef}

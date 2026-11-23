@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react'
 import { canvasDisplayName } from '@kore/core'
+import { LayoutTemplate } from '@/components/icons'
 import { PageLoading } from '@/components/page-loading'
+import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/ui/page-header'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
 import { useCanvasDocument, useCanvasFiles } from './use-canvas'
@@ -23,12 +26,7 @@ function CanvasFileScreen({ path }: { path: string }): ReactElement {
   const state = useCanvasDocument(path)
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="border-b border-border px-6 pb-3 pt-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-text">
-          {canvasDisplayName(path)}
-        </h1>
-        <p className="mt-1 truncate text-xs text-text-muted">{path}</p>
-      </header>
+      <PageHeader title={canvasDisplayName(path)} description={path} />
       {state.status === 'loading' ? (
         <PageLoading label="Loading canvas" />
       ) : state.status === 'error' ? (
@@ -36,7 +34,7 @@ function CanvasFileScreen({ path }: { path: string }): ReactElement {
           Couldn’t open this canvas: {state.message}
         </p>
       ) : state.canvas.nodes.length === 0 ? (
-        <p className="px-6 py-6 text-sm text-text-muted">This canvas is empty.</p>
+        <EmptyState icon={LayoutTemplate} title="This canvas is empty" />
       ) : (
         <CanvasBoard key={path} canvas={state.canvas} label={canvasDisplayName(path)} />
       )}
@@ -49,23 +47,26 @@ function CanvasIndex(): ReactElement {
   const { navigate } = useRouter()
   const { paths, failed } = useCanvasFiles()
   return (
-    <div className="mx-auto w-full max-w-2xl overflow-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">Canvases</h1>
-      <p className="mt-1 text-sm text-text-muted">
-        Obsidian canvases in this vault, shown read-only.
-      </p>
+    <div className="flex h-full min-h-0 flex-col overflow-auto">
+      <PageHeader
+        title="Canvases"
+        description="Obsidian canvases in this vault, shown read-only."
+      />
       {failed ? (
-        <p role="alert" className="mt-6 text-sm text-text-muted">
+        <p role="alert" className="pr-7 pl-12 text-sm text-text-muted">
           Couldn’t list the canvases.
         </p>
       ) : paths === undefined ? (
         <PageLoading label="Loading canvases" />
       ) : paths.length === 0 ? (
-        <p className="mt-6 text-sm text-text-muted">
-          No .canvas files yet. Canvases made in Obsidian show up here.
-        </p>
+        <EmptyState
+          icon={LayoutTemplate}
+          title="No canvases yet"
+          description="A canvas you draw in Obsidian shows up here the moment its file is in the vault."
+          className="my-auto"
+        />
       ) : (
-        <ul className="mt-6 flex flex-col">
+        <ul className="flex max-w-3xl flex-col pr-7 pb-10 pl-10">
           {paths.map((path) => (
             <li key={path}>
               <button

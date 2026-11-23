@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { TaskTagCount } from '@kore/core'
 import { Filter } from '@/components/icons'
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -60,13 +59,14 @@ export function TaskFiltersMenu({
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="ghost"
-            className="window-drag-control pr-2 text-xs font-normal text-text-muted"
+          <button
+            type="button"
+            aria-label="Task filters"
+            title="Task filters"
+            className="app-icon-button window-drag-control text-text-muted hover:text-text"
           >
             <Filter aria-hidden className="size-3.5" />
-            Task filters
-          </Button>
+          </button>
         }
       />
       <DropdownMenuContent align="end" className="w-56">

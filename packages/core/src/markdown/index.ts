@@ -28,6 +28,7 @@ export {
   type ParsedFrontmatter,
 } from './frontmatter'
 export { parseBody } from './grammar'
+export { withUndrawnDiagramsAsCode } from './preview-diagrams'
 export {
   CALLOUT_ALIASES,
   CALLOUT_KINDS,

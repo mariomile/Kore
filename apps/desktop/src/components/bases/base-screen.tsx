@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
 import { PageLoading } from '@/components/page-loading'
+import { PageHeader } from '@/components/ui/page-header'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
 import { routeForPath } from '@/routing/route'
@@ -38,9 +39,8 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
 
   return (
     <div className="flex h-full flex-col overflow-auto">
-      <header className="px-12 pb-4 pt-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-text">{baseDisplayName(path)}</h1>
-        <p className="mt-1 truncate text-xs text-text-muted">{path}</p>
+      <PageHeader title={baseDisplayName(path)} description={path} />
+      <div className="pr-7 pb-4 pl-12">
         <ConvertToTypes paths={[path]} label="Convert to type views" />
         {state.status === 'ready' && state.definition.views.length > 1 ? (
           <div role="tablist" aria-label="Views" className="mt-4 flex flex-wrap gap-1">
@@ -65,7 +65,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
             ))}
           </div>
         ) : null}
-      </header>
+      </div>
       {state.status === 'loading' ? (
         <PageLoading label="Loading base" />
       ) : state.status === 'error' ? (

@@ -151,8 +151,10 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
 
   return (
     // The overlay is ours (no portal): click-outside closes, Esc closes below.
+    // z-50 puts it over the editor's own floating chrome (the selection's AI
+    // button sits at z-40 and used to show through the palette).
     <div
-      className="animate-in fade-in-0 fixed inset-0 z-40 flex items-start justify-center bg-black/20 pt-[12vh] duration-150 ease-swift"
+      className="animate-in fade-in-0 fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-[12vh] duration-150 ease-swift"
       onPointerDown={closePalette}
       data-testid="palette-overlay"
     >

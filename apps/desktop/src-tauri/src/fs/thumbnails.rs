@@ -41,8 +41,10 @@ pub(super) fn cache_path(cache_dir: &Path, image: &Path) -> Option<PathBuf> {
 pub(super) fn thumbnail(cache_file: &Path, original: &[u8]) -> Option<Vec<u8>> {
     let jpeg = crate::raster::downscale_jpeg(original, THUMBNAIL_LONG_EDGE).ok()?;
     if let Some(dir) = cache_file.parent() {
-        // A failed write only costs the next request a fresh downscale.
-        let staged = cache_file.with_extension("tmp");
+        // A failed write only costs the next request a fresh downscale. Each
+        // writer stages its own file: two cards asking for the same picture at
+        // once must not interleave into one half-written JPEG.
+        let staged = cache_file.with_extension(format!("{}.tmp", next_stage_id()));
         let written = std::fs::create_dir_all(dir)
             .and_then(|()| std::fs::write(&staged, &jpeg))
             .and_then(|()| std::fs::rename(&staged, cache_file));
@@ -52,6 +54,13 @@ pub(super) fn thumbnail(cache_file: &Path, original: &[u8]) -> Option<Vec<u8>> {
         }
     }
     Some(jpeg)
+}
+
+/// A process-unique suffix for a staging file.
+fn next_stage_id() -> String {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("{}-{id}", std::process::id())
 }
 
 #[cfg(test)]
@@ -90,6 +99,22 @@ mod tests {
         let before = cache_path(dir.path(), &image).unwrap();
         std::fs::write(&image, png(20, 10)).unwrap();
         assert_ne!(cache_path(dir.path(), &image).unwrap(), before);
+    }
+
+    #[test]
+    fn concurrent_writers_never_share_a_staging_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache_file = dir.path().join("cache").join("a.jpg");
+        let original = png(1200, 800);
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| thumbnail(&cache_file, &original).unwrap());
+            }
+        });
+        let cached = image::load_from_memory(&std::fs::read(&cache_file).unwrap()).unwrap();
+        assert_eq!((cached.width(), cached.height()), (960, 640));
+        let leftovers = std::fs::read_dir(dir.path().join("cache")).unwrap().count();
+        assert_eq!(leftovers, 1, "staging files left behind");
     }
 
     #[test]

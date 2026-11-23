@@ -48,34 +48,62 @@ function remember(key: string, height: number): void {
   heights.set(key, height)
 }
 
+/** A card that appeared on screen, waiting to show with the others. */
+interface Waiter {
+  /** Fix the card's height as it is and show it. */
+  keep: () => void
+  /** Its preview has arrived. */
+  ready: boolean
+}
+
 /**
- * The cards that appeared on screen and wait for their previews. They show together: one shown
- * early would be pushed down when a card above it got its preview.
+ * The cards that appeared on screen and wait for their previews. They show
+ * together, once every one is ready: one shown early would be pushed down
+ * when a card above it got its preview.
  */
-const waiting = new Set<() => void>()
+const waiting = new Set<Waiter>()
 let timeout: number | null = null
+let checking = false
 
 function showWaiting(): void {
   if (timeout !== null) {
     window.clearTimeout(timeout)
     timeout = null
   }
-  const keeps = [...waiting]
+  const waiters = [...waiting]
   waiting.clear()
-  for (const keep of keeps) {
-    keep()
+  for (const waiter of waiters) {
+    waiter.keep()
   }
 }
 
-/** Wait with the others; the returned release is for a card whose preview arrived. */
-function wait(keep: () => void): () => void {
+/**
+ * Show the cards if all are ready. Checked after the current render's
+ * effects, so cards that join or get ready in one commit count together.
+ */
+function checkWaiting(): void {
+  if (checking) {
+    return
+  }
+  checking = true
+  queueMicrotask(() => {
+    checking = false
+    if ([...waiting].every((waiter) => waiter.ready)) {
+      showWaiting()
+    }
+  })
+}
+
+/** Wait with the others; the returned function leaves without showing (the card is gone). */
+function join(waiter: Waiter): () => void {
   if (waiting.size === 0) {
     timeout = window.setTimeout(showWaiting, SETTLE_TIMEOUT_MS)
   }
-  waiting.add(keep)
+  waiting.add(waiter)
+  checkWaiting()
   return () => {
-    if (waiting.delete(keep) && waiting.size === 0) {
-      showWaiting()
+    if (waiting.delete(waiter)) {
+      checkWaiting()
     }
   }
 }
@@ -101,8 +129,10 @@ export function CardPreviewSlot({
   className,
   children,
 }: CardPreviewSlotProps): ReactElement {
-  const [settled, setSettled] = useState(false)
-  const onSettled = useCallback(() => setSettled(true), [])
+  // Settled is per note version: an edited note's preview has to arrive again.
+  const [settledKey, setSettledKey] = useState<string | null>(null)
+  const settled = settledKey === heightKey
+  const onSettled = useCallback(() => setSettledKey(heightKey), [heightKey])
   const {
     setRoot: setArrivingRoot,
     near: arrived,
@@ -117,8 +147,19 @@ export function CardPreviewSlot({
     [setArrivingRoot],
   )
 
-  // The height kept for this mount, and the note version it was kept for.
+  // The note version this mount has kept a height for, and its place among
+  // the waiting cards while it has none.
   const keptFor = useRef<string | null>(null)
+  const waiter = useRef<Waiter | null>(null)
+  const settledRef = useRef(settled)
+
+  useLayoutEffect(() => {
+    settledRef.current = settled
+    if (settled && waiter.current !== null) {
+      waiter.current.ready = true
+      checkWaiting()
+    }
+  }, [settled])
 
   useLayoutEffect(() => {
     const box = boxRef.current
@@ -128,23 +169,31 @@ export function CardPreviewSlot({
     const keep = (): void => {
       // Unrounded: a rounded height would nudge the card by a fraction of a pixel.
       const { height } = box.getBoundingClientRect()
-      keptFor.current = heightKey
       // A height kept before the preview arrived is the snippet's: it holds
       // while this card is mounted, and the next visit measures again.
-      if (settled) {
+      if (settledRef.current) {
         remember(heightKey, height)
       }
+      keptFor.current = heightKey
       // Straight to the element: a render per card would cost the scroll
       // that brought the card here. A later render leaves both alone.
       box.style.height = `${height}px`
       box.removeAttribute('data-preview-pending')
     }
-    if (settled || scrolledTo) {
+    // Scrolled to: the reader is about to see it, as it is. A new version
+    // of a card already here appears in place, like the rest.
+    if (scrolledTo && keptFor.current === null) {
       keep()
       return
     }
-    return wait(keep)
-  }, [arrived, scrolledTo, settled, heightKey])
+    const self: Waiter = { keep, ready: settledRef.current }
+    waiter.current = self
+    const leave = join(self)
+    return () => {
+      waiter.current = null
+      leave()
+    }
+  }, [arrived, scrolledTo, heightKey])
 
   const height = heights.get(heightKey)
   return (

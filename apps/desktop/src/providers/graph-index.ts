@@ -62,8 +62,8 @@ export interface GraphIndex {
   open: () => Promise<number | null>
   /**
    * Background-sync the open index at `generation`: sync the whole graph
-   * (hash reconcile, or a full rebuild when the stored projection version is
-   * stale — `syncIndex` decides), then start the Rust watcher. The live
+   * (hash reconcile, or every note re-derived when the stored projection
+   * version is stale — `syncIndex` decides), then start the Rust watcher. The live
    * `index:changed` subscription is made before the pass but held until it
    * ends, so writes that land mid-pass apply right after it and the passes
    * never write concurrently. `isStale` is checked between steps and bails

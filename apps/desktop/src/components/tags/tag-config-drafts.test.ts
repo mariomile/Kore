@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  draftOptionRenames,
+  draftOptionChanges,
+  removeOption,
   draftsFromSchema,
   optionsPatch,
   relationTargetSelectItems,
@@ -83,8 +84,8 @@ describe('options in drafts', () => {
     const [draft] = draftsFromSchema(schema)
     const options = [
       ...draft!.options,
-      { id: 9, name: ' ', original: null, color: 'red' as const },
-      { id: 10, name: 'Done', original: null, color: 'blue' as const },
+      { id: 9, name: ' ', original: null, color: 'red' as const, removal: null },
+      { id: 10, name: 'Done', original: null, color: 'blue' as const, removal: null },
     ]
     expect(schemaFromDrafts([{ ...draft!, options }])[0]).toMatchObject({
       options: ['Todo', 'Done'],
@@ -97,10 +98,46 @@ describe('options in drafts', () => {
     const renamed = draft!.options.map((option) =>
       option.name === 'Todo' ? { ...option, name: 'To do' } : option,
     )
-    expect(draftOptionRenames({ options: renamed })).toEqual([{ from: 'Todo', to: 'To do' }])
+    expect(draftOptionChanges({ options: renamed })).toEqual([{ from: 'Todo', to: 'To do' }])
     expect(optionsPatch(draft!, renamed)).toEqual({ options: renamed, startingFixed: 'To do' })
     expect(optionsPatch({ ...draft!, startingKind: 'none' }, renamed)).toEqual({
       options: renamed,
     })
+  })
+
+  it('deletes an unused option outright and keeps a used one to pick its notes’ fate', () => {
+    const [draft] = draftsFromSchema(schema)
+    const [todo, done] = draft!.options
+    expect(removeOption(draft!.options, todo!.id, false)).toEqual([done])
+
+    const removed = removeOption(draft!.options, todo!.id, true)
+    expect(removed).toEqual([{ ...todo, removal: { moveToId: null } }, done])
+    expect(draftOptionChanges({ options: removed })).toEqual([{ from: 'Todo', to: null }])
+    expect(schemaFromDrafts([{ ...draft!, options: removed }])[0]).toMatchObject({
+      options: ['Done'],
+      colors: { Done: 'green' },
+    })
+  })
+
+  it('moves a deleted option’s notes, and the starting value, to the picked option', () => {
+    const [draft] = draftsFromSchema(schema)
+    const [todo, done] = draft!.options
+    const merged = [{ ...todo!, removal: { moveToId: done!.id } }, done!]
+    expect(draftOptionChanges({ options: merged })).toEqual([{ from: 'Todo', to: 'Done' }])
+    expect(optionsPatch(draft!, merged)).toEqual({ options: merged, startingFixed: 'Done' })
+    // Deleting the target too leaves nothing to move to: the value comes off.
+    expect(draftOptionChanges({ options: removeOption(merged, done!.id, true) })).toEqual([
+      { from: 'Todo', to: null },
+      { from: 'Done', to: null },
+    ])
+  })
+
+  it('reads a rename onto another option’s name as a merge', () => {
+    const [draft] = draftsFromSchema(schema)
+    const renamed = draft!.options.map((option) =>
+      option.name === 'Todo' ? { ...option, name: 'Done' } : option,
+    )
+    expect(draftOptionChanges({ options: renamed })).toEqual([{ from: 'Todo', to: 'Done' }])
+    expect(schemaFromDrafts([{ ...draft!, options: renamed }])[0]?.options).toEqual(['Done'])
   })
 })

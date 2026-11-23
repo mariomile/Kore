@@ -3,6 +3,7 @@ import {
   startingValueKind,
   startingValueOf,
   isOptionColor,
+  type OptionChange,
   type OptionColor,
   type RollupAggregation,
   type StartingValueKind,
@@ -20,6 +21,18 @@ export interface OptionDraft {
   original: string | null
   /** The picked palette color, or null for the hashed one. */
   color: OptionColor | null
+  /**
+   * Set once the option was deleted while notes still use it: the row stays
+   * in the list, struck through, so the delete can be undone and the notes'
+   * fate picked. An option no note uses just leaves the list.
+   */
+  removal: OptionRemoval | null
+}
+
+/** Where a deleted option's notes go on save. */
+export interface OptionRemoval {
+  /** The option (by id) the notes move to, or null to take the value off them. */
+  moveToId: number | null
 }
 
 /** One schema row under edit. */
@@ -110,14 +123,58 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
 export function optionDraftsFrom(property: Pick<TagProperty, 'options' | 'colors'>): OptionDraft[] {
   return (property.options ?? []).map((name, id) => {
     const color = property.colors?.[name]
-    return { id, name, original: name, color: isOptionColor(color) ? color : null }
+    return {
+      id,
+      name,
+      original: name,
+      color: isOptionColor(color) ? color : null,
+      removal: null,
+    }
   })
+}
+
+/** The options still in the list: the ones not deleted. */
+export function keptOptions(options: readonly OptionDraft[]): OptionDraft[] {
+  return options.filter((option) => option.removal === null)
+}
+
+/**
+ * The option a deleted one's notes end up on: the picked target while it is
+ * itself still in the list with a name, otherwise none (the value comes off
+ * the notes).
+ */
+function removalTarget(option: OptionDraft, options: readonly OptionDraft[]): OptionDraft | null {
+  const moveToId = option.removal?.moveToId ?? null
+  const target = moveToId === null ? undefined : options.find((entry) => entry.id === moveToId)
+  return target === undefined || target.removal !== null || target.name.trim() === ''
+    ? null
+    : target
+}
+
+/**
+ * The options after deleting `id`. A stored option some note still uses
+ * (`inUse`) stays as a struck-through row waiting for its notes' fate; any
+ * other just leaves, and whatever was moving into it falls back to "remove".
+ */
+export function removeOption(
+  options: readonly OptionDraft[],
+  id: number,
+  inUse: boolean,
+): OptionDraft[] {
+  const retargeted = options.map((option) =>
+    option.removal?.moveToId === id ? { ...option, removal: { moveToId: null } } : option,
+  )
+  return inUse
+    ? retargeted.map((option) =>
+        option.id === id ? { ...option, removal: { moveToId: null } } : option,
+      )
+    : retargeted.filter((option) => option.id !== id)
 }
 
 /**
  * The draft patch for a new options list. A fixed starting value that named
- * an option follows that option's rename, so renaming "Todo" to "To do"
- * keeps it as the starting value instead of silently dropping it.
+ * an option follows that option: its rename ("Todo" to "To do"), or the
+ * option its notes move to when it is deleted, instead of silently dropping.
  */
 export function optionsPatch(
   draft: Pick<PropertyDraft, 'options' | 'startingKind' | 'startingFixed'>,
@@ -126,17 +183,21 @@ export function optionsPatch(
   if (draft.startingKind !== 'fixed') {
     return { options }
   }
-  const before = draft.options.find((option) => option.name.trim() === draft.startingFixed.trim())
+  const before = keptOptions(draft.options).find(
+    (option) => option.name.trim() === draft.startingFixed.trim(),
+  )
   const after = before === undefined ? undefined : options.find((option) => option.id === before.id)
-  return after === undefined || after.name.trim() === ''
+  const follows =
+    after === undefined || after.removal === null ? after : removalTarget(after, options)
+  return follows === undefined || follows === null || follows.name.trim() === ''
     ? { options }
-    : { options, startingFixed: after.name.trim() }
+    : { options, startingFixed: follows.name.trim() }
 }
 
-/** The option texts a draft will store: trimmed, blanks and repeats dropped. */
+/** The option texts a draft will store: trimmed, blanks, repeats and deleted ones dropped. */
 export function draftOptionNames(draft: Pick<PropertyDraft, 'options'>): string[] {
   const names: string[] = []
-  for (const option of draft.options) {
+  for (const option of keptOptions(draft.options)) {
     const name = option.name.trim()
     if (name !== '' && !names.includes(name)) {
       names.push(name)
@@ -146,21 +207,31 @@ export function draftOptionNames(draft: Pick<PropertyDraft, 'options'>): string[
 }
 
 /**
- * The option renames a save performs: loaded options whose text changed.
- * They land on the notes together (`optionRenameMap`), so swapping two
+ * What a save does to the notes' option values: loaded options whose text
+ * changed (a rename, or a merge when the new text is another option's), and
+ * deleted ones, which move to the picked option or come off the notes
+ * (`to: null`). They land together (`optionRenameMap`), so swapping two
  * names swaps the values too.
  */
-export function draftOptionRenames(
-  draft: Pick<PropertyDraft, 'options'>,
-): { from: string; to: string }[] {
-  const renames: { from: string; to: string }[] = []
+export function draftOptionChanges(draft: Pick<PropertyDraft, 'options'>): OptionChange[] {
+  const changes: OptionChange[] = []
   for (const option of draft.options) {
+    if (option.original === null) {
+      continue
+    }
+    if (option.removal !== null) {
+      changes.push({
+        from: option.original,
+        to: removalTarget(option, draft.options)?.name.trim() ?? null,
+      })
+      continue
+    }
     const to = option.name.trim()
-    if (option.original !== null && to !== '' && to !== option.original) {
-      renames.push({ from: option.original, to })
+    if (to !== '' && to !== option.original) {
+      changes.push({ from: option.original, to })
     }
   }
-  return renames
+  return changes
 }
 
 /**
@@ -196,7 +267,10 @@ export function draftStartingValue(
  * empty schema): same shape, but `originalKey` stays null so saving them is
  * a plain create, never a rename with a migration prompt. */
 export function draftsForNewSchema(properties: readonly TagProperty[]): PropertyDraft[] {
-  return draftsFromSchema(properties).map((draft) => ({ ...draft, originalKey: null }))
+  return draftsFromSchema(properties).map((draft) => ({
+    ...draft,
+    originalKey: null,
+  }))
 }
 
 export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[] {
@@ -211,7 +285,10 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       draft.type === 'reverse' &&
       draft.reverseTag.trim() !== '' &&
       draft.reverseProperty.trim() !== ''
-        ? { tag: draft.reverseTag.trim(), property: draft.reverseProperty.trim() }
+        ? {
+            tag: draft.reverseTag.trim(),
+            property: draft.reverseProperty.trim(),
+          }
         : undefined
     const formula =
       draft.type === 'formula' && draft.formulaExpression.trim() !== ''
@@ -229,7 +306,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
         : undefined
     const startingValue = draftStartingValue(draft, options)
     const colors: Record<string, OptionColor> = {}
-    for (const option of draft.options) {
+    for (const option of keptOptions(draft.options)) {
       const name = option.name.trim()
       if (option.color !== null && options.includes(name) && !(name in colors)) {
         colors[name] = option.color

@@ -432,9 +432,8 @@ describe('TagConfigDialog', () => {
       .toHaveValue('to-read')
     await view.getByRole('textbox', { name: 'Add option' }).fill('reading')
     await userEvent.keyboard('{Enter}')
-    await view.getByRole('button', { name: 'Color and actions for to-read' }).click()
-    await view.getByRole('button', { name: 'Delete option' }).click()
-    await view.getByRole('button', { name: 'Color and actions for done' }).click()
+    await view.getByRole('button', { name: 'Delete to-read' }).click()
+    await view.getByRole('button', { name: 'Color of done' }).click()
     await view.getByRole('option', { name: 'Green' }).click()
 
     await view.getByRole('button', { name: 'Save' }).click()
@@ -692,5 +691,82 @@ describe('TagConfigDialog', () => {
       icon: 'icon:folder',
       parents: [],
     })
+  })
+
+  it('deletes an option notes use: undo, or merge its notes into another on save', async () => {
+    definition.current = {
+      path: 'tags/project.md',
+      exists: true,
+      needsConversion: false,
+      properties: [
+        { name: 'Status', key: 'status', type: 'status', options: ['paused', 'in pausa', 'old'] },
+      ],
+      template: null,
+      folder: null,
+      icon: null,
+      parents: [],
+    }
+    propertyUses.current = [
+      { notePath: 'p/a.md', value: { value: 'in pausa', valueType: 'string', valueNumber: null } },
+      { notePath: 'p/b.md', value: { value: 'paused', valueType: 'string', valueNumber: null } },
+      { notePath: 'p/c.md', value: { value: 'old', valueType: 'string', valueNumber: null } },
+    ]
+    const view = await render(<Dialog tag="project" onClose={() => {}} />)
+    await view.getByRole('button', { name: 'Status', exact: true }).click()
+
+    // Undo brings a deleted option back.
+    await view.getByRole('button', { name: 'Delete paused' }).click()
+    await view.getByRole('button', { name: 'Restore paused' }).click()
+    await expect
+      .element(view.getByRole('textbox', { name: 'Option name: paused' }))
+      .toBeInTheDocument()
+
+    // One merges into another option, one comes off its notes.
+    await view.getByRole('button', { name: 'Delete in pausa' }).click()
+    await view.getByRole('combobox', { name: 'Notes using in pausa' }).click()
+    await view.getByRole('option', { name: 'Move 1 note to paused' }).click()
+    await view.getByRole('button', { name: 'Delete old' }).click()
+    await expect
+      .element(view.getByRole('combobox', { name: 'Notes using old' }))
+      .toHaveTextContent('Remove from 1 note')
+
+    await view.getByRole('button', { name: 'Save' }).click()
+    await expect.poll(() => saveTagType.mock.calls.length).toBe(1)
+    expect(saveTagType).toHaveBeenCalledWith(
+      'project',
+      [{ name: 'Status', key: 'status', type: 'status', options: ['paused'] }],
+      7,
+      { template: null, folder: null, icon: null, parents: [] },
+    )
+    await expect.poll(() => commitNoteFrontmatter.mock.calls.length).toBe(2)
+    expect(commitNoteFrontmatter.mock.calls).toEqual([
+      ['p/a.md', { properties: { status: 'paused' } }, 7],
+      ['p/c.md', { properties: { status: undefined } }, 7],
+    ])
+  })
+
+  it('confirms before closing with unsaved changes', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
+      folder: null,
+      icon: null,
+      parents: [],
+    }
+    const onClose = vi.fn()
+    const view = await render(<Dialog tag="book" onClose={onClose} />)
+    await view.getByRole('button', { name: 'Author', exact: true }).click()
+    await view.getByRole('button', { name: 'Delete property' }).click()
+
+    await view.getByRole('button', { name: 'Cancel' }).click()
+    await expect.element(view.getByText('Discard your unsaved changes?')).toBeVisible()
+    expect(onClose).not.toHaveBeenCalled()
+    await view.getByRole('button', { name: 'Keep editing' }).click()
+    await view.getByRole('button', { name: 'Cancel' }).click()
+    await view.getByRole('button', { name: 'Discard' }).click()
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

@@ -120,7 +120,9 @@ export function NoteCardPreview({
       <p className="line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
     )
 
-  if (body === undefined || body === null) {
+  // A body still cached from an earlier mount waits its turn too: a grid
+  // coming back must not render a whole chunk of previews in one frame.
+  if (!upgrade || body === undefined || body === null) {
     return <div ref={setViewRoot}>{fallback}</div>
   }
   if (body.trim() === '') {

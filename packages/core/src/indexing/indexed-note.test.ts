@@ -10,7 +10,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(40)
+    expect(PROJECTION_VERSION).toBe(41)
   })
 
   it('indexes a cyber-brain sensitivity: private note as private', () => {
@@ -275,6 +275,24 @@ describe('buildIndexedNote', () => {
       source,
     })
     expect(withoutText.assetText).toBe('')
+  })
+
+  it('puts a vault-file cover first among the assets, and leaves a remote one out', () => {
+    const source = '---\ncover: "[[assets/hero.png]]"\n---\n# Trip\n\n![p](assets/p.png)'
+    const indexed = buildIndexedNote(parseNote({ path: 'notes/n.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.assets).toEqual(['assets/hero.png', 'notes/assets/p.png', 'assets/p.png'])
+
+    const remote = '---\ncover: https://example.com/c.png\n---\n# Trip'
+    const remoteIndexed = buildIndexedNote(parseNote({ path: 'notes/n.md', source: remote }), {
+      fileHash: 'h',
+      mtime: 0,
+      source: remote,
+    })
+    expect(remoteIndexed.assets).toEqual([])
   })
 
   it('marks daily notes with their date and carries no id', () => {

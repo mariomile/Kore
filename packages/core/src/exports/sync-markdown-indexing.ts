@@ -204,6 +204,7 @@ export {
   type WikiEmbedKind,
   parseNoteAppearance,
   parseNoteAppearanceFromSource,
+  noteCoverAssetPath,
   parseNoteCover,
   parseNoteCoverY,
   DEFAULT_COVER_Y,

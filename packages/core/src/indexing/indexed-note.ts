@@ -16,6 +16,7 @@ import {
   foldTag,
   gistBodyHash,
   isPinned,
+  noteCoverAssetPath,
   pinnedOrder,
   splitFrontmatter,
   subjectAliases,
@@ -168,8 +169,11 @@ import {
  * table reads as one line (`Industry: SaaS · Stage: Seed`), a field holding a
  * word or a link stays, and section headings and tag lines stand in when the
  * note has no prose.
+ * 41 - a vault-file `cover:` joins the `assets` projection, ahead of the body's
+ * images, so a note card leads with the cover and the privacy gate sees the
+ * reference. Existing rows lack it until reprojected.
  */
-export const PROJECTION_VERSION = 40
+export const PROJECTION_VERSION = 41
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -495,6 +499,12 @@ function filenameIsTheName(parsed: ParsedNote, titleKey: string, basenameKey: st
   return !(typeof fmTitle === 'string' && fmTitle.trim() !== '')
 }
 
+/** The note's vault-file cover as a one-path list, empty without one. */
+function coverAssetPaths(cover: unknown): string[] {
+  const path = noteCoverAssetPath(cover)
+  return path === null ? [] : [path]
+}
+
 /**
  * Flatten a parsed note into the index payload. `meta.source` is the raw
  * markdown the note was parsed from — conflict markers are detected on it
@@ -583,8 +593,14 @@ export function buildIndexedNote(
     claims: projectNoteClaims(parsed, aliases),
     emails: extractEmailFields(body).map((email) => ({ email, emailKey: foldEmail(email) })),
     // One reference can contribute several candidate spellings; the
-    // projection stores each path once.
-    assets: [...new Set(parsed.assets.map((asset) => asset.path))],
+    // projection stores each path once. The cover leads: rows keep this
+    // order, and a note card shows the first image as the note's picture.
+    assets: [
+      ...new Set([
+        ...coverAssetPaths(parsed.frontmatter.cover),
+        ...parsed.assets.map((asset) => asset.path),
+      ]),
+    ],
     tasks: parsed.tasks.map((task) => ({
       markerOffset: task.markerOffset,
       text: task.text,

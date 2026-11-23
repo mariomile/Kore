@@ -1164,9 +1164,41 @@ html:root {
    a table sizes to its words with tight cells (the editor's equal fixed
    columns would break `Candidate` across four lines); what does not fit
    fades out at the card's edge. */
-/* A shorter fade than the hover card's: the smallest slot holds three lines. */
+/* A shorter fade than the hover card's: a card may hold only a few lines. */
 .kore-card-preview-compact {
   --kore-preview-fade: 1.25rem;
+}
+/* The note starts where the snippet it replaces did, right under the title,
+   and ends on its last line: no block margin at either end. The stripped
+   title leaves an empty paragraph first, and a list item keeps its text's
+   margin inside its own box, so both are named. */
+.kore-card-preview-compact .kore-editor > :first-child,
+.kore-card-preview-compact .kore-editor > p:first-child:empty + *,
+.kore-card-preview-compact
+  .kore-editor
+  > .prosemirror-flat-list:first-child
+  > .list-content
+  > :first-child,
+.kore-card-preview-compact
+  .kore-editor
+  > p:first-child:empty
+  + .prosemirror-flat-list
+  > .list-content
+  > :first-child {
+  margin-top: 0;
+}
+.kore-card-preview-compact .kore-editor > p:first-child:empty,
+.kore-card-preview-compact .kore-editor > :last-child,
+.kore-card-preview-compact
+  .kore-editor
+  > .prosemirror-flat-list:last-child
+  > .list-content
+  > :last-child {
+  margin-bottom: 0;
+}
+/* A rule across a card this small reads as part of the card's frame. */
+.kore-card-preview-compact .kore-editor hr {
+  display: none;
 }
 .kore-card-preview-compact .kore-editor {
   font-size: var(--text-xs, 0.75rem);

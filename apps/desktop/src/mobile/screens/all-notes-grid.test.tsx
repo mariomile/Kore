@@ -232,6 +232,44 @@ describe('MobileAllNotes grid view', () => {
     expect(grid.element().textContent).toContain('#company')
   })
 
+  it('makes a card as tall as its note, then holds that height', async () => {
+    settingsState.allNotesView = 'grid'
+    // Its own version of the note: heights are remembered per version.
+    searchWithFilters.mockResolvedValue([
+      hit({ preview: 'Industry: Robotics', mtime: HEALTH_MTIME + 1 }),
+    ])
+    readNote.mockResolvedValue(
+      '# Health Stacked\n\n| Campo | Valore |\n| --- | --- |\n| Industry | Robotics |\n| Stage | Seed |\n',
+    )
+    await renderScreen()
+
+    await expect.element(page.getByTestId('all-notes-grid')).toBeInTheDocument()
+    const grid = page.getByTestId('all-notes-grid').element()
+    await expect.poll(() => grid.querySelector('table')).not.toBeNull()
+    const preview = grid.querySelector<HTMLElement>('.kore-hover-preview')
+    const slot = preview?.parentElement
+    await expect.poll(() => slot?.style.height).toMatch(/px$/)
+    // Shown once its height is kept.
+    expect(grid.querySelector('[data-preview-pending]')).toBeNull()
+    // The whole table fits: nothing is cut, nothing is left empty.
+    expect(preview?.scrollHeight).toBeLessThanOrEqual((preview?.clientHeight ?? 0) + 1)
+    expect(slot?.getBoundingClientRect().height).toBeCloseTo(
+      preview?.getBoundingClientRect().height ?? 0,
+      0,
+    )
+  })
+
+  it('shows the grid with the snippets when the notes cannot be read', async () => {
+    settingsState.allNotesView = 'grid'
+    searchWithFilters.mockResolvedValue([hit({ preview: 'Industry: Robotics' })])
+    await renderScreen()
+
+    await expect.element(page.getByTestId('all-notes-grid')).toBeInTheDocument()
+    const grid = page.getByTestId('all-notes-grid').element()
+    await expect.poll(() => grid.querySelector('[data-preview-pending]')).toBeNull()
+    expect(grid.textContent).toContain('Industry: Robotics')
+  })
+
   it('aligns the first card in each masonry column to the same top edge', async () => {
     settingsState.allNotesView = 'grid'
     searchWithFilters.mockResolvedValue([

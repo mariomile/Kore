@@ -5,9 +5,11 @@ import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
+import { NEAR_VIEWPORT_SCROLLER } from '@/hooks/use-near-viewport'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { CardPreviewSlot } from '@/mobile/card-preview-slot'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useGraph } from '@/providers/graph-provider'
@@ -29,8 +31,9 @@ const GRID_CHUNK = 120
  * card at once. A note's first image tops its card: one indexed query per
  * mounted chunk names it. The body is desktop's live preview (a table is a
  * table, a tag a chip), read and rendered only once scrolling rests; the
- * indexed snippet stands in until then, in a slot of fixed height, so the
- * grid never moves when a preview arrives.
+ * indexed snippet stands in until then. A card on screen never changes
+ * height (see `card-preview-slot.tsx`), so the grid never moves under the
+ * reader.
  */
 export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement {
   const { settings } = useSettings()
@@ -67,6 +70,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
 
   return (
     <div
+      {...{ [NEAR_VIEWPORT_SCROLLER]: '' }}
       className="min-h-0 flex-1 overflow-y-auto"
       style={{
         paddingTop: 'var(--mobile-header-height, 0px)',
@@ -103,23 +107,17 @@ interface NoteCardProps {
 }
 
 /**
- * A snippet this short is a note with a line or two to say. The index cuts a
- * snippet at 120 characters, and a table reads as rows joined by ` · `.
+ * How far from the screen a card's preview is prepared: about a screen and
+ * a half, so an ordinary flick lands on cards that already have their own
+ * height (see `card-preview-slot.tsx`).
  */
-const SHORT_SNIPPET = 40
+const PREPARE_MARGIN = '1200px'
 
 /**
- * The height a card keeps for its preview, fixed before the note is read so
- * the grid never moves when the preview arrives: none for a note with no
- * text (a title alone), three lines for one that says little, about seven
- * for the rest (a longer one fades out).
+ * How much of a note a card half a phone wide can show: about eight lines
+ * of some twenty-five characters, with room for markup.
  */
-function previewSlot(snippet: string): string | null {
-  if (snippet === '') {
-    return null
-  }
-  return snippet.length <= SHORT_SNIPPET && !snippet.includes(' · ') ? 'h-[4.5rem]' : 'h-40'
-}
+const SOURCE_BUDGET = 400
 
 /** The grid's column count: two cards side by side on a phone. */
 const GRID_COLUMNS = 2
@@ -150,15 +148,20 @@ const NoteCard = memo(function NoteCard({
   // A search hit shows where it matched; otherwise the card shows the note.
   const isSearchHit = row.snippet.some((segment) => segment.highlighted)
   const snippet = row.snippet.map((segment) => segment.text).join('')
-  const slot = previewSlot(snippet)
+  const [settled, setSettled] = useState(false)
+  const markSettled = useCallback(() => setSettled(true), [])
   return (
     <div className="pb-3">
       {/* The button covers the card instead of wrapping it: WebKit does not
           clip a box of definite height inside a <button>, and the preview
-          needs one. */}
+          keeps one. */}
       <div
         data-note-path={row.path}
-        className="relative rounded-xl border border-border bg-surface p-3 has-[button:active]:bg-surface-hover"
+        className={cn(
+          'relative rounded-xl border border-border bg-surface p-3 has-[button:active]:bg-surface-hover',
+          // Hidden until its preview's height is kept (card-preview-slot.tsx).
+          'transition-opacity duration-100 has-[[data-preview-pending]]:opacity-0',
+        )}
       >
         <button
           type="button"
@@ -192,21 +195,31 @@ const NoteCard = memo(function NoteCard({
           <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
             <HighlightedText segments={row.snippet} />
           </p>
-        ) : slot === null ? null : (
-          <div className={cn('mt-2 overflow-hidden', slot)}>
-            <NoteCardPreview
-              path={row.path}
-              mtime={row.mtime}
-              snippet={snippet}
-              resolveImageUrl={resolveImageUrl}
-              waitForScrollRest
-              className={cn(
-                'kore-card-preview-compact',
-                // The card's own thumbnail already shows the note's image.
-                imageUrl !== undefined && '[&_img]:hidden',
-              )}
-            />
-          </div>
+        ) : snippet === '' ? null : (
+          <CardPreviewSlot
+            heightKey={`${row.path}\n${row.mtime}`}
+            settled={settled}
+            className="mt-2 max-h-44"
+          >
+            {(arrived) => (
+              <NoteCardPreview
+                path={row.path}
+                mtime={row.mtime}
+                snippet={snippet}
+                resolveImageUrl={resolveImageUrl}
+                waitForScrollRest
+                nearMargin={PREPARE_MARGIN}
+                sourceBudget={SOURCE_BUDGET}
+                urgent={arrived}
+                onSettled={markSettled}
+                className={cn(
+                  'kore-card-preview-compact max-h-44',
+                  // The card's own thumbnail already shows the note's image.
+                  imageUrl !== undefined && '[&_img]:hidden',
+                )}
+              />
+            )}
+          </CardPreviewSlot>
         )}
         <div className="mt-3 text-2xs text-text-muted">{recency}</div>
       </div>

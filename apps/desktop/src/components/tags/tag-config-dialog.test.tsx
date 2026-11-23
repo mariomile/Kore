@@ -510,6 +510,41 @@ describe('TagConfigDialog', () => {
     )
   })
 
+  it("adds a view's property under a free name when its usual one is taken", async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Status', key: 'status', type: 'text' }],
+      template: null,
+      folder: null,
+      icon: null,
+      parents: [],
+    }
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
+
+    await view.getByRole('button', { name: 'Add status' }).click()
+    await expect
+      .element(view.getByRole('textbox', { name: 'Property name' }))
+      .toHaveValue('Status 2')
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'book',
+      [
+        { name: 'Status', key: 'status', type: 'text' },
+        {
+          name: 'Status 2',
+          key: 'status-2',
+          type: 'status',
+          options: ['To do', 'In progress', 'Done'],
+        },
+      ],
+      7,
+      { template: null, folder: null, icon: null, parents: [] },
+    )
+  })
+
   it('adds, deletes and colors select options and saves the colors by name', async () => {
     definition.current = {
       path: 'tags/book.md',

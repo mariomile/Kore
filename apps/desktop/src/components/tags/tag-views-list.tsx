@@ -33,6 +33,23 @@ const STATUS_STARTER: TagProperty = {
 const DATE_STARTER: TagProperty = { name: 'Date', key: 'date', type: 'date' }
 
 /**
+ * The starter under a name no property of the schema holds yet ("Status 2"
+ * beside a text property called Status), so adding it never leaves the draft
+ * with two properties on one key.
+ */
+function freeStarter(starter: TagProperty, properties: readonly TagProperty[]): TagProperty {
+  const taken = new Set(properties.flatMap(({ key, name }) => [key, name.trim().toLowerCase()]))
+  if (!taken.has(starter.key) && !taken.has(starter.name.toLowerCase())) {
+    return starter
+  }
+  let n = 2
+  while (taken.has(`${starter.key}-${n}`) || taken.has(`${starter.name.toLowerCase()} ${n}`)) {
+    n += 1
+  }
+  return { ...starter, name: `${starter.name} ${n}`, key: `${starter.key}-${n}` }
+}
+
+/**
  * The collection views this tag's properties unlock, and — while one is still
  * off — the one button that turns it on. Availability comes from the same
  * predicates the board and calendar use (`schema-views.ts`), so the list can
@@ -89,7 +106,7 @@ export function TagViewsList({
               type="button"
               variant="outline"
               size={touch ? 'default' : 'sm'}
-              onClick={() => onAdd(add.starter)}
+              onClick={() => onAdd(freeStarter(add.starter, properties))}
             >
               {add.label}
             </Button>

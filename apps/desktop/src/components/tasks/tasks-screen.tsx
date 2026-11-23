@@ -32,6 +32,7 @@ import {
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -391,8 +392,17 @@ export function TasksScreen(): ReactElement {
       aria-label="Tasks"
       className="flex h-full min-h-0 flex-col outline-none"
     >
-      <header className="flex flex-none flex-wrap items-center gap-x-1 gap-y-3 py-5 pr-7 pl-12">
-        <h1 className="app-page-title mr-auto text-text">Tasks</h1>
+      <PageHeader title="Tasks" className="pb-3" />
+      <div className="flex flex-none flex-wrap items-center gap-x-1 gap-y-2 pr-7 pb-3 pl-12">
+        <TaskViewTabs
+          view={view}
+          counts={counts}
+          onSelect={(next) => {
+            selection.clear()
+            setView(next)
+          }}
+        />
+        <span className="flex-1" />
         {selection.selectedCount > 0 ? (
           <TaskScheduleCalendar
             open={scheduleOpen}
@@ -453,7 +463,7 @@ export function TasksScreen(): ReactElement {
             <TaskToolbarCountBadge count={recentlyCompleted.length} />
           </Button>
         ) : null}
-        <div className="window-drag-control relative mx-2 w-44">
+        <div className="window-drag-control relative mx-2 w-40 min-w-24 shrink">
           <Search
             aria-hidden
             className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
@@ -487,16 +497,6 @@ export function TasksScreen(): ReactElement {
         >
           <Plus aria-hidden className="size-3.5" />
         </button>
-      </header>
-      <div className="flex flex-none items-center pr-7 pb-3 pl-12">
-        <TaskViewTabs
-          view={view}
-          counts={counts}
-          onSelect={(next) => {
-            selection.clear()
-            setView(next)
-          }}
-        />
       </div>
       <div
         ref={setScrollElement}

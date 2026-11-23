@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Tags: delete, merge and undo select options in tag settings (#635).
 - Index: stays in use while an update re-derives it; no UI block on long
   notes (#633).
 - Share: X post card with author picture, handle and date (#622).

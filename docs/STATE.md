@@ -1,5 +1,12 @@
 # Kore working state
 
+## Tag settings: delete and merge options, 2026-11-23 (0.140.2)
+
+- [x] Every select/status option has a delete button; deleting an option in
+  use removes the value or moves the notes to another option, with Undo;
+  deleting a property is undoable; unsaved edits ask before discarding. Mac
+  and iPhone (#635).
+
 ## Index stays usable during a rebuild, 2026-11-23 (0.140.1)
 
 - [x] An update that re-derives the index keeps the old rows in use until the

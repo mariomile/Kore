@@ -1,17 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { firstImageAssets } from '@kore/core'
+import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
-import { passivePreviewImageResolver } from '@/editor/preview-image-url'
-import { useAssetPersistence } from '@/editor/use-asset-persistence'
+import { useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { CardPreviewSlot } from '@/mobile/card-preview-slot'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
-import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 
 interface NoteCardGridProps {
@@ -156,7 +151,7 @@ const NoteCard = memo(function NoteCard({
       <div
         data-note-path={row.path}
         className={cn(
-          'relative rounded-xl border border-border bg-surface p-3 has-[button:active]:bg-surface-hover',
+          'relative overflow-hidden rounded-xl border border-border bg-surface has-[button:active]:bg-surface-hover',
           // Hidden until its preview's height is kept (card-preview-slot.tsx).
           'transition-opacity duration-100 has-[[data-preview-pending]]:opacity-0',
         )}
@@ -167,97 +162,62 @@ const NoteCard = memo(function NoteCard({
           onClick={() => onOpen(row.path)}
           className="absolute inset-0 z-[1] rounded-xl"
         />
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="line-clamp-3 min-w-0 text-[13px] font-semibold leading-snug text-text [overflow-wrap:anywhere]">
-            <HighlightedText segments={row.titleSegments} />
-          </h2>
-          {row.isPinned ? (
-            <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
-          ) : null}
-        </div>
-        {row.propertyLine !== undefined ? (
-          <p className="mt-1.5 line-clamp-2 text-xs font-medium text-text-secondary">
-            {row.propertyLine}
-          </p>
-        ) : null}
+        {/* The note's picture leads the card edge to edge, at a fixed height
+            so the card never jumps when the thumbnail arrives. */}
         {imageUrl !== undefined ? (
           <img
             src={imageUrl}
             alt=""
             loading="lazy"
             decoding="async"
-            className="mt-2 max-h-40 w-full rounded-lg object-cover"
+            draggable={false}
+            data-testid="note-card-picture"
+            className="h-28 w-full bg-surface-hover object-cover"
           />
         ) : null}
-        {isSearchHit ? (
-          <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
-            <HighlightedText segments={row.snippet} />
-          </p>
-        ) : snippet === '' ? null : (
-          <CardPreviewSlot heightKey={`${row.path}\n${row.mtime}`} className="mt-2 max-h-44">
-            {({ arrived, onSettled }) => (
-              <NoteCardPreview
-                path={row.path}
-                mtime={row.mtime}
-                snippet={snippet}
-                resolveImageUrl={resolveImageUrl}
-                waitForScrollRest
-                nearMargin={PREPARE_MARGIN}
-                sourceBudget={SOURCE_BUDGET}
-                urgent={arrived}
-                onSettled={onSettled}
-                className={cn(
-                  'kore-card-preview-compact max-h-44',
-                  // The card's own thumbnail already shows the note's image.
-                  imageUrl !== undefined && '[&_img]:hidden',
-                )}
-              />
-            )}
-          </CardPreviewSlot>
-        )}
-        <div className="mt-3 text-2xs text-text-muted">{recency}</div>
+        <div className="p-3">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="line-clamp-3 min-w-0 text-[13px] font-semibold leading-snug text-text [overflow-wrap:anywhere]">
+              <HighlightedText segments={row.titleSegments} />
+            </h2>
+            {row.isPinned ? (
+              <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
+            ) : null}
+          </div>
+          {row.propertyLine !== undefined ? (
+            <p className="mt-1.5 line-clamp-2 text-xs font-medium text-text-secondary">
+              {row.propertyLine}
+            </p>
+          ) : null}
+          {isSearchHit ? (
+            <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
+              <HighlightedText segments={row.snippet} />
+            </p>
+          ) : snippet === '' ? null : (
+            <CardPreviewSlot heightKey={`${row.path}\n${row.mtime}`} className="mt-2 max-h-44">
+              {({ arrived, onSettled }) => (
+                <NoteCardPreview
+                  path={row.path}
+                  mtime={row.mtime}
+                  snippet={snippet}
+                  resolveImageUrl={resolveImageUrl}
+                  waitForScrollRest
+                  nearMargin={PREPARE_MARGIN}
+                  sourceBudget={SOURCE_BUDGET}
+                  urgent={arrived}
+                  onSettled={onSettled}
+                  className={cn(
+                    'kore-card-preview-compact max-h-44',
+                    // The card's own thumbnail already shows the note's image.
+                    imageUrl !== undefined && 'kore-card-preview-pictured',
+                  )}
+                />
+              )}
+            </CardPreviewSlot>
+          )}
+          <div className="mt-3 text-2xs text-text-muted">{recency}</div>
+        </div>
       </div>
     </div>
   )
 })
-
-const NO_IMAGES: ReadonlyMap<string, string> = new Map()
-
-/** A vault image source as a URL a passive card may load: no network, no SVG. */
-function usePassiveImageResolver(): (src: string) => string | null {
-  const { graph } = useGraph()
-  const { resolveImageUrl, resolveAssetOpenPath } = useAssetPersistence(graph?.generation ?? null)
-  return useMemo(
-    () => passivePreviewImageResolver({ resolveImageUrl, resolveAssetOpenPath }),
-    [resolveAssetOpenPath, resolveImageUrl],
-  )
-}
-
-/**
- * Card thumbnail URLs by note path, for the cards on screen: the index names
- * each note's first raster image, and the passive-preview resolver turns it
- * into an asset URL (no network, no SVG). Index-scoped, so an edit that adds
- * or removes a photo refreshes the grid with every other index query.
- */
-export function useFirstImages(paths: readonly string[]): ReadonlyMap<string, string> {
-  const { graph } = useGraph()
-  const resolve = usePassiveImageResolver()
-  const { data } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-card-images', paths],
-    queryFn: () => firstImageAssets(paths),
-    enabled: graph !== null && graph !== undefined && paths.length > 0,
-  })
-  return useMemo(() => {
-    if (data === undefined) {
-      return NO_IMAGES
-    }
-    const urls = new Map<string, string>()
-    for (const [path, asset] of data) {
-      const url = resolve(asset)
-      if (url !== null) {
-        urls.set(path, url)
-      }
-    }
-    return urls
-  }, [data, resolve])
-}

@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type { NoteListEntry } from '@kore/core'
 import { AllNotesGrid } from './all-notes-grid'
 
-vi.mock('@/providers/graph-provider', () => ({
-  useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
+const pictures = new Map<string, string>()
+vi.mock('@/hooks/use-note-card-images', () => ({
+  usePassiveImageResolver: () => () => null,
+  useFirstImages: () => pictures,
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
@@ -50,6 +52,30 @@ describe('AllNotesGrid card clipping', () => {
     expect(slotBox.left).toBeGreaterThanOrEqual(cardBox.left)
     expect(slotBox.right).toBeLessThanOrEqual(cardBox.right + 1)
     expect(slot.scrollHeight).toBeGreaterThan(slot.clientHeight)
+    await view.unmount()
+  })
+
+  it('leads with the picture band and still keeps the preview inside the card', async () => {
+    pictures.set(note.path, 'data:image/gif;base64,R0lGODlhAQABAAAAACw=')
+    const view = await render(
+      <div style={{ width: '36rem' }}>
+        <AllNotesGrid notes={[note]} tag={null} onOpen={vi.fn()} />
+      </div>,
+    )
+
+    const picture = view.getByTestId('note-card-picture')
+    await expect.element(picture).toBeInTheDocument()
+    const card = view.getByRole('button', { name: /Log/ }).element()
+    const pictureBox = picture.element().getBoundingClientRect()
+    const slotBox = view.getByTestId('note-card-preview-slot').element().getBoundingClientRect()
+    const footerBox = view.getByText('company').element().getBoundingClientRect()
+    const cardBox = card.getBoundingClientRect()
+    // Edge to edge: only the card's own 1px border sits around the band.
+    expect(Math.abs(pictureBox.top - cardBox.top)).toBeLessThanOrEqual(1)
+    expect(cardBox.width - pictureBox.width).toBeLessThanOrEqual(2)
+    expect(slotBox.top).toBeGreaterThanOrEqual(pictureBox.bottom - 1)
+    expect(slotBox.bottom).toBeLessThanOrEqual(footerBox.top + 1)
+    pictures.clear()
     await view.unmount()
   })
 })

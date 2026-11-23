@@ -108,4 +108,11 @@ describe('stripTrailingTagLine', () => {
     expect(stripTrailingTagLine('Body\n#book #idea', ['book'])).toBe('Body\n#book #idea')
     expect(stripTrailingTagLine('', ['book'])).toBe('')
   })
+
+  it('stays linear on a long single paragraph', () => {
+    const paragraph = 'word '.repeat(100_000)
+    const started = performance.now()
+    expect(stripTrailingTagLine(paragraph, ['book'])).toBe(paragraph)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
 })

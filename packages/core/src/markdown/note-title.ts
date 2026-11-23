@@ -99,9 +99,12 @@ export function stripLeadingTagLine(body: string, shownTags: readonly string[]):
  * tagging a note at its end — by the same rule as {@link stripLeadingTagLine}.
  */
 export function stripTrailingTagLine(body: string, shownTags: readonly string[]): string {
-  const match = /\n?([^\n]*)\s*$/.exec(body)
-  return isShownTagLine(match?.[1]?.trim() ?? '', shownTags)
-    ? body.slice(0, match?.index ?? body.length)
+  // String scans, not a `$`-anchored regex: that retries from every offset
+  // and goes quadratic on a long single paragraph.
+  const end = body.trimEnd().length
+  const lineStart = body.lastIndexOf('\n', end - 1) + 1
+  return isShownTagLine(body.slice(lineStart, end).trim(), shownTags)
+    ? body.slice(0, Math.max(0, lineStart - 1))
     : body
 }
 

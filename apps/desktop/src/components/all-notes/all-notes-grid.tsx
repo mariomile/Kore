@@ -1,4 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react'
 import {
   displayNoteTitle,
   type CollectionEntry,
@@ -40,8 +49,11 @@ const MAX_FOOTER_TAGS = 3
 const COLUMN_MIN_WIDTH = 272
 const COLUMN_GAP = 20
 
-/** Before the grid is measured: the common case of a main pane on a laptop. */
+/** Before the grid is measured (only ever seen by tests without layout). */
 const DEFAULT_COLUMNS = 3
+
+/** How long a resize rests before the columns are dealt again. */
+const RESIZE_SETTLE_MS = 150
 
 /**
  * How far from the screen a card's preview is prepared: about a screen, so
@@ -75,7 +87,7 @@ export function AllNotesGrid({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const hasMore = notes !== undefined && notes.length > visibleCount
   const [gridElement, setGridElement] = useState<HTMLDivElement | null>(null)
-  const [columnCount, setColumnCount] = useState(DEFAULT_COLUMNS)
+  const [columns, setColumns] = useState({ count: DEFAULT_COLUMNS, width: 0 })
   // The parent passes a fresh onOpen each render; a stable one lets the
   // memoized cards skip re-rendering when only the thumbnails arrive.
   const onOpenRef = useRef(onOpen)
@@ -102,25 +114,43 @@ export function AllNotesGrid({
     useMemo(() => mountedNotes.map((note) => note.path), [mountedNotes]),
   )
 
-  // As many columns as the grid's content width fits; a resize that keeps
-  // the count re-renders nothing.
-  useEffect(() => {
+  // As many columns as the grid's content width fits, measured before the
+  // first paint so a narrow pane never flashes the default count. The column
+  // width joins each card's height key (a preview's kept height is only good
+  // for the width it was measured at), so it settles once a resize rests:
+  // the cards then re-measure once instead of on every frame of a drag.
+  useLayoutEffect(() => {
     if (gridElement === null) {
       return
     }
-    const measure = (): void => {
+    let settle: number | null = null
+    const measure = (): { count: number; width: number } => {
       const style = getComputedStyle(gridElement)
       const width =
         gridElement.clientWidth -
         Number.parseFloat(style.paddingLeft) -
         Number.parseFloat(style.paddingRight)
-      setColumnCount(columnsThatFit(width, COLUMN_MIN_WIDTH, COLUMN_GAP))
+      const count = columnsThatFit(width, COLUMN_MIN_WIDTH, COLUMN_GAP)
+      return { count, width: Math.round((width - COLUMN_GAP * (count - 1)) / count) }
     }
-    measure()
-    const observer = new ResizeObserver(measure)
+    const apply = (next: { count: number; width: number }): void => {
+      setColumns((current) =>
+        current.count === next.count && current.width === next.width ? current : next,
+      )
+    }
+    apply(measure())
+    const observer = new ResizeObserver(() => {
+      if (settle !== null) {
+        window.clearTimeout(settle)
+      }
+      settle = window.setTimeout(() => apply(measure()), RESIZE_SETTLE_MS)
+    })
     observer.observe(gridElement)
     return () => {
       observer.disconnect()
+      if (settle !== null) {
+        window.clearTimeout(settle)
+      }
     }
   }, [gridElement])
 
@@ -162,11 +192,14 @@ export function AllNotesGrid({
       data-testid="all-notes-grid"
       className="flex items-start gap-5 pb-10 pl-12 pr-7 pt-2"
     >
-      {dealIntoColumns(mountedNotes, columnCount).map((column, columnIndex) => (
+      {dealIntoColumns(mountedNotes, columns.count).map((column, columnIndex) => (
         <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
           {column.map((note) => (
             <GridCard
-              key={note.path}
+              // A new column width remounts the card, so its preview measures
+              // afresh instead of keeping a height from another width.
+              key={`${note.path}\n${columns.width}`}
+              columnWidth={columns.width}
               note={note}
               type={type}
               entry={type != null ? entryByPath.get(note.path) : undefined}
@@ -184,6 +217,8 @@ export function AllNotesGrid({
 }
 
 interface GridCardProps {
+  /** The column width the card is laid out at, in px (part of its height key). */
+  columnWidth: number
   note: NoteListEntry
   type: TagType | null | undefined
   entry: CollectionEntry | undefined
@@ -200,6 +235,7 @@ interface GridCardProps {
  * arriving re-renders only its own card.
  */
 const GridCard = memo(function GridCard({
+  columnWidth,
   note,
   type,
   entry,
@@ -233,7 +269,8 @@ const GridCard = memo(function GridCard({
         onClick={(event) => {
           onOpen(note.path, event)
         }}
-        className="absolute inset-0 z-[1] rounded-2xl"
+        // The card clips its picture, so the focus ring is drawn inside.
+        className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-offset-[-2px]"
       />
       {picture !== undefined ? <NoteCardPicture src={picture} /> : null}
       <div className="flex min-w-0 flex-col p-5">
@@ -249,7 +286,10 @@ const GridCard = memo(function GridCard({
           <CardPropertyChips type={type} entry={entry} />
         ) : null}
         {note.snippet === '' ? null : (
-          <CardPreviewSlot heightKey={`${note.path}\n${note.mtime}`} className="mt-2.5 max-h-80">
+          <CardPreviewSlot
+            heightKey={`${note.path}\n${note.mtime}\n${columnWidth}`}
+            className="mt-2.5 max-h-80"
+          >
             {({ onSettled }) => (
               <NoteCardPreview
                 path={note.path}

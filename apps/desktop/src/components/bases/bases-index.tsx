@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
+import { TableView } from '@/components/icons'
 import { PageLoading } from '@/components/page-loading'
+import { EmptyState } from '@/components/ui/empty-state'
+import { PageBody, PageHeader } from '@/components/ui/page-header'
 import { useRouter } from '@/routing/router'
 import { ConvertToTypes } from './convert-to-types'
 import { useBaseFiles } from './use-base-view'
@@ -10,25 +13,28 @@ export function BasesIndex(): ReactElement {
   const { navigate } = useRouter()
   const { paths, failed } = useBaseFiles()
   return (
-    <div className="mx-auto w-full max-w-2xl overflow-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">Bases</h1>
-      <p className="mt-1 text-sm text-text-muted">
-        Obsidian bases in this vault, shown live over your notes.
-      </p>
+    <div className="flex h-full min-h-0 flex-col overflow-auto">
+      <PageHeader
+        title="Bases"
+        description="Obsidian bases in this vault, shown live over your notes."
+      />
       {failed ? (
-        <p role="alert" className="mt-6 text-sm text-text-muted">
+        <p role="alert" className="pr-7 pl-12 text-sm text-text-muted">
           Couldn’t list the bases.
         </p>
       ) : paths === undefined ? (
         <PageLoading label="Loading bases" />
       ) : paths.length === 0 ? (
-        <p className="mt-6 text-sm text-text-muted">
-          No .base files yet. Bases made in Obsidian show up here.
-        </p>
+        <EmptyState
+          icon={TableView}
+          title="No bases yet"
+          description="A base you build in Obsidian shows up here, live over your notes, the moment its file is in the vault."
+          className="my-auto"
+        />
       ) : (
-        <>
+        <PageBody>
           <ConvertToTypes paths={paths} label="Convert bases to type views" />
-          <ul className="mt-6 flex flex-col">
+          <ul className="-mx-2 mt-6 flex flex-col">
             {paths.map((path) => (
               <li key={path}>
                 <button
@@ -44,7 +50,7 @@ export function BasesIndex(): ReactElement {
               </li>
             ))}
           </ul>
-        </>
+        </PageBody>
       )}
     </div>
   )

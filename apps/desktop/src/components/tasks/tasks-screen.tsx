@@ -8,7 +8,16 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CalendarClock, Flag, List, Plus, Search } from '@/components/icons'
+import {
+  Archive,
+  CalendarClock,
+  Checklist,
+  Flag,
+  List,
+  Plus,
+  Search,
+  SearchOff,
+} from '@/components/icons'
 import {
   countTasksByView,
   countTaskTags,
@@ -22,6 +31,7 @@ import {
   type QuickAdd,
 } from '@kore/core'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -381,20 +391,8 @@ export function TasksScreen(): ReactElement {
       aria-label="Tasks"
       className="flex h-full min-h-0 flex-col outline-none"
     >
-      <header className="flex flex-none items-center gap-2 py-2.5 px-2 lg:px-10">
-        <div className="window-drag-control min-w-0 flex-1">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
-          />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search or #tag…"
-            aria-label="Search tasks"
-            className="h-9 rounded-full border-none bg-surface-hover pl-[38px] shadow-none dark:bg-surface-hover"
-          />
-        </div>
+      <header className="flex flex-none flex-wrap items-center gap-x-1 gap-y-3 py-5 pr-7 pl-12">
+        <h1 className="app-page-title mr-auto text-text">Tasks</h1>
         {selection.selectedCount > 0 ? (
           <TaskScheduleCalendar
             open={scheduleOpen}
@@ -455,16 +453,19 @@ export function TasksScreen(): ReactElement {
             <TaskToolbarCountBadge count={recentlyCompleted.length} />
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setQuickAddOpen(true)}
-          title="Add a task in plain words (Q)"
-          className="window-drag-control text-xs font-normal text-text-muted"
-        >
-          <Plus aria-hidden className="size-3.5" />
-          Add task
-        </Button>
+        <div className="window-drag-control relative mx-2 w-56">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
+          />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search or #tag…"
+            aria-label="Search tasks"
+            className="h-7 rounded-full border-none bg-surface-hover pl-8 text-[13px] font-medium shadow-none dark:bg-surface-hover"
+          />
+        </div>
         <TaskFiltersMenu
           filters={filters}
           toggle={toggle}
@@ -475,6 +476,15 @@ export function TasksScreen(): ReactElement {
           activeTags={activeTags}
           onToggleTag={(tag) => setQuery((current) => toggleQueryTag(current, tag))}
         />
+        <button
+          type="button"
+          aria-label="Add task"
+          onClick={() => setQuickAddOpen(true)}
+          title="Add a task in plain words (Q)"
+          className="app-icon-button window-drag-control text-text-muted hover:text-text"
+        >
+          <Plus aria-hidden className="size-3.5" />
+        </button>
       </header>
       <TaskViewTabs
         view={view}
@@ -499,9 +509,24 @@ export function TasksScreen(): ReactElement {
             Couldn’t load tasks.
           </p>
         ) : ready && groups.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-text-muted lg:px-12">
-            {needle ? 'No matching tasks.' : 'No tasks to show.'}
-          </p>
+          needle ? (
+            <EmptyState
+              icon={SearchOff}
+              title="No matching tasks"
+              description="Try another word or tag, or clear the search."
+            />
+          ) : (
+            <EmptyState
+              icon={Checklist}
+              title="No tasks to show"
+              description="A checkbox in any note becomes a task here."
+              action={
+                <Button variant="outline" size="sm" onClick={() => setQuickAddOpen(true)}>
+                  Add a task
+                </Button>
+              }
+            />
+          )
         ) : layout === 'board' ? (
           <TaskBoard
             groups={groups}

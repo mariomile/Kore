@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
-import { separateCalloutTitles, withoutBlockIds, type DateFormat } from '@kore/core'
+import {
+  separateCalloutTitles,
+  withoutBlockIds,
+  withUndrawnDiagramsAsCode,
+  type DateFormat,
+} from '@kore/core'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useCalloutDom } from '@/editor/use-callout-dom'
@@ -92,7 +97,10 @@ export function MarkdownPreview({
   )
 
   // `^id` markers are Obsidian anchors, never text a reader sees (Plan 33 C3).
-  const markdown = useMemo(() => separateCalloutTitles(withoutBlockIds(content)), [content])
+  const markdown = useMemo(
+    () => withUndrawnDiagramsAsCode(separateCalloutTitles(withoutBlockIds(content))),
+    [content],
+  )
   const hostRef = useRef<HTMLDivElement>(null)
   // Dates first: a callout stamps its title by the text it reads, so the
   // date chips must already be in that text or the stamp goes stale.

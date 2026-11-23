@@ -151,6 +151,7 @@ export {
   parseCalloutMarker,
   requoteCalloutBlock,
   separateCalloutTitles,
+  withUndrawnDiagramsAsCode,
   type CalloutFold,
   type CalloutKind,
   type CalloutMarker,

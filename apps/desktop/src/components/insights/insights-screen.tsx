@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { addDays, format, subDays } from 'date-fns'
 import { loadGraphInsights, weekStartDow, type GraphInsights } from '@kore/core'
 import { PageLoading } from '@/components/page-loading'
+import { PageBody, PageHeader } from '@/components/ui/page-header'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
@@ -67,83 +68,86 @@ export function InsightsScreen(): ReactElement {
   const maxTagCount = Math.max(1, ...data.topTags.map((facet) => facet.count))
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">Insights</h1>
-
-      <section aria-label="Totals" className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <StatTile label="Notes" value={data.noteCount} />
-        <StatTile label="Daily notes" value={data.dailyNoteCount} />
-        <StatTile label="Open tasks" value={data.openTaskCount} />
-        <StatTile label="Done tasks" value={data.completedTaskCount} />
-        <StatTile label="Types" value={data.tagCount} />
-      </section>
-
-      <section aria-label="Writing activity" className="mt-10">
-        <h2 className="text-2xs font-medium tracking-wide text-text-muted">Writing activity</h2>
-        <ActivityHeatmap
-          activity={data.activity}
-          gridStart={gridStart}
-          today={today}
-          dateFormat={settings.dateFormat}
-        />
-      </section>
-
-      {data.mostLinked.length > 0 ? (
-        <section aria-label="Most linked notes" className="mt-10">
-          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Most linked notes</h2>
-          <ul className="mt-2 flex flex-col">
-            {data.mostLinked.map((note) => (
-              <li key={note.path}>
-                <button
-                  type="button"
-                  onClick={() => openNote(note.path)}
-                  className="flex w-full items-center gap-3 rounded-md px-2.5 py-1.5 text-left transition-colors duration-100 hover:bg-surface-hover"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm text-text">
-                    {note.dailyDate !== null
-                      ? formatDayLabel(note.dailyDate, settings.dateFormat)
-                      : note.title}
-                  </span>
-                  <span className="shrink-0 text-xs tabular-nums text-text-muted">
-                    {note.backlinks} {note.backlinks === 1 ? 'link' : 'links'}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+    <>
+      <PageHeader title="Insights" />
+      <PageBody>
+        <section aria-label="Totals" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <StatTile label="Notes" value={data.noteCount} />
+          <StatTile label="Daily notes" value={data.dailyNoteCount} />
+          <StatTile label="Open tasks" value={data.openTaskCount} />
+          <StatTile label="Done tasks" value={data.completedTaskCount} />
+          <StatTile label="Types" value={data.tagCount} />
         </section>
-      ) : null}
 
-      {data.topTags.length > 0 ? (
-        <section aria-label="Top types" className="mt-10">
-          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top types</h2>
-          <ul className="mt-2 flex flex-col gap-1">
-            {data.topTags.map((facet) => (
-              <li key={facet.tag}>
-                <button
-                  type="button"
-                  onClick={() => openTag(facet.tag)}
-                  className="group flex w-full items-center gap-3 rounded-md px-2.5 py-1 text-left transition-colors duration-100 hover:bg-surface-hover"
-                >
-                  <span className="w-28 shrink-0 truncate text-xs font-medium text-text-secondary group-hover:text-text">
-                    #{facet.tag}
-                  </span>
-                  <span className="h-2 min-w-0 flex-1 rounded-full bg-surface-sunken">
-                    <span
-                      className="block h-full rounded-full bg-accent/60"
-                      style={{ width: `${Math.max(4, (facet.count / maxTagCount) * 100)}%` }}
-                    />
-                  </span>
-                  <span className="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted">
-                    {facet.count}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        <section aria-label="Writing activity" className="mt-10">
+          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Writing activity</h2>
+          <ActivityHeatmap
+            activity={data.activity}
+            gridStart={gridStart}
+            today={today}
+            dateFormat={settings.dateFormat}
+          />
         </section>
-      ) : null}
-    </div>
+
+        {data.mostLinked.length > 0 ? (
+          <section aria-label="Most linked notes" className="mt-10">
+            <h2 className="text-2xs font-medium tracking-wide text-text-muted">
+              Most linked notes
+            </h2>
+            <ul className="-mx-2.5 mt-2 flex flex-col">
+              {data.mostLinked.map((note) => (
+                <li key={note.path}>
+                  <button
+                    type="button"
+                    onClick={() => openNote(note.path)}
+                    className="flex w-full items-center gap-3 rounded-md px-2.5 py-1.5 text-left transition-colors duration-100 hover:bg-surface-hover"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-text">
+                      {note.dailyDate !== null
+                        ? formatDayLabel(note.dailyDate, settings.dateFormat)
+                        : note.title}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-text-muted">
+                      {note.backlinks} {note.backlinks === 1 ? 'link' : 'links'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {data.topTags.length > 0 ? (
+          <section aria-label="Top types" className="mt-10">
+            <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top types</h2>
+            <ul className="-mx-2.5 mt-2 flex flex-col gap-1">
+              {data.topTags.map((facet) => (
+                <li key={facet.tag}>
+                  <button
+                    type="button"
+                    onClick={() => openTag(facet.tag)}
+                    className="group flex w-full items-center gap-3 rounded-md px-2.5 py-1 text-left transition-colors duration-100 hover:bg-surface-hover"
+                  >
+                    <span className="w-28 shrink-0 truncate text-xs font-medium text-text-secondary group-hover:text-text">
+                      #{facet.tag}
+                    </span>
+                    <span className="h-2 min-w-0 flex-1 rounded-full bg-surface-sunken">
+                      <span
+                        className="block h-full rounded-full bg-accent/60"
+                        style={{ width: `${Math.max(4, (facet.count / maxTagCount) * 100)}%` }}
+                      />
+                    </span>
+                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                      {facet.count}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </PageBody>
+    </>
   )
 }
 

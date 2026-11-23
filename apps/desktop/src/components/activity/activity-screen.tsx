@@ -10,11 +10,14 @@ import {
   type ActivitySitting,
   type SittingNote,
 } from '@kore/core'
+import { History } from '@/components/icons'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { PageLoading } from '@/components/page-loading'
 import { UndoSittingDialog } from '@/components/activity/undo-sitting-dialog'
 import { WaitingProposals } from '@/components/activity/waiting-proposals'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { PageBody, PageHeader } from '@/components/ui/page-header'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel, formatTimeOfDay } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -124,113 +127,120 @@ export function ActivityScreen(): ReactElement {
     // No backup repository yet (or none on this platform): the log has
     // nothing to read, so point at the switch that starts it.
     return (
-      <div className="mx-auto w-full max-w-2xl px-6 py-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-text">Activity</h1>
-        <WaitingProposals generation={generation} />
-        <p role="status" className="mt-4 text-sm text-text-muted">
-          Activity is read from the vault’s backup history. Turn on backup to see what you and your
-          agents change.
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3"
-          onClick={() => navigate(settingsRoute('data'))}
-        >
-          Open backup settings
-        </Button>
+      <div className="flex h-full min-h-0 flex-col overflow-auto">
+        <PageHeader title="Activity" />
+        <PageBody className="pb-0">
+          <WaitingProposals generation={generation} />
+        </PageBody>
+        <EmptyState
+          role="status"
+          icon={History}
+          title="Turn on backup to see activity"
+          description="Activity is read from the vault’s backup history: once backup is on, everything you and your agents change is listed here."
+          action={
+            <Button variant="outline" size="sm" onClick={() => navigate(settingsRoute('data'))}>
+              Open backup settings
+            </Button>
+          }
+          className="my-auto"
+        />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">Activity</h1>
-      <p className="mt-1 text-sm text-text-muted">
-        What you and your agents changed in this vault, newest first.
-      </p>
+    <>
+      <PageHeader
+        title="Activity"
+        description="What you and your agents changed in this vault, newest first."
+      />
+      <PageBody>
+        <WaitingProposals generation={generation} />
 
-      <WaitingProposals generation={generation} />
-
-      {authors.length > 1 ? (
-        <div role="group" aria-label="Filter by author" className="mt-5 flex flex-wrap gap-1.5">
-          <FilterChip
-            label="Everyone"
-            active={authorFilter === ALL_AUTHORS}
-            onClick={() => setAuthorFilter(ALL_AUTHORS)}
-          />
-          {authors.map(([key, author]) => (
+        {authors.length > 1 ? (
+          <div role="group" aria-label="Filter by author" className="mt-5 flex flex-wrap gap-1.5">
             <FilterChip
-              key={key}
-              label={authorLabel(author)}
-              active={authorFilter === key}
-              onClick={() => setAuthorFilter(key)}
+              label="Everyone"
+              active={authorFilter === ALL_AUTHORS}
+              onClick={() => setAuthorFilter(ALL_AUTHORS)}
             />
-          ))}
-        </div>
-      ) : null}
+            {authors.map(([key, author]) => (
+              <FilterChip
+                key={key}
+                label={authorLabel(author)}
+                active={authorFilter === key}
+                onClick={() => setAuthorFilter(key)}
+              />
+            ))}
+          </div>
+        ) : null}
 
-      {isPending ? (
-        <PageLoading label="Loading activity" />
-      ) : days.length === 0 ? (
-        <p className="mt-6 text-sm text-text-muted">No changes yet.</p>
-      ) : (
-        <div className="mt-6 space-y-8">
-          {days.map((group) => (
-            <section key={group.day} aria-label={formatDayLabel(group.day, settings.dateFormat)}>
-              <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">
-                {formatDayLabel(group.day, settings.dateFormat)}
-              </h2>
-              <ol className="mt-2 space-y-3">
-                {group.sittings.map((sitting) => (
-                  <SittingRow
-                    key={sitting.id}
-                    sitting={sitting}
-                    timeFormat={settings.timeFormat}
-                    onOpenNote={setHistoryOf}
-                    onUndo={setUndoing}
-                  />
-                ))}
-              </ol>
-            </section>
-          ))}
-        </div>
-      )}
+        {isPending ? (
+          <PageLoading label="Loading activity" />
+        ) : days.length === 0 ? (
+          <EmptyState
+            icon={History}
+            title="No changes yet"
+            description="The next edit you or an agent makes shows up here."
+          />
+        ) : (
+          <div className="mt-6 space-y-8">
+            {days.map((group) => (
+              <section key={group.day} aria-label={formatDayLabel(group.day, settings.dateFormat)}>
+                <h2 className="text-xs font-medium tracking-wide text-text-muted uppercase">
+                  {formatDayLabel(group.day, settings.dateFormat)}
+                </h2>
+                <ol className="mt-2 space-y-3">
+                  {group.sittings.map((sitting) => (
+                    <SittingRow
+                      key={sitting.id}
+                      sitting={sitting}
+                      timeFormat={settings.timeFormat}
+                      onOpenNote={setHistoryOf}
+                      onUndo={setUndoing}
+                    />
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        )}
 
-      {hasNextPage ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-6"
-          disabled={isFetchingNextPage}
-          onClick={() => void fetchNextPage({ cancelRefetch: false })}
-        >
-          {isFetchingNextPage ? 'Loading…' : 'Load older changes'}
-        </Button>
-      ) : null}
+        {hasNextPage ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-6"
+            disabled={isFetchingNextPage}
+            onClick={() => void fetchNextPage({ cancelRefetch: false })}
+          >
+            {isFetchingNextPage ? 'Loading…' : 'Load older changes'}
+          </Button>
+        ) : null}
 
-      {undoing !== null && generation !== null ? (
-        <UndoSittingDialog
-          sitting={undoing}
-          authorName={authorLabel(undoing.author)}
-          generation={generation}
-          onClose={() => setUndoing(null)}
-        />
-      ) : null}
+        {undoing !== null && generation !== null ? (
+          <UndoSittingDialog
+            sitting={undoing}
+            authorName={authorLabel(undoing.author)}
+            generation={generation}
+            onClose={() => setUndoing(null)}
+          />
+        ) : null}
 
-      {historyOf !== null ? (
-        <NoteHistoryDialog
-          path={historyOf.path}
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setHistoryOf(null)
-            }
-          }}
-          initialCommit={historyOf.commit}
-        />
-      ) : null}
-    </div>
+        {historyOf !== null ? (
+          <NoteHistoryDialog
+            path={historyOf.path}
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setHistoryOf(null)
+              }
+            }}
+            initialCommit={historyOf.commit}
+          />
+        ) : null}
+      </PageBody>
+    </>
   )
 }
 

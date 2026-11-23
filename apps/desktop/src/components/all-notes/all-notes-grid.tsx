@@ -5,7 +5,9 @@ import {
   type NoteListEntry,
   type TagType,
 } from '@kore/core'
-import { Pin } from '@/components/icons'
+import { Notes, Pin } from '@/components/icons'
+import { TagChips } from '@/components/tags/tag-chips'
+import { EmptyState } from '@/components/ui/empty-state'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { formatRecencyLabel } from '@/lib/dates'
@@ -101,9 +103,11 @@ export function AllNotesGrid({
   }
   if (notes.length === 0) {
     return (
-      <p className="py-10 pl-12 pr-7 text-sm text-text-muted">
-        {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
-      </p>
+      <EmptyState
+        icon={Notes}
+        title={tag === null ? 'No notes yet' : `No #${tag} notes yet`}
+        description="Notes that belong here show up as soon as they exist."
+      />
     )
   }
   return (
@@ -162,14 +166,7 @@ export function AllNotesGrid({
                 </div>
               </div>
               <div className="relative z-[1] mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
-                {shownTags.map((noteTag) => (
-                  <span
-                    key={noteTag}
-                    className="rounded-full border border-border px-2 py-0.5 text-2xs font-medium text-text-secondary"
-                  >
-                    #{noteTag}
-                  </span>
-                ))}
+                <TagChips tags={shownTags} max={MAX_FOOTER_TAGS} />
                 <span className="ml-auto text-2xs text-text-muted">
                   {note.mtime > 0 ? formatRecencyLabel(note.mtime, settings) : '—'}
                 </span>

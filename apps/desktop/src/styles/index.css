@@ -1131,15 +1131,43 @@ html:root {
    slicing a line of text in half. Applied only while actually overflowing,
    so a short note keeps its last line at full strength. */
 .kore-hover-preview-overflowing {
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--kore-preview-fade, 2.5rem)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--kore-preview-fade, 2.5rem)),
+    transparent
+  );
+}
+/* The same for a table wider than the box: it fades out at the right edge,
+   which says there is more instead of cutting a word in half. */
+.kore-hover-preview-overflowing-x {
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+}
+.kore-hover-preview-overflowing.kore-hover-preview-overflowing-x {
+  -webkit-mask-image:
+    linear-gradient(to bottom, black calc(100% - var(--kore-preview-fade, 2.5rem)), transparent),
+    linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  mask-image:
+    linear-gradient(to bottom, black calc(100% - var(--kore-preview-fade, 2.5rem)), transparent),
+    linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 /* The phone grid's card body (mobile/note-card-grid.tsx): the same preview in
    a column half a phone wide. Body text matches the list's snippet size, and
    a table sizes to its words with tight cells (the editor's equal fixed
-   columns would break `Candidate` across four lines); what does not fit is
-   clipped at the card's edge. */
+   columns would break `Candidate` across four lines); what does not fit
+   fades out at the card's edge. */
+/* A shorter fade than the hover card's: the smallest slot holds three lines. */
+.kore-card-preview-compact {
+  --kore-preview-fade: 1.25rem;
+}
 .kore-card-preview-compact .kore-editor {
   font-size: var(--text-xs, 0.75rem);
 }

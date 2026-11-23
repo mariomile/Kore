@@ -6,6 +6,7 @@ import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { formatRecencyLabel } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
@@ -27,8 +28,9 @@ const GRID_CHUNK = 120
  * same way desktop's All Notes grid does so a large graph never paints every
  * card at once. A note's first image tops its card: one indexed query per
  * mounted chunk names it. The body is desktop's live preview (a table is a
- * table, a tag a chip), read and rendered only as a card nears the viewport;
- * the indexed snippet stands in until then.
+ * table, a tag a chip), read and rendered only once scrolling rests; the
+ * indexed snippet stands in until then, in a slot of fixed height, so the
+ * grid never moves when a preview arrives.
  */
 export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement {
   const { settings } = useSettings()
@@ -100,8 +102,20 @@ interface NoteCardProps {
   onOpen: (path: string) => void
 }
 
-/** How tall a card's preview may grow before it fades out: about nine lines. */
-const PREVIEW_CLAMP = 'kore-card-preview-compact max-h-44'
+/**
+ * A snippet this short is a note with a line or two to say. The index cuts a
+ * snippet at 120 characters, and a table reads as rows joined by ` · `.
+ */
+const SHORT_SNIPPET = 40
+
+/**
+ * The height a card keeps for its preview, fixed before the note is read so
+ * the grid never moves when the preview arrives: three lines for a note that
+ * says little, about seven for the rest (a longer one fades out).
+ */
+function previewSlot(snippet: string): string {
+  return snippet.length <= SHORT_SNIPPET && !snippet.includes(' · ') ? 'h-[4.5rem]' : 'h-40'
+}
 
 /** The grid's column count: two cards side by side on a phone. */
 const GRID_COLUMNS = 2
@@ -131,10 +145,12 @@ const NoteCard = memo(function NoteCard({
   const title = row.titleSegments.map((segment) => segment.text).join('')
   // A search hit shows where it matched; otherwise the card shows the note.
   const isSearchHit = row.snippet.some((segment) => segment.highlighted)
+  const snippet = row.snippet.map((segment) => segment.text).join('')
   return (
     <div className="pb-3">
-      {/* The button covers the card instead of wrapping it: WebKit ignores a
-          max-height on content inside a <button>, and the preview needs one. */}
+      {/* The button covers the card instead of wrapping it: WebKit does not
+          clip a box of definite height inside a <button>, and the preview
+          needs one. */}
       <div
         data-note-path={row.path}
         className="relative rounded-xl border border-border bg-surface p-3 has-[button:active]:bg-surface-hover"
@@ -172,17 +188,18 @@ const NoteCard = memo(function NoteCard({
             <HighlightedText segments={row.snippet} />
           </p>
         ) : (
-          <div className="mt-1">
+          <div className={cn('mt-2 overflow-hidden', previewSlot(snippet))}>
             <NoteCardPreview
               path={row.path}
               mtime={row.mtime}
-              snippet={row.snippet.map((segment) => segment.text).join('')}
+              snippet={snippet}
               resolveImageUrl={resolveImageUrl}
               waitForScrollRest
-              // The card's own thumbnail already shows the note's image.
-              clampClassName={
-                imageUrl === undefined ? PREVIEW_CLAMP : `${PREVIEW_CLAMP} [&_img]:hidden`
-              }
+              className={cn(
+                'kore-card-preview-compact',
+                // The card's own thumbnail already shows the note's image.
+                imageUrl !== undefined && '[&_img]:hidden',
+              )}
             />
           </div>
         )}

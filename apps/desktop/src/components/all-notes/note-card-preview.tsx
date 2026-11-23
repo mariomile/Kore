@@ -51,21 +51,14 @@ interface NoteCardPreviewProps {
    */
   shownTags?: readonly string[] | undefined
   resolveImageUrl: (src: string) => string | null
-  /**
-   * The box the rendered preview is clipped to. Defaults to filling a slot of
-   * definite height (the desktop grid); a card of free height passes its own
-   * cap (the phone grid's `max-h-…`).
-   */
-  clampClassName?: string
+  /** Extra classes for the rendered preview's box (it fills its slot). */
+  className?: string
   /**
    * Hold the upgrade until scrolling rests (the phone grid): a markdown
    * render mid-flick costs the scroll its frames.
    */
   waitForScrollRest?: boolean
 }
-
-/** Fill the grid's definite preview slot, so the mask fades at the visible edge. */
-const FILL_SLOT = 'h-full min-h-0'
 
 /**
  * The card body of the All Notes grid (Plan 28, Craft's register): the note's
@@ -81,13 +74,13 @@ export function NoteCardPreview({
   snippet,
   shownTags = NO_TAGS,
   resolveImageUrl,
-  clampClassName = FILL_SLOT,
+  className,
   waitForScrollRest = false,
 }: NoteCardPreviewProps): ReactElement | null {
   const { graph } = useGraph()
   const generation = graph?.generation ?? null
   const { setRoot: setViewRoot, near } = useNearViewport(NEAR_VIEWPORT_MARGIN)
-  const { setRoot: setClampRoot, overflowing } = useOverflowing()
+  const { setRoot: setClampRoot, overflowing, overflowingX } = useOverflowing()
   const rested = useAfterScroll(near && waitForScrollRest)
   const upgrade = waitForScrollRest ? rested : near
 
@@ -132,11 +125,12 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        // The hover-card mask fades at the clipped edge instead of shearing
-        // a line in half.
-        'kore-hover-preview overflow-hidden text-xs text-text-secondary',
-        clampClassName,
+        // Fill the card's definite preview slot so the hover-card mask
+        // fades at the visible edge instead of shearing a line in half.
+        'kore-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        className,
         overflowing && 'kore-hover-preview-overflowing',
+        overflowingX && 'kore-hover-preview-overflowing-x',
       )}
     >
       <div>

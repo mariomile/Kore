@@ -31,7 +31,7 @@ export function withUndrawnDiagramsAsCode(markdown: string): string {
   if (!markdown.includes('mermaid')) {
     return markdown
   }
-  return markdown.replace(MERMAID_FENCE, (fence, indent: string, marks: string, body: string) =>
+  return markdown.replaceAll(MERMAID_FENCE, (fence, indent: string, marks: string, body: string) =>
     PREVIEW_DIAGRAM.test(diagramHeader(body))
       ? fence
       : `${indent}${marks}\n${body}\n${indent}${marks}`,

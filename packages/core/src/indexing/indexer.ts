@@ -26,8 +26,8 @@ import {
   type IndexedNote,
 } from './indexed-note'
 import { detectExternalMoves } from './move-healing'
-import { INDEX_PASS_YIELD_EVERY, yieldToEventLoop } from './pacing'
-import { getIndexMeta, isProjectionCurrent } from './queries'
+import { createPassPacer, INDEX_PASS_YIELD_EVERY } from './pacing'
+import { getIndexedFileFacts, getIndexMeta, isProjectionCurrent } from './queries'
 import { refreshTagTypeResolutionsSafely } from './resolved-tag-types'
 
 /**
@@ -201,25 +201,41 @@ export interface IndexPassOptions {
  * continuing to hold SQLite locks in the background.
  */
 export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
+  await reprojectAllNotes(options, 'wipe')
+}
+
+/**
+ * The pass behind every full re-derivation: each listed note is read, hashed,
+ * projected and applied. The modes differ only in what happens to the rows
+ * that were there before.
+ *
+ * `'wipe'` is {@link rebuildIndex}: unstamp, empty the index, fill it again.
+ *
+ * `'inPlace'` is the projection-bump pass: notes are re-derived **over** their
+ * existing rows. An app update that bumps the projection used to open onto an
+ * empty index (no lists, no search, no backlinks) for as long as the vault
+ * took to re-read, which on a few thousand notes was the first quarter minute
+ * of every such launch. Here the previous projection keeps answering until
+ * each note's rows are replaced, and rows whose file is gone (or evicted) are
+ * dropped at the end. Only safe from a *stamped* index, whose rows are a
+ * complete, merely outdated projection. The stamp stays stale until the pass
+ * completes, so readers gated on `isProjectionCurrent` keep treating the
+ * index as not current, and an interrupted pass simply runs again on the
+ * next open.
+ */
+async function reprojectAllNotes(
+  options: IndexPassOptions,
+  mode: 'wipe' | 'inPlace',
+): Promise<void> {
   const { generation, onSkippedNote, onFileProgress, onStalePlaceholders } = options
   if (options.signal?.aborted) {
     return // don't wipe the current index for an already-cancelled pass
   }
-  // Unstamp BEFORE the wipe, so "a rebuild is in flight" is visible to readers
-  // rather than inferable only from a version mismatch. `syncIndex` arrives
-  // here with an already-stale stamp, but the manual rebuild from Settings and
-  // the command palette calls this directly with a current one, and every
-  // reader that gates on `isProjectionCurrent` would otherwise see a green
-  // light over a table that is empty, then partial. `listPrivateNotePaths` is
-  // that reader, and it is the private-note deny list.
-  //
-  // It also makes an aborted rebuild resume as a rebuild: the stamp only comes
-  // back at the end, so a pass cancelled midway leaves the projection honestly
-  // marked stale instead of reconciling into a hole.
-  await setIndexMeta(PROJECTION_VERSION_KEY, '', generation)
-  await clearIndex(generation)
-  if (options.signal?.aborted) {
-    return
+  if (mode === 'wipe') {
+    await beginWipe(options)
+    if (options.signal?.aborted) {
+      return
+    }
   }
   const files = await listFiles()
   let skipped = false
@@ -231,6 +247,9 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
     : undefined
   const batch = createIndexApplyBatch(generation, reportSkipped)
   const evicted: string[] = []
+  /** Listed, readable notes: the rows an in-place pass keeps. */
+  const kept = new Set<string>()
+  const pacer = createPassPacer()
   let done = 0
   let worked = 0
   for (const file of files) {
@@ -240,19 +259,20 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
     done += 1
     if (done % INDEX_PASS_YIELD_EVERY === 0) {
       onFileProgress?.(done, files.length, worked)
-      await yieldToEventLoop()
-      if (options.signal?.aborted) {
-        return
-      }
+    }
+    await pacer.pause()
+    if (options.signal?.aborted) {
+      return
     }
     if (file.placeholder === true) {
-      // Evicted to iCloud — unreadable until re-download. The wipe above
-      // dropped its row, so after this pass the note is missing from search
+      // Evicted to iCloud — unreadable until re-download. Its row is gone
+      // (wiped, or dropped below), so after this pass the note is missing from search
       // entirely: surface it for a targeted download, and index it on the
       // materialization upsert.
       evicted.push(file.path)
       continue
     }
+    kept.add(file.path)
     worked += 1
     let projection: IndexedNote
     try {
@@ -281,6 +301,12 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
   if (options.signal?.aborted) {
     return
   }
+  if (mode === 'inPlace') {
+    await removeUnlistedRows(kept, options)
+    if (options.signal?.aborted) {
+      return
+    }
+  }
   onFileProgress?.(files.length, files.length, worked)
   if (evicted.length > 0) {
     onStalePlaceholders?.(evicted)
@@ -294,10 +320,48 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
   }
 }
 
+/** Unstamp, then wipe: the opening move of a {@link rebuildIndex}. */
+async function beginWipe({ generation }: IndexPassOptions): Promise<void> {
+  // Unstamp BEFORE the wipe, so "a rebuild is in flight" is visible to readers
+  // rather than inferable only from a version mismatch. `syncIndex` arrives
+  // here with an already-stale stamp, but the manual rebuild from Settings and
+  // the command palette calls this directly with a current one, and every
+  // reader that gates on `isProjectionCurrent` would otherwise see a green
+  // light over a table that is empty, then partial. `listPrivateNotePaths` is
+  // that reader, and it is the private-note deny list.
+  //
+  // It also makes an aborted rebuild resume as a rebuild: the stamp only comes
+  // back at the end, so a pass cancelled midway leaves the projection honestly
+  // marked stale instead of reconciling into a hole.
+  await setIndexMeta(PROJECTION_VERSION_KEY, '', generation)
+  await clearIndex(generation)
+}
+
+/**
+ * Drop the rows an in-place pass did not replace: notes deleted since the
+ * old projection was written, and evicted placeholders. A placeholder's row
+ * goes too (as the wipe always did): kept, it would hold the outdated
+ * projection for good, because its materialization upsert arrives with the
+ * mtime the row already carries and is skipped read-free.
+ */
+async function removeUnlistedRows(
+  kept: ReadonlySet<string>,
+  { generation, signal }: IndexPassOptions,
+): Promise<void> {
+  const unlisted = [...(await getIndexedFileFacts()).keys()].filter((path) => !kept.has(path))
+  for (let offset = 0; offset < unlisted.length; offset += INDEX_PATH_BATCH_SIZE) {
+    if (signal?.aborted) {
+      return
+    }
+    await removeFromIndexBatch(unlisted.slice(offset, offset + INDEX_PATH_BATCH_SIZE), generation)
+  }
+}
+
 /**
  * The open-path sync: hash-reconcile when the stored rows were built by the
- * current {@link projectionStamp}, full rebuild when they weren't (an older
- * app wrote them, or the index has never been stamped). Reconcile compares
+ * current {@link projectionStamp}; when they weren't, re-derive every note,
+ * over the existing rows if an older app wrote them
+ * or from empty if the index was never stamped. Reconcile compares
  * content hashes only, so it can never refresh rows whose *derivation* changed
  * — without this gate, columns added by a migration would keep their defaults
  * forever on unchanged files.
@@ -316,14 +380,18 @@ async function syncNotes(options: IndexPassOptions): Promise<void> {
     return await reconcileIndex(options)
   }
   const stamped = await getIndexMeta(PROJECTION_VERSION_KEY)
+  // An unstamped index (fresh graph, or a wipe that never finished) has no
+  // complete projection to keep serving, so it rebuilds from empty; a stamped
+  // one is refreshed over its rows.
+  const hasRows = stamped !== null && stamped !== ''
   // Loud on purpose: a rebuild is expected once per projection bump or fresh
   // graph. Seeing this on *every* open means the stamp (or the whole index
   // file) isn't persisting between launches — a pathology that would
   // otherwise be indistinguishable from a slow reconcile.
   console.warn(
-    `index: stored projection version ${stamped === null ? 'none' : `"${stamped}"`} ≠ ${projectionStamp()} — full rebuild`,
+    `index: stored projection version ${stamped === null ? 'none' : `"${stamped}"`} ≠ ${projectionStamp()} — ${hasRows ? 'refreshing every note in place' : 'full rebuild'}`,
   )
-  return await rebuildIndex(options)
+  return await reprojectAllNotes(options, hasRows ? 'inPlace' : 'wipe')
 }
 
 /**
@@ -412,6 +480,7 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
   const batch = createIndexApplyBatch(generation, onSkippedNote)
   const touches = createMtimeTouchBatch(generation)
   const total = scan.candidates.length
+  const pacer = createPassPacer()
   let done = 0
   let worked = 0
   for (const candidate of scan.candidates) {
@@ -421,8 +490,8 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
     done += 1
     if (done % INDEX_PASS_YIELD_EVERY === 0) {
       onFileProgress?.(done, total, worked)
-      await yieldToEventLoop()
     }
+    await pacer.pause()
     const stored = facts.get(candidate.path)
     worked += 1
     let content = arrivalContent.get(candidate.path)

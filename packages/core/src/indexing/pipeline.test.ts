@@ -397,6 +397,86 @@ describe('syncIndex', () => {
     expect(order.at(-1)).toBe(`meta:${PROJECTION_VERSION}`)
   })
 
+  describe('with rows from an older projection', () => {
+    /** Stored rows: one still on disk, one deleted, one evicted to iCloud. */
+    function serveOlderIndex(): void {
+      metaRows = [{ value: String(PROJECTION_VERSION - 1) }]
+      const fallback = mockInvoke.getMockImplementation()!
+      mockInvoke.mockImplementation(async (command, args) => {
+        if (command === 'list_files') {
+          return [
+            { path: 'notes/a.md', size: 1, modifiedMs: 5 },
+            {
+              path: 'notes/evicted.md',
+              size: 1,
+              modifiedMs: 5,
+              placeholder: true,
+            },
+          ]
+        }
+        if (command === 'db_query' && String(args['sql']).includes('"file_hash"')) {
+          return ['notes/a.md', 'notes/gone.md', 'notes/evicted.md'].map((path) => ({
+            path,
+            file_hash: 'old',
+            mtime: 5,
+          }))
+        }
+        return await fallback(command, args)
+      })
+    }
+
+    it('re-derives every note over its rows instead of wiping the index', async () => {
+      serveOlderIndex()
+      await syncIndex({ generation: 3 })
+      const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
+      // The old projection keeps answering while the pass runs: no wipe, and
+      // the stamp is never cleared on the way in.
+      expect(commands).not.toContain('index_clear')
+      expect(commands).not.toContain('index_reconcile_scan')
+      const applied = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_apply_batch')
+      expect((applied![1] as { notes: { path: string }[] }).notes.map((note) => note.path)).toEqual(
+        ['notes/a.md'],
+      )
+      const stamps = mockInvoke.mock.calls.filter(([cmd]) => cmd === 'index_meta_set')
+      expect(stamps.map(([, args]) => (args as { value: string }).value)).toEqual([
+        String(PROJECTION_VERSION),
+      ])
+    })
+
+    it('drops the rows it did not replace: deleted notes and evicted placeholders', async () => {
+      serveOlderIndex()
+      const onStalePlaceholders = vi.fn()
+      await syncIndex({ generation: 3, onStalePlaceholders })
+      const removed = mockInvoke.mock.calls
+        .filter(([cmd]) => cmd === 'index_remove_batch')
+        .flatMap(([, args]) => (args as { paths: string[] }).paths)
+      expect(removed.sort()).toEqual(['notes/evicted.md', 'notes/gone.md'])
+      // Removals follow the applies, so a reader never sees a note vanish and
+      // come back within the pass.
+      const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
+      expect(commands.indexOf('index_remove_batch')).toBeGreaterThan(
+        commands.indexOf('index_apply_batch'),
+      )
+      expect(onStalePlaceholders).toHaveBeenCalledWith(['notes/evicted.md'])
+    })
+
+    it('leaves the old stamp when aborted, so the next open refreshes again', async () => {
+      serveOlderIndex()
+      const controller = new AbortController()
+      const fallback = mockInvoke.getMockImplementation()!
+      mockInvoke.mockImplementation(async (command, args) => {
+        if (command === 'note_read') {
+          controller.abort()
+        }
+        return await fallback(command, args)
+      })
+      await syncIndex({ generation: 3, signal: controller.signal })
+      const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
+      expect(commands).not.toContain('index_meta_set')
+      expect(commands).not.toContain('index_remove_batch')
+    })
+  })
+
   it('runs the tag inheritance pass once at the end, so a failed earlier pass heals', async () => {
     metaRows = [{ value: String(PROJECTION_VERSION) }]
     const fallback = mockInvoke.getMockImplementation()!

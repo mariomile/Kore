@@ -1,5 +1,11 @@
 # Kore working state
 
+## Folder pages include subfolders, 2026-11-23 (0.141.0)
+
+- [x] Folder pages include subfolders by default, with the option in a new
+  Folder settings gear; the filter is a search pill. Graph, Tasks and the
+  iPhone tag and cell sheets share the same search and switch controls (#634).
+
 ## Tag settings: delete and merge options, 2026-11-23 (0.140.2)
 
 - [x] Every select/status option has a delete button; deleting an option in

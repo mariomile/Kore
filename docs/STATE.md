@@ -12,6 +12,7 @@
 - [x] Tag settings: Template, Folder and Views as explained rows; a view that
   is off offers one button to add the property it needs; "A folder for each
   note" removed from the settings. Mac and iPhone (#646).
+- [x] Tasks: no divider lines between tasks, Mac and iPhone (#650).
 
 ## Suggest a tag's properties with AI, 2026-11-23 (0.142.0)
 

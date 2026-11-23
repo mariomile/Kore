@@ -290,7 +290,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
-    await expectLocatorToHaveCount(view.getByText('#link'), 2)
+    await expectLocatorToHaveCount(view.getByTitle('#link'), 2)
     await expect.element(view.getByText('Jan 15, 2020')).toBeInTheDocument()
     await expect.element(view.getByText('Jan 10, 2020')).toBeInTheDocument()
     await view.unmount()
@@ -341,7 +341,7 @@ describe('AllNotesScreen', () => {
     const updated = view.getByText('2020-01-15')
     await expect.element(updated).toHaveClass('whitespace-nowrap')
     expect(updated.element().parentElement?.className ?? '').toContain(
-      'grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,8rem)_6rem]',
+      'grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,11rem)_6rem]',
     )
     await view.unmount()
   })
@@ -415,7 +415,7 @@ describe('AllNotesScreen', () => {
       .element(view.getByRole('button', { name: '#book' }))
       .toHaveAttribute('aria-pressed', 'true')
     expect(view.getByRole('button', { name: 'Configure #book' }).query()).toBeNull()
-    await expect.element(view.getByText('No #book notes yet.')).toBeInTheDocument()
+    await expect.element(view.getByText('No #book notes yet')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
 
     await view.getByRole('button', { name: 'All', exact: true }).click()
@@ -431,7 +431,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
     expect(view.getByRole('group', { name: 'Filter by type' }).query()).toBeNull()
-    await expect.element(view.getByText('No #book notes yet.')).toBeInTheDocument()
+    await expect.element(view.getByText('No #book notes yet')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
     await expect.element(view.getByRole('button', { name: 'New note' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'New note' }).element().textContent?.trim()).toBe('')
@@ -620,7 +620,7 @@ describe('AllNotesScreen', () => {
     await page.getByRole('option', { name: 'Filter by #zettel' }).click()
 
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all', tag: 'zettel' } })
-    await expect.element(view.getByText('No #zettel notes yet.')).toBeInTheDocument()
+    await expect.element(view.getByText('No #zettel notes yet')).toBeInTheDocument()
     await view.unmount()
   })
 

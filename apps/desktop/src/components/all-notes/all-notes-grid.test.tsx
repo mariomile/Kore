@@ -57,7 +57,10 @@ describe('AllNotesGrid card clipping', () => {
   })
 
   it('leads with the picture band and still keeps the preview inside the card', async () => {
-    pictures.set(note.path, 'data:image/gif;base64,R0lGODlhAQABAAAAACw=')
+    pictures.set(
+      note.path,
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    )
     const view = await render(
       <div style={{ width: '36rem' }}>
         <AllNotesGrid notes={[note]} tag={null} onOpen={vi.fn()} />

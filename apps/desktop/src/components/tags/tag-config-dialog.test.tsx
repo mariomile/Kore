@@ -4,17 +4,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import type { ComponentProps, ReactElement } from 'react'
 import type { TagDefinitionState } from '@/lib/tags/tag-type-write'
+import { ChatContext, type ChatContextValue } from '@/providers/chat-context'
+import { RouterProvider, useRouter } from '@/routing/router'
 import { TagConfigDialog } from './tag-config-dialog'
 
-/** The dialog under a real query client — the target selector queries tag types. */
+/**
+ * The dialog under a real query client (the target selector queries tag
+ * types) and a router (Suggest with AI navigates to the chat).
+ */
 function Dialog(props: ComponentProps<typeof TagConfigDialog>): ReactElement {
   return (
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <TagConfigDialog {...props} />
+      <RouterProvider>
+        <TagConfigDialog {...props} />
+        <RouteKind />
+      </RouterProvider>
     </QueryClientProvider>
   )
+}
+
+/** The routed screen, so a test can see where the dialog navigated. */
+function RouteKind(): ReactElement {
+  return <output aria-label="route">{useRouter().route.kind}</output>
 }
 
 const definition = vi.hoisted(() => ({
@@ -391,6 +404,34 @@ describe('TagConfigDialog', () => {
       7,
       { template: null, folder: null, icon: null, parents: [] },
     )
+  })
+
+  it('hides Suggest with AI where no chat is mounted', async () => {
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
+
+    await expect.element(view.getByRole('button', { name: /^Project Status/ })).toBeVisible()
+    expect(view.getByRole('button', { name: /^Suggest with AI/ }).query()).toBeNull()
+  })
+
+  it('Suggest with AI closes the dialog and opens a fresh chat with the request drafted', async () => {
+    const onClose = vi.fn()
+    const newChat = vi.fn(() => 'next')
+    const setDraft = vi.fn()
+    const chat = { status: 'idle', newChat, setDraft } as unknown as ChatContextValue
+    const view = await render(
+      <ChatContext value={chat}>
+        <Dialog tag="type/course" onClose={onClose} />
+      </ChatContext>,
+    )
+
+    await view.getByRole('button', { name: /^Suggest with AI/ }).click()
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(newChat).toHaveBeenCalledOnce()
+    expect(setDraft).toHaveBeenCalledWith(expect.stringContaining('#type/course '))
+    await expect.element(view.getByLabelText('route')).toHaveTextContent('chat')
+    // Nothing is written by asking.
+    expect(saveTagType).not.toHaveBeenCalled()
   })
 
   it('tells what the dark views still need while the schema cannot power them', async () => {

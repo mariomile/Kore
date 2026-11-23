@@ -25,12 +25,14 @@ import {
 } from '@/components/ui/select'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
+import { useOptionalChatSession } from '@/providers/chat-provider'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { SaveBar } from './tag-config-save-bar'
 import { TagConfigSheet } from './tag-config-sheet'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagPresetIcon } from './tag-preset-icon'
+import { TagSuggestRow } from './tag-suggest-row'
 import { TagFolderField } from './tag-folder-field'
 import { TagAdvancedSection } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
@@ -260,6 +262,7 @@ function TypeSettings({
               tagKey={key}
               config={config}
               onPicked={() => setSelection({ kind: 'type' })}
+              onClose={onClose}
             />
           ) : (
             <PropertyPane
@@ -298,11 +301,14 @@ function TypePane({
   tagKey,
   config,
   onPicked,
+  onClose,
 }: {
   tagKey: string
   config: TagConfigDraft
   onPicked: () => void
+  onClose: () => void
 }): ReactElement {
+  const hasChat = useOptionalChatSession() !== null
   if (config.loading) {
     return <div aria-busy className="h-40" />
   }
@@ -311,8 +317,10 @@ function TypePane({
       <PaneHeading>Tag</PaneHeading>
       {config.drafts.length === 0 ? (
         <div className="flex flex-col gap-1 rounded-lg bg-surface-hover p-2">
-          <p className="px-1 pb-1 text-xs text-text-secondary">
-            Start from a ready-made schema. Every property stays editable.
+          <TagSuggestRow variant="dialog" tagKey={tagKey} onClose={onClose} />
+          <p className="px-1 pb-1 pt-1 text-xs text-text-secondary">
+            {hasChat ? 'Or start' : 'Start'} from a ready-made schema. Every property stays
+            editable.
           </p>
           {TAG_SCHEMA_PRESETS.map((preset) => (
             <button

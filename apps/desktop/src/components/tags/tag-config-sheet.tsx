@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -22,6 +22,8 @@ import { TagIconPicker } from './tag-icon-picker'
 import { TagFolderField } from './tag-folder-field'
 import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
+import { TagSheetSection as Section } from './tag-sheet-section'
+import { TagSuggestRow } from './tag-suggest-row'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
@@ -133,6 +135,7 @@ export function TagConfigSheet({
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
+              onClose={onClose}
             />
           ) : (
             <TagFieldPage
@@ -150,25 +153,6 @@ export function TagConfigSheet({
   )
 }
 
-/** An iOS-style grouped list: a muted caption over a rounded card. */
-function Section({
-  title,
-  children,
-  footer,
-}: {
-  title: string
-  children: ReactNode
-  footer?: ReactNode
-}): ReactElement {
-  return (
-    <section className="flex flex-col gap-1.5">
-      <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-text-muted">{title}</h3>
-      <div className="overflow-hidden rounded-xl border border-border bg-surface">{children}</div>
-      {footer === undefined ? null : <div className="px-1 text-xs text-text-muted">{footer}</div>}
-    </section>
-  )
-}
-
 function TypePage({
   tagKey,
   tag,
@@ -177,6 +161,7 @@ function TypePage({
   config,
   onOpenField,
   onShowNotes,
+  onClose,
 }: {
   tagKey: string
   tag: string
@@ -185,6 +170,7 @@ function TypePage({
   config: TagConfigDraft
   onOpenField: (rowId: number) => void
   onShowNotes: () => void
+  onClose: () => void
 }): ReactElement {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
@@ -294,6 +280,9 @@ function TypePage({
             <Plus aria-hidden className="size-5" />
             Add property
           </button>
+          {!loading && drafts.length === 0 ? (
+            <TagSuggestRow variant="sheet" tagKey={tagKey} onClose={onClose} />
+          ) : null}
         </div>
       </Section>
 

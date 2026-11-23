@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import type { TagDefinitionState } from '@/lib/tags/tag-type-write'
+import { ChatContext, type ChatContextValue } from '@/providers/chat-context'
 import { TagConfigDialog } from './tag-config-dialog'
 
 const definition = vi.hoisted(() => ({ current: null as unknown as TagDefinitionState }))
@@ -141,5 +142,27 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
 
     await view.getByRole('button', { name: /^Project/ }).click()
     await expect.element(view.getByRole('button', { name: /Status/ }).first()).toBeVisible()
+  })
+
+  it('Suggest with AI drafts the request in chat while the type has no fields', async () => {
+    definition.current = { ...definition.current, properties: [] }
+    const onClose = vi.fn()
+    const setDraft = vi.fn()
+    // A streaming chat keeps its conversation: only the draft is set.
+    const newChat = vi.fn(() => 'next')
+    const chat = { status: 'streaming', newChat, setDraft } as unknown as ChatContextValue
+    const view = await render(
+      <ChatContext value={chat}>
+        <Sheet onClose={onClose} />
+      </ChatContext>,
+    )
+
+    await view.getByRole('button', { name: /^Suggest with AI/ }).click()
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(newChat).not.toHaveBeenCalled()
+    expect(setDraft).toHaveBeenCalledWith(expect.stringContaining('#company '))
+    expect(navigate).toHaveBeenCalledWith({ kind: 'chat' })
+    expect(saveTagType).not.toHaveBeenCalled()
   })
 })

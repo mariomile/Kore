@@ -1,3 +1,4 @@
+import { getIsComposing } from '@meowdown/core'
 import type { ReactElement } from 'react'
 import { CloseCircle, Search } from '@/components/icons'
 import { cn } from '@/lib/utils'
@@ -40,7 +41,8 @@ export function SearchPill({
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Escape' && value !== '') {
+          // Esc during an IME composition cancels the candidate, not the filter.
+          if (event.key === 'Escape' && value !== '' && !getIsComposing()) {
             event.stopPropagation()
             onValueChange('')
           }

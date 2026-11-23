@@ -37,6 +37,7 @@ import { PropertyPane } from './tag-property-pane'
 import { RemovedPropertyNotice } from './removed-property-notice'
 import { TagViewsStrip } from './tag-views-strip'
 import { NavButton, PropertyNavList } from './tag-config-nav'
+import { useDiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -165,15 +166,7 @@ function TypeSettings({
   const config = useTagConfigDraft(tag, onClose)
   const binding = useTypeTagBinding(tag)
   const key = foldTag(tag)
-  const [discarding, setDiscarding] = useState(false)
-  const { dirty } = config
-  const requestClose = (): void => {
-    if (dirty) {
-      setDiscarding(true)
-    } else {
-      onClose()
-    }
-  }
+  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
   useEffect(() => {
     requestCloseRef.current = requestClose
   })
@@ -308,7 +301,7 @@ function TypeSettings({
         config={config}
         onClose={requestClose}
         discarding={discarding}
-        onKeepEditing={() => setDiscarding(false)}
+        onKeepEditing={keepEditing}
         onDiscard={onClose}
       />
     </>

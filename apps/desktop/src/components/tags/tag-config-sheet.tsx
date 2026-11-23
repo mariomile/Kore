@@ -22,6 +22,7 @@ import { RemovedPropertyNotice } from './removed-property-notice'
 import { TagConfigFieldRow } from './tag-config-field-row'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
+import { useDiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -62,14 +63,7 @@ export function TagConfigSheet({
   const editing = config.drafts.find((draft) => draft.rowId === editingRowId) ?? null
   const key = foldTag(tag)
   // A close asked for with unsaved edits: the header confirms before losing them.
-  const [discarding, setDiscarding] = useState(false)
-  const requestClose = (): void => {
-    if (config.dirty) {
-      setDiscarding(true)
-    } else {
-      onClose()
-    }
-  }
+  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
 
   const showNotes = (): void => {
     afterSaveRef.current = () => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
@@ -90,7 +84,7 @@ export function TagConfigSheet({
               type="button"
               variant="ghost"
               className="h-10 px-3 text-base"
-              onClick={() => setDiscarding(false)}
+              onClick={keepEditing}
             >
               Keep editing
             </Button>

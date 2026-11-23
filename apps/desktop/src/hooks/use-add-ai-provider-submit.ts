@@ -99,6 +99,13 @@ export function useAddAiProviderSubmit({
         const binary = CLI_BINARY_NAMES[draft.provider] ?? draft.provider
         try {
           await checkCliAgentProvider(draft.provider)
+        } catch (error: unknown) {
+          setSubmitError(
+            `${provider.label} needs the \`${binary}\` CLI — install it and sign in, then retry. (${errorMessage(error)})`,
+          )
+          return
+        }
+        try {
           // Connecting a subscription never picks a model — the entry stores
           // the CLI's own default and the chat model selector decides per
           // conversation.
@@ -109,9 +116,8 @@ export function useAddAiProviderSubmit({
           })
           onDone()
         } catch (error: unknown) {
-          setSubmitError(
-            `${provider.label} needs the \`${binary}\` CLI — install it and sign in, then retry. (${errorMessage(error)})`,
-          )
+          // The CLI is fine; saving failed — say that, not "install it".
+          setSubmitError(errorMessage(error))
         }
         return
       }

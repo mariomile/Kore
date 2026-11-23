@@ -512,9 +512,13 @@ pub async fn agent_cli_run(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(dir) = cwd.as_deref() {
-        command.current_dir(dir);
-    }
+    // A run with no working directory (a harness with no file tools) must not
+    // inherit the app's own: CLIs put their cwd in the prompt they send to the
+    // model provider, so it gets the system temp dir instead.
+    match cwd.as_deref() {
+        Some(dir) => command.current_dir(dir),
+        None => command.current_dir(std::env::temp_dir()),
+    };
     // Extra environment (MCP secrets): the child and the MCP servers it
     // spawns inherit these — the values never appear on any command line.
     if let Some(env) = env {

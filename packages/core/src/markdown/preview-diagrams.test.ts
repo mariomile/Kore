@@ -13,6 +13,12 @@ describe('withUndrawnDiagramsAsCode', () => {
     )
   })
 
+  it('shows a diagram behind frontmatter as code, since the preview cannot draw it', () => {
+    expect(
+      withUndrawnDiagramsAsCode('```mermaid\n---\ntitle: Flow\n---\nflowchart LR\n  a --> b\n```'),
+    ).toBe('```\n---\ntitle: Flow\n---\nflowchart LR\n  a --> b\n```')
+  })
+
   it('handles tilde fences, indentation and several fences', () => {
     expect(
       withUndrawnDiagramsAsCode(

@@ -166,7 +166,7 @@ export function AllNotesGrid({
                 </div>
               </div>
               <div className="relative z-[1] mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
-                <TagChips tags={shownTags} max={MAX_FOOTER_TAGS} />
+                <TagChips tags={note.tags} max={MAX_FOOTER_TAGS} />
                 <span className="ml-auto text-2xs text-text-muted">
                   {note.mtime > 0 ? formatRecencyLabel(note.mtime, settings) : '—'}
                 </span>

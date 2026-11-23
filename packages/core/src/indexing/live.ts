@@ -13,7 +13,7 @@ import {
   indexNote,
 } from './indexer'
 import { detectExternalMoves } from './move-healing'
-import { INDEX_PASS_YIELD_EVERY, yieldToEventLoop } from './pacing'
+import { createPassPacer } from './pacing'
 import { getIndexedFileFactsByPath, getNoteIdsByPath, type IndexedFileFacts } from './queries'
 
 /**
@@ -28,8 +28,8 @@ import { getIndexedFileFactsByPath, getNoteIdsByPath, type IndexedFileFacts } fr
  * stored facts are prefetched in one query, files whose indexed mtime already
  * matches are skipped without a read, hash-unchanged reads skip the write,
  * changed notes land in shared `index_apply_batch` transactions, consecutive
- * deletes share one `index_remove_batch`, and the loop takes an event-loop
- * break every {@link INDEX_PASS_YIELD_EVERY} files.
+ * deletes share one `index_remove_batch`, and the loop takes event-loop
+ * breaks on the shared pass pacer ({@link createPassPacer}).
  */
 
 /** Reports a change that failed to apply; the batch continues past it. */
@@ -210,17 +210,14 @@ export async function applyIndexChanges(
     }
   }
 
-  let done = 0
+  const pacer = createPassPacer()
   for (const change of notes) {
     if (!canApply()) {
       return mutations
     }
-    done += 1
-    if (done % INDEX_PASS_YIELD_EVERY === 0) {
-      await yieldToEventLoop()
-      if (!canApply()) {
-        return mutations
-      }
+    await pacer.pause()
+    if (!canApply()) {
+      return mutations
     }
     if (handled.has(change.path)) {
       continue

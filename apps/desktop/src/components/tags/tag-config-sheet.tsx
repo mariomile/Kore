@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { foldTag, tagDisplayName } from '@kore/core'
@@ -20,9 +20,12 @@ import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
 import { RemovedPropertyNotice } from './removed-property-notice'
 import { TagConfigFieldRow } from './tag-config-field-row'
+import { TagSheetSection as Section } from './tag-sheet-section'
+import { TagSuggestRow } from './tag-suggest-row'
+import { useSuggestTagSchema } from './use-suggest-tag-schema'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
-import { useDiscardGuard } from './use-discard-guard'
+import { useDiscardGuard, type DiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -63,7 +66,10 @@ export function TagConfigSheet({
   const editing = config.drafts.find((draft) => draft.rowId === editingRowId) ?? null
   const key = foldTag(tag)
   // A close asked for with unsaved edits: the header confirms before losing them.
-  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
+  const { discarding, requestClose, closeThen, keepEditing, discard } = useDiscardGuard(
+    config.dirty,
+    onClose,
+  )
 
   const showNotes = (): void => {
     afterSaveRef.current = () => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
@@ -95,7 +101,7 @@ export function TagConfigSheet({
               type="button"
               variant="destructive"
               className="h-10 px-4 text-base"
-              onClick={onClose}
+              onClick={discard}
             >
               Discard
             </Button>
@@ -160,6 +166,7 @@ export function TagConfigSheet({
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
+              closeThen={closeThen}
             />
           ) : (
             <TagFieldPage
@@ -177,25 +184,6 @@ export function TagConfigSheet({
   )
 }
 
-/** An iOS-style grouped list: a muted caption over a rounded card. */
-function Section({
-  title,
-  children,
-  footer,
-}: {
-  title: string
-  children: ReactNode
-  footer?: ReactNode
-}): ReactElement {
-  return (
-    <section className="flex flex-col gap-1.5">
-      <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-text-muted">{title}</h3>
-      <div className="overflow-hidden rounded-xl border border-border bg-surface">{children}</div>
-      {footer === undefined ? null : <div className="px-1 text-xs text-text-muted">{footer}</div>}
-    </section>
-  )
-}
-
 function TypePage({
   tagKey,
   tag,
@@ -204,6 +192,7 @@ function TypePage({
   config,
   onOpenField,
   onShowNotes,
+  closeThen,
 }: {
   tagKey: string
   tag: string
@@ -212,7 +201,9 @@ function TypePage({
   config: TagConfigDraft
   onOpenField: (rowId: number) => void
   onShowNotes: () => void
+  closeThen: DiscardGuard['closeThen']
 }): ReactElement {
+  const suggestWithAi = useSuggestTagSchema(tagKey, closeThen)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)
@@ -337,6 +328,9 @@ function TypePage({
             <Plus aria-hidden className="size-5" />
             Add property
           </button>
+          {!loading && drafts.length === 0 && suggestWithAi !== null ? (
+            <TagSuggestRow variant="sheet" onSuggest={suggestWithAi} />
+          ) : null}
         </div>
       </Section>
 

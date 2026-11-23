@@ -97,6 +97,11 @@ function checkWaiting(): void {
 /** Wait with the others; the returned function leaves without showing (the card is gone). */
 function join(waiter: Waiter): () => void {
   if (waiting.size === 0) {
+    // A fresh limit for a fresh group: the last group's may still be
+    // pending when its cards all left without showing.
+    if (timeout !== null) {
+      window.clearTimeout(timeout)
+    }
     timeout = window.setTimeout(showWaiting, SETTLE_TIMEOUT_MS)
   }
   waiting.add(waiter)

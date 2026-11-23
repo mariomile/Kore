@@ -66,7 +66,7 @@ import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
 import { TaskMovePicker } from '@/components/tasks/task-move-picker'
 import { TaskQuickAdd } from './task-quick-add'
-import { TaskViewTabs } from './task-view-tabs'
+import { TaskLayoutToggle, TaskViewTabs } from './task-view-tabs'
 import { isModEvent } from '@meowdown/core'
 import { cn } from '@/lib/utils'
 
@@ -453,7 +453,7 @@ export function TasksScreen(): ReactElement {
             <TaskToolbarCountBadge count={recentlyCompleted.length} />
           </Button>
         ) : null}
-        <div className="window-drag-control relative mx-2 w-56">
+        <div className="window-drag-control relative mx-2 w-44">
           <Search
             aria-hidden
             className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
@@ -466,6 +466,8 @@ export function TasksScreen(): ReactElement {
             className="h-7 rounded-full border-none bg-surface-hover pl-8 text-[13px] font-medium shadow-none dark:bg-surface-hover"
           />
         </div>
+        <TaskLayoutToggle layout={layout} onLayoutChange={setLayout} />
+        <span className="w-1" />
         <TaskFiltersMenu
           filters={filters}
           toggle={toggle}
@@ -486,16 +488,16 @@ export function TasksScreen(): ReactElement {
           <Plus aria-hidden className="size-3.5" />
         </button>
       </header>
-      <TaskViewTabs
-        view={view}
-        counts={counts}
-        onSelect={(next) => {
-          selection.clear()
-          setView(next)
-        }}
-        layout={layout}
-        onLayoutChange={setLayout}
-      />
+      <div className="flex flex-none items-center pr-7 pb-3 pl-12">
+        <TaskViewTabs
+          view={view}
+          counts={counts}
+          onSelect={(next) => {
+            selection.clear()
+            setView(next)
+          }}
+        />
+      </div>
       <div
         ref={setScrollElement}
         onScroll={onScroll}

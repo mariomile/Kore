@@ -595,6 +595,7 @@ describe('app commands', () => {
       expect(backfillEmbeddingsVisibly).toHaveBeenCalledWith({
         generation: 7,
         modelId: 'all-MiniLM-L6-v2',
+        excludedFolders: [],
       })
     } finally {
       resetOperations()

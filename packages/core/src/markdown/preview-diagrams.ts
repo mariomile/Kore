@@ -7,8 +7,12 @@
 const PREVIEW_DIAGRAM =
   /^(?:graph|flowchart|stateDiagram(?:-v2)?|sequenceDiagram|classDiagram|erDiagram|xychart(?:-beta)?)\b/
 
-/** A whole `mermaid` fence: indent, the fence marks, the body. */
-const MERMAID_FENCE = /^([ \t]*)(`{3,}|~{3,})mermaid[ \t]*\n([\s\S]*?)\n\1\2[ \t]*$/gm
+/**
+ * A whole `mermaid` fence: indent, the fence marks, the line ending (LF or
+ * CRLF), the body. CommonMark allows spaces before the info string.
+ */
+const MERMAID_FENCE =
+  /^([ \t]*)(`{3,}|~{3,})[ \t]*mermaid[ \t]*(\r?\n)([\s\S]*?)\r?\n\1\2[ \t]*(?=\r?$)/gm
 
 /**
  * The line naming the diagram type: the first that is not blank or a `%%`
@@ -36,9 +40,11 @@ export function withUndrawnDiagramsAsCode(markdown: string): string {
   if (!markdown.includes('mermaid')) {
     return markdown
   }
-  return markdown.replaceAll(MERMAID_FENCE, (fence, indent: string, marks: string, body: string) =>
-    PREVIEW_DIAGRAM.test(diagramHeader(body))
-      ? fence
-      : `${indent}${marks}\n${body}\n${indent}${marks}`,
+  return markdown.replaceAll(
+    MERMAID_FENCE,
+    (fence, indent: string, marks: string, eol: string, body: string) =>
+      PREVIEW_DIAGRAM.test(diagramHeader(body))
+        ? fence
+        : `${indent}${marks}${eol}${body}${eol}${indent}${marks}`,
   )
 }

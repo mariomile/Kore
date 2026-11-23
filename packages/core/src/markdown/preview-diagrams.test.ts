@@ -27,6 +27,14 @@ describe('withUndrawnDiagramsAsCode', () => {
     ).toBe('- item\n  ~~~\n  pie\n  ~~~\n\n```mermaid\nsequenceDiagram\n  a->>b: hi\n```')
   })
 
+  it('handles CRLF notes and a space before the info string', () => {
+    expect(withUndrawnDiagramsAsCode('A\r\n``` mermaid\r\npie\r\n  "a": 1\r\n```\r\nB')).toBe(
+      'A\r\n```\r\npie\r\n  "a": 1\r\n```\r\nB',
+    )
+    const drawn = '```mermaid\r\nflowchart LR\r\n  a --> b\r\n```\r\n'
+    expect(withUndrawnDiagramsAsCode(drawn)).toBe(drawn)
+  })
+
   it('leaves other fences and prose that mentions mermaid alone', () => {
     const markdown = 'I like mermaid.\n\n```ts\nconst mermaid = 1\n```'
     expect(withUndrawnDiagramsAsCode(markdown)).toBe(markdown)

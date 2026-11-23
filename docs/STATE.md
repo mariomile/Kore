@@ -1,5 +1,11 @@
 # Kore working state
 
+## Index stays usable during a rebuild, 2026-11-23 (0.140.1)
+
+- [x] An update that re-derives the index keeps the old rows in use until the
+  new ones are ready, so lists, search and backlinks keep working; indexing
+  yields on long notes instead of blocking the interface (#633).
+
 ## X post card byline and drag polish, 2026-11-22 (0.140.0)
 
 - [x] Shared X post cards show the author's picture (saved in the vault),

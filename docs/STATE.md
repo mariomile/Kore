@@ -6,6 +6,12 @@
   designed empty states; Tasks header with view pills; note types as colored
   chips in the Notes table and cards; Mermaid previews that can't render fall
   back to code. Mac (#644).
+- [x] Search: excluded folders stay out of the semantic index and Similar
+  notes (Settings > Search), keyword search still finds them; saved in the
+  vault's `.kore.json`. Mac (#648).
+- [x] Tag settings: Template, Folder and Views as explained rows; a view that
+  is off offers one button to add the property it needs; "A folder for each
+  note" removed from the settings. Mac and iPhone (#646).
 
 ## Suggest a tag's properties with AI, 2026-11-23 (0.142.0)
 

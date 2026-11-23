@@ -216,6 +216,7 @@ export {
   displayNoteTitle,
   stripLeadingHeading,
   stripLeadingTagLine,
+  stripTrailingTagLine,
   inlineEmbedSnapshots,
   wikiLinkTargetForTitle,
   convertTaggedLineToNote,

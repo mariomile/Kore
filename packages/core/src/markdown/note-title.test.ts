@@ -3,6 +3,7 @@ import {
   displayNoteTitle,
   stripLeadingHeading,
   stripLeadingTagLine,
+  stripTrailingTagLine,
   wikiLinkTargetForTitle,
 } from './note-title'
 
@@ -91,5 +92,20 @@ describe('stripLeadingTagLine', () => {
     expect(stripLeadingTagLine('#meeting #job\nBody', ['meeting'])).toBe('#meeting #job\nBody')
     expect(stripLeadingTagLine('# Heading\nBody', ['meeting'])).toBe('# Heading\nBody')
     expect(stripLeadingTagLine('', ['meeting'])).toBe('')
+  })
+})
+
+describe('stripTrailingTagLine', () => {
+  it('drops a closing line of tags the card already shows', () => {
+    expect(stripTrailingTagLine('Systems over goals.\n#book\n', ['book'])).toBe(
+      'Systems over goals.',
+    )
+    expect(stripTrailingTagLine('Body\n\n#Book #idea', ['book', 'idea'])).toBe('Body\n')
+  })
+
+  it('keeps a closing line with other words or unshown tags', () => {
+    expect(stripTrailingTagLine('Body\nread #book later', ['book'])).toBe('Body\nread #book later')
+    expect(stripTrailingTagLine('Body\n#book #idea', ['book'])).toBe('Body\n#book #idea')
+    expect(stripTrailingTagLine('', ['book'])).toBe('')
   })
 })

@@ -157,6 +157,7 @@ export {
   displayNoteTitle,
   stripLeadingHeading,
   stripLeadingTagLine,
+  stripTrailingTagLine,
   wikiLinkTargetForTitle,
 } from './note-title'
 export { inlineEmbedSnapshots } from './embed-snapshot'

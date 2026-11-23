@@ -26,17 +26,28 @@ export function installDevBridge(platform: AppPlatform): Promise<void> {
 async function install(platform: AppPlatform): Promise<void> {
   const index = await createDevIndexDb()
   // `?seed=large` swaps the demo graph for the profiling vault (thousands
-  // of notes), `?seed=obsidian` for the Obsidian-shaped one; their modules
-  // only load when asked for.
+  // of notes), `?seed=obsidian` for the Obsidian-shaped one, `?seed=visual`
+  // for a few notes with pictures; their modules only load when asked for.
   const seedName = new URLSearchParams(window.location.search).get('seed')
+  const visual =
+    seedName === 'visual' ? (await import('@/dev/seed-visual-vault')).seedVisualVault() : null
   const seed =
-    seedName === 'large'
-      ? (await import('@/dev/seed-large-graph')).seedLargeGraphFiles()
-      : seedName === 'obsidian'
-        ? (await import('@/dev/seed-obsidian-vault')).seedObsidianVaultFiles()
-        : seedGraphFiles()
+    visual !== null
+      ? visual.files
+      : seedName === 'large'
+        ? (await import('@/dev/seed-large-graph')).seedLargeGraphFiles()
+        : seedName === 'obsidian'
+          ? (await import('@/dev/seed-obsidian-vault')).seedObsidianVaultFiles()
+          : seedGraphFiles()
   const files = createDevFileStore(seed)
-  setBridge(createDevBridge({ platform, files, index }))
+  setBridge(
+    createDevBridge({
+      platform,
+      files,
+      index,
+      ...(visual !== null ? { assets: visual.assets } : {}),
+    }),
+  )
   // No watcher exists in plain-browser dev (the Rust watcher is desktop's
   // change source), so let the write commands echo their own changes —
   // exactly the mobile arrangement — or edits never reindex until reload.

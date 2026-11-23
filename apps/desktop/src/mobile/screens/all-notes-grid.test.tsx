@@ -17,6 +17,7 @@ import { MobileAllNotes } from './all-notes'
 const searchWithFilters = vi.hoisted(() => vi.fn())
 const listNoteTags = vi.hoisted(() => vi.fn())
 const firstImageAssets = vi.hoisted(() => vi.fn())
+const readNote = vi.hoisted(() => vi.fn())
 const hapticImpactLight = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
 // Lets a test re-render the screen after mutating `settingsState`, the way
@@ -38,6 +39,7 @@ vi.mock('@kore/core', async (importOriginal) => ({
   searchWithFilters,
   listNoteTags,
   firstImageAssets,
+  readNote,
   assetUrl: (_generation: number, path: string) => `kore-asset://localhost/${path}`,
 }))
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight }))
@@ -139,6 +141,9 @@ beforeEach(() => {
   hapticImpactLight.mockReset()
   listNoteTags.mockResolvedValue([])
   firstImageAssets.mockResolvedValue(new Map())
+  // No note body unless a test provides one: the card keeps its snippet.
+  readNote.mockReset()
+  readNote.mockRejectedValue(new Error('unread'))
   searchWithFilters.mockResolvedValue([
     hit(),
     hit({
@@ -202,12 +207,29 @@ describe('MobileAllNotes grid view', () => {
     await renderScreen()
 
     // A decorative thumbnail (alt=""), so it has no img role to query by.
-    const card = page.getByRole('button', { name: 'Health Stacked' })
-    await expect.poll(() => card.element().querySelector('img')).not.toBeNull()
-    expect(card.element().querySelector('img')?.getAttribute('src')).toContain('face.jpg')
-    expect(
-      page.getByRole('button', { name: 'Tokyo Gâteau' }).element().querySelector('img'),
-    ).toBeNull()
+    const card = (path: string): Element | null =>
+      page
+        .getByTestId('all-notes-grid')
+        .element()
+        .querySelector(`[data-note-path="${CSS.escape(path)}"]`)
+    await expect.poll(() => card('notes/health.md')?.querySelector('img')).not.toBeNull()
+    expect(card('notes/health.md')?.querySelector('img')?.getAttribute('src')).toContain('face.jpg')
+    expect(card('notes/tokyo.md')).not.toBeNull()
+    expect(card('notes/tokyo.md')?.querySelector('img')).toBeNull()
+  })
+
+  it('shows the note itself once scrolling rests: a table as a table, a tag as a chip', async () => {
+    settingsState.allNotesView = 'grid'
+    searchWithFilters.mockResolvedValue([hit({ preview: 'Industry: Robotics' })])
+    readNote.mockResolvedValue(
+      '# Health Stacked\n\nType: #company\n\n| Campo | Valore |\n| --- | --- |\n| Industry | Robotics |\n',
+    )
+    await renderScreen()
+
+    const grid = page.getByTestId('all-notes-grid')
+    await expect.poll(() => grid.element().querySelector('table')).not.toBeNull()
+    expect(grid.element().querySelectorAll('td')).toHaveLength(2)
+    expect(grid.element().textContent).toContain('#company')
   })
 
   it('aligns the first card in each masonry column to the same top edge', async () => {

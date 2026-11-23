@@ -7,6 +7,7 @@ import {
   stripLeadingTagLine,
 } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
+import { useAfterScroll } from '@/hooks/use-after-scroll'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
@@ -50,7 +51,21 @@ interface NoteCardPreviewProps {
    */
   shownTags?: readonly string[] | undefined
   resolveImageUrl: (src: string) => string | null
+  /**
+   * The box the rendered preview is clipped to. Defaults to filling a slot of
+   * definite height (the desktop grid); a card of free height passes its own
+   * cap (the phone grid's `max-h-…`).
+   */
+  clampClassName?: string
+  /**
+   * Hold the upgrade until scrolling rests (the phone grid): a markdown
+   * render mid-flick costs the scroll its frames.
+   */
+  waitForScrollRest?: boolean
 }
+
+/** Fill the grid's definite preview slot, so the mask fades at the visible edge. */
+const FILL_SLOT = 'h-full min-h-0'
 
 /**
  * The card body of the All Notes grid (Plan 28, Craft's register): the note's
@@ -66,11 +81,15 @@ export function NoteCardPreview({
   snippet,
   shownTags = NO_TAGS,
   resolveImageUrl,
+  clampClassName = FILL_SLOT,
+  waitForScrollRest = false,
 }: NoteCardPreviewProps): ReactElement | null {
   const { graph } = useGraph()
   const generation = graph?.generation ?? null
   const { setRoot: setViewRoot, near } = useNearViewport(NEAR_VIEWPORT_MARGIN)
   const { setRoot: setClampRoot, overflowing } = useOverflowing()
+  const rested = useAfterScroll(near && waitForScrollRest)
+  const upgrade = waitForScrollRest ? rested : near
 
   // `mtime` in the key makes each entry immutable, so the app default
   // (staleTime Infinity) holds; a note edit reaches the card as a new key
@@ -90,7 +109,7 @@ export function NoteCardPreview({
         ),
       )
     },
-    enabled: near && generation !== null,
+    enabled: upgrade && generation !== null,
     // A grid's worth of bodies has no business outliving the view by long.
     gcTime: 60_000,
     retry: false,
@@ -111,9 +130,10 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        // Fill the grid's definite preview slot so the hover-card mask
-        // fades at the visible edge instead of shearing a line in half.
-        'kore-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        // The hover-card mask fades at the clipped edge instead of shearing
+        // a line in half.
+        'kore-hover-preview overflow-hidden text-xs text-text-secondary',
+        clampClassName,
         overflowing && 'kore-hover-preview-overflowing',
       )}
     >

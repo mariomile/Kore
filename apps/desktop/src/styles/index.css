@@ -1135,6 +1135,29 @@ html:root {
   mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
 }
 
+/* The phone grid's card body (mobile/note-card-grid.tsx): the same preview in
+   a column half a phone wide. Body text matches the list's snippet size, and
+   a table sizes to its words with tight cells (the editor's equal fixed
+   columns would break `Candidate` across four lines); what does not fit is
+   clipped at the card's edge. */
+.kore-card-preview-compact .kore-editor {
+  font-size: var(--text-xs, 0.75rem);
+}
+.kore-card-preview-compact .kore-editor table {
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+}
+.kore-card-preview-compact .kore-editor th,
+.kore-card-preview-compact .kore-editor td {
+  max-width: 9rem;
+  padding: 0.2rem 0.4rem;
+}
+.kore-card-preview-compact .kore-editor th > p,
+.kore-card-preview-compact .kore-editor td > p {
+  margin: 0;
+}
+
 /* NotePane's loading placeholder: hold the editor's reserved space silently,
    revealing a layout skeleton only when a load is genuinely slow. Opacity
    only, so the placeholder keeps its layout size while a fast local read

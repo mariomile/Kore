@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { firstImageAssets } from '@kore/core'
+import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -25,9 +26,9 @@ const GRID_CHUNK = 120
  * tap; pin and delete stay with the swipeable list. Chunks the mount the
  * same way desktop's All Notes grid does so a large graph never paints every
  * card at once. A note's first image tops its card: one indexed query per
- * mounted chunk names it, so no note body is read or rendered (desktop's
- * live-preview cards cost a markdown render each, too much for a phone's
- * scroll).
+ * mounted chunk names it. The body is desktop's live preview (a table is a
+ * table, a tag a chip), read and rendered only as a card nears the viewport;
+ * the indexed snippet stands in until then.
  */
 export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement {
   const { settings } = useSettings()
@@ -36,6 +37,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
   const hasMore = rows.length > visibleCount
   const mountedRows = rows.slice(0, visibleCount)
   const firstImages = useFirstImages(mountedRows.map((row) => row.path))
+  const resolveImageUrl = usePassiveImageResolver()
   // The screen passes a fresh onOpen each render; a stable one lets the
   // memoized cards skip re-rendering when only the thumbnails arrive.
   const onOpenRef = useRef(onOpen)
@@ -77,6 +79,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
                 key={row.path}
                 row={row}
                 imageUrl={firstImages.get(row.path)}
+                resolveImageUrl={resolveImageUrl}
                 recency={row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
                 onOpen={openPath}
               />
@@ -92,9 +95,13 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
 interface NoteCardProps {
   row: NoteRowModel
   imageUrl: string | undefined
+  resolveImageUrl: (src: string) => string | null
   recency: string
   onOpen: (path: string) => void
 }
+
+/** How tall a card's preview may grow before it fades out: about nine lines. */
+const PREVIEW_CLAMP = 'kore-card-preview-compact max-h-44'
 
 /** The grid's column count: two cards side by side on a phone. */
 const GRID_COLUMNS = 2
@@ -117,18 +124,27 @@ function splitIntoColumns<T>(rows: readonly T[]): T[][] {
 const NoteCard = memo(function NoteCard({
   row,
   imageUrl,
+  resolveImageUrl,
   recency,
   onOpen,
 }: NoteCardProps): ReactElement {
   const title = row.titleSegments.map((segment) => segment.text).join('')
+  // A search hit shows where it matched; otherwise the card shows the note.
+  const isSearchHit = row.snippet.some((segment) => segment.highlighted)
   return (
     <div className="pb-3">
-      <button
-        type="button"
-        aria-label={title}
-        onClick={() => onOpen(row.path)}
-        className="block w-full rounded-xl border border-border bg-surface p-3 text-left active:bg-surface-hover"
+      {/* The button covers the card instead of wrapping it: WebKit ignores a
+          max-height on content inside a <button>, and the preview needs one. */}
+      <div
+        data-note-path={row.path}
+        className="relative rounded-xl border border-border bg-surface p-3 has-[button:active]:bg-surface-hover"
       >
+        <button
+          type="button"
+          aria-label={title}
+          onClick={() => onOpen(row.path)}
+          className="absolute inset-0 z-[1] rounded-xl"
+        />
         <div className="flex items-start justify-between gap-2">
           <h2 className="line-clamp-3 min-w-0 text-[13px] font-semibold leading-snug text-text [overflow-wrap:anywhere]">
             <HighlightedText segments={row.titleSegments} />
@@ -151,18 +167,42 @@ const NoteCard = memo(function NoteCard({
             className="mt-2 max-h-40 w-full rounded-lg object-cover"
           />
         ) : null}
-        {row.snippet.length > 0 ? (
+        {isSearchHit ? (
           <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
             <HighlightedText segments={row.snippet} />
           </p>
-        ) : null}
+        ) : (
+          <div className="mt-1">
+            <NoteCardPreview
+              path={row.path}
+              mtime={row.mtime}
+              snippet={row.snippet.map((segment) => segment.text).join('')}
+              resolveImageUrl={resolveImageUrl}
+              waitForScrollRest
+              // The card's own thumbnail already shows the note's image.
+              clampClassName={
+                imageUrl === undefined ? PREVIEW_CLAMP : `${PREVIEW_CLAMP} [&_img]:hidden`
+              }
+            />
+          </div>
+        )}
         <div className="mt-3 text-2xs text-text-muted">{recency}</div>
-      </button>
+      </div>
     </div>
   )
 })
 
 const NO_IMAGES: ReadonlyMap<string, string> = new Map()
+
+/** A vault image source as a URL a passive card may load: no network, no SVG. */
+function usePassiveImageResolver(): (src: string) => string | null {
+  const { graph } = useGraph()
+  const { resolveImageUrl, resolveAssetOpenPath } = useAssetPersistence(graph?.generation ?? null)
+  return useMemo(
+    () => passivePreviewImageResolver({ resolveImageUrl, resolveAssetOpenPath }),
+    [resolveAssetOpenPath, resolveImageUrl],
+  )
+}
 
 /**
  * Card thumbnail URLs by note path, for the cards on screen: the index names
@@ -172,11 +212,7 @@ const NO_IMAGES: ReadonlyMap<string, string> = new Map()
  */
 export function useFirstImages(paths: readonly string[]): ReadonlyMap<string, string> {
   const { graph } = useGraph()
-  const { resolveImageUrl, resolveAssetOpenPath } = useAssetPersistence(graph?.generation ?? null)
-  const resolve = useMemo(
-    () => passivePreviewImageResolver({ resolveImageUrl, resolveAssetOpenPath }),
-    [resolveAssetOpenPath, resolveImageUrl],
-  )
+  const resolve = usePassiveImageResolver()
   const { data } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-card-images', paths],
     queryFn: () => firstImageAssets(paths),

@@ -5,7 +5,6 @@ import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
 import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
-import { NEAR_VIEWPORT_SCROLLER } from '@/hooks/use-near-viewport'
 import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -70,7 +69,8 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
 
   return (
     <div
-      {...{ [NEAR_VIEWPORT_SCROLLER]: '' }}
+      // The cards' previews are prepared against this scroller (use-near-viewport.ts).
+      data-near-viewport-scroller
       className="min-h-0 flex-1 overflow-y-auto"
       style={{
         paddingTop: 'var(--mobile-header-height, 0px)',
@@ -148,8 +148,6 @@ const NoteCard = memo(function NoteCard({
   // A search hit shows where it matched; otherwise the card shows the note.
   const isSearchHit = row.snippet.some((segment) => segment.highlighted)
   const snippet = row.snippet.map((segment) => segment.text).join('')
-  const [settled, setSettled] = useState(false)
-  const markSettled = useCallback(() => setSettled(true), [])
   return (
     <div className="pb-3">
       {/* The button covers the card instead of wrapping it: WebKit does not
@@ -196,12 +194,8 @@ const NoteCard = memo(function NoteCard({
             <HighlightedText segments={row.snippet} />
           </p>
         ) : snippet === '' ? null : (
-          <CardPreviewSlot
-            heightKey={`${row.path}\n${row.mtime}`}
-            settled={settled}
-            className="mt-2 max-h-44"
-          >
-            {(arrived) => (
+          <CardPreviewSlot heightKey={`${row.path}\n${row.mtime}`} className="mt-2 max-h-44">
+            {({ arrived, onSettled }) => (
               <NoteCardPreview
                 path={row.path}
                 mtime={row.mtime}
@@ -211,7 +205,7 @@ const NoteCard = memo(function NoteCard({
                 nearMargin={PREPARE_MARGIN}
                 sourceBudget={SOURCE_BUDGET}
                 urgent={arrived}
-                onSettled={markSettled}
+                onSettled={onSettled}
                 className={cn(
                   'kore-card-preview-compact max-h-44',
                   // The card's own thumbnail already shows the note's image.

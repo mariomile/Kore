@@ -1,4 +1,11 @@
-import { useCallback, useLayoutEffect, useRef, type ReactElement, type ReactNode } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { cn } from '@/lib/utils'
 
@@ -17,11 +24,9 @@ import { cn } from '@/lib/utils'
  * the screen (the grid opening, a filter changing) have no "before" to
  * settle in: they stay hidden for the few frames their previews
  * take and show together, settled. A card is visible exactly when its height
- * is kept; `PENDING` marks the ones that are not, for the card to hide by.
+ * is kept; `data-preview-pending` marks the slots that are not, for the card
+ * to hide by.
  */
-
-/** On the slot while its height is still open; the card hides while it has one. */
-export const PENDING = 'data-preview-pending'
 
 /**
  * "Arriving": a little outside the screen, so a card is settled and visible
@@ -75,23 +80,29 @@ function wait(keep: () => void): () => void {
   }
 }
 
+/** What the slot tells the preview inside it, and needs to hear back. */
+interface SlotState {
+  /** The card has arrived at the screen: its preview goes before the others. */
+  arrived: boolean
+  /** For the preview to call once it shows all it will. */
+  onSettled: () => void
+}
+
 interface CardPreviewSlotProps {
   /** Names the note and its version: a kept height is for exactly this content. */
   heightKey: string
-  /** Whether the preview inside has its final content. */
-  settled: boolean
   className?: string
-  /** The preview, told whether its card has arrived at the screen. */
-  children: (arrived: boolean) => ReactNode
+  children: (slot: SlotState) => ReactNode
 }
 
 /** The box a card's preview lives in; see the rule at the top of this file. */
 export function CardPreviewSlot({
   heightKey,
-  settled,
   className,
   children,
 }: CardPreviewSlotProps): ReactElement {
+  const [settled, setSettled] = useState(false)
+  const onSettled = useCallback(() => setSettled(true), [])
   const {
     setRoot: setArrivingRoot,
     near: arrived,
@@ -126,7 +137,7 @@ export function CardPreviewSlot({
       // Straight to the element: a render per card would cost the scroll
       // that brought the card here. A later render leaves both alone.
       box.style.height = `${height}px`
-      box.removeAttribute(PENDING)
+      box.removeAttribute('data-preview-pending')
     }
     if (settled || scrolledTo) {
       keep()
@@ -141,9 +152,9 @@ export function CardPreviewSlot({
       ref={setRoot}
       className={cn('overflow-hidden', className)}
       style={height === undefined ? undefined : { height }}
-      {...{ [PENDING]: height === undefined ? '' : undefined }}
+      data-preview-pending={height === undefined ? '' : undefined}
     >
-      {children(arrived)}
+      {children({ arrived, onSettled })}
     </div>
   )
 }

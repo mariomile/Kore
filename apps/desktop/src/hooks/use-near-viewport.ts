@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Marks a scroller whose content watches with a margin. A root margin grows
- * the viewport only: content inside a scroller of its own is still clipped
- * to that scroller's box, so "within 400px" would mean "on screen". Elements
- * under a marked scroller are observed against it instead.
+ * `data-near-viewport-scroller` marks a scroller whose content watches with
+ * a margin. A root margin grows the viewport only: content inside a scroller
+ * of its own is still clipped to that scroller's box, so "within 400px"
+ * would mean "on screen". Elements under a marked scroller are observed
+ * against it instead.
  */
-export const NEAR_VIEWPORT_SCROLLER = 'data-near-viewport-scroller'
-const SCROLLER_SELECTOR = `[${NEAR_VIEWPORT_SCROLLER}]`
+const SCROLLER_SELECTOR = '[data-near-viewport-scroller]'
 
 /**
  * One IntersectionObserver per root and rootMargin, shared by every element

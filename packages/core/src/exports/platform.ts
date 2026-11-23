@@ -125,6 +125,12 @@ export {
 } from '../embeddings/commands'
 export { embedNote, backfillEmbeddings } from '../embeddings/pipeline'
 export {
+  isInExcludedFolder,
+  normalizeExcludedFolders,
+  semanticExcludedFolders,
+  withSemanticExcludedFolders,
+} from '../embeddings/exclusions'
+export {
   retrieve,
   relatedNotes,
   fuseRanked,

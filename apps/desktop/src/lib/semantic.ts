@@ -94,6 +94,8 @@ export async function backfillEmbeddingsVisibly(options: {
   generation: number
   modelId: string
   isStale?: () => boolean
+  /** The vault's folders kept out of the semantic index (`lib/semantic-exclusions`). */
+  excludedFolders: readonly string[]
 }): Promise<'completed' | 'aborted' | 'failed'> {
   try {
     return await backfillEmbeddings(options)

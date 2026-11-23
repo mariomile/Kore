@@ -5,6 +5,11 @@ import {
   consumeLegacySemanticOptIn,
   ensureEmbeddingsVisibly,
 } from '@/lib/semantic'
+import {
+  clearSemanticExclusions,
+  loadSemanticExclusions,
+  useSemanticExclusions,
+} from '@/lib/semantic-exclusions'
 import { useEmbedStatus } from '@/lib/use-embed-status'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useGraph } from '@/providers/graph-provider'
@@ -35,6 +40,11 @@ export const FOLLOW_QUIET_MS = 5_000
  *   Work is serialized on one queue so passes can't interleave, and live
  *   follow-ups coalesce by path so a burst of watcher batches cannot grow
  *   an unbounded `.then` chain.
+ *
+ * It also owns the vault's excluded folders (`lib/semantic-exclusions`): read
+ * on every vault open, and waited for before any embedding work. Changing the
+ * list restarts the backfill, which drops the vectors of newly excluded
+ * folders and embeds the ones let back in.
  *
  * The follow trigger is `subscribeIndexApplied` — the post-apply signal — not
  * the raw watcher stream, for two reasons. Ordering: `embed_apply` drops
@@ -77,6 +87,20 @@ export function EmbeddingsSync({
   // Main window only: a secondary note window loading the model and
   // re-embedding on the same watcher stream would duplicate every write.
   const enabled = settings.semanticSearchEnabled && isMainWindow()
+  const fileGeneration = graph?.generation ?? null
+  const excludedFolders = useSemanticExclusions()
+
+  useEffect(() => {
+    if (fileGeneration === null || !isMainWindow()) {
+      return
+    }
+    let active = true
+    void loadSemanticExclusions(fileGeneration, () => !active)
+    return () => {
+      active = false
+      clearSemanticExclusions()
+    }
+  }, [fileGeneration, root])
 
   // The opt-in predates the settings document (it lived in localStorage);
   // carry it over once so those users keep semantic search across the move.
@@ -100,7 +124,14 @@ export function EmbeddingsSync({
   // this down: pending queue items see `active` go false and skip, and the
   // subscription drops.
   useEffect(() => {
-    if (!enabled || generation === null || root === null || modelId === null || !indexReady) {
+    if (
+      !enabled ||
+      generation === null ||
+      root === null ||
+      modelId === null ||
+      !indexReady ||
+      excludedFolders === null
+    ) {
       return
     }
     let active = true
@@ -144,7 +175,13 @@ export function EmbeddingsSync({
           if (job.kind === 'remove') {
             await embedRemove(path, generation)
           } else {
-            await embedNote({ path, generation, modelId, isStale: () => !active })
+            await embedNote({
+              path,
+              generation,
+              modelId,
+              isStale: () => !active,
+              excludedFolders,
+            })
           }
         } catch (cause) {
           if (!active || pendingFollow.has(path)) {
@@ -169,9 +206,12 @@ export function EmbeddingsSync({
         if (!active) {
           return
         }
-        return backfillEmbeddingsVisibly({ generation, modelId, isStale: () => !active }).then(
-          () => {},
-        )
+        return backfillEmbeddingsVisibly({
+          generation,
+          modelId,
+          isStale: () => !active,
+          excludedFolders,
+        }).then(() => {})
       })
       .catch((cause) => {
         // A rejection here must not poison the queue (later change items
@@ -203,7 +243,7 @@ export function EmbeddingsSync({
       pendingFollow.clear()
       unlisten()
     }
-  }, [enabled, generation, root, modelId, indexReady, followQuietMs])
+  }, [enabled, generation, root, modelId, indexReady, followQuietMs, excludedFolders])
 
   return null
 }

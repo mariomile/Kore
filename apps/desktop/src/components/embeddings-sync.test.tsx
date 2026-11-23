@@ -26,6 +26,14 @@ const semantic = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/semantic', () => semantic)
 
+/** The vault's excluded folders as the store reports them; `null` = unread. */
+const exclusions = vi.hoisted((): { current: readonly string[] | null } => ({ current: [] }))
+vi.mock('@/lib/semantic-exclusions', () => ({
+  useSemanticExclusions: () => exclusions.current,
+  loadSemanticExclusions: async () => {},
+  clearSemanticExclusions: () => {},
+}))
+
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
     graph: { root: '/g', name: 'g', generation: 1 },
@@ -48,6 +56,7 @@ let onApplied: IndexAppliedListener | null = null
 const unlisten = vi.fn()
 
 beforeEach(() => {
+  exclusions.current = []
   semanticSetting.enabled = true
   graphState.indexReady = true
   modelState.current = { status: 'ready', model: 'all-MiniLM-L6-v2' }
@@ -81,7 +90,32 @@ describe('EmbeddingsSync', () => {
         generation: 7,
         modelId: 'all-MiniLM-L6-v2',
         isStale: expect.any(Function),
+        excludedFolders: exclusions.current,
       }),
+    )
+  })
+
+  it('does no embedding work until the vault’s excluded folders are read', async () => {
+    exclusions.current = null
+    await render(<EmbeddingsSync followQuietMs={0} />)
+    await flushQueue()
+    expect(semantic.backfillEmbeddingsVisibly).not.toHaveBeenCalled()
+    expect(core.subscribeIndexApplied).not.toHaveBeenCalled()
+  })
+
+  it('hands the excluded folders to the backfill and to live follow-ups', async () => {
+    exclusions.current = ['Input/Transcripts']
+    await render(<EmbeddingsSync followQuietMs={0} />)
+    await vi.waitFor(() =>
+      expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalledWith(
+        expect.objectContaining({ excludedFolders: ['Input/Transcripts'] }),
+      ),
+    )
+    onApplied?.([{ kind: 'upsert', path: 'Input/Transcripts/call.md' }], 7)
+    await vi.waitFor(() =>
+      expect(core.embedNote).toHaveBeenCalledWith(
+        expect.objectContaining({ excludedFolders: ['Input/Transcripts'] }),
+      ),
     )
   })
 
@@ -189,12 +223,14 @@ describe('EmbeddingsSync', () => {
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
       isStale: expect.any(Function),
+      excludedFolders: exclusions.current,
     })
     expect(core.embedNote).toHaveBeenCalledWith({
       path: 'notes/b.md',
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
       isStale: expect.any(Function),
+      excludedFolders: exclusions.current,
     })
   })
 

@@ -9,6 +9,7 @@ import { SettingsField } from './field'
 import { ModelDownloadProgress } from './model-download-progress'
 import { RebuildIndexField } from './rebuild-index-field'
 import { SettingsSection } from './section'
+import { SemanticExcludedFoldersField } from './semantic-excluded-folders-field'
 
 /**
  * The search settings: the semantic-search opt-in (Plan 09) and the index
@@ -109,6 +110,7 @@ export function SearchSection(): ReactElement {
       >
         <div className="mt-3">{control}</div>
       </SettingsField>
+      {settings.semanticSearchEnabled ? <SemanticExcludedFoldersField /> : null}
       <DescribeAssetsField />
       <RebuildIndexField />
     </SettingsSection>

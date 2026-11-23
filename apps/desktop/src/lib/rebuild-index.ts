@@ -2,6 +2,7 @@ import { embedStatus, errorMessage, rebuildIndex } from '@kore/core'
 import { startOperation } from '@/lib/operations'
 import { invalidateIndexQueries } from '@/lib/query-client'
 import { backfillEmbeddingsVisibly, ensureEmbeddingsVisibly } from '@/lib/semantic'
+import { getSemanticExclusions } from '@/lib/semantic-exclusions'
 
 let inFlight: { generation: number; promise: Promise<void> } | null = null
 
@@ -69,6 +70,10 @@ async function runRebuild(generation: number): Promise<void> {
   const status = await embedStatus()
   const embed = status.status === 'unloaded' ? await ensureEmbeddingsVisibly() : status
   if (embed.status === 'ready') {
-    await backfillEmbeddingsVisibly({ generation, modelId: embed.model })
+    await backfillEmbeddingsVisibly({
+      generation,
+      modelId: embed.model,
+      excludedFolders: getSemanticExclusions() ?? [],
+    })
   }
 }

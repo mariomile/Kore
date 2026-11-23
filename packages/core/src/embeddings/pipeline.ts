@@ -12,6 +12,7 @@ import {
   embedTexts,
   type EmbedChunkPayload,
 } from './commands'
+import { isInExcludedFolder } from './exclusions'
 
 /**
  * The incremental embedding pass (Plan 09): chunk a note, diff chunk hashes
@@ -34,6 +35,8 @@ export interface EmbedNoteOptions {
   content?: string
   /** Stop between inference batches when this work has been superseded. */
   isStale?: () => boolean
+  /** The vault's excluded folders ({@link isInExcludedFolder}). */
+  excludedFolders?: readonly string[]
 }
 
 /**
@@ -42,9 +45,15 @@ export interface EmbedNoteOptions {
  * skipped, or the pass was cancelled before it wrote anything.
  */
 export async function embedNote(options: EmbedNoteOptions): Promise<number> {
-  const { path, generation, modelId, isStale = () => false } = options
+  const { path, generation, modelId, isStale = () => false, excludedFolders = [] } = options
   if (isTemplatePath(path) || isStale()) {
     return 0 // templates are boilerplate — never embedded, never retrieved
+  }
+  if (isInExcludedFolder(path, excludedFolders)) {
+    // Also the way out for a note that was embedded before it got here (the
+    // folder was excluded since, or the note moved in with its vectors).
+    await embedRemove(path, generation)
+    return 0
   }
   let content = options.content
   if (content === undefined) {
@@ -176,15 +185,22 @@ export async function backfillEmbeddings(options: {
   onProgress?: (done: number, total: number) => void
   /** Abort between inference batches and between notes (e.g. graph switch). */
   isStale?: () => boolean
+  /** The vault's excluded folders: their notes are skipped, their vectors dropped. */
+  excludedFolders?: readonly string[]
 }): Promise<'completed' | 'aborted'> {
-  const { generation, modelId, onProgress, isStale = () => false } = options
+  const { generation, modelId, onProgress, isStale = () => false, excludedFolders = [] } = options
   await pruneOrphanedEmbeddings(generation, isStale)
-  const rows = await db
+  await pruneExcludedEmbeddings(generation, isStale, excludedFolders)
+  const indexed = await db
     .selectFrom('notes')
     .where('kind', '!=', 'template')
     .select('path')
     .orderBy('path')
     .execute()
+  // Filtered here rather than left to `embedNote`, whose exclusion branch
+  // writes: the backfill runs on every launch, and a write per excluded note
+  // per start is the dead work the prune above does once.
+  const rows = indexed.filter((row) => !isInExcludedFolder(row.path, excludedFolders))
   let done = 0
   for (const row of rows) {
     if (isStale()) {
@@ -230,6 +246,29 @@ async function pruneOrphanedEmbeddings(generation: number, isStale: () => boolea
       return
     }
     await embedRemove(orphan.notePath, generation)
+  }
+}
+
+/**
+ * Drop the vectors of notes in excluded folders. Only notes that still have
+ * some, so a settled vault pays one read and no writes.
+ */
+async function pruneExcludedEmbeddings(
+  generation: number,
+  isStale: () => boolean,
+  excludedFolders: readonly string[],
+): Promise<void> {
+  if (excludedFolders.length === 0) {
+    return
+  }
+  const embedded = await db.selectFrom('embeddingChunks').select('notePath').distinct().execute()
+  for (const { notePath } of embedded) {
+    if (isStale()) {
+      return
+    }
+    if (isInExcludedFolder(notePath, excludedFolders)) {
+      await embedRemove(notePath, generation)
+    }
   }
 }
 

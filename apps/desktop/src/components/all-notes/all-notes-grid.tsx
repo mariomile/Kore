@@ -196,9 +196,7 @@ export function AllNotesGrid({
         <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
           {column.map((note) => (
             <GridCard
-              // A new column width remounts the card, so its preview measures
-              // afresh instead of keeping a height from another width.
-              key={`${note.path}\n${columns.width}`}
+              key={note.path}
               columnWidth={columns.width}
               note={note}
               type={type}

@@ -160,6 +160,22 @@ export function CardPreviewSlot({
   const waiter = useRef<Waiter | null>(null)
   const settledRef = useRef(settled)
 
+  // A new note version or column width: the height this mount fixed for the
+  // old one no longer fits, so the box goes back to its content's height
+  // and measures again, in place. A height remembered for the new key is
+  // already on the box (the render's style).
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    if (
+      box !== null &&
+      keptFor.current !== null &&
+      keptFor.current !== heightKey &&
+      !heights.has(heightKey)
+    ) {
+      box.style.height = ''
+    }
+  }, [heightKey])
+
   useLayoutEffect(() => {
     settledRef.current = settled
     const box = boxRef.current

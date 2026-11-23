@@ -1,22 +1,23 @@
 import type { Span } from './model'
 
 /**
- * Preview noise (list-row snippets): source a reader never sees as prose, cut
- * from the preview text on top of the ordinary plain-text cuts. A preview is
- * the note's own sentences and list items, nothing else: a card that reads
- * `Info | Campo | Valore | | --- |` or `Type: #meeting` shows the note's
- * scaffolding, not the note. So structure goes (headings, tables, property
- * lines, embeds, footnotes, HTML), and so do Obsidian plugin leftovers (a
- * ```dataview query, a Templater `<% tp.file.title %>`, a `%% comment %%`).
- * A note with no prose previews as nothing. The search text is untouched:
- * all of it stays searchable, only the preview skips it.
+ * Preview text (list rows and cards): what a note says, as clean plain text.
+ * Three kinds of source never read as a sentence, and each gets its own
+ * treatment on top of the ordinary plain-text cuts:
+ *
+ * - **Noise** is always dropped: code, comments, embeds, footnotes, HTML, and
+ *   Obsidian plugin leftovers (a ```dataview query, a Templater
+ *   `<% tp.file.title %>`, a `%% comment %%`).
+ * - **Tables** are rewritten, never shown raw: `Stage: Seed · Founded: 2021`
+ *   instead of `| Stage | Seed | | --- |`.
+ * - **Scaffolding** (headings, tag lines, `Type: #meeting`) is dropped while
+ *   the note has prose to show, and kept when it is all the note has, so a
+ *   card is empty only when the note is.
+ *
+ * The search text is untouched: all of it stays searchable.
  */
 
-/**
- * Nodes whose whole range is never preview prose. Headings are noise too
- * (section labels, not sentences); the note walk already identifies them by
- * node id and cuts them there.
- */
+/** Nodes whose whole range is noise. */
 const NOISE_NODES = new Set([
   'FencedCode',
   'CodeBlock',
@@ -26,8 +27,6 @@ const NOISE_NODES = new Set([
   'ProcessingInstructionBlock',
   'Comment',
   'ProcessingInstruction',
-  // Structure: a table's cells mean nothing without their grid.
-  'Table',
   // `![alt](src)`, `![[file or note]]`: the reader sees the embed, not its name.
   'Image',
   'WikiEmbed',
@@ -49,22 +48,23 @@ const CALLOUT_MARKER = /^(?:[ \t]*>)+[ \t]*(\[![^\]\n]+\][+-]?)/gm
 /** A footnote: its whole `[^1]: …` definition line, or a `[^1]` reference. */
 const FOOTNOTE = /^[ \t]*\[\^[^\]\s]+\]:.*$|\[\^[^\]\s]+\]/gm
 const TAG = String.raw`#[^\s#]+`
-/** What a property holds instead of words: a tag, a wiki or Markdown link, a bare URL. */
-const REFERENCE = String.raw`(?:${TAG}|\[\[[^\]\n]*\]\]|\[[^\]\n]*\]\([^)\n]*\)|<?https?:\/\/\S+)`
 /** A property's name: one or two words (`Type`, `Due date`). Longer is a sentence. */
 const LABEL = String.raw`\p{L}[\p{L}\p{N}_-]*(?: [\p{L}\p{N}_-]+)?`
+/** Where a line's own text starts: after indentation, quote marks, a list marker. */
+const LINE_LEAD = String.raw`^[ \t]*(?:>[ \t]*)*(?:[-*+][ \t]+)?`
 /**
- * A property line, after any quote marks and an optional list marker: tags alone (`#meeting
- * #work`, the line that gives a note its type), a label holding only
- * references (`Type: #meeting`, `Author: [[James Clear]]`, `URL: https://…`),
- * or a Dataview field (`status:: active`). Metadata the app shows as fields,
- * never a sentence: `Decision: ship it on Monday` has words and stays, and so
- * does `We met for the first time: [[Sarah Chen]]`, whose lead is no label.
+ * A scaffolding line: tags alone (`#meeting #work`, the line that gives a
+ * note its type), or a label holding only tags or bare URLs (`Type: #meeting`,
+ * `URL: https://…`; the URL itself never shows, so the label would dangle).
+ * A label with words or a link is content and stays: `Role: CEO`,
+ * `Author: [[James Clear]]`, and so does a sentence that merely ends like one.
  */
-const PROPERTY_LINE = new RegExp(
-  String.raw`^[ \t]*(?:>[ \t]*)*(?:[-*+][ \t]+)?(?:(?:${TAG}[ \t]*)+|${LABEL}:[ \t]*(?:${REFERENCE}[ \t,]*)+|${LABEL}::[ \t].*)$`,
+const SCAFFOLDING_LINE = new RegExp(
+  String.raw`${LINE_LEAD}(?:${LABEL}:[ \t]*)?(?:(?:${TAG}|<?https?:\/\/\S+)[ \t,]*)+$`,
   'gmu',
 )
+/** A Dataview field's second colon: `status:: active` reads `status: active`. */
+const DATAVIEW_FIELD_COLON = new RegExp(String.raw`${LINE_LEAD}${LABEL}:(:)(?=[ \t])`, 'gmu')
 
 /** A line break written as HTML: `<br>`, `<br/>`, `<BR >`. */
 const HTML_LINE_BREAK = /^<br\b/i
@@ -85,14 +85,39 @@ export function isPreviewNoiseNode(name: string, text: string): boolean {
   return name === 'InlineCode' && DATAVIEW_INLINE.test(text)
 }
 
+/** The preview spans the markdown tree has no node for. */
+export interface PreviewSpans {
+  /**
+   * Always dropped: Templater tags, Obsidian `%%` comments, footnotes, a
+   * Dataview field's second colon, and callout `[!type]` markers (the
+   * callout's title and body stay; they are the note's words).
+   */
+  noise: Span[]
+  /** Dropped while the note has prose: tag lines and `Type: #meeting` lines. */
+  scaffolding: Span[]
+}
+
+function matchSpans(text: string, pattern: RegExp): Span[] {
+  return Array.from(text.matchAll(pattern), (match) => ({
+    from: match.index,
+    to: match.index + match[0].length,
+  }))
+}
+
+/** The last capture group's span: the tail of each match of `pattern`. */
+function matchTailSpans(text: string, pattern: RegExp): Span[] {
+  return Array.from(text.matchAll(pattern), (match) => {
+    const to = match.index + match[0].length
+    return { from: to - (match[1]?.length ?? 0), to }
+  })
+}
+
 /**
- * Body spans of the noise the markdown tree has no node for: Templater tags,
- * Obsidian `%%` comments, footnotes, property lines, and callout `[!type]`
- * markers (the callout's title and body stay; they are the note's words).
- * `codeRanges` are blanked before the scan, so a `%%` line inside a Mermaid fence can't pair with a later one
- * and swallow the prose between them.
+ * Scan `body` for {@link PreviewSpans}. `codeRanges` are blanked before the
+ * scan, so a `%%` line inside a Mermaid fence can't pair with a later one and
+ * swallow the prose between them.
  */
-export function previewNoiseSpans(body: string, codeRanges: readonly Span[]): Span[] {
+export function previewSpans(body: string, codeRanges: readonly Span[]): PreviewSpans {
   let scanned = ''
   let cursor = 0
   for (const range of [...codeRanges].sort((a, b) => a.from - b.from)) {
@@ -104,16 +129,14 @@ export function previewNoiseSpans(body: string, codeRanges: readonly Span[]): Sp
     cursor = range.to
   }
   scanned += body.slice(cursor)
-  const spans: Span[] = []
-  for (const pattern of [TEMPLATER_TAG, OBSIDIAN_COMMENT, FOOTNOTE, PROPERTY_LINE]) {
-    for (const match of scanned.matchAll(pattern)) {
-      spans.push({ from: match.index, to: match.index + match[0].length })
-    }
+  return {
+    noise: [
+      ...matchSpans(scanned, TEMPLATER_TAG),
+      ...matchSpans(scanned, OBSIDIAN_COMMENT),
+      ...matchSpans(scanned, FOOTNOTE),
+      ...matchTailSpans(scanned, CALLOUT_MARKER),
+      ...matchTailSpans(scanned, DATAVIEW_FIELD_COLON),
+    ],
+    scaffolding: matchSpans(scanned, SCAFFOLDING_LINE),
   }
-  for (const match of scanned.matchAll(CALLOUT_MARKER)) {
-    const marker = match[1] ?? ''
-    const to = match.index + match[0].length
-    spans.push({ from: to - marker.length, to })
-  }
-  return spans
 }

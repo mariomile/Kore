@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   inlineEmbedSnapshots,
@@ -7,6 +7,7 @@ import {
   stripLeadingTagLine,
 } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
+import { useAfterScroll } from '@/hooks/use-after-scroll'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
@@ -28,14 +29,17 @@ const NEAR_VIEWPORT_MARGIN = '400px'
  */
 const PREVIEW_SOURCE_BUDGET = 1200
 
+/** How far past the budget a block may run before it is cut mid-block. */
+const BLOCK_OVERRUN = 200
+
 const NO_TAGS: readonly string[] = []
 
-function truncateAtBlockBoundary(body: string): string {
-  if (body.length <= PREVIEW_SOURCE_BUDGET + 200) {
+function truncateAtBlockBoundary(body: string, budget: number): string {
+  if (body.length <= budget + BLOCK_OVERRUN) {
     return body
   }
-  const boundary = body.slice(0, PREVIEW_SOURCE_BUDGET + 200).indexOf('\n\n', PREVIEW_SOURCE_BUDGET)
-  return body.slice(0, boundary === -1 ? PREVIEW_SOURCE_BUDGET + 200 : boundary)
+  const boundary = body.slice(0, budget + BLOCK_OVERRUN).indexOf('\n\n', budget)
+  return body.slice(0, boundary === -1 ? budget + BLOCK_OVERRUN : boundary)
 }
 
 interface NoteCardPreviewProps {
@@ -50,6 +54,21 @@ interface NoteCardPreviewProps {
    */
   shownTags?: readonly string[] | undefined
   resolveImageUrl: (src: string) => string | null
+  /** Extra classes for the rendered preview's box (it fills its slot). */
+  className?: string
+  /**
+   * Hold the upgrade until scrolling rests (the phone grid): a markdown
+   * render mid-flick costs the scroll its frames.
+   */
+  waitForScrollRest?: boolean
+  /** With `waitForScrollRest`: the card is on screen, so it upgrades before the others. */
+  urgent?: boolean
+  /** How much of the note's source a card this size can show; the default suits ~10 lines. */
+  sourceBudget?: number
+  /** How early the card upgrades; the default suits a grid of equal cards. */
+  nearMargin?: string
+  /** Called once the card shows all it will: the preview, or the snippet for good. */
+  onSettled?: () => void
 }
 
 /**
@@ -66,17 +85,33 @@ export function NoteCardPreview({
   snippet,
   shownTags = NO_TAGS,
   resolveImageUrl,
+  className,
+  waitForScrollRest = false,
+  urgent = false,
+  sourceBudget = PREVIEW_SOURCE_BUDGET,
+  nearMargin = NEAR_VIEWPORT_MARGIN,
+  onSettled,
 }: NoteCardPreviewProps): ReactElement | null {
   const { graph } = useGraph()
   const generation = graph?.generation ?? null
-  const { setRoot: setViewRoot, near } = useNearViewport(NEAR_VIEWPORT_MARGIN)
-  const { setRoot: setClampRoot, overflowing } = useOverflowing()
+  const { setRoot: setViewRoot, near } = useNearViewport(nearMargin)
+  const { setRoot: setClampRoot, overflowing, overflowingX } = useOverflowing()
+  const rested = useAfterScroll(near && waitForScrollRest, urgent)
+  const upgrade = waitForScrollRest ? rested : near
 
   // `mtime` in the key makes each entry immutable, so the app default
   // (staleTime Infinity) holds; a note edit reaches the card as a new key
   // via the refreshed list. Unrelated index updates must not reread cards.
-  const { data: body } = useQuery({
-    queryKey: ['note-card-preview', graph?.root, generation, path, mtime, shownTags.join('\n')],
+  const { data: body, isFetched } = useQuery({
+    queryKey: [
+      'note-card-preview',
+      graph?.root,
+      generation,
+      path,
+      mtime,
+      shownTags.join('\n'),
+      sourceBudget,
+    ],
     queryFn: async () => {
       if (generation === null) {
         return null
@@ -88,20 +123,30 @@ export function NoteCardPreview({
         inlineEmbedSnapshots(
           stripLeadingTagLine(stripLeadingHeading(splitFrontmatter(source).body), shownTags),
         ),
+        sourceBudget,
       )
     },
-    enabled: near && generation !== null,
+    enabled: upgrade && generation !== null,
     // A grid's worth of bodies has no business outliving the view by long.
     gcTime: 60_000,
     retry: false,
   })
+
+  const settled = upgrade && isFetched
+  useEffect(() => {
+    if (settled) {
+      onSettled?.()
+    }
+  }, [settled, onSettled])
 
   const fallback =
     snippet === '' ? null : (
       <p className="line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
     )
 
-  if (body === undefined || body === null) {
+  // A body still cached from an earlier mount waits its turn too: a grid
+  // coming back must not render a whole chunk of previews in one frame.
+  if (!upgrade || body === undefined || body === null) {
     return <div ref={setViewRoot}>{fallback}</div>
   }
   if (body.trim() === '') {
@@ -111,10 +156,12 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        // Fill the grid's definite preview slot so the hover-card mask
+        // Fill the card's definite preview slot so the hover-card mask
         // fades at the visible edge instead of shearing a line in half.
         'kore-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        className,
         overflowing && 'kore-hover-preview-overflowing',
+        overflowingX && 'kore-hover-preview-overflowing-x',
       )}
     >
       <div>

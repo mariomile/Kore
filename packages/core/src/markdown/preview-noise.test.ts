@@ -133,12 +133,12 @@ describe('parseNote — previewText', () => {
       )
     })
 
-    it('Notes Review: a property line alone previews as nothing', () => {
+    it('Notes Review: a property line is all the note says, so the card shows it', () => {
       const parsed = parseNote({
         path: 'Notes Review.md',
         source: '# Notes Review\n\nType: #meeting\n',
       })
-      expect(parsed.previewText).toBe('')
+      expect(parsed.previewText).toBe('Type: #meeting')
       expect(parsed.tags).toEqual(['meeting'])
     })
   })
@@ -146,7 +146,7 @@ describe('parseNote — previewText', () => {
   it('keeps table cells apart in the search text even without padding', () => {
     const parsed = parseNote({ path: 'notes/n.md', source: '|a|b|\n|-|-|\n|c|d|\n' })
     expect(parsed.text).toBe('a b c d')
-    expect(parsed.previewText).toBe('')
+    expect(parsed.previewText).toBe('c: d')
   })
 
   it('drops headings of every form, keeping the prose under them', () => {
@@ -160,19 +160,47 @@ describe('parseNote — previewText', () => {
     expect(preview('Above.\n\n---\n\n***\n\n___\n\nBelow.')).toBe('Above. Below.')
   })
 
-  it('drops property lines: tags alone, labelled tags, Dataview fields', () => {
+  it('drops tag lines while the note has prose: tags alone, labelled tags, bare URLs', () => {
     expect(preview('#meeting #work\n\nNotes from the call.')).toBe('Notes from the call.')
     expect(preview('Type: #meeting\nTags: #a #b/c\n\nNotes.')).toBe('Notes.')
-    expect(preview('- Type: #meeting\n- status:: active\n- A real item')).toBe('A real item')
-    expect(preview('status:: active\nDue Date:: 2026-11-22\n\nText.')).toBe('Text.')
-    expect(
-      preview('- Author: [[James Clear]]\n- URL: https://example.com/a\n- Site: [x](http://x.io)'),
-    ).toBe('')
-    expect(preview('Attendees: [[Sarah Chen]], [[James Clear]]\n\nWe agreed.')).toBe('We agreed.')
-    expect(preview('> Type: #meeting\n> status:: done\n> The quote itself.')).toBe(
-      'The quote itself.',
+    expect(preview('- Type: #meeting\n- URL: https://example.com/a\n- A real item')).toBe(
+      'A real item',
     )
-    expect(preview('> [!info]\n> - Author: [[James Clear]]\n> > #nested')).toBe('')
+    expect(preview('> Type: #meeting\n> > #nested\n> The quote itself.')).toBe('The quote itself.')
+  })
+
+  it('keeps a field that says something: a word, a link, a Dataview value', () => {
+    expect(preview('- Author: [[James Clear]]\n- Role: CEO\n- Site: [x](http://x.io)')).toBe(
+      'Author: James Clear Role: CEO Site: x',
+    )
+    expect(preview('Attendees: [[Sarah Chen]], [[James Clear]]\n\nWe agreed.')).toBe(
+      'Attendees: Sarah Chen, James Clear We agreed.',
+    )
+    expect(preview('status:: active\nDue Date:: 2026-11-22\n\nText.')).toBe(
+      'status: active Due Date: 2026-11-22 Text.',
+    )
+    expect(preview('> [!info]\n> - status:: done')).toBe('status: done')
+  })
+
+  it('rewrites a table as one line', () => {
+    const fields =
+      '| Campo | Valore |\n| --- | --- |\n| Industry | SaaS |\n| Stage | |\n| HQ | [[Rome]] |'
+    expect(preview(fields)).toBe('Industry: SaaS · HQ: Rome')
+    expect(preview(`Intro.\n\n${fields}\n\nOutro.`)).toBe('Intro. Industry: SaaS · HQ: Rome Outro.')
+    expect(preview('| Name | Role | City |\n| - | - | - |\n| Ada | CTO | |\n| Bo | | Rome |')).toBe(
+      'Name, Role, City · Ada, CTO · Bo, Rome',
+    )
+    expect(preview('| Books |\n| - |\n| Dune |\n| Emma |')).toBe('Books · Dune · Emma')
+    // A template nobody filled in says nothing.
+    expect(preview('Text.\n\n| Campo | Valore |\n| --- | --- |\n| Industry | |')).toBe('Text.')
+  })
+
+  it('falls back to section headings and tag lines when the note has no prose', () => {
+    expect(preview('# Title\n\n## Info\n\n| a | b |\n| - | - |\n\n---\n\n#tag\n')).toBe('Info #tag')
+    expect(preview('# Title\n\n## Agenda\n\n## Decisions\n')).toBe('Agenda Decisions')
+    expect(preview('# Title\n\n## Info\n\n| Campo | Valore |\n| - | - |\n| Stage | Seed |')).toBe(
+      'Stage: Seed',
+    )
   })
 
   it('keeps a tag or a colon inside a sentence', () => {
@@ -214,8 +242,8 @@ describe('parseNote — previewText', () => {
     expect(preview('A claim[^1] stands.\n\n[^1]: The source.')).toBe('A claim stands.')
   })
 
-  it('previews as nothing when the note has no prose', () => {
-    expect(preview('# Title\n\n## Info\n\n| a | b |\n| - | - |\n\n---\n\n#tag\n')).toBe('')
+  it('previews as nothing only when the note says nothing', () => {
+    expect(preview('# Title\n\n---\n\n![[photo.png]]\n')).toBe('')
   })
 
   it('reads an aliased link as its alias, as the editor shows it', () => {

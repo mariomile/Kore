@@ -24,11 +24,22 @@ import { useVaultFolders } from '@/hooks/use-vault-folders'
 import { useGraph } from '@/providers/graph-provider'
 import {
   draftsForNewSchema,
-  draftOptionRenames,
+  draftOptionChanges,
   draftsFromSchema,
   schemaFromDrafts,
   type PropertyDraft,
 } from './tag-config-drafts'
+
+/** Everything Save writes, as one comparable string: the dirty check. */
+function draftSnapshot(state: {
+  drafts: readonly PropertyDraft[]
+  template: string | null
+  folder: string | null
+  icon: string | null
+  parents: readonly string[]
+}): string {
+  return JSON.stringify([state.drafts, state.template, state.folder, state.icon, state.parents])
+}
 
 /** A fresh, empty schema row. */
 function blankDraft(rowId: number): PropertyDraft {
@@ -52,7 +63,11 @@ function blankDraft(rowId: number): PropertyDraft {
 }
 
 export interface TagConfigDraft {
+  /** The tag being configured (display casing). */
+  tag: string
   loading: boolean
+  /** Something was edited since the settings loaded: closing would lose it. */
+  dirty: boolean
   /** An unmarked note already sits at `tags/<key>.md`; saving converts it. */
   needsConversion: boolean
   drafts: PropertyDraft[]
@@ -82,7 +97,12 @@ export interface TagConfigDraft {
   moveDraftTo: (rowId: number, overRowId: number) => void
   /** Add an empty row and return its id. */
   addDraft: () => number
+  /** Delete a property from the draft; {@link removedDraft} keeps the way back. */
   removeDraft: (rowId: number) => void
+  /** The property deleted last, until it is restored: the surfaces offer Undo for it. */
+  removedDraft: PropertyDraft | null
+  /** Put the property deleted last back in its place; returns its row id. */
+  restoreRemovedDraft: () => number | null
   seedPreset: (preset: TagSchemaPreset) => void
   saving: boolean
   /** Renames that still hold values on notes, waiting for migrate-or-keep. */
@@ -127,6 +147,10 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
   // The tags this one builds on (Plan 33 B2) and the ones it may pick.
   const [parents, setParents] = useState<string[]>([])
   const [parentCandidates, setParentCandidates] = useState<string[]>([])
+  // What the settings loaded with; null until then.
+  const [baseline, setBaseline] = useState<string | null>(null)
+  // The property deleted last and where it sat, for Undo.
+  const [removed, setRemoved] = useState<{ draft: PropertyDraft; index: number } | null>(null)
 
   useEffect(() => {
     let active = true
@@ -160,6 +184,15 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
       setIcon(definition.icon)
       setParents(definition.parents)
       setParentCandidates(candidates)
+      setBaseline(
+        draftSnapshot({
+          drafts: rows,
+          template: definition.template,
+          folder: definition.folder,
+          icon: definition.icon,
+          parents: definition.parents,
+        }),
+      )
       setLoading(false)
     })()
     return () => {
@@ -187,6 +220,11 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
   }, [drafts])
   const hasInvalidRows = invalidNameRowIds.size > 0 || invalidKeyRowIds.size > 0
   const liveSchema = useMemo(() => schemaFromDrafts(drafts), [drafts])
+  const dirty = useMemo(
+    () =>
+      baseline !== null && baseline !== draftSnapshot({ drafts, template, folder, icon, parents }),
+    [baseline, drafts, template, folder, icon, parents],
+  )
 
   const updateDraft = (rowId: number, patch: Partial<PropertyDraft>): void => {
     setDrafts((current) =>
@@ -231,7 +269,23 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
   }
 
   const removeDraft = (rowId: number): void => {
+    const index = drafts.findIndex((row) => row.rowId === rowId)
+    const draft = drafts[index]
+    if (draft === undefined) {
+      return
+    }
     setDrafts((current) => current.filter((row) => row.rowId !== rowId))
+    setRemoved({ draft, index })
+  }
+
+  const restoreRemovedDraft = (): number | null => {
+    if (removed === null) {
+      return null
+    }
+    const { draft, index } = removed
+    setDrafts((current) => [...current.slice(0, index), draft, ...current.slice(index)])
+    setRemoved(null)
+    return draft.rowId
   }
 
   // One gesture seeds an empty schema with editable rows. Nothing is saved
@@ -241,6 +295,7 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     setDrafts(rows)
     setNextRowId(rows.length)
     setFocusRowId(null)
+    setRemoved(null)
   }
 
   const performSave = async (renames: PendingRename[], migrate: boolean): Promise<void> => {
@@ -258,16 +313,21 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
       if (migrate) {
         await migratePropertyRenames(renames, graph.generation)
       }
-      // Renamed options carry their notes along (after a key move, so the
+      // Renamed, merged and deleted options carry their notes along (after a key move, so the
       // values are already under the key the definition now names).
       await migrateOptionRenames(
         tag,
         drafts
-          .map((draft) => ({ key: draft.key, renames: draftOptionRenames(draft) }))
+          .map((draft) => ({
+            key: draft.key,
+            renames: draftOptionChanges(draft),
+          }))
           .filter((entry) => entry.renames.length > 0),
         graph.generation,
       )
-      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
+      await queryClient.invalidateQueries({
+        queryKey: tagTypeQueryKey(graph.root, tag),
+      })
       onSaved()
     } catch (error) {
       toast.add({
@@ -317,8 +377,12 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
       } else {
         await saveTagType(nextTag, schemaFromDrafts(drafts), graph.generation, extras)
       }
-      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
-      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, nextTag) })
+      await queryClient.invalidateQueries({
+        queryKey: tagTypeQueryKey(graph.root, tag),
+      })
+      await queryClient.invalidateQueries({
+        queryKey: tagTypeQueryKey(graph.root, nextTag),
+      })
       return true
     } catch (error) {
       toast.add({
@@ -333,8 +397,10 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
   }
 
   return {
+    tag,
     rebindTo,
     loading,
+    dirty,
     needsConversion,
     drafts,
     liveSchema,
@@ -358,6 +424,8 @@ export function useTagConfigDraft(tag: string, onSaved: () => void): TagConfigDr
     moveDraftTo,
     addDraft,
     removeDraft,
+    removedDraft: removed?.draft ?? null,
+    restoreRemovedDraft,
     seedPreset,
     saving,
     pendingRenames,

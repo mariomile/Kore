@@ -13,12 +13,11 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
-import { OptionsListEditor } from './options-list-editor'
+import { PropertyOptionsField } from './property-options-field'
 import { StartingValueField } from './starting-value-field'
 import {
   draftOptionNames,
   FIELD_LABEL_CLASS,
-  optionsPatch,
   relationTargetSelectItems,
   relationTargetTags,
   type PropertyDraft,
@@ -33,6 +32,8 @@ const ROLLUP_AGGREGATION_LABELS = Object.fromEntries(
 )
 
 export interface TagPropertySettingsProps {
+  /** The tag being configured: option use is counted on its notes. */
+  tag: string
   draft: PropertyDraft
   /** The key is malformed, reserved, or a duplicate: the editor auto-opens. */
   keyInvalid: boolean
@@ -51,6 +52,7 @@ export interface TagPropertySettingsProps {
  * Shared by the desktop dialog's property card and the phone's field page.
  */
 export function TagPropertySettings({
+  tag,
   draft,
   keyInvalid,
   updateDraft,
@@ -87,10 +89,7 @@ export function TagPropertySettings({
         <div className="flex items-start gap-2">
           <span className={FIELD_LABEL_CLASS}>Options</span>
           <div className="min-w-0 flex-1">
-            <OptionsListEditor
-              options={draft.options}
-              onChange={(options) => updateDraft(draft.rowId, optionsPatch(draft, options))}
-            />
+            <PropertyOptionsField tag={tag} draft={draft} updateDraft={updateDraft} />
           </div>
         </div>
       ) : null}
@@ -110,7 +109,9 @@ export function TagPropertySettings({
             }}
             onValueChange={(next) => {
               if (typeof next === 'string') {
-                updateDraft(draft.rowId, { target: next === '__any' ? '' : next })
+                updateDraft(draft.rowId, {
+                  target: next === '__any' ? '' : next,
+                })
               }
             }}
           >
@@ -142,7 +143,9 @@ export function TagPropertySettings({
             placeholder='prop("price") * 1.22'
             className="flex-1 font-mono text-xs"
             onChange={(event) =>
-              updateDraft(draft.rowId, { formulaExpression: event.target.value })
+              updateDraft(draft.rowId, {
+                formulaExpression: event.target.value,
+              })
             }
           />
         </label>
@@ -159,7 +162,9 @@ export function TagPropertySettings({
               }}
               onValueChange={(next) => {
                 if (typeof next === 'string') {
-                  updateDraft(draft.rowId, { reverseTag: next === '__none' ? '' : next })
+                  updateDraft(draft.rowId, {
+                    reverseTag: next === '__none' ? '' : next,
+                  })
                 }
               }}
             >
@@ -187,7 +192,9 @@ export function TagPropertySettings({
               placeholder="company"
               className="flex-1 font-mono text-xs"
               onChange={(event) =>
-                updateDraft(draft.rowId, { reverseProperty: event.target.value })
+                updateDraft(draft.rowId, {
+                  reverseProperty: event.target.value,
+                })
               }
             />
           </label>

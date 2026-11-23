@@ -1,9 +1,8 @@
-import { useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { foldTag, tagDisplayName } from '@kore/core'
-import { ChevronLeft, ChevronRight, GripVertical, Info, Plus } from '@/components/icons'
+import { ChevronLeft, ChevronRight, Info, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import {
@@ -14,19 +13,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
-import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
-import { PROPERTY_TYPE_ICONS } from './property-type-icons'
-import { PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagFolderField } from './tag-folder-field'
 import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
+import { RemovedPropertyNotice } from './removed-property-notice'
+import { TagConfigFieldRow } from './tag-config-field-row'
 import { TagSheetSection as Section } from './tag-sheet-section'
 import { TagSuggestRow } from './tag-suggest-row'
 import { useSuggestTagSchema } from './use-suggest-tag-schema'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
+import { useDiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
 
@@ -39,9 +38,6 @@ interface TagConfigSheetProps {
   /** A rebind moved the type onto another tag. */
   onRebound: (tag: string) => void
 }
-
-/** Base UI's drawer leaves a swipe that starts here alone (the drag handle). */
-const SWIPE_IGNORE = { 'data-base-ui-swipe-ignore': '' }
 
 /**
  * A type's configuration on the phone: the same drafts and save as the
@@ -69,6 +65,8 @@ export function TagConfigSheet({
   const [editingRowId, setEditingRowId] = useState<number | null>(null)
   const editing = config.drafts.find((draft) => draft.rowId === editingRowId) ?? null
   const key = foldTag(tag)
+  // A close asked for with unsaved edits: the header confirms before losing them.
+  const { discarding, requestClose, keepEditing } = useDiscardGuard(config.dirty, onClose)
 
   const showNotes = (): void => {
     afterSaveRef.current = () => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
@@ -79,53 +77,82 @@ export function TagConfigSheet({
     <Drawer
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) requestClose()
       }}
     >
       <DrawerContent className="[--drawer-height:calc(100dvh-3.5rem)]">
-        <div className="flex items-center gap-2 border-b border-border px-3 pb-3 pt-1">
-          {editing === null ? (
-            <Button type="button" variant="ghost" className="h-10 px-3 text-base" onClick={onClose}>
-              Cancel
-            </Button>
-          ) : (
+        {discarding ? (
+          <div className="flex items-center gap-2 border-b border-border px-3 pb-3 pt-1">
             <Button
               type="button"
               variant="ghost"
-              className="h-10 gap-1 px-2 text-base"
-              onClick={() => setEditingRowId(null)}
+              className="h-10 px-3 text-base"
+              onClick={keepEditing}
             >
-              <ChevronLeft aria-hidden className="size-5" />
-              Fields
+              Keep editing
             </Button>
-          )}
-          <DrawerTitle className="min-w-0 flex-1 truncate px-0 pt-0 text-center text-base font-semibold">
-            {editing === null
-              ? tagDisplayName(key.slice(key.lastIndexOf('/') + 1))
-              : editing.name.trim() || 'New field'}
-          </DrawerTitle>
-          {editing === null ? (
+            <DrawerTitle className="min-w-0 flex-1 truncate px-0 pt-0 text-center text-base font-semibold">
+              Discard edits?
+            </DrawerTitle>
             <Button
               type="button"
+              variant="destructive"
               className="h-10 px-4 text-base"
-              disabled={config.loading || config.saving || config.hasInvalidRows}
-              onClick={() => {
-                void config.save()
-              }}
+              onClick={onClose}
             >
-              {config.needsConversion ? 'Convert' : 'Save'}
+              Discard
             </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 px-3 text-base font-semibold"
-              onClick={() => setEditingRowId(null)}
-            >
-              Done
-            </Button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 border-b border-border px-3 pb-3 pt-1">
+            {editing === null ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 px-3 text-base"
+                onClick={requestClose}
+              >
+                Cancel
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 gap-1 px-2 text-base"
+                onClick={() => setEditingRowId(null)}
+              >
+                <ChevronLeft aria-hidden className="size-5" />
+                Fields
+              </Button>
+            )}
+            <DrawerTitle className="min-w-0 flex-1 truncate px-0 pt-0 text-center text-base font-semibold">
+              {editing === null
+                ? tagDisplayName(key.slice(key.lastIndexOf('/') + 1))
+                : editing.name.trim() || 'New field'}
+            </DrawerTitle>
+            {editing === null ? (
+              <Button
+                type="button"
+                className="h-10 px-4 text-base"
+                disabled={config.loading || config.saving || config.hasInvalidRows}
+                onClick={() => {
+                  void config.save()
+                }}
+              >
+                {config.needsConversion ? 'Convert' : 'Save'}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 px-3 text-base font-semibold"
+                onClick={() => setEditingRowId(null)}
+              >
+                Done
+              </Button>
+            )}
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-8 pt-4">
           {editing === null ? (
             <TypePage
@@ -136,7 +163,7 @@ export function TagConfigSheet({
               config={config}
               onOpenField={setEditingRowId}
               onShowNotes={showNotes}
-              onClose={onClose}
+              onClose={requestClose}
             />
           ) : (
             <TagFieldPage
@@ -173,10 +200,19 @@ function TypePage({
   onShowNotes: () => void
   onClose: () => void
 }): ReactElement {
-  const suggestWithAi = useSuggestTagSchema(tagKey, onClose)
+  const suggestWithAi = useSuggestTagSchema(tagKey, config.dirty, onClose)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)
+  // The migrate-or-keep choice sits at the end of the page while Save is in
+  // the header: bring it into view when it appears.
+  const pendingRef = useRef<HTMLDivElement>(null)
+  const hasPendingRenames = config.pendingRenames !== null
+  useEffect(() => {
+    if (hasPendingRenames) {
+      pendingRef.current?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [hasPendingRenames])
 
   return (
     <>
@@ -260,7 +296,7 @@ function TypePage({
             >
               <ul>
                 {drafts.map((draft) => (
-                  <FieldRow
+                  <TagConfigFieldRow
                     key={draft.rowId}
                     draft={draft}
                     invalid={
@@ -273,6 +309,13 @@ function TypePage({
               </ul>
             </SortableContext>
           </DndContext>
+          {config.removedDraft === null ? null : (
+            <RemovedPropertyNotice
+              name={config.removedDraft.name.trim()}
+              className="h-12 border-b border-border pl-4 pr-2 text-base"
+              onUndo={() => config.restoreRemovedDraft()}
+            />
+          )}
           <button
             type="button"
             disabled={loading}
@@ -373,7 +416,7 @@ function TypePage({
       </Section>
 
       {config.pendingRenames !== null ? (
-        <div className="flex flex-col gap-2 rounded-xl bg-surface-hover p-3">
+        <div ref={pendingRef} className="flex flex-col gap-2 rounded-xl bg-surface-hover p-3">
           <p className="text-sm text-text-secondary">
             {config.pendingRenames
               .map(
@@ -417,72 +460,5 @@ function TypePage({
         </div>
       ) : null}
     </>
-  )
-}
-
-/** One field on the type page: drag handle, glyph, name, type, chevron. */
-function FieldRow({
-  draft,
-  invalid,
-  onOpen,
-}: {
-  draft: PropertyDraft
-  invalid: boolean
-  onOpen: () => void
-}): ReactElement {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: draft.rowId })
-  const Glyph = PROPERTY_TYPE_ICONS[draft.type]
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        'relative flex min-h-12 items-center border-b border-border bg-surface',
-        isDragging && 'z-10 shadow-lg',
-      )}
-    >
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        aria-label={`Reorder ${draft.name.trim() || 'field'}`}
-        className="flex h-12 w-11 shrink-0 touch-none items-center justify-center text-text-muted"
-        {...SWIPE_IGNORE}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical aria-hidden className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 pr-4 text-left active:bg-surface-hover"
-      >
-        <Glyph aria-hidden className="size-4 shrink-0 text-text-muted" />
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-base',
-            draft.name.trim() === '' ? 'text-text-muted' : 'text-text',
-          )}
-        >
-          {draft.name.trim() || 'Untitled field'}
-        </span>
-        {invalid ? (
-          <span className="shrink-0 text-xs text-destructive">Needs a name</span>
-        ) : (
-          <span className="shrink-0 text-sm text-text-muted">
-            {PROPERTY_TYPE_LABELS[draft.type]}
-          </span>
-        )}
-        <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
-      </button>
-    </li>
   )
 }

@@ -114,6 +114,10 @@ describe('TagConfigSheet (the phone layout of the type configuration)', () => {
 
     await expect.element(view.getByRole('button', { name: 'Add property' })).toBeVisible()
     expect(view.getByRole('button', { name: /^Website/ }).query()).toBeNull()
+    // Undo puts it back; deleting again leaves it gone.
+    await view.getByRole('button', { name: 'Undo' }).click()
+    await view.getByRole('button', { name: /^Website/ }).click()
+    await view.getByRole('button', { name: 'Delete field' }).click()
     await view.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => saveTagType.mock.calls.length).toBe(1)
     expect(saveTagType).toHaveBeenCalledWith('Company', [], 7, {

@@ -23,7 +23,8 @@ export function useDiscardGuard(dirty: boolean, onClose: () => void): DiscardGua
   const [pending, setPending] = useState<{ then: (() => void) | null } | null>(null)
   const close = (then: (() => void) | null): void => {
     if (dirty) {
-      setPending({ then })
+      // A plain close asked while the confirmation is up keeps what was to follow.
+      setPending((current) => ({ then: then ?? current?.then ?? null }))
     } else {
       onClose()
       then?.()

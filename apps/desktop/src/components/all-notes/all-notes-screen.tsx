@@ -62,8 +62,9 @@ import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
-import { FolderPageControls } from './folder-page-controls'
+import { SearchPill } from '@/components/ui/search-pill'
 import { FolderPageTitle } from './folder-page-title'
+import { FolderSettingsMenu } from './folder-settings-menu'
 import { FolderSubfolders } from './folder-subfolders'
 import { NewFolderNoteButton } from './new-folder-note-button'
 import { NewNoteButton } from './new-note-button'
@@ -72,6 +73,7 @@ import { TagTasksSection } from './tag-tasks-section'
 import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
+import { useFolderIncludesSubfolders } from './use-folder-includes-subfolders'
 import { useCollectionSavedViews, useCollectionViewSettings } from './use-collection-view-settings'
 import { isModEvent } from '@meowdown/core'
 
@@ -99,8 +101,9 @@ const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
  *
  * A routed folder is that folder's page (Notion's page of child pages): a
  * breadcrumb of its parents, its subfolders as chips, then its notes in the
- * same list/grid as All notes, with a title filter, an include-subfolders
- * switch, and a "+" that creates the note in the folder.
+ * same list/grid as All notes (its subfolders' notes included unless the
+ * folder's settings say otherwise), with a title filter, the settings gear,
+ * and a "+" that creates the note in the folder.
  *
  * Rows are multi-selectable (V1 parity): click to select (⌘ toggle, Shift
  * range), the indicator gutter toggles, the subject or a double-click opens.
@@ -118,14 +121,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const listTag = tag ?? (filter.kind === 'all' ? (filter.tag ?? null) : null)
   const inbox = filter.kind === 'inbox'
   const folderPath = filter.kind === 'folder' ? filter.folder : null
-  // A folder page's own lens — what it lists and the title filter — is
-  // ephemeral and belongs to one folder: moving to another resets both.
-  const [includeSubfolders, setIncludeSubfolders] = useState(false)
+  const [includeSubfolders, setIncludeSubfolders] = useFolderIncludesSubfolders(folderPath)
+  // The title filter is ephemeral and belongs to one folder: moving to
+  // another clears it.
   const [titleQuery, setTitleQuery] = useState('')
   const [lensFolder, setLensFolder] = useState(folderPath)
   if (lensFolder !== folderPath) {
     setLensFolder(folderPath)
-    setIncludeSubfolders(false)
     setTitleQuery('')
   }
   const folder = useMemo<NoteListFolder | null>(
@@ -489,12 +491,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
             {folderPath !== null ? (
-              <FolderPageControls
-                titleQuery={titleQuery}
-                onTitleQueryChange={setTitleQuery}
-                includeSubfolders={includeSubfolders}
-                onIncludeSubfoldersChange={setIncludeSubfolders}
-              />
+              <SearchPill label="Filter notes" value={titleQuery} onValueChange={setTitleQuery} />
             ) : (
               <AllNotesFilters
                 filter={filter}
@@ -507,7 +504,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             )}
             <AllNotesViewControls view={view} onViewChange={setViewMode} />
             {folderPath !== null ? (
-              <NewFolderNoteButton folder={folderPath} />
+              <>
+                <FolderSettingsMenu
+                  includeSubfolders={includeSubfolders}
+                  onIncludeSubfoldersChange={setIncludeSubfolders}
+                />
+                <NewFolderNoteButton folder={folderPath} />
+              </>
             ) : (
               <NewNoteButton tag={tag} />
             )}

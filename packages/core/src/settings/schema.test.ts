@@ -82,6 +82,7 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
+      folderPagesWithoutSubfolders: [],
       taskFilters: {
         pinned: true,
         current: true,
@@ -429,6 +430,13 @@ describe('settingsSchema', () => {
     ])
     expect(settingsSchema.parse({ allNotesSort: 'random' }).allNotesSort).toBe('updated-desc')
     expect(settingsSchema.parse({ allNotesSort: 42 }).allNotesSort).toBe('updated-desc')
+    expect(
+      settingsSchema.parse({ folderPagesWithoutSubfolders: ['CRM/People'] })
+        .folderPagesWithoutSubfolders,
+    ).toEqual(['CRM/People'])
+    expect(
+      settingsSchema.parse({ folderPagesWithoutSubfolders: 'CRM' }).folderPagesWithoutSubfolders,
+    ).toEqual([])
     expect(settingsSchema.parse({ calendarEnabled: 'yes' }).calendarEnabled).toBe(false)
     expect(settingsSchema.parse({ calendarEnabled: 1 }).calendarEnabled).toBe(false)
     expect(settingsSchema.parse({ calendarIds: 'cal-1' }).calendarIds).toEqual([])
@@ -505,6 +513,7 @@ describe('settingsSchema', () => {
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       allNotesSort: 'updated-desc',
+      folderPagesWithoutSubfolders: [],
       taskFilters: {
         pinned: true,
         current: true,

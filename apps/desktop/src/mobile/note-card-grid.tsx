@@ -1,10 +1,12 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { NoteCardPicture } from '@/components/all-notes/note-card-picture'
 import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
 import { noImageUrl, useFirstImages, usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatRecencyLabel } from '@/lib/dates'
+import { dealIntoColumns } from '@/lib/deal-columns'
 import { cn } from '@/lib/utils'
-import { CardPreviewSlot } from '@/mobile/card-preview-slot'
+import { CardPreviewSlot } from '@/components/all-notes/card-preview-slot'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useSettings } from '@/providers/settings-provider'
@@ -19,7 +21,7 @@ const GRID_CHUNK = 120
 
 /**
  * The All tab's masonry card grid: the same rows as {@link NoteRowList}, as
- * preview cards dealt row by row into two columns. A reading layout — cards open on
+ * preview cards dealt row by row into two columns (lib/deal-columns.ts). A reading layout — cards open on
  * tap; pin and delete stay with the swipeable list. Chunks the mount the
  * same way desktop's All Notes grid does so a large graph never paints every
  * card at once. A note's first image tops its card: one indexed query per
@@ -73,7 +75,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
       }}
     >
       <div data-testid="all-notes-grid" className="flex items-start gap-3 px-4 py-4">
-        {splitIntoColumns(mountedRows).map((column, columnIndex) => (
+        {dealIntoColumns(mountedRows, GRID_COLUMNS).map((column, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col">
             {column.map((row) => (
               <NoteCard
@@ -117,20 +119,6 @@ const SOURCE_BUDGET = 400
 /** The grid's column count: two cards side by side on a phone. */
 const GRID_COLUMNS = 2
 
-/**
- * Deal the rows across the columns left to right, row by row, so the grid
- * reads in the list's order: the newest note top left, the second newest top
- * right. CSS columns would fill the whole left column first, splitting a
- * recency sort into "left half newer than right half".
- */
-function splitIntoColumns<T>(rows: readonly T[]): T[][] {
-  const columns: T[][] = Array.from({ length: GRID_COLUMNS }, () => [])
-  for (const [index, row] of rows.entries()) {
-    columns[index % GRID_COLUMNS]?.push(row)
-  }
-  return columns
-}
-
 /** One grid card; memoized so a thumbnail arriving re-renders only its card. */
 const NoteCard = memo(function NoteCard({
   row,
@@ -162,19 +150,7 @@ const NoteCard = memo(function NoteCard({
           onClick={() => onOpen(row.path)}
           className="absolute inset-0 z-[1] rounded-xl"
         />
-        {/* The note's picture leads the card edge to edge, at a fixed height
-            so the card never jumps when the thumbnail arrives. */}
-        {imageUrl !== undefined ? (
-          <img
-            src={imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            data-testid="note-card-picture"
-            className="h-28 w-full bg-surface-hover object-cover"
-          />
-        ) : null}
+        {imageUrl !== undefined ? <NoteCardPicture src={imageUrl} /> : null}
         <div className="p-3">
           <div className="flex items-start justify-between gap-2">
             <h2 className="line-clamp-3 min-w-0 text-[13px] font-semibold leading-snug text-text [overflow-wrap:anywhere]">

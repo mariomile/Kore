@@ -11,7 +11,8 @@ import { lastWholeLineBottom } from '@/lib/whole-lines'
 import { cn } from '@/lib/utils'
 
 /**
- * The height of a phone grid card's preview (mobile/note-card-grid.tsx).
+ * The height of a grid card's preview (the Mac grid, all-notes-grid.tsx, and
+ * the phone's, mobile/note-card-grid.tsx).
  *
  * A card is as tall as the note it shows, and the note is read only near the
  * screen, so a card's height is not known when it mounts. The rule that keeps
@@ -222,6 +223,7 @@ export function CardPreviewSlot({
   return (
     <div
       ref={setRoot}
+      data-testid="note-card-preview-slot"
       className={cn('overflow-hidden', className)}
       style={height === undefined ? undefined : { height }}
       data-preview-pending={height === undefined ? '' : undefined}

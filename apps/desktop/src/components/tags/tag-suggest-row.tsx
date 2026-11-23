@@ -1,45 +1,43 @@
 import type { ReactElement } from 'react'
 import { Sparkles } from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { useSuggestTagSchema } from './use-suggest-tag-schema'
+
+/** The row's classes per layout: the desktop card's compact row, the phone list's tall one. */
+const VARIANTS = {
+  dialog: {
+    row: 'gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-active',
+    icon: 'size-4',
+    label: 'text-sm font-medium text-text',
+  },
+  sheet: {
+    row: 'min-h-14 w-full gap-3 border-t border-border px-4 py-2 active:bg-surface-hover',
+    icon: 'size-5',
+    label: 'text-base text-primary',
+  },
+} as const
 
 /**
  * The "Suggest with AI" row a tag with no properties offers beside the
- * ready-made schemas: one tap hands the question to the chat
- * ({@link useSuggestTagSchema}). `dialog` is the desktop card's compact row,
- * `sheet` the phone list's tall one. Renders nothing where there is no chat
- * to hand it to.
+ * ready-made schemas: one tap hands the question to the chat (see
+ * `useSuggestTagSchema`, which the owning surface calls).
  */
 export function TagSuggestRow({
-  tagKey,
-  onClose,
   variant,
+  onSuggest,
 }: {
-  tagKey: string
-  onClose: () => void
-  variant: 'dialog' | 'sheet'
-}): ReactElement | null {
-  const suggest = useSuggestTagSchema(tagKey, onClose)
-  if (suggest === null) {
-    return null
-  }
-  const sheet = variant === 'sheet'
+  variant: keyof typeof VARIANTS
+  onSuggest: () => void
+}): ReactElement {
+  const classes = VARIANTS[variant]
   return (
     <button
       type="button"
-      onClick={suggest}
-      className={cn(
-        'flex items-center text-left',
-        sheet
-          ? 'min-h-14 w-full gap-3 border-t border-border px-4 py-2 active:bg-surface-hover'
-          : 'gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-active',
-      )}
+      onClick={onSuggest}
+      className={cn('flex items-center text-left', classes.row)}
     >
-      <Sparkles aria-hidden className={cn('shrink-0 text-primary', sheet ? 'size-5' : 'size-4')} />
+      <Sparkles aria-hidden className={cn('shrink-0 text-primary', classes.icon)} />
       <span className="flex min-w-0 flex-col">
-        <span className={sheet ? 'text-base text-primary' : 'text-sm font-medium text-text'}>
-          Suggest with AI
-        </span>
+        <span className={classes.label}>Suggest with AI</span>
         <span className="truncate text-xs text-text-muted">
           Chat proposes properties from its notes
         </span>

@@ -1,4 +1,3 @@
-import { useCallback } from 'react'
 import { tagSchemaAiPrompt } from '@/lib/tags/schema-ai-prompt'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
@@ -14,21 +13,15 @@ import { useRouter } from '@/routing/router'
 export function useSuggestTagSchema(tagKey: string, onClose: () => void): (() => void) | null {
   const chat = useOptionalChatSession()
   const { navigate } = useRouter()
-  const newChat = chat?.newChat
-  const setDraft = chat?.setDraft
-  const idle = chat?.status === 'idle'
-
-  const suggest = useCallback((): void => {
-    if (newChat === undefined || setDraft === undefined) {
-      return
-    }
+  if (chat === null) {
+    return null
+  }
+  return () => {
     onClose()
-    if (idle) {
-      newChat()
+    if (chat.status === 'idle') {
+      chat.newChat()
     }
-    setDraft(tagSchemaAiPrompt(tagKey))
+    chat.setDraft(tagSchemaAiPrompt(tagKey))
     navigate({ kind: 'chat' })
-  }, [idle, navigate, newChat, onClose, setDraft, tagKey])
-
-  return chat === null ? null : suggest
+  }
 }

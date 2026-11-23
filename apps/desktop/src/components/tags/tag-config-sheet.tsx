@@ -24,6 +24,7 @@ import { TagAdvancedSection } from './tag-parents-field'
 import { TagPresetIcon } from './tag-preset-icon'
 import { TagSheetSection as Section } from './tag-sheet-section'
 import { TagSuggestRow } from './tag-suggest-row'
+import { useSuggestTagSchema } from './use-suggest-tag-schema'
 import { TagFieldPage } from './tag-field-page'
 import { TagViewsStrip } from './tag-views-strip'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
@@ -172,6 +173,7 @@ function TypePage({
   onShowNotes: () => void
   onClose: () => void
 }): ReactElement {
+  const suggestWithAi = useSuggestTagSchema(tagKey, onClose)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const { drafts, loading } = config
   const binding = useTypeTagBinding(tag)
@@ -280,8 +282,8 @@ function TypePage({
             <Plus aria-hidden className="size-5" />
             Add property
           </button>
-          {!loading && drafts.length === 0 ? (
-            <TagSuggestRow variant="sheet" tagKey={tagKey} onClose={onClose} />
+          {!loading && drafts.length === 0 && suggestWithAi !== null ? (
+            <TagSuggestRow variant="sheet" onSuggest={suggestWithAi} />
           ) : null}
         </div>
       </Section>

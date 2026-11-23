@@ -62,10 +62,10 @@ import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
+import { SearchPill } from '@/components/ui/search-pill'
 import { FolderPageTitle } from './folder-page-title'
 import { FolderSettingsMenu } from './folder-settings-menu'
 import { FolderSubfolders } from './folder-subfolders'
-import { FolderTitleFilter } from './folder-title-filter'
 import { NewFolderNoteButton } from './new-folder-note-button'
 import { NewNoteButton } from './new-note-button'
 import { TagMentionsSection } from './tag-mentions-section'
@@ -491,7 +491,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
             {folderPath !== null ? (
-              <FolderTitleFilter query={titleQuery} onQueryChange={setTitleQuery} />
+              <SearchPill label="Filter notes" value={titleQuery} onValueChange={setTitleQuery} />
             ) : (
               <AllNotesFilters
                 filter={filter}

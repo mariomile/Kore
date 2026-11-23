@@ -2,11 +2,12 @@ import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { displayNoteTitle, foldTag, getGraphMap, noteFileStem, type GraphMapNode } from '@kore/core'
 import { PageLoading } from '@/components/page-loading'
+import { SearchPill } from '@/components/ui/search-pill'
+import { Switch } from '@/components/ui/switch'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { tagColorCss } from '@/lib/graph-colors'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
-import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { GraphMapCanvas, type CanvasNode } from './graph-map-canvas'
@@ -112,8 +113,8 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-none items-baseline gap-3 px-6 pb-2 pt-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-text">Graph</h1>
+      <div className="flex flex-none items-baseline gap-3 py-5 pr-7 pl-12">
+        <h1 className="app-page-title text-text">Graph</h1>
         <span className="whitespace-nowrap text-xs text-text-muted">
           {shown.nodes.length} notes · {shown.edges.length} links
           {matches === null ? '' : ` · ${matches.size} highlighted`}
@@ -132,31 +133,14 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
             </button>
           </span>
         )}
-        <input
-          type="search"
+        <SearchPill
+          label="Highlight notes"
           value={query}
-          aria-label="Highlight notes"
-          spellCheck={false}
-          onChange={(event) => {
-            setQuery(event.target.value)
-          }}
-          placeholder="Highlight notes…"
-          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted"
+          onValueChange={setQuery}
+          className="ml-auto w-48 self-center"
         />
-        <label
-          className={cn(
-            'flex cursor-default items-center gap-1.5 whitespace-nowrap text-xs font-medium',
-            showDailies ? 'text-text' : 'text-text-secondary',
-          )}
-        >
-          <input
-            type="checkbox"
-            checked={showDailies}
-            onChange={(event) => {
-              setShowDailies(event.target.checked)
-            }}
-            className="accent-[var(--accent)]"
-          />
+        <label className="flex items-center gap-1.5 self-center whitespace-nowrap text-[13px] font-medium text-text-secondary">
+          <Switch size="sm" checked={showDailies} onCheckedChange={setShowDailies} />
           Daily notes
         </label>
       </div>

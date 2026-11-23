@@ -392,7 +392,7 @@ export function TasksScreen(): ReactElement {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search or #tag…"
             aria-label="Search tasks"
-            className="h-9 border-none bg-transparent pl-[38px] shadow-none"
+            className="h-9 rounded-full border-none bg-surface-hover pl-[38px] shadow-none dark:bg-surface-hover"
           />
         </div>
         {selection.selectedCount > 0 ? (

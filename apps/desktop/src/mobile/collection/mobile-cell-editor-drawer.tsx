@@ -8,7 +8,7 @@ import {
   type CollectionValue,
   type TagProperty,
 } from '@kore/core'
-import { Check, ExternalLink, Search, Star } from '@/components/icons'
+import { Check, ExternalLink, Star } from '@/components/icons'
 import {
   editorSeedList,
   editorSeedText,
@@ -21,6 +21,7 @@ import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
+import { SearchInput } from '@/mobile/search-input'
 
 /** The tapped mobile table cell currently open in the editor sheet. */
 export interface MobileCellTarget {
@@ -188,19 +189,12 @@ function MobileSelectBody({
   return (
     <div className="flex flex-col gap-2">
       {searchable ? (
-        <div className="relative flex items-center">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-3 size-4 text-text-muted"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search ${property.name}…`}
-            className="h-11 w-full rounded-xl border border-border bg-input-bg pr-3 pl-9 text-[16px] text-text outline-none focus:border-border-focus placeholder:text-text-muted"
-          />
-        </div>
+        <SearchInput
+          aria-label={`Search ${property.name}`}
+          placeholder={`Search ${property.name}…`}
+          value={query}
+          onValueChange={setQuery}
+        />
       ) : null}
       <div role="listbox" aria-label={`Choose ${property.name}`} className="flex flex-col">
         {filtered.length === 0 ? (
@@ -498,27 +492,20 @@ function MobileRelationBody({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative flex items-center">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute left-3 size-4 text-text-muted"
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={
-            target === undefined
-              ? multiple
-                ? 'Link notes…'
-                : 'Link to a note…'
-              : multiple
-                ? `Link #${target} rows…`
-                : `Link a #${target} row…`
-          }
-          className="h-11 w-full rounded-xl border border-border bg-input-bg pr-3 pl-9 text-[16px] text-text outline-none focus:border-border-focus placeholder:text-text-muted"
-        />
-      </div>
+      <SearchInput
+        aria-label={`Link ${property.name}`}
+        placeholder={
+          target === undefined
+            ? multiple
+              ? 'Link notes…'
+              : 'Link to a note…'
+            : multiple
+              ? `Link #${target} rows…`
+              : `Link a #${target} row…`
+        }
+        value={query}
+        onValueChange={setQuery}
+      />
       <div role="listbox" aria-label={`Link ${property.name}`} className="flex flex-col">
         {currentTarget !== null && query === '' ? (
           <button

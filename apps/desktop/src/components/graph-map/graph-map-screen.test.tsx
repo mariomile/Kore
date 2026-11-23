@@ -49,7 +49,7 @@ describe('GraphMapScreen', () => {
     await expect.element(view.getByText('2 notes · 1 links')).toBeVisible()
     await expect.element(view.getByRole('img', { name: 'Note graph' })).toBeInTheDocument()
 
-    await view.getByRole('checkbox', { name: 'Daily notes' }).click()
+    await view.getByRole('switch', { name: 'Daily notes' }).click()
     await expect.element(view.getByText('3 notes · 2 links')).toBeVisible()
     await view.unmount()
   })

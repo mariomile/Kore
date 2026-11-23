@@ -1,5 +1,11 @@
 # Kore working state
 
+## Suggest a tag's properties with AI, 2026-11-23 (0.142.0)
+
+- [x] A tag with no properties offers Suggest with AI in its settings; it
+  opens the chat asking to propose properties from the notes that use the tag.
+  Mac and iPhone (#637).
+
 ## Folder pages include subfolders, 2026-11-23 (0.141.0)
 
 - [x] Folder pages include subfolders by default, with the option in a new

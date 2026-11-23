@@ -16,16 +16,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { TAG_SCHEMA_PRESETS } from '@/lib/tags/schema-presets'
-import { FIELD_LABEL_CLASS } from './tag-config-drafts'
 import { SaveBar } from './tag-config-save-bar'
 import { TagConfigSheet } from './tag-config-sheet'
 import { TagRenameDialog } from './tag-rename-dialog'
@@ -37,7 +29,9 @@ import { TagAdvancedSection } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { PropertyPane } from './tag-property-pane'
 import { RemovedPropertyNotice } from './removed-property-notice'
-import { TagViewsStrip } from './tag-views-strip'
+import { TagSettingGroup } from './tag-setting-row'
+import { TagTemplateField } from './tag-template-field'
+import { TagViewsList } from './tag-views-list'
 import { NavButton, PropertyNavList } from './tag-config-nav'
 import { useDiscardGuard, type DiscardGuard } from './use-discard-guard'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
@@ -287,6 +281,7 @@ function TypeSettings({
               tagKey={key}
               config={config}
               onPicked={() => setSelection({ kind: 'type' })}
+              onOpenProperty={(rowId) => setSelection({ kind: 'property', rowId })}
               closeThen={closeThen}
             />
           ) : (
@@ -314,16 +309,6 @@ function TypeSettings({
   )
 }
 
-/** A labelled row of the right pane: label column, then the control. */
-function PaneRow({ label, children }: { label: string; children: ReactNode }): ReactElement {
-  return (
-    <div className="flex items-start gap-2">
-      <span className={FIELD_LABEL_CLASS}>{label}</span>
-      <div className="flex min-w-0 flex-1 items-center">{children}</div>
-    </div>
-  )
-}
-
 function PaneHeading({ children }: { children: ReactNode }): ReactElement {
   return <h3 className="pb-3 pt-3 text-sm font-semibold text-text">{children}</h3>
 }
@@ -332,11 +317,14 @@ function TypePane({
   tagKey,
   config,
   onPicked,
+  onOpenProperty,
   closeThen,
 }: {
   tagKey: string
   config: TagConfigDraft
   onPicked: () => void
+  /** Show a property the pane just added (a view's missing one). */
+  onOpenProperty: (rowId: number) => void
   closeThen: DiscardGuard['closeThen']
 }): ReactElement {
   const suggestWithAi = useSuggestTagSchema(tagKey, closeThen)
@@ -374,35 +362,24 @@ function TypePane({
           ))}
         </div>
       ) : null}
-      <TagViewsStrip properties={config.liveSchema} />
-      <PaneRow label="Template">
-        <Select
-          value={config.template ?? 'none'}
-          items={{
-            none: 'None',
-            ...Object.fromEntries(config.templates.map((entry) => [entry.path, entry.title])),
-          }}
-          onValueChange={(value) => config.setTemplate(value === 'none' ? null : value)}
-        >
-          <SelectTrigger aria-label="New-row template" className="min-w-44">
-            <SelectValue placeholder="None" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {config.templates.map((entry) => (
-              <SelectItem key={entry.path} value={entry.path}>
-                {entry.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </PaneRow>
-      <TagFolderField
-        folder={config.folder}
-        folders={config.folders}
-        onChange={config.setFolder}
-        labelClassName={FIELD_LABEL_CLASS}
-      />
+      <TagSettingGroup title="New notes">
+        <TagTemplateField
+          template={config.template}
+          templates={config.templates}
+          onChange={config.setTemplate}
+        />
+        <TagFolderField
+          folder={config.folder}
+          folders={config.folders}
+          onChange={config.setFolder}
+        />
+      </TagSettingGroup>
+      <TagSettingGroup title="Views">
+        <TagViewsList
+          properties={config.liveSchema}
+          onAdd={(starter) => onOpenProperty(config.addProperty(starter))}
+        />
+      </TagSettingGroup>
       <TagAdvancedSection
         tag={tagKey}
         parents={config.parents}

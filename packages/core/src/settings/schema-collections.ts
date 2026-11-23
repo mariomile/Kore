@@ -35,6 +35,14 @@ export const allNotesFilterTagsSchema = z.array(z.string()).catch(['book', 'link
 export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
 
 /**
+ * The folders whose page lists only the notes directly inside them. A folder
+ * page includes its subfolders' notes unless its graph-relative path is
+ * here, so the common case stores nothing and a renamed folder falls back to
+ * showing everything.
+ */
+export const folderPagesWithoutSubfoldersSchema = z.array(z.string()).catch([])
+
+/**
  * How the All Notes screen lays out its notes: the classic table (desktop) /
  * swipeable row list (mobile), or a masonry card grid. One view preference
  * shared across surfaces.

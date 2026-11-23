@@ -40,6 +40,7 @@ import {
 import {
   allNotesFilterTagsSchema,
   allNotesSortSchema,
+  folderPagesWithoutSubfoldersSchema,
   allNotesViewSchema,
   collectionActiveViewIdSchema,
   collectionColumnsSchema,
@@ -396,6 +397,7 @@ const settingsDocumentSchema = z.looseObject({
   allNotesFilterTags: allNotesFilterTagsSchema,
   allNotesView: allNotesViewSchema,
   allNotesSort: allNotesSortSchema,
+  folderPagesWithoutSubfolders: folderPagesWithoutSubfoldersSchema,
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,
   collectionGroups: collectionGroupsSchema,

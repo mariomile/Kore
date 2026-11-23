@@ -60,8 +60,7 @@ export const EMPTY_ALL_NOTES_FILTERS: AllNotesFilters = {
  * The Notes tab query a folder route opens on iPhone: the `path:` operator,
  * quoted (folder names carry spaces) and slash-terminated so `CRM/People/`
  * keeps `CRM/People Archive/` out. Subfolders are included (the operator
- * matches anywhere in the path), like the Mac folder page's Include
- * subfolders switch turned on.
+ * matches anywhere in the path), like the Mac folder page by default.
  */
 export function folderSearchQuery(folder: string): string {
   return `path:"${folder}/"`

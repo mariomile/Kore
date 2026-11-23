@@ -28,6 +28,15 @@ const settingsState = vi.hoisted(
   }),
 )
 const updateSettings = vi.hoisted(() => vi.fn())
+const updateSettingsWith = vi.hoisted(() =>
+  vi.fn<
+    (
+      updater: (current: { folderPagesWithoutSubfolders: string[] }) => {
+        folderPagesWithoutSubfolders: string[]
+      },
+    ) => void
+  >(),
+)
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 
 vi.mock('@/providers/graph-provider', () => ({
@@ -53,9 +62,11 @@ vi.mock('@/providers/settings-provider', () => ({
       collectionActiveViewId: {},
       allNotesView: settingsState.allNotesView,
       allNotesSort: settingsState.allNotesSort,
+      folderPagesWithoutSubfolders: [],
       uiDensity: 'default',
     },
     updateSettings,
+    updateSettingsWith,
   }),
 }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
@@ -433,6 +444,7 @@ describe('AllNotesScreen', () => {
       { ...noteRows[1], path: 'CRM/People/tokyo.md' },
     ]
     const listed: unknown[][] = []
+    const listedSql: string[] = []
     mockInvoke.mockImplementation(async (command, args) => {
       if (command !== 'db_query') {
         return null
@@ -440,6 +452,7 @@ describe('AllNotesScreen', () => {
       const sql = String(args['sql'])
       if (sql.includes('"preview"')) {
         listed.push(args['params'] as unknown[])
+        listedSql.push(sql)
         return folderRows
       }
       // The folder tree reads every indexed path and title.
@@ -453,6 +466,14 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByRole('heading', { name: 'People' })).toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
     expect(listed.at(-1)).toContain('CRM/People/')
+    // Subfolders are included unless the folder's settings turn them off.
+    expect(listedSql.at(-1)).not.toContain('instr(')
+    await view.getByRole('button', { name: 'Folder settings' }).click()
+    await page.getByRole('switch', { name: 'Include subfolders' }).click()
+    expect(updateSettingsWith.mock.lastCall?.[0]({ folderPagesWithoutSubfolders: [] })).toEqual({
+      folderPagesWithoutSubfolders: ['CRM/People'],
+    })
+    await userEvent.keyboard('{Escape}')
     // The filter box narrows by title, client-side.
     await view.getByRole('searchbox', { name: 'Filter notes' }).fill('tokyo')
     await expect.element(view.getByText('Health Stacked')).not.toBeInTheDocument()

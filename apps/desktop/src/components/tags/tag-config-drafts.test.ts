@@ -140,4 +140,21 @@ describe('options in drafts', () => {
     expect(draftOptionChanges({ options: renamed })).toEqual([{ from: 'Todo', to: 'Done' }])
     expect(schemaFromDrafts([{ ...draft!, options: renamed }])[0]?.options).toEqual(['Done'])
   })
+
+  it('follows a move target picked after the delete, and keeps values of a re-added name', () => {
+    const [draft] = draftsFromSchema(schema)
+    const [todo, done] = draft!.options
+    const deleted = removeOption(draft!.options, todo!.id, true)
+    const pending = { ...draft!, ...optionsPatch(draft!, deleted) }
+    const moved = deleted.map((option) =>
+      option.id === todo!.id ? { ...option, removal: { moveToId: done!.id } } : option,
+    )
+    expect(optionsPatch(pending, moved)).toEqual({ options: moved, startingFixed: 'Done' })
+
+    const readded = [
+      ...deleted,
+      { id: 9, name: 'Todo', original: null, color: null, removal: null },
+    ]
+    expect(draftOptionChanges({ options: readded })).toEqual([])
+  })
 })

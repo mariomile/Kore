@@ -183,8 +183,12 @@ export function optionsPatch(
   if (draft.startingKind !== 'fixed') {
     return { options }
   }
-  const before = keptOptions(draft.options).find(
-    (option) => option.name.trim() === draft.startingFixed.trim(),
+  // A deleted option still answers to its stored text, so the starting
+  // value can follow a move target picked after the delete.
+  const before = draft.options.find(
+    (option) =>
+      (option.removal === null ? option.name.trim() : option.original) ===
+      draft.startingFixed.trim(),
   )
   const after = before === undefined ? undefined : options.find((option) => option.id === before.id)
   const follows =
@@ -210,20 +214,23 @@ export function draftOptionNames(draft: Pick<PropertyDraft, 'options'>): string[
  * What a save does to the notes' option values: loaded options whose text
  * changed (a rename, or a merge when the new text is another option's), and
  * deleted ones, which move to the picked option or come off the notes
- * (`to: null`). They land together (`optionRenameMap`), so swapping two
+ * (`to: null`) unless the list still offers their text. They land together (`optionRenameMap`), so swapping two
  * names swaps the values too.
  */
 export function draftOptionChanges(draft: Pick<PropertyDraft, 'options'>): OptionChange[] {
   const changes: OptionChange[] = []
+  const names = draftOptionNames(draft)
   for (const option of draft.options) {
     if (option.original === null) {
       continue
     }
     if (option.removal !== null) {
-      changes.push({
-        from: option.original,
-        to: removalTarget(option, draft.options)?.name.trim() ?? null,
-      })
+      const to = removalTarget(option, draft.options)?.name.trim() ?? null
+      // The same text added back (or typed over another option) keeps the
+      // notes' values valid: nothing to take off them.
+      if (to !== null || !names.includes(option.original)) {
+        changes.push({ from: option.original, to })
+      }
       continue
     }
     const to = option.name.trim()

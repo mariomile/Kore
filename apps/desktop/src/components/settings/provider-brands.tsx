@@ -127,6 +127,20 @@ export const PROVIDER_BRANDS: ProviderBrand[] = [
     ],
   },
   {
+    id: 'pi',
+    name: 'pi',
+    // TODO(pi-logo): the real pi mark (pi.dev) before this leaves prototype.
+    path: null,
+    modes: [
+      {
+        provider: 'pi-cli',
+        label: 'Harness',
+        description:
+          'Runs the chat through the installed pi harness (pi.dev), on whichever model and sign-in pi is set up with. pi gets Kore’s chat tools and no access to your files.',
+      },
+    ],
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter',
     path: siOpenrouter.path,

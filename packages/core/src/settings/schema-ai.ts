@@ -15,6 +15,7 @@ export const aiProviderIdSchema = z.enum([
   'claude-cli',
   'codex-cli',
   'cursor-cli',
+  'pi-cli',
 ])
 
 export type AiProviderId = z.infer<typeof aiProviderIdSchema>
@@ -112,6 +113,18 @@ const cursorCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
 
 export type CursorCliProviderConfig = z.infer<typeof cursorCliProviderConfigSchema>
 
+/**
+ * The pi harness provider: no API key in Kore — the locally installed `pi`
+ * binary carries its own provider sign-ins. Desktop-only. pi runs the agent
+ * loop over Kore's chat tools and has no file access of its own (see
+ * `isFileAgentProvider`).
+ */
+const piCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
+  provider: z.literal('pi-cli'),
+})
+
+export type PiCliProviderConfig = z.infer<typeof piCliProviderConfigSchema>
+
 export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openAiProviderConfigSchema,
   anthropicProviderConfigSchema,
@@ -121,6 +134,7 @@ export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   claudeCliProviderConfigSchema,
   codexCliProviderConfigSchema,
   cursorCliProviderConfigSchema,
+  piCliProviderConfigSchema,
 ])
 
 export type AiProviderConfig = z.infer<typeof aiProviderConfigSchema>

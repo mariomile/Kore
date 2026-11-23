@@ -1,7 +1,7 @@
 //! Agent-CLI bridge (the "subscription" AI providers).
 //!
 //! Runs a locally installed coding-agent CLI — Claude Code (`claude`),
-//! Codex (`codex`), or Cursor (`cursor-agent`) — in headless mode so AI
+//! Codex (`codex`), Cursor (`cursor-agent`), or pi (`pi`) — in headless mode so AI
 //! chat can bill the user's subscription instead of a BYOK API key. The
 //! frontend engines (`@kore/core`'s `ai/claude-cli`, `ai/codex-cli`, and
 //! `ai/cursor-cli`) own the protocol: they build each binary's arguments
@@ -38,6 +38,7 @@ pub enum AgentCliBinary {
     Claude,
     Codex,
     CursorAgent,
+    Pi,
 }
 
 impl AgentCliBinary {
@@ -49,6 +50,8 @@ impl AgentCliBinary {
             (Self::Codex, true) => "codex.exe",
             (Self::CursorAgent, false) => "cursor-agent",
             (Self::CursorAgent, true) => "cursor-agent.exe",
+            (Self::Pi, false) => "pi",
+            (Self::Pi, true) => "pi.exe",
         }
     }
 
@@ -57,6 +60,7 @@ impl AgentCliBinary {
             Self::Claude => "Claude Code CLI (`claude`)",
             Self::Codex => "Codex CLI (`codex`)",
             Self::CursorAgent => "Cursor CLI (`cursor-agent`)",
+            Self::Pi => "pi (`pi`)",
         }
     }
 }
@@ -94,6 +98,41 @@ fn write_workspace_config(cwd: &str, config: &WorkspaceConfigFile) -> AppResult<
     }
     std::fs::write(&target, &config.contents)
         .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))
+}
+
+/// The argument an engine writes where the support file's absolute path
+/// belongs; the bridge substitutes it after materializing the file.
+const SUPPORT_FILE_ARG: &str = "{supportFile}";
+
+/// A file an engine needs on disk beside the run but outside the vault — pi
+/// loads its Kore extension from a path. It is written under app data, never
+/// anywhere the frontend names: only a bare file name is accepted.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SupportFile {
+    file_name: String,
+    contents: String,
+}
+
+/// Write the support file into `dir` and return its absolute path, refusing
+/// any name that is not a single plain path component.
+fn write_support_file(dir: &Path, file: &SupportFile) -> AppResult<PathBuf> {
+    let name = Path::new(&file.file_name);
+    let plain = matches!(
+        name.components().collect::<Vec<_>>().as_slice(),
+        [std::path::Component::Normal(_)]
+    );
+    if !plain {
+        return Err(AppError::traversal(
+            "support file name must be a bare file name",
+        ));
+    }
+    std::fs::create_dir_all(dir)
+        .map_err(|err| AppError::io(format!("could not create {}: {err}", dir.display())))?;
+    let target = dir.join(name);
+    std::fs::write(&target, &file.contents)
+        .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))?;
+    Ok(target)
 }
 
 /// Provision the app-managed Codex home for isolated runs: a directory under
@@ -426,6 +465,7 @@ pub async fn agent_cli_run(
     workspace_config: Option<WorkspaceConfigFile>,
     isolated_codex_home: Option<bool>,
     keep_stdin_open: Option<bool>,
+    support_file: Option<SupportFile>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
         .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
@@ -441,6 +481,29 @@ pub async fn agent_cli_run(
         Some(provision_isolated_codex_home(&app)?)
     } else {
         None
+    };
+
+    let args = match support_file.as_ref() {
+        Some(file) => {
+            let dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|err| AppError::io(format!("no app data dir: {err}")))?
+                .join("agent-cli");
+            let written = write_support_file(&dir, file)?
+                .to_string_lossy()
+                .into_owned();
+            args.into_iter()
+                .map(|arg| {
+                    if arg == SUPPORT_FILE_ARG {
+                        written.clone()
+                    } else {
+                        arg
+                    }
+                })
+                .collect()
+        }
+        None => args,
     };
 
     let mut command = Command::new(&path);
@@ -693,6 +756,32 @@ pub async fn agent_cli_stdin_close(
 ) -> AppResult<()> {
     stdin_state.remove(&request_id);
     Ok(())
+}
+
+#[cfg(test)]
+mod support_file_tests {
+    use super::*;
+
+    fn file(name: &str) -> SupportFile {
+        SupportFile {
+            file_name: name.to_string(),
+            contents: "export default () => {}".to_string(),
+        }
+    }
+
+    #[test]
+    fn writes_a_bare_file_name_and_refuses_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let written = write_support_file(dir.path(), &file("kore-pi-extension.js")).unwrap();
+        assert_eq!(written, dir.path().join("kore-pi-extension.js"));
+        assert!(written.exists());
+        for name in ["../escape.js", "nested/file.js", "/abs.js", ".."] {
+            assert!(
+                write_support_file(dir.path(), &file(name)).is_err(),
+                "{name} should be refused"
+            );
+        }
+    }
 }
 
 #[cfg(test)]

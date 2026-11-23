@@ -11,7 +11,7 @@ import {
   isNotePath,
   routineFailureUpdate,
   errorMessage,
-  isCliAgentProvider,
+  isFileAgentProvider,
   listPrivateNotePaths,
   gitAgentSnapshot,
   gitChangedSince,
@@ -269,11 +269,11 @@ export function AgentRoutinesRunner(): null {
         }
         controller.signal.throwIfAborted()
         const context = await loadAgentContext(routine.agentSlug)
-        // Automations write the vault, so only edit-capable engines run
-        // them — Cursor's read-only integration never does.
+        // Automations write the vault, so only edit-capable file agents run
+        // them — Cursor's read-only integration and the pi harness never do.
         const configured = settingsRef.current.aiProviders
           .map((entry) => entry.provider)
-          .filter(isCliAgentProvider)
+          .filter(isFileAgentProvider)
           .filter(cliProviderSupportsEdits)
         const pinned = configured.find((kind) => kind === context.profile?.provider)
         const provider = pinned ?? configured[0]

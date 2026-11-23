@@ -52,6 +52,7 @@ export function audioMemoEnrichmentConfig(config: AiProviderConfig): AiProviderC
     case 'claude-cli':
     case 'codex-cli':
     case 'cursor-cli':
+    case 'pi-cli':
       // Chat-only: the CLI engines stream conversations, not enrichment calls.
       return null
   }

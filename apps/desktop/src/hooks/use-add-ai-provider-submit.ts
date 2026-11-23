@@ -6,6 +6,7 @@ import {
   CLAUDE_CLI_DEFAULT_MODEL,
   CODEX_CLI_DEFAULT_MODEL,
   CURSOR_CLI_DEFAULT_MODEL,
+  PI_CLI_DEFAULT_MODEL,
   isCliAgentProvider,
   errorMessage,
   isHttpBaseUrl,
@@ -20,6 +21,7 @@ const CLI_BINARY_NAMES: Record<string, string> = {
   'claude-cli': 'claude',
   'codex-cli': 'codex',
   'cursor-cli': 'cursor-agent',
+  'pi-cli': 'pi',
 }
 
 /** The per-engine "no model chosen at setup" sentinel. */
@@ -27,6 +29,7 @@ const CLI_DEFAULT_MODELS: Record<string, string> = {
   'claude-cli': CLAUDE_CLI_DEFAULT_MODEL,
   'codex-cli': CODEX_CLI_DEFAULT_MODEL,
   'cursor-cli': CURSOR_CLI_DEFAULT_MODEL,
+  'pi-cli': PI_CLI_DEFAULT_MODEL,
 }
 
 interface UseAddAiProviderSubmitOptions {

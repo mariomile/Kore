@@ -28,7 +28,7 @@ import {
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
   chatModeAllowsEdits,
-  isCliAgentProvider,
+  isFileAgentProvider,
   streamChat,
   streamCliAgentChat,
   userMessage,
@@ -319,7 +319,7 @@ export async function deliverChatTurn(
   // a restorable version. Best-effort — no snapshot, no ledger, but the
   // turn itself still runs.
   const editRun =
-    isCliAgentProvider(config.provider) &&
+    isFileAgentProvider(config.provider) &&
     cliProviderSupportsEdits(config.provider) &&
     chatModeAllowsEdits(chatMode)
       ? { generation: graph.generation }
@@ -400,7 +400,7 @@ export async function deliverChatTurn(
       const agentContext = await loadAgentContext(agentProfile).catch(() => null)
       controller.signal.throwIfAborted()
       const events = await (async () => {
-        if (isCliAgentProvider(config.provider)) {
+        if (isFileAgentProvider(config.provider)) {
           // The subscription engines: the CLI reads the graph itself, so
           // they need the private-note deny list, not an API key. Refusing
           // is deliberate for both null answers — a failed read and an index
@@ -468,6 +468,9 @@ export async function deliverChatTurn(
                 : undefined,
           })
         }
+        // Every other engine runs Kore's own chat tools: the API-key
+        // providers, and the pi harness (no key — `aiApiKeyForConfig`
+        // answers '' for it — and its loop instead of the SDK's).
         // The graph overview degrades to null (prompt without the block)
         // rather than blocking the turn — a cold index shouldn't kill chat.
         const [apiKey, context, memoryWriteFn] = await Promise.all([
@@ -516,7 +519,7 @@ export async function deliverChatTurn(
         })
       })()
       if (events === null) {
-        if (isCliAgentProvider(config.provider)) {
+        if (isFileAgentProvider(config.provider)) {
           applyEvent({
             type: 'error',
             message:

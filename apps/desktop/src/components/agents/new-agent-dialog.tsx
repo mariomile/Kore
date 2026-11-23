@@ -20,6 +20,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   'codex-cli': 'Codex',
   'grok-cli': 'Grok',
   'cursor-cli': 'Cursor',
+  'pi-cli': 'pi',
   hermes: 'Hermes',
 }
 

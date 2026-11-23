@@ -10,19 +10,39 @@ import { streamCursorCliChat } from './cursor-cli'
  * installed coding-agent CLI instead of a keyed provider API. One dispatch
  * seam so hosts branch on a single predicate rather than enumerating the
  * CLI-backed ids at every call site.
+ *
+ * pi (`pi-cli`) is the odd one out: it is installed and signed in like the
+ * others, but it is a harness, not an agent with its own file tools — it
+ * runs Kore's chat tools (see {@link isFileAgentProvider}).
  */
 
 /** Providers whose chat runs through a local CLI (no API key). */
-export type CliAgentProviderId = 'claude-cli' | 'codex-cli' | 'cursor-cli'
+export type CliAgentProviderId = 'claude-cli' | 'codex-cli' | 'cursor-cli' | 'pi-cli'
 
 export function isCliAgentProvider(id: AiProviderId): id is CliAgentProviderId {
-  return id === 'claude-cli' || id === 'codex-cli' || id === 'cursor-cli'
+  return id === 'claude-cli' || id === 'codex-cli' || id === 'cursor-cli' || id === 'pi-cli'
+}
+
+/** The CLI engines that read (and may write) the vault with their own tools. */
+export type FileAgentProviderId = Exclude<CliAgentProviderId, 'pi-cli'>
+
+/**
+ * Whether the provider is a CLI agent that works on the vault's files
+ * itself — every CLI engine but pi. pi is key-less and binary-backed like
+ * the rest, but it is a bare harness: its turn is the chat engine's
+ * (`streamChat`), with the same tools, privacy gate and proposal cards, so
+ * the file-agent seams (the private-note deny list, edit mode, MCP, the
+ * post-run Changes ledger, routines) do not apply to it.
+ */
+export function isFileAgentProvider(id: AiProviderId): id is FileAgentProviderId {
+  return isCliAgentProvider(id) && id !== 'pi-cli'
 }
 
 /**
  * Whether the engine's write path is verified enough to join edit mode and
  * automations. Cursor stays read-only until its write grants are proven
  * against the real CLI — chat and grounding work, the vault stays untouched.
+ * pi never writes files itself: its edits are the chat tools' proposals.
  */
 export function cliProviderSupportsEdits(id: CliAgentProviderId): boolean {
   return id === 'claude-cli' || id === 'codex-cli'
@@ -43,7 +63,8 @@ export function cliProviderSupportsMcp(id: CliAgentProviderId): boolean {
  * capability): 'inject' delivers it into the live session — context
  * preserved, no cancel-and-relaunch — while 'queue' engines can only wait
  * for the turn to settle. Claude Code injects via its stream-json input
- * session; Codex injects via app-server `turn/steer`. Cursor stays
+ * session; Codex injects via app-server `turn/steer`; pi via its RPC
+ * `steer` command. Cursor stays
  * queue-only: its ACP `session/prompt` is blocking until the turn ends.
  */
 export function cliProviderSteerMode(id: CliAgentProviderId): 'inject' | 'queue' {
@@ -67,6 +88,7 @@ const CLI_AGENT_BINARY: Record<CliAgentProviderId, AgentCliBinary> = {
   'claude-cli': 'claude',
   'codex-cli': 'codex',
   'cursor-cli': 'cursor-agent',
+  'pi-cli': 'pi',
 }
 
 /** Verify the provider's CLI is installed; resolves with its version. */
@@ -74,9 +96,9 @@ export async function checkCliAgentProvider(id: CliAgentProviderId): Promise<str
   return await checkAgentCli(CLI_AGENT_BINARY[id])
 }
 
-/** Run one chat turn through the provider's CLI engine. */
+/** Run one chat turn through a file-agent CLI engine. */
 export function streamCliAgentChat(
-  id: CliAgentProviderId,
+  id: FileAgentProviderId,
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   switch (id) {

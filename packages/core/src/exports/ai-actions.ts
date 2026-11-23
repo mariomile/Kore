@@ -274,12 +274,21 @@ export {
   CURSOR_CLI_DEFAULT_MODEL,
 } from '../ai/cursor-cli'
 export {
+  createPiCliSession,
+  piCliArgs,
+  piPromptLine,
+  piSteerLine,
+  streamPiCliChat,
+  PI_CLI_DEFAULT_MODEL,
+} from '../ai/pi-cli'
+export {
   chatProviderCanSteer,
   checkCliAgentProvider,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
   isCliAgentProvider,
+  isFileAgentProvider,
   streamCliAgentChat,
   type CliAgentProviderId,
 } from '../ai/cli-providers'

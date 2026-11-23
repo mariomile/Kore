@@ -62,6 +62,7 @@ const CLI_BINARIES: Record<string, { binary: string; hint: string }> = {
   'claude-cli': { binary: 'claude', hint: ' with your Claude account in a terminal' },
   'codex-cli': { binary: 'codex', hint: '' },
   'cursor-cli': { binary: 'cursor-agent', hint: ' with `cursor-agent login` in a terminal' },
+  'pi-cli': { binary: 'pi', hint: ' with `pi auth login <provider>` in a terminal' },
 }
 
 /**

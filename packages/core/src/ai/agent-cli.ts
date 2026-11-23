@@ -15,11 +15,12 @@ import { weeklyPathPattern } from '../graph/weekly'
  * event queue, abort wiring, transcript flattening, and the shared turn
  * skeleton that maps parsed lines onto the chat engine's
  * {@link ChatStreamEvent}s. Each binary's argument protocol and line format
- * live in its own module (`./claude-cli`, `./codex-cli`, `./cursor-cli`).
+ * live in its own module (`./claude-cli`, `./codex-cli`, `./cursor-cli`,
+ * `./pi-cli`).
  */
 
 /** The closed set of binaries the Rust bridge will run. */
-export type AgentCliBinary = 'claude' | 'codex' | 'cursor-agent'
+export type AgentCliBinary = 'claude' | 'codex' | 'cursor-agent' | 'pi'
 
 /**
  * Check that a CLI is installed and runnable; resolves with its version
@@ -99,6 +100,18 @@ export type AgentCliChunk =
   | { type: 'step-start'; step: AgentStep }
   /** A tool call settled — its content-free outcome. */
   | { type: 'step-end'; id: string; outcome: AgentStepOutcome }
+  /**
+   * A chat event the engine already speaks natively, relayed as is — a
+   * harness that runs Kore's own tools (pi) reports their calls and results
+   * in the chat engine's vocabulary rather than as opaque steps.
+   */
+  | { type: 'event'; event: AgentCliRelayedEvent }
+
+/** The chat events an engine may relay verbatim through an `event` chunk. */
+export type AgentCliRelayedEvent = Extract<
+  ChatStreamEvent,
+  { type: 'tool-call' | 'tool-result' | 'tool-error' | 'steer' }
+>
 
 /** The chunk list of a parser that yields at most one chunk per line. */
 export function chunkList(chunk: AgentCliChunk | null): AgentCliChunk[] {
@@ -193,14 +206,21 @@ export async function runAgentCliCommand(options: {
   }
 }
 
+/** The argument the bridge replaces with the run's support-file path. */
+export const SUPPORT_FILE_ARG = '{supportFile}'
+
 export interface AgentCliTurnOptions {
   binary: AgentCliBinary
   /** The complete argument list (each binary's protocol lives with its engine). */
   args: string[]
   /** The prompt written to the CLI's stdin. */
   prompt: string
-  /** Working directory for the run — the graph root. */
-  cwd: string
+  /**
+   * Working directory for the run — the graph root for engines that read
+   * the vault themselves; null (the app's own) for an engine with no file
+   * access.
+   */
+  cwd: string | null
   /**
    * Extra environment for the CLI process (and, by inheritance, the MCP
    * servers it spawns) — how secrets reach tools without ever riding the
@@ -213,6 +233,13 @@ export interface AgentCliTurnOptions {
    * `.cursor/cli.json`) rather than a flag.
    */
   workspaceConfig?: { relativePath: string; contents: string } | undefined
+  /**
+   * A file the engine loads from disk, which the bridge writes under app
+   * data (never the vault) before the spawn; every argument equal to
+   * {@link SUPPORT_FILE_ARG} becomes its absolute path. pi's Kore extension
+   * rides this.
+   */
+  supportFile?: { fileName: string; contents: string } | undefined
   /**
    * Run Codex against a private, app-managed CODEX_HOME instead of the
    * user's ~/.codex. The bridge provisions the directory and copies the
@@ -352,6 +379,7 @@ export async function* streamAgentCliTurn(
       workspaceConfig: options.workspaceConfig ?? null,
       isolatedCodexHome: options.isolatedCodexHome === true,
       keepStdinOpen,
+      supportFile: options.supportFile ?? null,
     })
   } catch (cause) {
     unlisten()
@@ -410,7 +438,9 @@ export async function* streamAgentCliTurn(
         for (const chunk of options.parseLine(event.line)) {
           const open = segments.at(-1)
           const text = open?.role === 'assistant' ? open.text : ''
-          if (chunk.type === 'step-start') {
+          if (chunk.type === 'event') {
+            yield chunk.event
+          } else if (chunk.type === 'step-start') {
             yield { type: 'agent-step', step: chunk.step }
           } else if (chunk.type === 'step-end') {
             yield { type: 'agent-step-end', id: chunk.id, outcome: chunk.outcome }

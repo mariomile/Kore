@@ -182,6 +182,19 @@ export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
       { id: 'auto', label: 'Auto (Cursor picks)', contextWindow: 200_000 },
     ],
   },
+  {
+    // The pi harness (pi.dev): no key in Kore — the installed `pi` binary
+    // carries the user's provider sign-ins and picks the model it is
+    // configured for; `default` sends no `--model`. pi runs the loop over
+    // Kore's chat tools. The context window is a conservative floor for
+    // the transcript budget only.
+    id: 'pi-cli',
+    label: 'pi (harness)',
+    apiKeyRequired: false,
+    keyPlaceholder: 'No API key — uses your pi sign-in',
+    desktopOnly: true,
+    models: [{ id: 'default', label: 'pi default', contextWindow: 200_000 }],
+  },
 ]
 
 /** The catalog entry for `id` (every `AiProviderId` is in the catalog). */

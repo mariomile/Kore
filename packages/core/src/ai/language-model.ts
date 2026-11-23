@@ -64,6 +64,7 @@ export async function languageModel(
     case 'claude-cli':
     case 'codex-cli':
     case 'cursor-cli':
+    case 'pi-cli':
       // The CLI providers stream through their own engines (`ai/claude-cli`,
       // `ai/codex-cli`, `ai/cursor-cli`), never through the AI SDK — reaching here means a
       // feature that needs a direct provider call was pointed at a

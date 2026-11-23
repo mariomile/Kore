@@ -26,7 +26,7 @@ pub(super) fn content_identity(mut reader: impl Read) -> AppResult<String> {
     ))
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(super) fn sha256_hex(bytes: &[u8]) -> String {
     use std::fmt::Write;
     let mut hex = String::with_capacity(64);
     for byte in Sha256::digest(bytes) {

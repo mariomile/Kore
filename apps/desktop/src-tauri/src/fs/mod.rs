@@ -14,6 +14,7 @@ pub mod folders;
 mod io;
 mod legacy_descriptions;
 mod resolve;
+mod thumbnails;
 pub mod vault_copy;
 
 use std::fs;

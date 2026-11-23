@@ -46,6 +46,7 @@ mod process_memory;
 mod process_tree;
 mod proposals;
 mod quit;
+mod raster;
 mod recents;
 mod remote_mcp;
 mod routine_script;

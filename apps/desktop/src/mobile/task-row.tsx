@@ -34,10 +34,7 @@ export function MobileTaskRow({ task, showSource, onEdit }: MobileTaskRowProps):
   const edit = (): void => onEdit(task)
 
   return (
-    <li
-      data-task-key={taskKey(task)}
-      className="flex min-h-12 items-start border-b border-border bg-surface"
-    >
+    <li data-task-key={taskKey(task)} className="flex min-h-12 items-start bg-surface">
       <button
         type="button"
         aria-label={task.checked ? `Reopen: ${label}` : `Complete: ${label}`}

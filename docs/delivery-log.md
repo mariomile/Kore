@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- UI: one page header and empty state across the app, tag chips in the notes
+  table (#644).
+- Search: keep chosen folders out of the semantic index (#648).
+- Tags: tag settings explain Template, Folder and Views, and add what a view
+  is missing (#646).
+- Tasks: no divider lines between tasks (#650).
 - Tags: Suggest with AI proposes a tag's properties from its settings (#637).
 - Folders: folder pages include subfolders by default, Folder settings gear,
   shared search pill and switch controls (#634).

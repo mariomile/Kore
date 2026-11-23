@@ -15,13 +15,18 @@ import type { Span } from './model'
 
 /**
  * A syntax range dropped from plain text. Most cuts close up (`**bold**ly`
- * reads `boldly`); a `gap` cut is syntax that separates words — a table's `|`
- * between two cells, a `---` rule between two blocks — and leaves a space, so
- * `|a|b|` reads `a b`, never `ab`.
+ * reads `boldly`); a cut with `text` leaves that in its place: a space for
+ * syntax that separates words (a table's `|` between two cells, a `---` rule
+ * between two blocks, so `|a|b|` reads `a b`, never `ab`), or a whole
+ * rendering (a table as `Stage: Seed · Founded: 2021`). A cut that lies
+ * inside an earlier one is swallowed with it, text and all.
  */
 export interface Cut extends Span {
-  gap?: true
+  text?: string
 }
+
+/** The `text` of a cut that only parts two words. */
+export const WORD_BREAK = ' '
 
 // Inner of a wiki link, for plain-text rendering.
 const WIKI_INNER_RE = /\[\[([^\]\n]*)\]\]/g
@@ -97,9 +102,10 @@ export function plainTextOfRange(
     if (cutFrom > pos) {
       kept += appendPlainTextChunk(body, pos, cutFrom, sortedLiteralRanges)
     }
-    pos = Math.max(pos, Math.min(end, cut.to))
-    if (cut.gap === true) {
-      kept += ' '
+    const cutTo = Math.min(end, cut.to)
+    if (cutTo > pos) {
+      kept += cut.text ?? ''
+      pos = cutTo
     }
   }
   if (pos < end) {

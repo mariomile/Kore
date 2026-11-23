@@ -1131,8 +1131,100 @@ html:root {
    slicing a line of text in half. Applied only while actually overflowing,
    so a short note keeps its last line at full strength. */
 .kore-hover-preview-overflowing {
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--kore-preview-fade, 2.5rem)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--kore-preview-fade, 2.5rem)),
+    transparent
+  );
+}
+/* The same for a table wider than the box: it fades out at the right edge,
+   which says there is more instead of cutting a word in half. */
+.kore-hover-preview-overflowing-x {
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+}
+.kore-hover-preview-overflowing.kore-hover-preview-overflowing-x {
+  -webkit-mask-image:
+    linear-gradient(to bottom, black calc(100% - var(--kore-preview-fade, 2.5rem)), transparent),
+    linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  mask-image:
+    linear-gradient(to bottom, black calc(100% - var(--kore-preview-fade, 2.5rem)), transparent),
+    linear-gradient(to right, black calc(100% - 1.75rem), transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* The phone grid's card body (mobile/note-card-grid.tsx): the same preview in
+   a column half a phone wide. Body text matches the list's snippet size, and
+   a table sizes to its words with tight cells (the editor's equal fixed
+   columns would break `Candidate` across four lines); what does not fit
+   fades out at the card's edge. */
+/* A shorter fade than the hover card's: a card may hold only a few lines. */
+.kore-card-preview-compact {
+  --kore-preview-fade: 1.25rem;
+}
+/* The note starts where the snippet it replaces did, right under the title,
+   and ends on its last line: no block margin at either end. The stripped
+   title leaves an empty paragraph first, and a list item keeps its text's
+   margin inside its own box, so both are named. */
+.kore-card-preview-compact .kore-editor > :first-child,
+.kore-card-preview-compact .kore-editor > p:first-child:empty + *,
+.kore-card-preview-compact
+  .kore-editor
+  > .prosemirror-flat-list:first-child
+  > .list-content
+  > :first-child,
+.kore-card-preview-compact
+  .kore-editor
+  > p:first-child:empty
+  + .prosemirror-flat-list
+  > .list-content
+  > :first-child {
+  margin-top: 0;
+}
+.kore-card-preview-compact .kore-editor > p:first-child:empty,
+.kore-card-preview-compact .kore-editor > :last-child,
+.kore-card-preview-compact
+  .kore-editor
+  > .prosemirror-flat-list:last-child
+  > .list-content
+  > :last-child {
+  margin-bottom: 0;
+}
+/* One line rhythm down the card: a heading sits on the body's line box, so a
+   note that opens with one starts as far under the title as any other. The
+   margins give back what the taller line adds. */
+.kore-card-preview-compact .kore-editor h1,
+.kore-card-preview-compact .kore-editor h2,
+.kore-card-preview-compact .kore-editor h3 {
+  line-height: inherit;
+  margin: 0.75em 0 0.1em;
+}
+/* A rule across a card this small reads as part of the card's frame. */
+.kore-card-preview-compact .kore-editor hr {
+  display: none;
+}
+.kore-card-preview-compact .kore-editor {
+  font-size: var(--text-xs, 0.75rem);
+}
+.kore-card-preview-compact .kore-editor table {
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+}
+.kore-card-preview-compact .kore-editor th,
+.kore-card-preview-compact .kore-editor td {
+  max-width: 9rem;
+  padding: 0.2rem 0.4rem;
+}
+.kore-card-preview-compact .kore-editor th > p,
+.kore-card-preview-compact .kore-editor td > p {
+  margin: 0;
 }
 
 /* NotePane's loading placeholder: hold the editor's reserved space silently,

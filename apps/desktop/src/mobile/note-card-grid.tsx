@@ -110,10 +110,14 @@ const SHORT_SNIPPET = 40
 
 /**
  * The height a card keeps for its preview, fixed before the note is read so
- * the grid never moves when the preview arrives: three lines for a note that
- * says little, about seven for the rest (a longer one fades out).
+ * the grid never moves when the preview arrives: none for a note with no
+ * text (a title alone), three lines for one that says little, about seven
+ * for the rest (a longer one fades out).
  */
-function previewSlot(snippet: string): string {
+function previewSlot(snippet: string): string | null {
+  if (snippet === '') {
+    return null
+  }
   return snippet.length <= SHORT_SNIPPET && !snippet.includes(' · ') ? 'h-[4.5rem]' : 'h-40'
 }
 
@@ -146,6 +150,7 @@ const NoteCard = memo(function NoteCard({
   // A search hit shows where it matched; otherwise the card shows the note.
   const isSearchHit = row.snippet.some((segment) => segment.highlighted)
   const snippet = row.snippet.map((segment) => segment.text).join('')
+  const slot = previewSlot(snippet)
   return (
     <div className="pb-3">
       {/* The button covers the card instead of wrapping it: WebKit does not
@@ -187,8 +192,8 @@ const NoteCard = memo(function NoteCard({
           <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary [overflow-wrap:anywhere]">
             <HighlightedText segments={row.snippet} />
           </p>
-        ) : (
-          <div className={cn('mt-2 overflow-hidden', previewSlot(snippet))}>
+        ) : slot === null ? null : (
+          <div className={cn('mt-2 overflow-hidden', slot)}>
             <NoteCardPreview
               path={row.path}
               mtime={row.mtime}

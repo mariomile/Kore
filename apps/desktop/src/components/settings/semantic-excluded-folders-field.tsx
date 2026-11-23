@@ -28,9 +28,8 @@ export function SemanticExcludedFoldersField(): ReactElement | null {
     return null
   }
   const generation = graph.generation
-  const offered = folders.filter(
-    (folder) => !excluded.includes(folder) && !isInExcludedFolder(`${folder}/`, excluded),
-  )
+  // The trailing slash makes an excluded folder count as inside itself.
+  const offered = folders.filter((folder) => !isInExcludedFolder(`${folder}/`, excluded))
   return (
     <SettingsField
       legend="Excluded folders"

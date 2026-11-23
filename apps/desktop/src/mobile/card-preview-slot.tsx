@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useNearViewport } from '@/hooks/use-near-viewport'
+import { lastWholeLineBottom } from '@/lib/whole-lines'
 import { cn } from '@/lib/utils'
 
 /**
@@ -16,9 +17,9 @@ import { cn } from '@/lib/utils'
  * screen, so a card's height is not known when it mounts. The rule that keeps
  * the grid still under the reader: a preview takes whatever height its
  * content has while its card is away from the screen, and keeps the height
- * it has when the card arrives there. Whatever comes later fits inside (a
- * longer body fades out). Heights are remembered, so a grid coming back lays
- * out as it was.
+ * it has when the card arrives there, ending on a whole line when the note is
+ * longer than the box. Whatever comes later fits inside (a longer body fades
+ * out). Heights are remembered, so a grid coming back lays out as it was.
  *
  * A card that is scrolled to keeps its height at once. Cards that appear on
  * the screen (the grid opening, a filter changing) have no "before" to
@@ -160,11 +161,28 @@ export function CardPreviewSlot({
 
   useLayoutEffect(() => {
     settledRef.current = settled
-    if (settled && waiter.current !== null) {
+    const box = boxRef.current
+    if (!settled || box === null) {
+      return
+    }
+    // A note longer than the box ends on its last whole line, not mid-line.
+    // Done as the preview arrives, which is before the card does: the
+    // height the card keeps is this one. A card that already kept one
+    // (scrolled to with the snippet still in) holds it.
+    if (keptFor.current !== heightKey && !heights.has(heightKey)) {
+      const lineBottom = lastWholeLineBottom(box)
+      if (lineBottom !== null) {
+        box.style.maxHeight = `${lineBottom - box.getBoundingClientRect().top}px`
+      }
+    }
+    if (waiter.current !== null) {
       waiter.current.ready = true
       checkWaiting()
     }
-  }, [settled])
+    return () => {
+      box.style.maxHeight = ''
+    }
+  }, [settled, heightKey])
 
   useLayoutEffect(() => {
     const box = boxRef.current

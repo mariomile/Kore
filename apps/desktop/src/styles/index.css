@@ -1196,6 +1196,15 @@ html:root {
   > :last-child {
   margin-bottom: 0;
 }
+/* One line rhythm down the card: a heading sits on the body's line box, so a
+   note that opens with one starts as far under the title as any other. The
+   margins give back what the taller line adds. */
+.kore-card-preview-compact .kore-editor h1,
+.kore-card-preview-compact .kore-editor h2,
+.kore-card-preview-compact .kore-editor h3 {
+  line-height: inherit;
+  margin: 0.75em 0 0.1em;
+}
 /* A rule across a card this small reads as part of the card's frame. */
 .kore-card-preview-compact .kore-editor hr {
   display: none;

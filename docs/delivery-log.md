@@ -9,6 +9,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 - Folders: folder pages include subfolders by default, Folder settings gear,
   shared search pill and switch controls (#634).
+- Notes: iPhone note cards show tables and tags as they are, never empty (#629).
 - Tags: delete, merge and undo select options in tag settings (#635).
 - Index: stays in use while an update re-derives it; no UI block on long
   notes (#633).

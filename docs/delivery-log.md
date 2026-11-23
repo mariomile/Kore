@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Index: stays in use while an update re-derives it; no UI block on long
+  notes (#633).
 - Share: X post card with author picture, handle and date (#622).
 - iPhone: no magnifier while dragging a block (#630).
 - iPhone: hold and drag blocks to reorder, Move up / Move down for every

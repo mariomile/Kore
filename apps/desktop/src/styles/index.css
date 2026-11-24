@@ -1483,6 +1483,31 @@ html[data-sidebar-resizing] aside {
   transition: none;
 }
 
+/* A rail opening or collapsing settles in from its own window edge instead
+   of snapping: a short fade and a few pixels of slide. Transform and opacity
+   only, so the frame's layout changes once and the compositor does the rest
+   (the editor never reflows per frame). The reduced-motion rule below
+   collapses it to the instant snap. */
+@keyframes kore-rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--rail-in-from));
+  }
+}
+
+.kore-rail-in-start,
+.kore-rail-in-end {
+  animation: kore-rail-in var(--duration-base) var(--ease-swift);
+}
+
+.kore-rail-in-start {
+  --rail-in-from: -0.5rem;
+}
+
+.kore-rail-in-end {
+  --rail-in-from: 0.5rem;
+}
+
 /* Reduced motion is honored app-wide, not just in the editor: collapse every
    transition and animation (palette/dialog zooms, sidebar washes, spinners).
    Near-zero durations rather than `none` so animation-end events still fire. */

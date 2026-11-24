@@ -15,8 +15,8 @@ interface SidebarItemProps {
 
 /**
  * One primary-navigation row: a liquid-glass icon tile + medium label on a
- * translucent hover wash; selected rows keep the wash in light mode and tint
- * the text brand-indigo in dark, with the keyboard shortcut revealed on
+ * translucent hover wash; selected rows keep the wash in both themes and tint
+ * only the glyph brand-indigo, with the keyboard shortcut revealed on
  * hover — chrome that teaches the fast path.
  */
 export function SidebarItem({
@@ -35,8 +35,8 @@ export function SidebarItem({
         'group flex w-full items-center space-x-3 rounded-md px-2.5 py-(--nav-padding-y) text-sm font-medium',
         'transition-colors duration-100',
         active
-          ? 'bg-surface-hover text-text dark:bg-transparent dark:text-accent'
-          : 'text-text hover:bg-surface-hover',
+          ? 'bg-surface-hover text-text'
+          : 'text-text hover:bg-surface-hover active:bg-surface-active',
       )}
     >
       <SidebarIconSlot>{icon}</SidebarIconSlot>

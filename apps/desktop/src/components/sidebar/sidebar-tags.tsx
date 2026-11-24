@@ -12,9 +12,10 @@ import { SidebarSortableSection } from './sidebar-sortable-section'
 import {
   SIDEBAR_ROW_HEIGHT_CLASS,
   SIDEBAR_TREE_ROW_CLASS,
-  SidebarTreeIcon,
+  sidebarRowState,
   sidebarTreePadding,
-} from './sidebar-tree-icon'
+} from './sidebar-row-style'
+import { SidebarTreeIcon } from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.tags.expanded'
@@ -102,9 +103,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
           SIDEBAR_TREE_ROW_CLASS,
           SIDEBAR_ROW_HEIGHT_CLASS,
           'group relative flex w-full items-center gap-3 rounded-md leading-5 transition-colors duration-[50ms]',
-          active
-            ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+          sidebarRowState(active),
         )}
         style={{ paddingLeft: sidebarTreePadding(depth) }}
       >

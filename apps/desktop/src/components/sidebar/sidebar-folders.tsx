@@ -41,9 +41,10 @@ import { SidebarSortableSection } from './sidebar-sortable-section'
 import {
   SIDEBAR_TREE_ITEM_CLASS,
   SIDEBAR_TREE_ROW_CLASS,
-  SidebarTreeIcon,
+  sidebarRowState,
   sidebarTreePadding,
-} from './sidebar-tree-icon'
+} from './sidebar-row-style'
+import { SidebarTreeIcon } from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.folders.expanded'
@@ -303,9 +304,7 @@ function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElemen
         className={cn(
           SIDEBAR_TREE_ROW_CLASS,
           'flex w-full items-center gap-3 rounded-md transition-colors duration-[50ms]',
-          active
-            ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+          sidebarRowState(active),
         )}
         style={{ paddingLeft: sidebarTreePadding(depth) }}
       >
@@ -358,12 +357,7 @@ const NoteRow = memo(function NoteRow({ note, depth, active }: NoteRowProps): Re
           })
         }
         aria-current={active ? 'page' : undefined}
-        className={cn(
-          SIDEBAR_TREE_ITEM_CLASS,
-          active
-            ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-        )}
+        className={cn(SIDEBAR_TREE_ITEM_CLASS, sidebarRowState(active))}
         // Starts on the label line, level with its sibling folders' names.
         style={{ paddingLeft: sidebarTreePadding(depth, true) }}
       >

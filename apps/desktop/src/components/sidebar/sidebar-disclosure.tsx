@@ -92,7 +92,7 @@ export function SidebarDisclosure({
           onClick={toggle}
           aria-expanded={open}
           className={cn(
-            'flex min-w-0 flex-1 items-center text-2xs font-medium leading-5 tracking-wide text-text-muted',
+            'flex min-w-0 flex-1 items-center text-2xs font-medium leading-5 tracking-wide text-text-secondary',
             handle && 'touch-none select-none',
           )}
           {...handle?.listeners}

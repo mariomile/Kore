@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { cn } from '@/lib/utils'
-import { SIDEBAR_ROW_HEIGHT_CLASS } from './sidebar-tree-icon'
+import { SIDEBAR_ROW_HEIGHT_CLASS, sidebarRowState } from './sidebar-row-style'
 
 interface SidebarPinnedRowPreviewProps {
   label: string
@@ -19,9 +19,7 @@ export function SidebarPinnedRowPreview({
     ? 'bg-surface-hover text-transparent'
     : overlay
       ? 'bg-white text-text-secondary'
-      : active
-        ? 'bg-surface-hover text-text-secondary dark:bg-transparent'
-        : 'text-text-secondary hover:bg-surface-hover hover:text-text'
+      : sidebarRowState(active)
 
   return (
     <span

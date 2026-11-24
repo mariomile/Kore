@@ -10,9 +10,10 @@ import { SidebarSortableSection } from './sidebar-sortable-section'
 import {
   SIDEBAR_TREE_ITEM_CLASS,
   SIDEBAR_TREE_ROW_CLASS,
-  SidebarTreeIcon,
+  sidebarRowState,
   sidebarTreePadding,
-} from './sidebar-tree-icon'
+} from './sidebar-row-style'
+import { SidebarTreeIcon } from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.library.expanded'
@@ -221,12 +222,7 @@ const FileRow = memo(function FileRow({ root, path, depth, active }: FileRowProp
         onClick={(event) => open(isModEvent(event))}
         aria-current={active ? 'page' : undefined}
         title={path}
-        className={cn(
-          SIDEBAR_TREE_ITEM_CLASS,
-          active
-            ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-        )}
+        className={cn(SIDEBAR_TREE_ITEM_CLASS, sidebarRowState(active))}
         style={{ paddingLeft: sidebarTreePadding(depth, true) }}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium">

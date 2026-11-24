@@ -10,7 +10,9 @@ import {
 } from 'react'
 import {
   displayNoteTitle,
+  mergeFolderItems,
   type CollectionEntry,
+  type LooseFile,
   type NoteListEntry,
   type TagType,
 } from '@kore/core'
@@ -25,6 +27,7 @@ import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
 import { CardPreviewSlot } from './card-preview-slot'
 import { CardPropertyChips } from './card-property-chips'
+import { FileCard } from './folder-files'
 import { GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 import { NoteCardPicture } from './note-card-picture'
 import { NoteCardPreview } from './note-card-preview'
@@ -37,8 +40,17 @@ interface AllNotesGridProps {
   type?: TagType | null
   /** The typed tag's collection rows, for the property values by path. */
   entries?: readonly CollectionEntry[] | undefined
+  /**
+   * A folder page's loose files, dealt among the notes in the page's sort
+   * (already filtered like the notes).
+   */
+  files?: readonly LooseFile[]
   onOpen: (path: string, event?: ModClickEvent) => void
+  /** Opens a loose file; required with `files`. */
+  onOpenFile?: (path: string) => void
 }
+
+const NO_FILES: readonly LooseFile[] = []
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
@@ -93,12 +105,19 @@ export function AllNotesGrid({
   tag,
   type,
   entries,
+  files = NO_FILES,
   onOpen,
+  onOpenFile,
 }: AllNotesGridProps): ReactElement | null {
   const { settings } = useSettings()
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const hasMore = notes !== undefined && notes.length > visibleCount
+  // A folder's files are documents of it like its notes: one grid, one order.
+  const items = useMemo(
+    () => (notes === undefined ? undefined : mergeFolderItems(notes, files, settings.allNotesSort)),
+    [notes, files, settings.allNotesSort],
+  )
+  const hasMore = items !== undefined && items.length > visibleCount
   const [gridElement, setGridElement] = useState<HTMLDivElement | null>(null)
   const [columns, setColumns] = useState({ count: DEFAULT_COLUMNS, width: 0 })
   // The parent passes a fresh onOpen each render; a stable one lets the
@@ -109,6 +128,9 @@ export function AllNotesGrid({
     (path: string, event?: ModClickEvent) => onOpenRef.current(path, event),
     [],
   )
+  const onOpenFileRef = useRef(onOpenFile)
+  onOpenFileRef.current = onOpenFile
+  const openFile = useCallback((path: string) => onOpenFileRef.current?.(path), [])
   // The typed tag page's property values, by path — the grid's rows come
   // from the notes list, the chips from the collection projection.
   const entryByPath = useMemo(
@@ -120,11 +142,14 @@ export function AllNotesGrid({
   // per-note is involved. The passive no-network boundary is the wiki-link
   // hover card's, shared — see editor/preview-image-url.ts.
   const resolvePreviewImageUrl = usePassiveImageResolver()
-  const mountedNotes = useMemo(() => notes?.slice(0, visibleCount) ?? [], [notes, visibleCount])
+  const mountedItems = useMemo(() => items?.slice(0, visibleCount) ?? [], [items, visibleCount])
   // Each note's picture (its cover, else its first image), as a cached
   // card-sized thumbnail: one indexed query per mounted chunk.
   const pictures = useFirstImages(
-    useMemo(() => mountedNotes.map((note) => note.path), [mountedNotes]),
+    useMemo(
+      () => mountedItems.flatMap((item) => (item.kind === 'note' ? [item.path] : [])),
+      [mountedItems],
+    ),
   )
 
   // As many columns as the grid's content width fits, measured before the
@@ -189,10 +214,10 @@ export function AllNotesGrid({
     }
   }, [hasMore, visibleCount])
 
-  if (notes === undefined) {
+  if (items === undefined) {
     return null
   }
-  if (notes.length === 0) {
+  if (items.length === 0) {
     return (
       <EmptyState
         icon={Notes}
@@ -207,21 +232,25 @@ export function AllNotesGrid({
       data-testid="all-notes-grid"
       className="flex items-start gap-4 pb-10 pl-12 pr-7 pt-2"
     >
-      {dealIntoColumns(mountedNotes, columns.count).map((column, columnIndex) => (
+      {dealIntoColumns(mountedItems, columns.count).map((column, columnIndex) => (
         <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
-          {column.map((note) => (
-            <GridCard
-              key={note.path}
-              columnWidth={columns.width}
-              note={note}
-              type={type}
-              entry={type != null ? entryByPath.get(note.path) : undefined}
-              picture={pictures.get(note.path)}
-              resolveImageUrl={resolvePreviewImageUrl}
-              recency={note.mtime > 0 ? formatRecencyLabel(note.mtime, settings) : '—'}
-              onOpen={openNote}
-            />
-          ))}
+          {column.map((item) =>
+            item.kind === 'file' ? (
+              <FileCard key={item.path} file={item.file} onOpen={openFile} />
+            ) : (
+              <GridCard
+                key={item.path}
+                columnWidth={columns.width}
+                note={item.note}
+                type={type}
+                entry={type != null ? entryByPath.get(item.path) : undefined}
+                picture={pictures.get(item.path)}
+                resolveImageUrl={resolvePreviewImageUrl}
+                recency={item.note.mtime > 0 ? formatRecencyLabel(item.note.mtime, settings) : '—'}
+                onOpen={openNote}
+              />
+            ),
+          )}
         </div>
       ))}
       {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px w-px self-end" /> : null}

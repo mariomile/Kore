@@ -29,14 +29,6 @@ import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 
-interface FolderFilesProps {
-  /** The folder page's folder. */
-  folder: string
-  includeSubfolders: boolean
-  /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
-  onOpen: (path: string) => void
-}
-
 const NO_FILES: readonly LooseFile[] = []
 
 function looseFilesQueryKey(
@@ -60,84 +52,86 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
 }
 
 /**
- * A folder page's loose files (images, PDFs, documents no note references)
- * as cards beside its subfolders, in the same columns: a picture shows
- * itself, an HTML page its own title, any other file its icon (its type is in
- * the line under the name). A card opens the file in Kore's own viewer, or the
- * app the OS picks for it.
+ * A folder's loose files (images, PDFs, pages, documents no note
+ * references), newest first, kept fresh as files come and go.
  */
-export function FolderFiles({
-  folder,
-  includeSubfolders,
-  onOpen,
-}: FolderFilesProps): ReactElement | null {
+export function useFolderLooseFiles(
+  folder: string | null,
+  includeSubfolders: boolean,
+): readonly LooseFile[] {
   const { graph } = useGraph()
-  const resolve = usePassiveImageResolver()
   const generation = graph?.generation
   const root = graph?.root
   const { data: files = NO_FILES } = useQuery({
-    queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
-    queryFn: () => looseFiles(folder, includeSubfolders, generation),
-    enabled: generation !== undefined,
+    queryKey: looseFilesQueryKey(root, folder ?? '', includeSubfolders),
+    queryFn: () => looseFiles(folder ?? '', includeSubfolders, generation),
+    enabled: generation !== undefined && folder !== null,
   })
   // The index queries refresh when notes change; a file added, changed or
-  // removed here changes no note, so the cards listen for it themselves.
+  // removed here changes no note, so the files listen for it themselves.
   const queryClient = useQueryClient()
-  useEffect(
-    () =>
-      subscribeIndexApplied((changes, appliedGeneration) => {
-        if (
-          appliedGeneration === generation &&
-          looseFilesAffectedBy(changes, folder, includeSubfolders)
-        ) {
-          void queryClient.invalidateQueries({
-            queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
-            exact: true,
-          })
-        }
-      }),
-    [queryClient, root, generation, folder, includeSubfolders],
-  )
+  useEffect(() => {
+    if (folder === null) {
+      return
+    }
+    return subscribeIndexApplied((changes, appliedGeneration) => {
+      if (
+        appliedGeneration === generation &&
+        looseFilesAffectedBy(changes, folder, includeSubfolders)
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
+          exact: true,
+        })
+      }
+    })
+  }, [queryClient, root, generation, folder, includeSubfolders])
+  return folder === null ? NO_FILES : files
+}
+
+interface FolderFilesProps {
+  files: readonly LooseFile[]
+  /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
+  onOpen: (path: string) => void
+}
+
+/**
+ * A folder page's loose files as a row of cards above a list view. The grid
+ * view deals them among the notes instead (all-notes-grid.tsx).
+ */
+export function FolderFiles({ files, onOpen }: FolderFilesProps): ReactElement | null {
   if (files.length === 0) {
     return null
   }
   return (
     <ul aria-label="Files" className={CARD_SECTION_CLASS}>
-      {files.map((file) => {
-        const url = file.kind === 'image' ? resolve(file.path) : null
-        return (
-          <li key={file.path} className="min-w-0">
-            <FileCard
-              file={file}
-              picture={url === null ? undefined : previewThumbnailUrl(url)}
-              pageUrl={
-                file.kind === 'html' && generation !== undefined
-                  ? htmlPageUrl(generation, file.path)
-                  : null
-              }
-              onOpen={onOpen}
-            />
-          </li>
-        )
-      })}
+      {files.map((file) => (
+        <li key={file.path} className="min-w-0">
+          <FileCard file={file} onOpen={onOpen} />
+        </li>
+      ))}
     </ul>
   )
 }
 
 interface FileCardProps {
   file: LooseFile
-  picture: string | undefined
-  /** An HTML file's page URL, read for its title; null for any other file. */
-  pageUrl: string | null
   onOpen: (path: string) => void
 }
 
-const FileCard = memo(function FileCard({
-  file,
-  picture,
-  pageUrl,
-  onOpen,
-}: FileCardProps): ReactElement {
+/**
+ * One loose file as a card: a picture shows itself, an HTML page its own
+ * title, any other file its icon (its type is in the line under the name).
+ * A card opens the file in Kore's own viewer, or the app the OS picks for it.
+ */
+export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps): ReactElement {
+  const { graph } = useGraph()
+  const generation = graph?.generation
+  const resolve = usePassiveImageResolver()
+  const url = file.kind === 'image' ? resolve(file.path) : null
+  const picture = url === null ? undefined : previewThumbnailUrl(url)
+  const pageUrl =
+    file.kind === 'html' && generation !== undefined ? htmlPageUrl(generation, file.path) : null
   // A picture that fails (a format the card can't draw, a file gone since
   // the catalog listed it) falls back to the file's icon.
   const [failed, setFailed] = useState<string | null>(null)

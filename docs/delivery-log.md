@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Folders: subfolders as cards that peek at their newest notes, denser Mac
+  grid (#655).
 - Grid: note cards lead with their picture, Mac masonry grid (#652).
 - UI: one page header and empty state across the app, tag chips in the notes
   table (#644).

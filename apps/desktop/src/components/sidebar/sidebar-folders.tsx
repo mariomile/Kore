@@ -321,7 +321,7 @@ function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElemen
           type="button"
           onClick={() => context.open(folder.path)}
           aria-current={active ? 'page' : undefined}
-          className={cn(SIDEBAR_TREE_ITEM_CLASS, 'min-w-0 flex-1')}
+          className={cn(SIDEBAR_TREE_ITEM_CLASS, 'min-w-0 flex-1 self-stretch')}
         >
           <span className="min-w-0 flex-1 truncate text-xs font-medium">{folder.name}</span>
           <span className="flex-none text-2xs tabular-nums text-text-muted">

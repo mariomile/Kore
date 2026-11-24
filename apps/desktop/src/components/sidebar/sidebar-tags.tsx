@@ -9,7 +9,12 @@ import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
 import { SidebarIconSlot } from './sidebar-icon-slot'
 import { SidebarSortableSection } from './sidebar-sortable-section'
-import { SIDEBAR_TREE_ROW_CLASS, SidebarTreeIcon, sidebarTreePadding } from './sidebar-tree-icon'
+import {
+  SIDEBAR_ROW_HEIGHT_CLASS,
+  SIDEBAR_TREE_ROW_CLASS,
+  SidebarTreeIcon,
+  sidebarTreePadding,
+} from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.tags.expanded'
@@ -95,6 +100,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
       <div
         className={cn(
           SIDEBAR_TREE_ROW_CLASS,
+          SIDEBAR_ROW_HEIGHT_CLASS,
           'group relative flex w-full items-center gap-3 rounded-md leading-5 transition-colors duration-[50ms]',
           active
             ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
@@ -115,7 +121,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
         <button
           type="button"
           onClick={() => context.open(node.tag)}
-          className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left"
+          className="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left"
         >
           {hasChildren ? null : <SidebarIconSlot>{icon}</SidebarIconSlot>}
           <span className="min-w-0 flex-1 truncate text-xs font-medium">

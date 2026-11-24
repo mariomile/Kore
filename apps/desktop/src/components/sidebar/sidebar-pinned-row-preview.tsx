@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { cn } from '@/lib/utils'
+import { SIDEBAR_ROW_HEIGHT_CLASS } from './sidebar-tree-icon'
 
 interface SidebarPinnedRowPreviewProps {
   label: string
@@ -25,12 +26,13 @@ export function SidebarPinnedRowPreview({
   return (
     <span
       className={cn(
+        SIDEBAR_ROW_HEIGHT_CLASS,
         'group flex w-full touch-none items-center rounded-md leading-5 transition-colors duration-[50ms]',
         stateClass,
         overlay && 'shadow-sm',
       )}
     >
-      <span className={cn('min-w-0 flex-1 py-1 pl-3 pr-2.5 text-left', placeholder && 'invisible')}>
+      <span className={cn('min-w-0 flex-1 pl-3 pr-2.5 text-left', placeholder && 'invisible')}>
         <span className="block truncate text-xs font-medium">{label}</span>
       </span>
     </span>

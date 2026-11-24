@@ -18,9 +18,14 @@ export function sidebarTreePadding(depth: number, iconless = false): number {
   return SIDEBAR_ROW_INSET_PX + depth * SIDEBAR_INDENT_PX + (iconless ? SIDEBAR_LABEL_OFFSET_PX : 0)
 }
 
+/**
+ * Every shelf row's height (tags, folders, notes, library, pinned): one
+ * 28px rhythm under the nav, whatever the row holds.
+ */
+export const SIDEBAR_ROW_HEIGHT_CLASS = 'min-h-7'
+
 /** A clickable tree row's layout: icon, 12px gap, label, trailing count. */
-export const SIDEBAR_TREE_ITEM_CLASS =
-  'flex w-full items-center gap-3 rounded-md py-1 pr-2.5 text-left leading-5 transition-colors duration-[50ms]'
+export const SIDEBAR_TREE_ITEM_CLASS = `flex w-full items-center gap-3 rounded-md pr-2.5 text-left leading-5 transition-colors duration-[50ms] ${SIDEBAR_ROW_HEIGHT_CLASS}`
 
 /** Hover group a tree row declares so its icon can turn into a chevron. */
 export const SIDEBAR_TREE_ROW_CLASS = 'group/tree-row'

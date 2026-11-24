@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { FolderMove, Pin, PinOff, Trash } from '@/components/icons'
 import type { HighlightSegment } from '@kore/core'
 import { formatRecencyLabel } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import { useNoteRowSwipe } from '@/mobile/use-note-row-swipe'
 import { useSettings } from '@/providers/settings-provider'
@@ -88,44 +89,35 @@ export function SwipeableNoteRow({
         inert={!revealed}
       >
         {row.canDelete ? (
-          <button
-            type="button"
-            tabIndex={revealed ? 0 : -1}
-            className="flex h-full flex-col items-center justify-center gap-1 bg-surface-inverse text-[10px] font-medium text-text-on-inverse active:opacity-70"
-            style={{ width: ACTION_BUTTON_WIDTH }}
-            aria-label={`Move ${title}`}
-            onClick={onMove}
-          >
-            <FolderMove className="size-4" />
-            <span aria-hidden>Move</span>
-          </button>
+          <SwipeAction
+            revealed={revealed}
+            tone="neutral"
+            icon={<FolderMove />}
+            label="Move"
+            ariaLabel={`Move ${title}`}
+            onPress={onMove}
+          />
         ) : null}
-        <button
-          type="button"
-          tabIndex={revealed ? 0 : -1}
-          className="flex h-full flex-col items-center justify-center gap-1 bg-accent text-[10px] font-medium text-text-on-brand active:opacity-70"
-          style={{ width: ACTION_BUTTON_WIDTH }}
-          aria-label={`${row.isPinned ? 'Unpin' : 'Pin'} ${title}`}
-          onClick={() => {
+        <SwipeAction
+          revealed={revealed}
+          tone="accent"
+          icon={row.isPinned ? <PinOff /> : <Pin />}
+          label={row.isPinned ? 'Unpin' : 'Pin'}
+          ariaLabel={`${row.isPinned ? 'Unpin' : 'Pin'} ${title}`}
+          onPress={() => {
             onClose()
             onTogglePin()
           }}
-        >
-          {row.isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
-          <span aria-hidden>{row.isPinned ? 'Unpin' : 'Pin'}</span>
-        </button>
+        />
         {row.canDelete ? (
-          <button
-            type="button"
-            tabIndex={revealed ? 0 : -1}
-            className="flex h-full flex-col items-center justify-center gap-1 bg-destructive text-[10px] font-medium text-text-on-brand active:opacity-70"
-            style={{ width: ACTION_BUTTON_WIDTH }}
-            aria-label={`Delete ${title}`}
-            onClick={onDelete}
-          >
-            <Trash className="size-4" />
-            <span aria-hidden>Delete</span>
-          </button>
+          <SwipeAction
+            revealed={revealed}
+            tone="destructive"
+            icon={<Trash />}
+            label="Delete"
+            ariaLabel={`Delete ${title}`}
+            onPress={onDelete}
+          />
         ) : null}
       </div>
       <button
@@ -169,5 +161,57 @@ export function SwipeableNoteRow({
         ) : null}
       </button>
     </div>
+  )
+}
+
+const TONE_CLASS = {
+  neutral: 'bg-surface-active text-text',
+  accent: 'bg-accent text-text-on-brand',
+  destructive: 'bg-destructive text-text-on-brand',
+} as const
+
+interface SwipeActionProps {
+  revealed: boolean
+  tone: keyof typeof TONE_CLASS
+  icon: ReactElement
+  label: string
+  ariaLabel: string
+  onPress: () => void
+}
+
+/**
+ * One action behind a swiped row: a round icon button over its label on the
+ * page's own ground, the same circle as the rest of the phone's controls
+ * (no full-height coloured slabs).
+ */
+function SwipeAction({
+  revealed,
+  tone,
+  icon,
+  label,
+  ariaLabel,
+  onPress,
+}: SwipeActionProps): ReactElement {
+  return (
+    <button
+      type="button"
+      tabIndex={revealed ? 0 : -1}
+      className="group flex h-full flex-col items-center justify-center gap-1"
+      style={{ width: ACTION_BUTTON_WIDTH }}
+      aria-label={ariaLabel}
+      onClick={onPress}
+    >
+      <span
+        className={cn(
+          'flex size-10 items-center justify-center rounded-full transition-transform group-active:scale-90 motion-reduce:transition-none [&>svg]:size-[18px]',
+          TONE_CLASS[tone],
+        )}
+      >
+        {icon}
+      </span>
+      <span aria-hidden className="text-2xs font-medium text-text-muted">
+        {label}
+      </span>
+    </button>
   )
 }

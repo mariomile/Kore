@@ -22,3 +22,11 @@ export const GRID_CARD_CLASS = `group relative flex flex-col overflow-hidden rou
  * in styles/index.css: the app's unlayered focus rule outranks utilities).
  */
 export const GRID_CARD_BUTTON_CLASS = 'kore-card-button absolute inset-0 z-[1] rounded-2xl'
+
+/**
+ * A folder page's card section (its subfolders, its loose files): a grid on
+ * the note grid's own columns (13rem at least, 1rem apart), so every card
+ * on the page lines up.
+ */
+export const CARD_SECTION_CLASS =
+  'grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-4 pb-8 pl-12 pr-7 pt-2'

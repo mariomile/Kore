@@ -11,7 +11,7 @@ import { useFirstImages } from '@/hooks/use-note-card-images'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
-import { GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
+import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 
 interface FolderSubfoldersProps {
   /** The page's folder from the tree; renders nothing without subfolders. */
@@ -41,10 +41,7 @@ export function FolderSubfolders({ folder }: FolderSubfoldersProps): ReactElemen
     return null
   }
   return (
-    <ul
-      aria-label="Subfolders"
-      className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-4 pb-8 pl-12 pr-7 pt-2"
-    >
+    <ul aria-label="Subfolders" className={CARD_SECTION_CLASS}>
       {children.map((child) => (
         <li key={child.path} className="min-w-0">
           <FolderCard folder={child} peek={peeks.get(child.path)} pictures={pictures} />

@@ -46,6 +46,13 @@ const PAINTINGS: readonly Painting[] = [
     colors: ['#dfe5d8', '#d9763d', '#2c3a2e'],
   },
   {
+    // Loose in its folder: no note embeds it, so the Studio page shows it as a file card.
+    path: 'Projects/Studio/Poster.png',
+    width: 1400,
+    height: 1000,
+    colors: ['#e8e2f7', '#7c6cf0', '#1e1b3a'],
+  },
+  {
     path: 'Inspiration/dunes.png',
     width: 1500,
     height: 1000,
@@ -75,9 +82,20 @@ function paint({ width, height, colors: [ground, accent, ink] }: Painting): stri
   return canvas.toDataURL('image/png').slice('data:image/png;base64,'.length)
 }
 
+/** Files no note references, for the Studio page's file cards. */
+const LOOSE_DOCUMENTS: ReadonlyArray<readonly [string, string]> = [
+  ['Projects/Studio/Brand deck.pdf', '%PDF-1.4\n'.padEnd(184_000, ' ')],
+  ['Projects/Studio/Budget.xlsx', 'PK'.padEnd(26_000, ' ')],
+  ['Projects/Studio/Voice memo.m4a', 'ftyp'.padEnd(1_200_000, ' ')],
+]
+
 /** Build the vault; needs a DOM (it paints its images on a canvas). */
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
+  // Loose documents beside the Studio notes (their bytes only need a size).
+  for (const [path, text] of LOOSE_DOCUMENTS) {
+    assets.set(path, btoa(text))
+  }
   const files: Record<string, string> = {
     'notes/Kore brand directions.md': [
       '---',

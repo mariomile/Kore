@@ -343,6 +343,7 @@ export {
   type SearchHit,
 } from './filtered-search'
 export { firstImageAssets } from './asset-refs'
+export { looseFiles, looseFilesAffectedBy, type LooseFile, type LooseFileKind } from './loose-files'
 export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,

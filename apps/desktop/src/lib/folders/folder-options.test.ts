@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FolderTreeFolder } from '@kore/core'
-import { flattenFolders, pickFolders } from './folder-options'
+import { flattenFolders, pickFolders, suggestFolders } from './folder-options'
 
 function folder(path: string, folders: FolderTreeFolder[] = []): FolderTreeFolder {
   return { path, name: path.split('/').at(-1) ?? '', folders, notes: [], noteCount: 0 }
@@ -36,5 +36,19 @@ describe('folder picker options', () => {
     const hidden = pickFolders(options, 'Archive/.git')
     expect(hidden.newFolder).toBeNull()
     expect(hidden.problem).not.toBeNull()
+  })
+
+  it('suggests in order without the current folder, the moving subtree or repeats', () => {
+    expect(
+      suggestFolders(
+        ['CRM/People', 'Inbox', 'crm/people', 'Archive', 'Archive/Old', 'Ideas', 'Later'],
+        'Inbox',
+        'Archive',
+      ),
+    ).toEqual([
+      { path: 'CRM/People', name: 'People', parent: 'CRM' },
+      { path: 'Ideas', name: 'Ideas', parent: '' },
+      { path: 'Later', name: 'Later', parent: '' },
+    ])
   })
 })

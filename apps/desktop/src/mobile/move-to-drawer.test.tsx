@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
-import { cleanup, render } from 'vitest-browser-react'
+import type { ReactElement, ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, render as renderPage } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FolderTreeFolder } from '@kore/core'
@@ -32,9 +33,21 @@ vi.mock('@/lib/folders/use-folder-operations', async (importOriginal) => ({
   useFolderOperations: () => ({ moveTo }),
 }))
 
+vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: { root: '/vault' } }) }))
+vi.mock('@kore/core', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  typeFoldersForNote: async (path: string) => (path === 'Inbox/Ada.md' ? ['CRM/People'] : []),
+}))
+
+function render(ui: ReactElement): ReturnType<typeof renderPage> {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderPage(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 afterEach(() => {
   cleanup()
   moveTo.mockClear()
+  localStorage.removeItem('kore.recentMoveDestinations')
 })
 
 describe('MoveToDrawer', () => {
@@ -60,5 +73,22 @@ describe('MoveToDrawer', () => {
     await page.getByPlaceholder('Find or create a folder…').fill('Archive/2026')
     await page.getByRole('button', { name: 'New folder “Archive/2026”' }).click()
     expect(moveTo).toHaveBeenCalledWith({ kind: 'folder', path: 'CRM' }, 'Archive/2026')
+  })
+
+  it('suggests the note’s type folder, then the latest destinations, and remembers a pick', async () => {
+    localStorage.setItem('kore.recentMoveDestinations', JSON.stringify(['CRM', 'CRM/People']))
+    await render(
+      <MoveToDrawer target={{ kind: 'note', path: 'Inbox/Ada.md' }} onClose={() => {}} />,
+    )
+    const suggested = page.getByRole('list', { name: 'Suggested folders' })
+    await expect.element(suggested.getByRole('button').first()).toHaveTextContent('PeopleCRM')
+    await expect.element(suggested.getByRole('button').nth(1)).toHaveTextContent('CRM')
+    expect(suggested.getByRole('button').all()).toHaveLength(2)
+    await suggested.getByRole('button').nth(1).click()
+    expect(moveTo).toHaveBeenCalledWith({ kind: 'note', path: 'Inbox/Ada.md' }, 'CRM')
+    expect(JSON.parse(localStorage.getItem('kore.recentMoveDestinations') ?? '[]')).toEqual([
+      'CRM',
+      'CRM/People',
+    ])
   })
 })

@@ -3,6 +3,8 @@ import { Virtualizer } from 'virtua'
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { NoteDeleteDialog } from '@/mobile/note-delete-dialog'
+import type { MoveTarget } from '@/lib/folders/use-folder-operations'
+import { MoveToDrawer } from '@/mobile/move-to-drawer'
 import { NOTE_ROW_HEIGHT, SwipeableNoteRow, type NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -26,6 +28,7 @@ export function NoteRowList({ rows, onOpen, onDeleted, leading }: NoteRowListPro
   const [leadingHeight, setLeadingElement] = useElementHeight()
   const [revealedPath, setRevealedPath] = useState<string | null>(null)
   const [deletePath, setDeletePath] = useState<string | null>(null)
+  const [moving, setMoving] = useState<MoveTarget | null>(null)
 
   const togglePin = (row: NoteRowModel): void => {
     if (graph !== null) {
@@ -69,6 +72,10 @@ export function NoteRowList({ rows, onOpen, onDeleted, leading }: NoteRowListPro
               }
               onOpen={() => onOpen(row.path)}
               onTogglePin={() => togglePin(row)}
+              onMove={() => {
+                setRevealedPath(null)
+                setMoving({ kind: 'note', path: row.path })
+              }}
               onDelete={() => {
                 setRevealedPath(null)
                 setDeletePath(row.path)
@@ -90,6 +97,7 @@ export function NoteRowList({ rows, onOpen, onDeleted, leading }: NoteRowListPro
           onDeleted={() => onDeleted(deletePath)}
         />
       ) : null}
+      {moving !== null ? <MoveToDrawer target={moving} onClose={() => setMoving(null)} /> : null}
     </>
   )
 }

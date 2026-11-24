@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pin, PinOff, Trash } from '@/components/icons'
+import { FolderMove, Pin, PinOff, Trash } from '@/components/icons'
 import type { HighlightSegment } from '@kore/core'
 import { formatRecencyLabel } from '@/lib/dates'
 import { HighlightedText } from '@/mobile/highlighted-text'
@@ -25,7 +25,7 @@ export interface NoteRowModel {
   /** File modification time (epoch ms) — the relative timestamp. */
   mtime: number
   isPinned: boolean
-  /** Daily notes are part of the chronological spine and cannot be deleted. */
+  /** Daily notes are part of the chronological spine: they can't be moved or deleted. */
   canDelete: boolean
   /** First content line; search hits carry highlighted match segments. */
   snippet: HighlightSegment[]
@@ -43,6 +43,8 @@ interface SwipeableNoteRowProps {
   onBeginInteraction: () => void
   onOpen: () => void
   onTogglePin: () => void
+  /** Open the Move to… sheet for this note. */
+  onMove: () => void
   onDelete: () => void
 }
 
@@ -59,10 +61,11 @@ export function SwipeableNoteRow({
   onBeginInteraction,
   onOpen,
   onTogglePin,
+  onMove,
   onDelete,
 }: SwipeableNoteRowProps): ReactElement {
   const { settings } = useSettings()
-  const actionWidth = ACTION_BUTTON_WIDTH * (row.canDelete ? 2 : 1)
+  const actionWidth = ACTION_BUTTON_WIDTH * (row.canDelete ? 3 : 1)
   const title = row.titleSegments.map((segment) => segment.text).join('')
   const height =
     row.propertyLine !== undefined || row.snippet.length > 0
@@ -84,6 +87,19 @@ export function SwipeableNoteRow({
         aria-hidden={!revealed || undefined}
         inert={!revealed}
       >
+        {row.canDelete ? (
+          <button
+            type="button"
+            tabIndex={revealed ? 0 : -1}
+            className="flex h-full flex-col items-center justify-center gap-1 bg-surface-inverse text-[10px] font-medium text-text-on-inverse active:opacity-70"
+            style={{ width: ACTION_BUTTON_WIDTH }}
+            aria-label={`Move ${title}`}
+            onClick={onMove}
+          >
+            <FolderMove className="size-4" />
+            <span aria-hidden>Move</span>
+          </button>
+        ) : null}
         <button
           type="button"
           tabIndex={revealed ? 0 : -1}

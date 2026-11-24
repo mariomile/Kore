@@ -16,6 +16,8 @@ import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 import { folderOf } from '@/lib/notes/use-note-bulk-actions'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { FolderActionsDrawer } from '@/mobile/folder-actions-drawer'
+import { FolderRows } from '@/mobile/folder-rows'
+import { LayoutToggle } from '@/mobile/layout-toggle'
 import { MoveToDrawer } from '@/mobile/move-to-drawer'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { NoteRowList } from '@/mobile/note-row-list'
@@ -44,7 +46,7 @@ interface MobileFolderProps {
 export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
   const { navigate, back, canBack } = useRouter()
   const { graph } = useGraph()
-  const { settings } = useSettings()
+  const { settings, updateSettings } = useSettings()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const tree = useFolderTree()
   const atTop = folder === ''
@@ -80,12 +82,17 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
     openExternally: openAsset,
   })
 
+  const grid = settings.allNotesView === 'grid'
   const name = atTop ? 'Folders' : folderDisplayName(folder)
   const openNote = (path: string): void => navigate(routeForPath(path))
 
   const leading = (
     <div>
-      <FolderSubfolders folder={node} className={MOBILE_CARD_SECTION_CLASS} density="compact" />
+      {grid ? (
+        <FolderSubfolders folder={node} className={MOBILE_CARD_SECTION_CLASS} density="compact" />
+      ) : (
+        <FolderRows folder={node} />
+      )}
       {atTop ? null : (
         <FolderFiles
           folder={folder}
@@ -120,6 +127,13 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
             <ChevronLeft />
           </Button>
           <div className="flex-1" />
+          <LayoutToggle
+            view={settings.allNotesView === 'grid' ? 'grid' : 'list'}
+            onChange={(view) => {
+              hapticImpactLight()
+              updateSettings({ allNotesView: view })
+            }}
+          />
           <Button
             variant="ghost"
             size="icon"
@@ -176,7 +190,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
             </div>
           ) : null}
         </div>
-      ) : settings.allNotesView === 'grid' ? (
+      ) : grid ? (
         <NoteCardGrid rows={rows} onOpen={openNote} leading={leading} />
       ) : (
         <NoteRowList rows={rows} onOpen={openNote} onDeleted={removeDeletedRow} leading={leading} />

@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import { folderDisplayName } from '@kore/core'
-import { Check, Folder, FolderPlus } from '@/components/icons'
+import { FolderPlus } from '@/components/icons'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 import { useFolderPicker } from '@/lib/folders/use-folder-picker'
-import { cn } from '@/lib/utils'
+import { FolderRow } from '@/mobile/folder-row'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { SearchInput } from '@/mobile/search-input'
 
@@ -48,78 +48,60 @@ export function MoveToDrawer({ target, onClose }: MoveToDrawerProps): ReactEleme
             value={picker.query}
             onValueChange={picker.setQuery}
           />
-          <ul aria-label="Folders" className="-mx-2 min-h-0 flex-1 overflow-y-auto pt-2 pb-6">
-            {picker.query === '' ? (
-              <FolderRow
-                icon={<Folder className="size-[18px]" />}
-                name="Vault root"
-                checked={picker.current === ''}
-                onPress={() => finish('')}
-              />
+          <div className="-mx-2 min-h-0 flex-1 overflow-y-auto pt-2 pb-6">
+            {picker.query === '' && picker.suggestions.length > 0 ? (
+              <>
+                <SectionLabel>Suggested</SectionLabel>
+                <ul aria-label="Suggested folders" className="pb-2">
+                  {picker.suggestions.map((option) => (
+                    <FolderRow
+                      key={option.path}
+                      name={option.name}
+                      detail={option.parent}
+                      onPress={() => finish(option.path)}
+                    />
+                  ))}
+                </ul>
+                <SectionLabel>All folders</SectionLabel>
+              </>
             ) : null}
-            {picker.matches.map((option) => (
-              <FolderRow
-                key={option.path}
-                icon={<Folder className="size-[18px]" />}
-                name={option.name}
-                detail={option.parent}
-                checked={option.path === picker.current}
-                onPress={() => finish(option.path)}
-              />
-            ))}
-            {picker.newFolder !== null ? (
-              <FolderRow
-                icon={<FolderPlus className="size-[18px] text-accent" />}
-                name={`New folder “${picker.newFolder}”`}
-                onPress={() => finish(picker.newFolder!)}
-              />
-            ) : null}
-            {picker.newFolder === null && picker.matches.length === 0 && picker.query !== '' ? (
-              <li className="px-2 py-6 text-center text-sm text-text-muted">
-                {picker.problem ?? 'No folders'}
-              </li>
-            ) : null}
-          </ul>
+            <ul aria-label="Folders">
+              {picker.query === '' ? (
+                <FolderRow
+                  name="Vault root"
+                  checked={picker.current === ''}
+                  onPress={() => finish('')}
+                />
+              ) : null}
+              {picker.matches.map((option) => (
+                <FolderRow
+                  key={option.path}
+                  name={option.name}
+                  detail={option.parent}
+                  checked={option.path === picker.current}
+                  onPress={() => finish(option.path)}
+                />
+              ))}
+              {picker.newFolder !== null ? (
+                <FolderRow
+                  icon={<FolderPlus className="size-[18px] text-accent" />}
+                  name={`New folder “${picker.newFolder}”`}
+                  onPress={() => finish(picker.newFolder!)}
+                />
+              ) : null}
+              {picker.newFolder === null && picker.matches.length === 0 && picker.query !== '' ? (
+                <li className="px-2 py-6 text-center text-sm text-text-muted">
+                  {picker.problem ?? 'No folders'}
+                </li>
+              ) : null}
+            </ul>
+          </div>
         </DrawerBody>
       </DrawerContent>
     </Drawer>
   )
 }
 
-interface FolderRowProps {
-  icon: ReactElement
-  name: string
-  /** The parent folder's path under the name; hidden at the root. */
-  detail?: string
-  checked?: boolean
-  onPress: () => void
-}
-
-function FolderRow({ icon, name, detail, checked = false, onPress }: FolderRowProps): ReactElement {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onPress}
-        aria-current={checked ? 'true' : undefined}
-        className={cn(
-          'flex min-h-14 w-full items-center gap-3 rounded-xl px-2 text-left transition-colors active:bg-surface-hover',
-          checked && 'bg-surface-hover',
-        )}
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-text-muted">
-          {icon}
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-base">{name}</span>
-          {detail !== undefined && detail !== '' ? (
-            <span className="truncate text-[13px] text-text-muted">{detail}</span>
-          ) : null}
-        </span>
-        {checked ? (
-          <Check aria-label="Current folder" className="size-4 shrink-0 text-accent" />
-        ) : null}
-      </button>
-    </li>
-  )
+function SectionLabel({ children }: { children: string }): ReactElement {
+  return <h3 className="px-2 pt-2 pb-1 text-[13px] font-medium text-text-muted">{children}</h3>
 }

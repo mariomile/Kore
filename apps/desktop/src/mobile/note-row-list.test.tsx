@@ -16,6 +16,7 @@ vi.mock('@/mobile/use-reduced-motion', () => ({ usePrefersReducedMotion: () => t
 const onOpen = vi.fn()
 const onTogglePin = vi.fn()
 const onDelete = vi.fn()
+const onMove = vi.fn()
 
 function row(overrides: Partial<NoteRowModel> = {}): NoteRowModel {
   return {
@@ -41,6 +42,7 @@ function SwipeHarness({ note = row() }: { note?: NoteRowModel }): ReactElement {
         onBeginInteraction={() => {}}
         onOpen={onOpen}
         onTogglePin={onTogglePin}
+        onMove={onMove}
         onDelete={onDelete}
       />
     </div>
@@ -115,7 +117,7 @@ describe('NoteRowList', () => {
     await expect.element(view.getByRole('button')).toHaveTextContent('Tim MacCaw')
   })
 
-  it('tracks a leftward touch and reveals pin and delete actions', async () => {
+  it('tracks a leftward touch and reveals move, pin and delete actions', async () => {
     const view = await render(<SwipeHarness />)
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
@@ -123,12 +125,13 @@ describe('NoteRowList', () => {
     await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
-      { x: rect.right - 120, y: rect.top + 32 },
+      { x: rect.right - 240, y: rect.top + 32 },
     )
 
+    await expect.element(view.getByRole('button', { name: 'Move Alpha' })).toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Pin Alpha' })).toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Delete Alpha' })).toBeInTheDocument()
-    expect(translateX(surface)).toBe(-136)
+    expect(translateX(surface)).toBe(-204)
     expect(onOpen).not.toHaveBeenCalled()
   })
 
@@ -155,7 +158,7 @@ describe('NoteRowList', () => {
     await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
-      { x: rect.right - 120, y: rect.top + 32 },
+      { x: rect.right - 240, y: rect.top + 32 },
     )
     await view.getByRole('button', { name: /Alpha.*First line/ }).click()
 
@@ -172,7 +175,7 @@ describe('NoteRowList', () => {
     await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
-      { x: rect.right - 120, y: rect.top + 32 },
+      { x: rect.right - 240, y: rect.top + 32 },
     )
 
     await view.getByRole('button', { name: 'Delete Alpha' }).click()
@@ -181,7 +184,23 @@ describe('NoteRowList', () => {
     expect(onOpen).not.toHaveBeenCalled()
   })
 
-  it('does not offer delete for a daily note', async () => {
+  it('opens Move to from the revealed move action', async () => {
+    const view = await render(<SwipeHarness />)
+    const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
+    const rect = surface.getBoundingClientRect()
+    await swipe(
+      surface,
+      { x: rect.right - 20, y: rect.top + 32 },
+      { x: rect.right - 240, y: rect.top + 32 },
+    )
+
+    await view.getByRole('button', { name: 'Move Alpha' }).click()
+
+    expect(onMove).toHaveBeenCalledOnce()
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('does not offer move or delete for a daily note', async () => {
     const view = await render(
       <SwipeHarness note={row({ path: 'daily/2026-08-15.md', canDelete: false })} />,
     )
@@ -194,6 +213,7 @@ describe('NoteRowList', () => {
     )
 
     await expect.element(view.getByRole('button', { name: 'Pin Alpha' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Move Alpha' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'Delete Alpha' }).query()).toBeNull()
   })
 
@@ -207,7 +227,7 @@ describe('NoteRowList', () => {
     await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
-      { x: rect.right - 120, y: rect.top + 32 },
+      { x: rect.right - 240, y: rect.top + 32 },
     )
 
     await expect.element(view.getByRole('button', { name: 'Delete Alpha' })).toBeInTheDocument()

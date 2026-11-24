@@ -7,6 +7,7 @@ import {
   type FolderTreeFolder,
 } from '@kore/core'
 import { Folder } from '@/components/icons'
+import { cn } from '@/lib/utils'
 import { useFirstImages } from '@/hooks/use-note-card-images'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -107,7 +108,9 @@ const FolderCard = memo(function FolderCard({
       <div
         aria-hidden
         data-testid="folder-card-peek"
-        className="flex aspect-[16/7] w-full gap-2 bg-surface-hover p-3"
+        // overflow-hidden holds the band to its ratio: a long peek title would
+        // otherwise stretch it and leave cards in one row at different heights.
+        className="flex aspect-[16/7] w-full gap-2 overflow-hidden bg-surface-hover p-3"
       >
         {shown === undefined || shown.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
@@ -115,7 +118,12 @@ const FolderCard = memo(function FolderCard({
           </div>
         ) : (
           shown.map((note) => (
-            <PeekTile key={note.path} note={note} picture={pictures.get(note.path)} />
+            <PeekTile
+              key={note.path}
+              note={note}
+              picture={pictures.get(note.path)}
+              compact={compact}
+            />
           ))
         )}
       </div>
@@ -148,9 +156,12 @@ const FolderCard = memo(function FolderCard({
 function PeekTile({
   note,
   picture,
+  compact,
 }: {
   note: FolderPeekNote
   picture: string | undefined
+  /** A phone card's tile is short: two lines of title, never a cut third. */
+  compact: boolean
 }): ReactElement {
   // A thumbnail that fails (the file went away since the index named it)
   // falls back to the title, like a note without a picture.
@@ -168,7 +179,12 @@ function PeekTile({
           className="size-full object-cover"
         />
       ) : (
-        <p className="line-clamp-4 p-2 text-2xs font-medium leading-snug text-text-secondary [overflow-wrap:anywhere]">
+        <p
+          className={cn(
+            'm-2 text-2xs font-medium leading-snug text-text-secondary [overflow-wrap:anywhere]',
+            compact ? 'line-clamp-2' : 'line-clamp-4',
+          )}
+        >
           {displayNoteTitle(note.title)}
         </p>
       )}
@@ -177,7 +193,7 @@ function PeekTile({
 }
 
 /** "12 notes", plus its folders when it has some: "3 folders · 12 notes". */
-function folderCountLabel(folder: FolderTreeFolder): string {
+export function folderCountLabel(folder: FolderTreeFolder): string {
   const notes = `${folder.noteCount} ${folder.noteCount === 1 ? 'note' : 'notes'}`
   const folders = folder.folders.length
   return folders === 0 ? notes : `${folders} ${folders === 1 ? 'folder' : 'folders'} · ${notes}`

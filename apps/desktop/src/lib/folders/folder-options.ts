@@ -76,3 +76,47 @@ export function pickFolders(options: readonly FolderOption[], query: string): Fo
       .find((message) => message !== null) ?? null
   return { matches, newFolder: problem === null ? typed : null, problem }
 }
+
+/** A folder path as a pick-list row: its last segment over its parent. */
+export function folderOption(path: string): FolderOption {
+  const slash = path.lastIndexOf('/')
+  return slash === -1
+    ? { path, name: path, parent: '' }
+    : { path, name: path.slice(slash + 1), parent: path.slice(0, slash) }
+}
+
+/** How many suggestions the picker shows above the folder list. */
+export const SUGGESTION_LIMIT = 3
+
+/**
+ * The picker's suggestions, in the order given (the note's type folders
+ * first, then the latest destinations): the target's current folder, the
+ * excluded folder's subtree and repeats dropped, at most
+ * {@link SUGGESTION_LIMIT}. A suggested folder may not exist yet (a type's
+ * home nobody filed into): moving there creates it.
+ */
+export function suggestFolders(
+  candidates: readonly string[],
+  current: string,
+  exclude: string | null = null,
+): FolderOption[] {
+  const seen = new Set<string>()
+  const out: FolderOption[] = []
+  for (const path of candidates) {
+    const key = path.toLowerCase()
+    if (
+      path === '' ||
+      path === current ||
+      seen.has(key) ||
+      (exclude !== null && (path === exclude || path.startsWith(`${exclude}/`)))
+    ) {
+      continue
+    }
+    seen.add(key)
+    out.push(folderOption(path))
+    if (out.length === SUGGESTION_LIMIT) {
+      break
+    }
+  }
+  return out
+}

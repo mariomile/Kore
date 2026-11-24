@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/command'
 import { closeMoveTo, useMoveToTarget } from '@/lib/folders/move-to-store'
 import { useFolderPicker } from '@/lib/folders/use-folder-picker'
+import type { FolderOption } from '@/lib/folders/folder-options'
 import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 
 /**
@@ -57,7 +58,24 @@ function MoveToPicker({ target }: { target: MoveTarget }): ReactElement {
         />
         <CommandList>
           <CommandEmpty>{picker.problem ?? 'No folders'}</CommandEmpty>
-          <CommandGroup>
+          {picker.query === '' && picker.suggestions.length > 0 ? (
+            <CommandGroup heading="Suggested">
+              {picker.suggestions.map((option) => (
+                <CommandItem
+                  key={option.path}
+                  value={`suggested:${option.path}`}
+                  onSelect={() => finish(option.path)}
+                >
+                  <FolderOptionLabel option={option} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+          <CommandGroup
+            heading={
+              picker.query === '' && picker.suggestions.length > 0 ? 'All folders' : undefined
+            }
+          >
             {picker.query === '' ? (
               <CommandItem
                 value="root"
@@ -75,11 +93,7 @@ function MoveToPicker({ target }: { target: MoveTarget }): ReactElement {
                 data-checked={option.path === picker.current}
                 onSelect={() => finish(option.path)}
               >
-                <Folder aria-hidden className="text-text-muted" />
-                <span className="shrink-0">{option.name}</span>
-                {option.parent !== '' ? (
-                  <span className="min-w-0 truncate text-xs text-text-muted">{option.parent}</span>
-                ) : null}
+                <FolderOptionLabel option={option} />
               </CommandItem>
             ))}
           </CommandGroup>
@@ -99,5 +113,18 @@ function MoveToPicker({ target }: { target: MoveTarget }): ReactElement {
         </CommandList>
       </Command>
     </CommandDialog>
+  )
+}
+
+/** A folder row's icon, name and muted parent path. */
+function FolderOptionLabel({ option }: { option: FolderOption }): ReactElement {
+  return (
+    <>
+      <Folder aria-hidden className="text-text-muted" />
+      <span className="shrink-0">{option.name}</span>
+      {option.parent !== '' ? (
+        <span className="min-w-0 truncate text-xs text-text-muted">{option.parent}</span>
+      ) : null}
+    </>
   )
 }

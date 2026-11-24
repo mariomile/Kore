@@ -459,11 +459,20 @@ describe('AllNotesScreen', () => {
       if (sql.includes('"notes"."title"') && !sql.includes('where')) {
         return [...folderRows, { path: 'CRM/People/Team/ada.md', title: 'Ada' }]
       }
+      // The subfolder cards' peek: each folder's newest notes.
+      if (sql.includes('row_number()')) {
+        return [{ folder: 'CRM/People/Team', path: 'CRM/People/Team/ada.md', title: 'Ada' }]
+      }
       return []
     })
     const view = await renderScreen(undefined, { kind: 'folder', folder: 'CRM/People' })
 
     await expect.element(view.getByRole('heading', { name: 'People' })).toBeInTheDocument()
+    // Each subfolder is a card peeking at its newest notes, with its counts.
+    const subfolders = view.getByRole('list', { name: 'Subfolders' })
+    await expect.element(subfolders.getByText('Ada')).toBeInTheDocument()
+    await expect.element(subfolders.getByText('1 note')).toBeInTheDocument()
+    await expect.element(subfolders.getByRole('button', { name: 'Team' })).toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
     expect(listed.at(-1)).toContain('CRM/People/')
     // Subfolders are included unless the folder's settings turn them off.
@@ -479,7 +488,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Health Stacked')).not.toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
 
-    await view.getByRole('button', { name: /Team\s*1/ }).click()
+    await subfolders.getByRole('button', { name: 'Team' }).click()
     expect(probedRoute(view)).toEqual({
       kind: 'allNotes',
       filter: { kind: 'folder', folder: 'CRM/People/Team' },

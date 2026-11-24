@@ -1,5 +1,12 @@
 # Kore working state
 
+## Subfolder cards on folder pages, 2026-11-24 (0.145.0)
+
+- [x] Subfolders as cards that peek at their three newest notes with counts;
+  denser Mac grid (4 columns at 1440), raised borderless cards like iPhone,
+  photos at their real proportions, shorter text previews; notes reachable on
+  folder pages and a visible card focus ring (#655).
+
 ## Note cards lead with their picture, 2026-11-24 (0.144.0)
 
 - [x] Grid cards lead with the note's cover or first image, cached

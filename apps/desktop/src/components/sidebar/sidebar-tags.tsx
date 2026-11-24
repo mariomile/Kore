@@ -93,8 +93,13 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
   const active = node.key === context.activeKey
   const hasChildren = node.children.length > 0
   const isOpen = hasChildren && context.expanded.has(node.key)
+  // The selected row tints its glyph accent, as the nav rows do.
   const icon = (
-    <TagIcon icon={context.icons.get(node.key)} className="size-3.5" emojiClassName="text-xs" />
+    <TagIcon
+      icon={context.icons.get(node.key)}
+      className={cn('size-3.5', active && 'text-accent')}
+      emojiClassName="text-xs"
+    />
   )
   return (
     <li>
@@ -120,7 +125,6 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
         <button
           type="button"
           onClick={() => context.open(node.tag)}
-          aria-current={active ? 'page' : undefined}
           className="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left"
         >
           {hasChildren ? null : <SidebarIconSlot>{icon}</SidebarIconSlot>}

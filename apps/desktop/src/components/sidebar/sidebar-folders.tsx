@@ -309,7 +309,7 @@ function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElemen
         style={{ paddingLeft: sidebarTreePadding(depth) }}
       >
         <SidebarTreeIcon
-          icon={<Icon className="size-3.5" />}
+          icon={<Icon className={cn('size-3.5', active && 'text-accent')} />}
           open={open}
           toggle={{
             label: `${open ? 'Collapse' : 'Expand'} ${folder.name}`,

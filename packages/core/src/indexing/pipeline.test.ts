@@ -4,6 +4,7 @@ import { getBacklinks, resolveWikiTarget } from './queries'
 import { searchNotes } from './filtered-search'
 import { hashContent } from './hash'
 import { PROJECTION_VERSION, PROJECTION_VERSION_KEY } from './indexed-note'
+import { REPROJECT_CHECKPOINT_EVERY, REPROJECT_CHECKPOINT_KEY } from './reproject-checkpoint'
 import {
   indexNote,
   rebuildIndex,
@@ -180,9 +181,9 @@ describe('rebuildIndex', () => {
     // A rebuild reads everything: worked tracks done, so the pill surfaces.
     expect(progress.at(-1)).toEqual([1, 1, 1])
     const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
-    // The wipe is the second command: the pass unstamps the projection first.
-    expect(commands[0]).toBe('index_meta_set')
-    expect(commands[1]).toBe('index_clear')
+    // The pass unstamps the projection and drops any resume checkpoint
+    // before it wipes.
+    expect(commands.slice(0, 3)).toEqual(['index_meta_set', 'index_meta_set', 'index_clear'])
     expect(commands).toContain('list_files')
     const batch = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_apply_batch')
     expect(batch).toBeDefined()
@@ -263,7 +264,10 @@ describe('rebuildIndex', () => {
     expect(skipped).toEqual([{ path: 'notes/bad.md', message: 'unexpected end of hex escape' }])
     expect(
       mockInvoke.mock.calls
-        .filter(([command]) => command === 'index_meta_set')
+        .filter(
+          ([command, args]) =>
+            command === 'index_meta_set' && args['key'] === PROJECTION_VERSION_KEY,
+        )
         .map(([, args]) => args['value']),
     ).toEqual([''])
   })
@@ -293,11 +297,14 @@ describe('rebuildIndex', () => {
     expect(
       mockInvoke.mock.calls.find(([command]) => command === 'index_apply_batch')?.[1],
     ).toMatchObject({
-      notes: [{ path: 'notes/before.md' }, { path: 'notes/after.md' }],
+      notes: [{ path: 'notes/after.md' }, { path: 'notes/before.md' }],
     })
     expect(
       mockInvoke.mock.calls
-        .filter(([command]) => command === 'index_meta_set')
+        .filter(
+          ([command, args]) =>
+            command === 'index_meta_set' && args['key'] === PROJECTION_VERSION_KEY,
+        )
         .map(([, args]) => args['value']),
     ).toEqual([''])
 
@@ -310,7 +317,8 @@ describe('rebuildIndex', () => {
     expect(
       mockInvoke.mock.calls.find(([command]) => command === 'index_apply_batch')?.[1],
     ).toMatchObject({
-      notes: [{ path: 'notes/before.md' }, { path: 'notes/bad.md' }, { path: 'notes/after.md' }],
+      // The listing is walked in path order (the resume checkpoint needs it).
+      notes: [{ path: 'notes/after.md' }, { path: 'notes/bad.md' }, { path: 'notes/before.md' }],
     })
   })
 
@@ -387,10 +395,14 @@ describe('syncIndex', () => {
     // of those readers, and it is the private-note deny list.
     await rebuildIndex({ generation: 4 })
     const order = mockInvoke.mock.calls
+      .filter(
+        ([cmd, args]) =>
+          cmd === 'index_clear' ||
+          (cmd === 'index_meta_set' && args['key'] === PROJECTION_VERSION_KEY),
+      )
       .map(([cmd, args]) =>
         cmd === 'index_meta_set' ? `meta:${(args as { value: string }).value}` : cmd,
       )
-      .filter((cmd) => cmd.startsWith('meta:') || cmd === 'index_clear')
     // Unstamped first, wiped second, restamped last.
     expect(order[0]).toBe('meta:')
     expect(order[1]).toBe('index_clear')
@@ -474,6 +486,137 @@ describe('syncIndex', () => {
       const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
       expect(commands).not.toContain('index_meta_set')
       expect(commands).not.toContain('index_remove_batch')
+    })
+  })
+
+  describe('resuming an interrupted pass', () => {
+    /** Enough notes for two checkpoints, listed out of order on purpose. */
+    const paths = Array.from(
+      { length: REPROJECT_CHECKPOINT_EVERY * 2 + 10 },
+      (_, index) => `notes/${String(index).padStart(4, '0')}.md`,
+    )
+
+    /**
+     * A stateful `index_meta` and a listing of {@link paths}; `onRead` sees
+     * every note read so a test can interrupt the pass partway.
+     */
+    function serveVault(initialMeta: Record<string, string>, onRead?: (path: string) => void) {
+      const meta = new Map(Object.entries(initialMeta))
+      const reads: string[] = []
+      const fallback = mockInvoke.getMockImplementation()!
+      mockInvoke.mockImplementation(async (command, args) => {
+        if (command === 'list_files') {
+          return [...paths].reverse().map((path) => ({ path, size: 1, modifiedMs: 5 }))
+        }
+        if (command === 'note_read') {
+          const path = String(args['path'])
+          reads.push(path)
+          onRead?.(path)
+          return `# ${path}\n`
+        }
+        if (command === 'index_meta_set') {
+          meta.set(String(args['key']), String(args['value']))
+          return null
+        }
+        if (command === 'index_reconcile_scan') {
+          return { total: paths.length, candidates: [], orphans: [], stalePlaceholders: [] }
+        }
+        if (command === 'db_query' && String(args['sql']).includes('index_meta')) {
+          const value = meta.get(String((args['params'] as unknown[])[0]))
+          return value === undefined ? [] : [{ value }]
+        }
+        if (command === 'db_query' && String(args['sql']).includes('"file_hash"')) {
+          return paths.map((path) => ({ path, file_hash: 'old', mtime: 5 }))
+        }
+        return await fallback(command, args)
+      })
+      return { meta, reads }
+    }
+
+    it('continues after the last checkpoint instead of re-reading the whole vault', async () => {
+      const older = { [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION - 1) }
+      const controller = new AbortController()
+      // iOS suspends the app partway through the third stretch of notes.
+      const cut = paths[REPROJECT_CHECKPOINT_EVERY * 2 + 3]!
+      const first = serveVault(older, (path) => {
+        if (path === cut) controller.abort()
+      })
+      await syncIndex({ generation: 3, signal: controller.signal })
+
+      expect(first.meta.get(PROJECTION_VERSION_KEY)).toBe(String(PROJECTION_VERSION - 1))
+      const checkpoint = JSON.parse(first.meta.get(REPROJECT_CHECKPOINT_KEY)!)
+      expect(checkpoint).toEqual({
+        stamp: String(PROJECTION_VERSION),
+        after: paths[REPROJECT_CHECKPOINT_EVERY * 2 - 1],
+      })
+
+      mockInvoke.mockClear()
+      const progress: Array<[number, number, number, boolean]> = []
+      const second = serveVault(Object.fromEntries(first.meta))
+      await syncIndex({
+        generation: 4,
+        onFileProgress: (...args) => {
+          progress.push(args)
+        },
+      })
+
+      // Only the notes after the checkpoint are read again.
+      expect(second.reads).toEqual(paths.slice(REPROJECT_CHECKPOINT_EVERY * 2))
+      expect(second.meta.get(PROJECTION_VERSION_KEY)).toBe(String(PROJECTION_VERSION))
+      expect(second.meta.get(REPROJECT_CHECKPOINT_KEY)).toBe('')
+      // The skipped prefix is checked by a reconcile, which reads only what
+      // changed there while the app was closed.
+      const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
+      expect(commands).toContain('index_reconcile_scan')
+      // The previous rows kept answering throughout: nothing to announce.
+      expect(progress).toContainEqual([paths.length, paths.length, 10, false])
+      expect(progress.every(([, , , fromEmpty]) => !fromEmpty)).toBe(true)
+      // Rows of the prefix are kept, not dropped as unlisted.
+      expect(commands).not.toContain('index_remove_batch')
+    })
+
+    it('ignores a checkpoint written for another projection', async () => {
+      const { reads, meta } = serveVault({
+        [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION - 1),
+        [REPROJECT_CHECKPOINT_KEY]: JSON.stringify({
+          stamp: String(PROJECTION_VERSION - 1),
+          after: paths[100],
+        }),
+      })
+      await syncIndex({ generation: 3 })
+      expect(reads).toEqual(paths)
+      expect(meta.get(PROJECTION_VERSION_KEY)).toBe(String(PROJECTION_VERSION))
+    })
+
+    it('reports a first index as filling from empty, so the pill can show', async () => {
+      serveVault({})
+      const fromEmpty: boolean[] = []
+      await syncIndex({
+        generation: 3,
+        onFileProgress: (_done, _total, _worked, empty) => {
+          fromEmpty.push(empty)
+        },
+      })
+      expect(new Set(fromEmpty)).toEqual(new Set([true]))
+    })
+
+    it('a manual rebuild drops the checkpoint before it wipes', async () => {
+      const { meta } = serveVault({
+        [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION),
+        [REPROJECT_CHECKPOINT_KEY]: JSON.stringify({
+          stamp: String(PROJECTION_VERSION),
+          after: paths[100],
+        }),
+      })
+      const controller = new AbortController()
+      mockInvoke.mockClear()
+      const fallback = mockInvoke.getMockImplementation()!
+      mockInvoke.mockImplementation(async (command, args) => {
+        if (command === 'index_clear') controller.abort()
+        return await fallback(command, args)
+      })
+      await rebuildIndex({ generation: 3, signal: controller.signal })
+      expect(meta.get(REPROJECT_CHECKPOINT_KEY)).toBe('')
     })
   })
 

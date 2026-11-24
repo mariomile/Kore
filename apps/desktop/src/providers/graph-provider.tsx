@@ -106,7 +106,8 @@ export function GraphProvider({
       // sync — the throttled variant collapses them to one refetch round per
       // window (an isolated batch still invalidates immediately).
       onApplied: throttledInvalidateIndexQueries,
-      onFileProgress: (done, total, worked) => setIndexProgress({ done, total, worked }),
+      onFileProgress: (done, total, worked, fromEmpty) =>
+        setIndexProgress({ done, total, worked, fromEmpty }),
       // External renames healed by id follow through to sessions and routes,
       // exactly as for an in-app rename (Plan 17).
       onMoved: followHealedMove,

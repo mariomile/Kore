@@ -28,6 +28,12 @@ import {
 import { detectExternalMoves } from './move-healing'
 import { createPassPacer, INDEX_PASS_YIELD_EVERY } from './pacing'
 import { getIndexedFileFacts, getIndexMeta, isProjectionCurrent } from './queries'
+import {
+  clearReprojectCheckpoint,
+  readReprojectCheckpoint,
+  REPROJECT_CHECKPOINT_EVERY,
+  writeReprojectCheckpoint,
+} from './reproject-checkpoint'
 import { refreshTagTypeResolutionsSafely } from './resolved-tag-types'
 
 /**
@@ -177,8 +183,14 @@ export interface IndexPassOptions {
    * first index from a routine repeat pass that skips everything — the
    * progress UI must gate on it, or a healthy sub-second pass flashes a
    * "preparing" surface on every open.
+   *
+   * `fromEmpty` is true only while the pass fills an index that has no
+   * complete projection to answer from (a first index, or a wipe). A refresh
+   * over existing rows (a projection bump, a reconcile) passes false: the
+   * previous rows keep serving lists, search and backlinks, so the app is
+   * usable and nothing needs to announce the pass.
    */
-  onFileProgress?: (done: number, total: number, worked: number) => void
+  onFileProgress?: (done: number, total: number, worked: number, fromEmpty: boolean) => void
   /**
    * Called (at most once per pass, non-empty) with iCloud-evicted notes whose
    * content the index lacks: files the pass had to skip unread — a reconcile's
@@ -201,7 +213,19 @@ export interface IndexPassOptions {
  * continuing to hold SQLite locks in the background.
  */
 export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
-  await reprojectAllNotes(options, 'wipe')
+  await reprojectAllNotes(options, { mode: 'wipe', fromEmpty: true })
+}
+
+/** How a full re-derivation treats the rows that were there before. */
+interface ReprojectPlan {
+  readonly mode: 'wipe' | 'inPlace'
+  /** Whether the index lacks a complete projection to serve meanwhile. */
+  readonly fromEmpty: boolean
+  /**
+   * Resume an interrupted pass: listed notes sorting at or before this path
+   * already carry the current projection and are not read again.
+   */
+  readonly resumeAfter?: string
 }
 
 /**
@@ -220,14 +244,17 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
  * dropped at the end. Only safe from a *stamped* index, whose rows are a
  * complete, merely outdated projection. The stamp stays stale until the pass
  * completes, so readers gated on `isProjectionCurrent` keep treating the
- * index as not current, and an interrupted pass simply runs again on the
- * next open.
+ * index as not current. An interrupted pass of either mode picks up on the
+ * next open after its last checkpoint (see `reproject-checkpoint.ts`), so a
+ * vault iOS keeps suspending still finishes instead of starting over.
  */
-async function reprojectAllNotes(
-  options: IndexPassOptions,
-  mode: 'wipe' | 'inPlace',
-): Promise<void> {
-  const { generation, onSkippedNote, onFileProgress, onStalePlaceholders } = options
+async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan): Promise<void> {
+  const { generation, onSkippedNote, onStalePlaceholders } = options
+  const { mode, fromEmpty, resumeAfter } = plan
+  const onFileProgress = options.onFileProgress
+    ? (done: number, total: number, worked: number): void =>
+        options.onFileProgress?.(done, total, worked, fromEmpty)
+    : undefined
   if (options.signal?.aborted) {
     return // don't wipe the current index for an already-cancelled pass
   }
@@ -237,7 +264,13 @@ async function reprojectAllNotes(
       return
     }
   }
-  const files = await listFiles()
+  // A fixed order is what makes the checkpoint meaningful: "every note up to
+  // this path is done" holds across launches only if the walk is the same.
+  const files = (await listFiles()).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+  const stamp = projectionStamp()
+  let sinceCheckpoint = 0
+  /** Whether a checkpoint for this projection is stored and must be cleared. */
+  let checkpointed = resumeAfter !== undefined
   let skipped = false
   const reportSkipped = onSkippedNote
     ? (note: SkippedIndexedNote): void => {
@@ -273,6 +306,9 @@ async function reprojectAllNotes(
       continue
     }
     kept.add(file.path)
+    if (resumeAfter !== undefined && file.path <= resumeAfter) {
+      continue // re-derived by the interrupted pass this one resumes
+    }
     worked += 1
     let projection: IndexedNote
     try {
@@ -293,6 +329,18 @@ async function reprojectAllNotes(
       return
     }
     await batch.add(projection)
+    sinceCheckpoint += 1
+    // Once a note has been skipped, stop advancing: the next run must
+    // retry it, so it has to resume from before it.
+    if (sinceCheckpoint >= REPROJECT_CHECKPOINT_EVERY && !skipped) {
+      sinceCheckpoint = 0
+      await batch.flush()
+      if (options.signal?.aborted || skipped) {
+        return
+      }
+      await writeReprojectCheckpoint({ stamp, after: file.path }, generation)
+      checkpointed = true
+    }
   }
   if (options.signal?.aborted) {
     return
@@ -316,7 +364,10 @@ async function reprojectAllNotes(
   // generation, which Rust drops: the next open then rebuilds again, which is
   // the safe direction to fail in.
   if (!skipped) {
-    await setIndexMeta(PROJECTION_VERSION_KEY, projectionStamp(), generation)
+    await setIndexMeta(PROJECTION_VERSION_KEY, stamp, generation)
+    if (checkpointed) {
+      await clearReprojectCheckpoint(generation)
+    }
   }
 }
 
@@ -334,6 +385,9 @@ async function beginWipe({ generation }: IndexPassOptions): Promise<void> {
   // back at the end, so a pass cancelled midway leaves the projection honestly
   // marked stale instead of reconciling into a hole.
   await setIndexMeta(PROJECTION_VERSION_KEY, '', generation)
+  // A wipe starts over: an earlier pass's progress no longer describes rows,
+  // and resuming from it after an interruption would skip a wiped prefix.
+  await clearReprojectCheckpoint(generation)
   await clearIndex(generation)
 }
 
@@ -384,6 +438,27 @@ async function syncNotes(options: IndexPassOptions): Promise<void> {
   // complete projection to keep serving, so it rebuilds from empty; a stamped
   // one is refreshed over its rows.
   const hasRows = stamped !== null && stamped !== ''
+  const checkpoint = await readReprojectCheckpoint()
+  if (checkpoint !== null) {
+    // An earlier pass toward this very projection was interrupted (iOS
+    // suspends the app as soon as it leaves the foreground). Its prefix is
+    // done: continue after it, over the rows, whether that pass began with a
+    // wipe or not. The skipped prefix is not re-read, so anything that
+    // changed there while the app was closed is caught by the reconcile that
+    // follows, which reads only those files.
+    console.warn(
+      `index: resuming the projection ${checkpoint.stamp} pass after "${checkpoint.after}"`,
+    )
+    await reprojectAllNotes(options, {
+      mode: 'inPlace',
+      fromEmpty: !hasRows,
+      resumeAfter: checkpoint.after,
+    })
+    if (options.signal?.aborted !== true && (await isProjectionCurrent())) {
+      await reconcileIndex(options)
+    }
+    return
+  }
   // Loud on purpose: a rebuild is expected once per projection bump or fresh
   // graph. Seeing this on *every* open means the stamp (or the whole index
   // file) isn't persisting between launches — a pathology that would
@@ -391,7 +466,10 @@ async function syncNotes(options: IndexPassOptions): Promise<void> {
   console.warn(
     `index: stored projection version ${stamped === null ? 'none' : `"${stamped}"`} ≠ ${projectionStamp()} — ${hasRows ? 'refreshing every note in place' : 'full rebuild'}`,
   )
-  return await reprojectAllNotes(options, hasRows ? 'inPlace' : 'wipe')
+  return await reprojectAllNotes(options, {
+    mode: hasRows ? 'inPlace' : 'wipe',
+    fromEmpty: !hasRows,
+  })
 }
 
 /**
@@ -489,7 +567,7 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
     }
     done += 1
     if (done % INDEX_PASS_YIELD_EVERY === 0) {
-      onFileProgress?.(done, total, worked)
+      onFileProgress?.(done, total, worked, false)
     }
     await pacer.pause()
     const stored = facts.get(candidate.path)
@@ -545,7 +623,7 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
     return
   }
   await touches.flush()
-  onFileProgress?.(total, total, worked)
+  onFileProgress?.(total, total, worked, false)
 
   const removalPaths = [...removals.keys()]
   for (let offset = 0; offset < removalPaths.length; offset += INDEX_PATH_BATCH_SIZE) {

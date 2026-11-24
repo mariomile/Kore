@@ -18,6 +18,13 @@ export interface IndexProgress {
    * and must never surface, no matter how large the graph.
    */
   readonly worked: number
+  /**
+   * Whether the index has no complete projection to answer from while the
+   * pass runs (a first index, or a wipe). When false, the previous rows keep
+   * serving lists, search and backlinks, so the app is fully usable and the
+   * pass stays out of sight.
+   */
+  readonly fromEmpty: boolean
 }
 
 let current: IndexProgress | null = null
@@ -28,7 +35,8 @@ export function setIndexProgress(progress: IndexProgress | null): void {
   if (
     progress?.done === current?.done &&
     progress?.total === current?.total &&
-    progress?.worked === current?.worked
+    progress?.worked === current?.worked &&
+    progress?.fromEmpty === current?.fromEmpty
   ) {
     return
   }

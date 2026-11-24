@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import { getBridge, setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
-import { looseFiles } from './loose-files'
+import { looseFiles, looseFilesAffectedBy } from './loose-files'
 
 /** A folder page's loose-file cards, against the real `assets` projection. */
 let database: DatabaseSync
@@ -66,5 +66,15 @@ describe('looseFiles', () => {
   it('never counts the attachment folder', async () => {
     catalog([['assets/pasted.png', 1]])
     expect(await looseFiles('', true)).toEqual([])
+  })
+})
+
+describe('looseFilesAffectedBy', () => {
+  it('names a batch that touches a file in the folder', () => {
+    const change = (path: string) => ({ path, kind: 'upsert' as const, modifiedMs: 1 })
+    expect(looseFilesAffectedBy([change('Studio/deck.pdf')], 'Studio', false)).toBe(true)
+    expect(looseFilesAffectedBy([change('Studio/Sub/deck.pdf')], 'Studio', false)).toBe(false)
+    expect(looseFilesAffectedBy([change('Studio/Sub/deck.pdf')], 'Studio', true)).toBe(true)
+    expect(looseFilesAffectedBy([change('Studio/brief.md')], 'Studio', true)).toBe(false)
   })
 })

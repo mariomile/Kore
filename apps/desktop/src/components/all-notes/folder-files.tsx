@@ -1,6 +1,12 @@
-import { memo, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { looseFiles, type LooseFile, type LooseFileKind } from '@kore/core'
+import { memo, useEffect, useState, type ReactElement } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  looseFiles,
+  looseFilesAffectedBy,
+  subscribeIndexApplied,
+  type LooseFile,
+  type LooseFileKind,
+} from '@kore/core'
 import {
   Archive,
   Image,
@@ -29,6 +35,14 @@ interface FolderFilesProps {
 
 const NO_FILES: readonly LooseFile[] = []
 
+function looseFilesQueryKey(
+  root: string | undefined,
+  folder: string,
+  includeSubfolders: boolean,
+): readonly unknown[] {
+  return [INDEX_QUERY_SCOPE, root, 'loose-files', folder, includeSubfolders]
+}
+
 const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   image: Image,
   pdf: Note,
@@ -53,11 +67,31 @@ export function FolderFiles({
 }: FolderFilesProps): ReactElement | null {
   const { graph } = useGraph()
   const resolve = usePassiveImageResolver()
+  const generation = graph?.generation
+  const root = graph?.root
   const { data: files = NO_FILES } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'loose-files', folder, includeSubfolders],
-    queryFn: () => looseFiles(folder, includeSubfolders),
-    enabled: graph !== null && graph !== undefined,
+    queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
+    queryFn: () => looseFiles(folder, includeSubfolders, generation),
+    enabled: generation !== undefined,
   })
+  // The index queries refresh when notes change; a file added, changed or
+  // removed here changes no note, so the cards listen for it themselves.
+  const queryClient = useQueryClient()
+  useEffect(
+    () =>
+      subscribeIndexApplied((changes, appliedGeneration) => {
+        if (
+          appliedGeneration === generation &&
+          looseFilesAffectedBy(changes, folder, includeSubfolders)
+        ) {
+          void queryClient.invalidateQueries({
+            queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
+            exact: true,
+          })
+        }
+      }),
+    [queryClient, root, generation, folder, includeSubfolders],
+  )
   if (files.length === 0) {
     return null
   }

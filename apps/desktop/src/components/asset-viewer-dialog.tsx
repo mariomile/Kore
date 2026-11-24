@@ -25,7 +25,8 @@ export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
   if (/\.(?:txt|markdown|md|log|json)$/i.test(assetPath)) {
     return 'text'
   }
-  if (/\.(?:avif|bmp|gif|heic|jpe?g|png|webp)$/i.test(assetPath)) {
+  // HEIC stays with the OS: the webviews Kore runs in can't all draw it.
+  if (/\.(?:avif|bmp|gif|jpe?g|png|webp)$/i.test(assetPath)) {
     return 'image'
   }
   return null

@@ -604,6 +604,7 @@ export {
   searchWithFilters,
   firstImageAssets,
   looseFiles,
+  looseFilesAffectedBy,
   type LooseFile,
   type LooseFileKind,
   type IndexedNote,

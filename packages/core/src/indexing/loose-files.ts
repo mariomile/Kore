@@ -1,5 +1,6 @@
 import { listAttachments } from '../graph/commands'
-import { ASSETS_DIR } from '../graph/paths'
+import { ASSETS_DIR, isAttachmentPath } from '../graph/paths'
+import type { FileChange } from './file-changes'
 import { getVaultLayout } from '../graph/vault-layout'
 import { db } from './db'
 
@@ -117,11 +118,16 @@ function referenceSpellings(path: string): [string, string] {
  * A folder page shows them as cards beside its notes. One catalog read (the
  * host keeps the vault's file catalog) and one indexed query per batch.
  * A bare-name reference counts for every file with that name, so a file is
- * never shown as loose while a note may embed it.
+ * never shown as loose while a note may embed it. `generation` pins the
+ * catalog read to the graph that asked, as every vault read is.
  */
-export async function looseFiles(folder: string, includeSubfolders: boolean): Promise<LooseFile[]> {
+export async function looseFiles(
+  folder: string,
+  includeSubfolders: boolean,
+  generation?: number,
+): Promise<LooseFile[]> {
   const excluded = attachmentFolders()
-  const candidates = (await listAttachments()).filter((file) => {
+  const candidates = (await listAttachments(generation)).filter((file) => {
     const extension = extensionOf(file.path)
     return (
       !VIEW_EXTENSIONS.has(extension) &&
@@ -159,4 +165,20 @@ export async function looseFiles(folder: string, includeSubfolders: boolean): Pr
       }
     })
     .sort((a, b) => b.modifiedMs - a.modifiedMs || a.path.localeCompare(b.path))
+}
+
+/**
+ * Can a watcher batch have changed a folder's loose files? Only a file
+ * appearing, changing or going in it can: the batch's note changes move the
+ * index, and the index queries refresh on their own.
+ */
+export function looseFilesAffectedBy(
+  changes: readonly FileChange[],
+  folder: string,
+  includeSubfolders: boolean,
+): boolean {
+  return changes.some(
+    (change) =>
+      isAttachmentPath(change.path) && underFolder(change.path, folder, includeSubfolders),
+  )
 }

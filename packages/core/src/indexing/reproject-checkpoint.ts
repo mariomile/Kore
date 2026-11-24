@@ -5,8 +5,10 @@ import { getIndexMeta } from './queries'
 
 /**
  * The `index_meta` key recording how far an unfinished full re-derivation
- * got: `{ stamp, after }`, where every listed note sorting at or before
- * `after` already carries the projection `stamp` names. Without it, a pass
+ * got: `{ stamp, after, evicted }`, where every listed note sorting at or
+ * before `after` already carries the projection `stamp` names, except the
+ * `evicted` ones: iCloud placeholders that pass could not read, which keep
+ * their old row and must be read on resume once they have materialized. Without it, a pass
  * that iOS suspends (the app goes to the background, or is killed) starts
  * over from the first note on the next open, so on a vault of a few thousand
  * notes the iPhone re-read the whole vault on every launch and could never
@@ -17,9 +19,13 @@ export const REPROJECT_CHECKPOINT_KEY = 'reproject_checkpoint'
 /** Listed notes re-derived between two checkpoint writes. */
 export const REPROJECT_CHECKPOINT_EVERY = 256
 
-const checkpointSchema = z.object({ stamp: z.string(), after: z.string() })
+const checkpointSchema = z.object({
+  stamp: z.string(),
+  after: z.string(),
+  evicted: z.array(z.string()).default([]),
+})
 
-export type ReprojectCheckpoint = z.infer<typeof checkpointSchema>
+export type ReprojectCheckpoint = z.output<typeof checkpointSchema>
 
 /**
  * The stored checkpoint, only when it was written for the current

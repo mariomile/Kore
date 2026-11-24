@@ -33,6 +33,7 @@ import {
   readReprojectCheckpoint,
   REPROJECT_CHECKPOINT_EVERY,
   writeReprojectCheckpoint,
+  type ReprojectCheckpoint,
 } from './reproject-checkpoint'
 import { refreshTagTypeResolutionsSafely } from './resolved-tag-types'
 
@@ -222,10 +223,11 @@ interface ReprojectPlan {
   /** Whether the index lacks a complete projection to serve meanwhile. */
   readonly fromEmpty: boolean
   /**
-   * Resume an interrupted pass: listed notes sorting at or before this path
-   * already carry the current projection and are not read again.
+   * Resume an interrupted pass from its checkpoint: listed notes sorting at
+   * or before `after` already carry the current projection and are not read
+   * again, except the `evicted` ones that pass could not read.
    */
-  readonly resumeAfter?: string
+  readonly resume?: ReprojectCheckpoint
 }
 
 /**
@@ -250,7 +252,7 @@ interface ReprojectPlan {
  */
 async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan): Promise<void> {
   const { generation, onSkippedNote, onStalePlaceholders } = options
-  const { mode, fromEmpty, resumeAfter } = plan
+  const { mode, fromEmpty, resume } = plan
   const onFileProgress = options.onFileProgress
     ? (done: number, total: number, worked: number): void =>
         options.onFileProgress?.(done, total, worked, fromEmpty)
@@ -270,7 +272,9 @@ async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan)
   const stamp = projectionStamp()
   let sinceCheckpoint = 0
   /** Whether a checkpoint for this projection is stored and must be cleared. */
-  let checkpointed = resumeAfter !== undefined
+  let checkpointed = resume !== undefined
+  /** Prefix notes the interrupted pass had to skip as evicted placeholders. */
+  const unreadInPrefix = new Set(resume?.evicted)
   let skipped = false
   const reportSkipped = onSkippedNote
     ? (note: SkippedIndexedNote): void => {
@@ -306,7 +310,7 @@ async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan)
       continue
     }
     kept.add(file.path)
-    if (resumeAfter !== undefined && file.path <= resumeAfter) {
+    if (resume !== undefined && file.path <= resume.after && !unreadInPrefix.has(file.path)) {
       continue // re-derived by the interrupted pass this one resumes
     }
     worked += 1
@@ -338,7 +342,9 @@ async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan)
       if (options.signal?.aborted || skipped) {
         return
       }
-      await writeReprojectCheckpoint({ stamp, after: file.path }, generation)
+      // The placeholders seen so far all sort at or before this note: the
+      // resumed pass reads them if they have materialized by then.
+      await writeReprojectCheckpoint({ stamp, after: file.path, evicted }, generation)
       checkpointed = true
     }
   }
@@ -452,7 +458,7 @@ async function syncNotes(options: IndexPassOptions): Promise<void> {
     await reprojectAllNotes(options, {
       mode: 'inPlace',
       fromEmpty: !hasRows,
-      resumeAfter: checkpoint.after,
+      resume: checkpoint,
     })
     if (options.signal?.aborted !== true && (await isProjectionCurrent())) {
       await reconcileIndex(options)

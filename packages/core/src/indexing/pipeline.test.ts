@@ -500,13 +500,22 @@ describe('syncIndex', () => {
      * A stateful `index_meta` and a listing of {@link paths}; `onRead` sees
      * every note read so a test can interrupt the pass partway.
      */
-    function serveVault(initialMeta: Record<string, string>, onRead?: (path: string) => void) {
+    function serveVault(
+      initialMeta: Record<string, string>,
+      onRead?: (path: string) => void,
+      placeholders: ReadonlySet<string> = new Set(),
+    ) {
       const meta = new Map(Object.entries(initialMeta))
       const reads: string[] = []
       const fallback = mockInvoke.getMockImplementation()!
       mockInvoke.mockImplementation(async (command, args) => {
         if (command === 'list_files') {
-          return [...paths].reverse().map((path) => ({ path, size: 1, modifiedMs: 5 }))
+          return [...paths].reverse().map((path) => ({
+            path,
+            size: 1,
+            modifiedMs: 5,
+            ...(placeholders.has(path) ? { placeholder: true } : {}),
+          }))
         }
         if (command === 'note_read') {
           const path = String(args['path'])
@@ -548,6 +557,7 @@ describe('syncIndex', () => {
       expect(checkpoint).toEqual({
         stamp: String(PROJECTION_VERSION),
         after: paths[REPROJECT_CHECKPOINT_EVERY * 2 - 1],
+        evicted: [],
       })
 
       mockInvoke.mockClear()
@@ -573,6 +583,31 @@ describe('syncIndex', () => {
       expect(progress.every(([, , , fromEmpty]) => !fromEmpty)).toBe(true)
       // Rows of the prefix are kept, not dropped as unlisted.
       expect(commands).not.toContain('index_remove_batch')
+    })
+
+    it('reads a prefix note on resume that was an evicted placeholder before', async () => {
+      const evicted = paths[10]!
+      const older = { [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION - 1) }
+      const controller = new AbortController()
+      const cut = paths[REPROJECT_CHECKPOINT_EVERY + 3]!
+      const first = serveVault(
+        older,
+        (path) => {
+          if (path === cut) controller.abort()
+        },
+        new Set([evicted]),
+      )
+      await syncIndex({ generation: 3, signal: controller.signal })
+      expect(JSON.parse(first.meta.get(REPROJECT_CHECKPOINT_KEY)!)).toMatchObject({
+        evicted: [evicted],
+      })
+
+      // It has materialized since: its old row must not survive the resume.
+      const second = serveVault(Object.fromEntries(first.meta))
+      await syncIndex({ generation: 4 })
+      // The first checkpoint lands after 256 *read* notes, one past index 255
+      // because the placeholder was not read.
+      expect(second.reads).toEqual([evicted, ...paths.slice(REPROJECT_CHECKPOINT_EVERY + 1)])
     })
 
     it('ignores a checkpoint written for another projection', async () => {

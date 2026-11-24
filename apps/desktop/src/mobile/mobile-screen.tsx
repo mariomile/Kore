@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { foldTag } from '@kore/core'
 import { BaseScreen } from '@/components/bases/base-screen'
 import { CanvasScreen } from '@/components/canvas/canvas-screen'
+import { HtmlFileScreen } from '@/components/html-file/html-file-screen'
 import { useToday } from '@/lib/use-today'
 import { MobileTypePage } from '@/mobile/collection/mobile-type-page'
 import { MobileAllNotes } from '@/mobile/screens/all-notes'
@@ -74,6 +75,8 @@ export function MobileScreen({
       return <BaseScreen key={route.path ?? 'bases'} path={route.path} view={route.view} />
     case 'canvas':
       return <CanvasScreen key={route.path ?? 'canvases'} path={route.path} />
+    case 'html':
+      return <HtmlFileScreen key={route.path} path={route.path} />
     case 'allNotes':
       // A tag's route is its type page (the collection); every other
       // filter is the Notes tab.

@@ -6,6 +6,7 @@ import {
   displayNoteTitle,
   folderDisplayName,
   getNote,
+  htmlDisplayName,
   isUntitledNotePath,
   libraryFileTitle,
   listChatConversations,
@@ -114,6 +115,8 @@ export function useOpenTabItems(): OpenTabItem[] {
             tab,
             title: `Graph · ${displayNoteTitle(openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)))}`,
           }
+        case 'html':
+          return { tab, title: htmlDisplayName(tab.path) }
         case 'library':
           return { tab, title: libraryFileTitle(tab.path) }
         case 'surface':

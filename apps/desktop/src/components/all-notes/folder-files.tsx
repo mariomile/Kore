@@ -1,6 +1,8 @@
 import { memo, useEffect, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  htmlDisplayName,
+  htmlPageUrl,
   looseFiles,
   looseFilesAffectedBy,
   subscribeIndexApplied,
@@ -9,6 +11,7 @@ import {
 } from '@kore/core'
 import {
   Archive,
+  Globe,
   Image,
   Microphone,
   Note,
@@ -18,6 +21,7 @@ import {
   type Icon,
 } from '@/components/icons'
 import { previewThumbnailUrl } from '@/editor/preview-image-url'
+import { useHtmlTitle } from '@/hooks/use-html-title'
 import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatBytes } from '@/lib/format-bytes'
 import { cn } from '@/lib/utils'
@@ -46,6 +50,7 @@ function looseFilesQueryKey(
 const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   image: Image,
   pdf: Note,
+  html: Globe,
   document: Note,
   sheet: TableView,
   audio: Microphone,
@@ -57,8 +62,9 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
 /**
  * A folder page's loose files (images, PDFs, documents no note references)
  * as cards beside its subfolders, in the same columns: a picture shows
- * itself, any other file its icon (its type is in the line under the name). A card opens the
- * file in the in-app viewer, or the app the OS picks for it.
+ * itself, an HTML page its own title, any other file its icon (its type is in
+ * the line under the name). A card opens the file in Kore's own viewer, or the
+ * app the OS picks for it.
  */
 export function FolderFiles({
   folder,
@@ -104,6 +110,11 @@ export function FolderFiles({
             <FileCard
               file={file}
               picture={url === null ? undefined : previewThumbnailUrl(url)}
+              pageUrl={
+                file.kind === 'html' && generation !== undefined
+                  ? htmlPageUrl(generation, file.path)
+                  : null
+              }
               onOpen={onOpen}
             />
           </li>
@@ -116,22 +127,34 @@ export function FolderFiles({
 interface FileCardProps {
   file: LooseFile
   picture: string | undefined
+  /** An HTML file's page URL, read for its title; null for any other file. */
+  pageUrl: string | null
   onOpen: (path: string) => void
 }
 
-const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps): ReactElement {
+const FileCard = memo(function FileCard({
+  file,
+  picture,
+  pageUrl,
+  onOpen,
+}: FileCardProps): ReactElement {
   // A picture that fails (a format the card can't draw, a file gone since
   // the catalog listed it) falls back to the file's icon.
   const [failed, setFailed] = useState<string | null>(null)
+  const pageTitle = useHtmlTitle(pageUrl, file.modifiedMs)
+  // A page leads with the title its reader sees; its file name moves under
+  // it. Any other file is its name, with its type under it.
+  const page = file.kind === 'html'
+  const name = page ? (pageTitle ?? htmlDisplayName(file.path)) : file.name
   const type = file.extension === '' ? 'File' : file.extension.toUpperCase()
-  const meta = `${type} · ${formatBytes(file.size)}`
+  const meta = `${page ? file.name : type} · ${formatBytes(file.size)}`
   const KindIcon = KIND_ICON[file.kind]
   const showPicture = picture !== undefined && failed !== picture
   return (
     <div className={GRID_CARD_CLASS}>
       <button
         type="button"
-        aria-label={`${file.name}, ${meta}`}
+        aria-label={`${name}, ${meta}`}
         onClick={() => onOpen(file.path)}
         className={GRID_CARD_BUTTON_CLASS}
       />
@@ -159,8 +182,8 @@ const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps
         )}
       </div>
       <div className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
-        <span className="truncate text-sm font-semibold text-text" title={file.name}>
-          {file.name}
+        <span className="truncate text-sm font-semibold text-text" title={name}>
+          {name}
         </span>
         <span className="text-2xs tabular-nums text-text-secondary">{meta}</span>
       </div>

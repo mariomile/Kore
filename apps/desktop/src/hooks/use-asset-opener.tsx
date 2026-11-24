@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactElement } from 'react'
-import { isBasePath, isCanvasPath } from '@kore/core'
+import { isBasePath, isCanvasPath, isHtmlPath } from '@kore/core'
 import { AssetViewerDialog, opensInAssetViewer } from '@/components/asset-viewer-dialog'
 import { useRouter } from '@/routing/router'
 
@@ -19,8 +19,8 @@ interface AssetOpener {
 
 /**
  * How a vault file opens, wherever it is opened from (a note's file chip, a
- * folder's file card): a `.base` or `.canvas` as Kore's own screen, a file
- * the in-app viewer renders (PDF, HTML, CSV, DOCX, text, images) in that
+ * folder's file card): a `.base`, `.canvas` or HTML page as Kore's own
+ * screen, a file the in-app viewer renders (PDF, CSV, DOCX, text, images) in that
  * viewer, anything else in the app the OS picks. The viewer's "Open
  * externally" keeps the OS path one click away.
  */
@@ -35,6 +35,10 @@ export function useAssetOpener({ resolveUrl, openExternally }: AssetOpenerOption
       }
       if (isCanvasPath(assetPath)) {
         navigate({ kind: 'canvas', path: assetPath })
+        return
+      }
+      if (isHtmlPath(assetPath)) {
+        navigate({ kind: 'html', path: assetPath })
         return
       }
       if (opensInAssetViewer(assetPath)) {

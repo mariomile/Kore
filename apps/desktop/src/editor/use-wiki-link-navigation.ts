@@ -3,6 +3,7 @@ import {
   errorMessage,
   isBasePath,
   isCanvasPath,
+  isHtmlPath,
   noteLinkFragment,
   normalizeWikiTarget,
   resolveAttachmentSource,
@@ -101,6 +102,14 @@ export function useWikiLinkNavigation(
         const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
         if (path !== null) {
           navigate({ kind: 'canvas', path })
+        }
+        return
+      }
+      // `[[report.html]]` opens the page, never a note named after it.
+      if (isHtmlPath(target)) {
+        const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
+        if (path !== null) {
+          navigate({ kind: 'html', path })
         }
         return
       }

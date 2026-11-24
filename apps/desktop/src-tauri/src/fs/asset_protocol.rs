@@ -21,6 +21,11 @@
 //! so an SVG renamed with a raster extension cannot load subresources there.
 //! A note card's picture also adds `kore-thumb`, and gets a small cached JPEG
 //! instead of the original (see `thumbnails.rs`).
+//!
+//! Every response except a PDF carries [`DOCUMENT_POLICY`]: a file opened as
+//! a document (an HTML page, an SVG, XML) runs sandboxed in an opaque origin,
+//! with scripts but no network calls, wherever it is framed or opened. PDFs
+//! are exempt because the webview's PDF plugin does not render sandboxed.
 
 use std::borrow::Cow;
 
@@ -36,6 +41,23 @@ use super::GraphState;
 pub(crate) const SCHEME: &str = "kore-asset";
 const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
 const THUMBNAIL_QUERY: &str = "kore-thumb";
+
+/// The Content-Security-Policy of every served document. `sandbox` without
+/// `allow-same-origin` gives the page an opaque origin: no cookies, storage,
+/// or Tauri IPC (the IPC bridge and its key are injected into the app's main
+/// frame only, and IPC from any other origin is refused). Scripts, styles,
+/// fonts and media may come from the vault or any HTTPS host, so pages made
+/// by AI tools that load a chart or CSS library from a CDN render as their
+/// author saw them; `connect-src 'none'` and `form-action 'none'` stop the
+/// page from sending anything anywhere.
+const DOCUMENT_POLICY: &str = "sandbox allow-scripts; \
+default-src 'none'; \
+script-src 'unsafe-inline' 'unsafe-eval' kore-asset: http://kore-asset.localhost https: data: blob:; \
+style-src 'unsafe-inline' kore-asset: http://kore-asset.localhost https: data:; \
+img-src kore-asset: http://kore-asset.localhost https: data: blob:; \
+font-src kore-asset: http://kore-asset.localhost https: data:; \
+media-src kore-asset: http://kore-asset.localhost https: data: blob:; \
+connect-src 'none'; form-action 'none'; base-uri 'none'";
 
 /// Protocol entry point (`register_asynchronous_uri_scheme_protocol`). Runs
 /// on the webview's calling thread — on WebKit, the app's main thread — so it
@@ -102,16 +124,27 @@ fn response_for<R: Runtime>(
         )
     });
     match served {
-        Ok((mime, bytes)) => Response::builder()
-            .header(header::CONTENT_TYPE, mime)
-            .header(header::CONTENT_LENGTH, bytes.len())
-            .body(Cow::Owned(bytes))
-            .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR)),
+        Ok((mime, bytes)) => {
+            let builder = Response::builder().header(header::CONTENT_LENGTH, bytes.len());
+            let builder = match document_policy(&mime) {
+                Some(policy) => builder.header(header::CONTENT_SECURITY_POLICY, policy),
+                None => builder,
+            };
+            builder
+                .header(header::CONTENT_TYPE, mime)
+                .body(Cow::Owned(bytes))
+                .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR))
+        }
         Err(status) => {
             tracing::warn!(path = request_path, %status, "asset protocol refused a request");
             status_response(status)
         }
     }
+}
+
+/// The sandbox policy a response of type `mime` carries: every type but PDF.
+fn document_policy(mime: &str) -> Option<&'static str> {
+    (mime != "application/pdf").then_some(DOCUMENT_POLICY)
 }
 
 fn has_query_flag(query: Option<&str>, flag: &str) -> bool {
@@ -297,5 +330,24 @@ mod tests {
         let png_mime = MimeType::parse(png_signature, "assets/image.bin");
         assert_eq!(png_mime, "image/png");
         assert!(is_preview_safe_raster_mime(&png_mime));
+    }
+
+    #[test]
+    fn documents_are_sandboxed_without_network_and_pdfs_are_not() {
+        let html_mime = MimeType::parse(b"<!doctype html><script></script>", "Reports/q4.html");
+        let policy = document_policy(&html_mime).expect("an HTML page is sandboxed");
+        assert!(policy.starts_with("sandbox allow-scripts;"));
+        assert!(!policy.contains("allow-same-origin"));
+        assert!(policy.contains("connect-src 'none'"));
+        assert!(policy.contains("form-action 'none'"));
+
+        let svg_mime = MimeType::parse(
+            br#"<svg xmlns="http://www.w3.org/2000/svg"></svg>"#,
+            "a.svg",
+        );
+        assert!(document_policy(&svg_mime).is_some());
+
+        let pdf_mime = MimeType::parse(b"%PDF-1.7", "Reports/q4.pdf");
+        assert_eq!(document_policy(&pdf_mime), None);
     }
 }

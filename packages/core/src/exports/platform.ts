@@ -1,6 +1,7 @@
 export * from '../bases'
 export * from '../vault-compat'
 export * from '../canvas'
+export * from '../html/html-file'
 export * from '../obsidian-import'
 export {
   setBridge,

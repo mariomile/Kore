@@ -26,6 +26,8 @@ export function tabKey(tab: OpenTab): string {
       return `canvas:${tab.path ?? ''}`
     case 'localGraph':
       return `localGraph:${tab.path}`
+    case 'html':
+      return `html:${tab.path}`
     case 'library':
       return `library:${tab.root}:${tab.path}`
     case 'surface':
@@ -102,6 +104,8 @@ export function openTabForRoute(
       return { kind: 'canvas', path: route.path, pinned: false }
     case 'localGraph':
       return { kind: 'localGraph', path: route.path, pinned: false }
+    case 'html':
+      return { kind: 'html', path: route.path, pinned: false }
     case 'library':
       return { kind: 'library', root: route.root, path: route.path, pinned: false }
     case 'tasks':
@@ -131,6 +135,9 @@ export function routeForOpenTab(tab: OpenTab): Route {
   }
   if (tab.kind === 'localGraph') {
     return { kind: 'localGraph', path: tab.path }
+  }
+  if (tab.kind === 'html') {
+    return { kind: 'html', path: tab.path }
   }
   if (tab.kind === 'library') {
     return { kind: 'library', root: tab.root, path: tab.path }

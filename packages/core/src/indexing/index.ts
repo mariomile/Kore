@@ -226,7 +226,6 @@ export { listTagMentions, type TagMention } from './tag-mentions'
 export {
   buildTagTree,
   getTagTree,
-  hasNestedTags,
   splitTypesFromTags,
   type TypeShelfEntry,
   listTagTreeCounts,

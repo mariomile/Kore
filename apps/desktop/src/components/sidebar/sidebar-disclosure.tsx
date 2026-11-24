@@ -83,15 +83,16 @@ export function SidebarDisclosure({
 
   const Chevron = open ? ChevronDown : ChevronRight
   return (
-    <section aria-label={label} className="px-4.5">
-      <div className="group flex items-center gap-1 pt-4">
+    <section aria-label={label} className="px-2">
+      {/* The title starts on the icon column of the rows below (see sidebar-tree-icon). */}
+      <div className="group flex items-center gap-1 pl-3 pr-2.5 pt-4">
         <button
           type="button"
           ref={handle?.ref}
           onClick={toggle}
           aria-expanded={open}
           className={cn(
-            'flex min-w-0 flex-1 items-center text-2xs font-medium leading-5 tracking-wide text-text-muted',
+            'flex min-w-0 flex-1 items-center text-2xs font-medium leading-5 tracking-wide text-text-secondary',
             handle && 'touch-none select-none',
           )}
           {...handle?.listeners}

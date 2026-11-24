@@ -123,6 +123,32 @@ export function seedVisualVault(): VisualVaultSeed {
       '',
       'Late afternoon, long shadows. The orange only works next to the deep teal.',
     ].join('\n'),
+    // A folder of folders (the Projects page): one full of pictures, one
+    // mixing a picture with text, one of text only with a folder inside.
+    'Projects/Studio/Identity.md': [
+      '---',
+      'cover: assets/brand-gradient.png',
+      '---',
+      '# Identity',
+      '',
+      'Gradient wordmark, round sun.',
+    ].join('\n'),
+    'Projects/Studio/Palette.md': ['# Palette', '', '![[assets/moodboard.png]]'].join('\n'),
+    'Projects/Studio/Chairs.md': ['# Chairs', '', '![[Inspiration/chair.png]]'].join('\n'),
+    'Projects/Studio/Brief.md': ['# Brief', '', 'One page, three routes.'].join('\n'),
+    'Projects/Barn/Elevation.md': ['# Elevation', '', '![[assets/barn-south.png]]'].join('\n'),
+    'Projects/Barn/Timber order.md': ['# Timber order', '', 'Oak for the frame.'].join('\n'),
+    'Projects/Reading/Deep Work.md': ['# Deep Work', '', 'Rules for focused success.'].join('\n'),
+    'Projects/Reading/The Design of Everyday Things.md': [
+      '# The Design of Everyday Things',
+      '',
+      'Affordances and signifiers.',
+    ].join('\n'),
+    'Projects/Reading/Archive/Getting Things Done.md': [
+      '# Getting Things Done',
+      '',
+      'Capture.',
+    ].join('\n'),
     'notes/Quarterly Goals.md': [
       '# Quarterly Goals',
       '',

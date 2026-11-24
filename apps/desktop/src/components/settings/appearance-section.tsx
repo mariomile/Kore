@@ -480,6 +480,13 @@ export function AppearanceSection(): ReactElement {
       ) : null}
 
       <SettingsSwitchField
+        legend="Tabs in sidebar"
+        description="Show open tabs as a list in the sidebar instead of the tab bar. With the sidebar collapsed they move back to the bar."
+        checked={settings.sidebarTabs}
+        onCheckedChange={(checked) => updateSettings({ sidebarTabs: checked })}
+      />
+
+      <SettingsSwitchField
         legend="Haptic feedback"
         description="Trackpad knocks when a switch flips, a panel snaps into place, or an action fails. Needs a Force Touch trackpad."
         checked={settings.hapticFeedback}

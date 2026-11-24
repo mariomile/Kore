@@ -157,11 +157,22 @@ afterEach(async () => {
   await page.viewport(900, 600)
 })
 
+/** The rails fade in from their edge on mount; geometry is read once they land. */
+async function railsSettled(): Promise<void> {
+  await Promise.all(
+    document
+      .getAnimations()
+      .filter((animation) => (animation as CSSAnimation).animationName === 'kore-rail-in')
+      .map((animation) => animation.finished),
+  )
+}
+
 describe('WorkspaceContent', () => {
   it('makes Flat panels square and flush with the bottom and right window edges', async () => {
     document.documentElement.setAttribute('data-visual-theme', 'flat')
     document.documentElement.setAttribute('data-theme', 'midnight')
     const view = await render(<WorkspaceContent graph={GRAPH} />)
+    await railsSettled()
     const note = view.getByTestId('note-pane-gutter').element().firstElementChild!
     const context = view.getByTestId('context-pane-gutter').element().firstElementChild!
     expect(getComputedStyle(note).borderRadius).toBe('0px')
@@ -260,6 +271,7 @@ describe('WorkspaceContent', () => {
     workspaceState.collapsed = true
     workspaceState.contextCollapsed = true
     const view = await render(<WorkspaceContent graph={GRAPH} />)
+    await railsSettled()
 
     const card = view.getByTestId('note-pane-gutter').element().firstElementChild
     const leftRail = view.getByTestId('workspace-collapsed-rail').element()

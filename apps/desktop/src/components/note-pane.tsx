@@ -82,6 +82,7 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { useTabsInSidebar } from '@/providers/sidebar-provider'
 import { useRouter } from '@/routing/router'
 
 // A ```collection fence draws a table, board or calendar: the All Notes view
@@ -220,6 +221,7 @@ export function NotePaneComponent({
   // Named by a date or a week, never a title: no title placeholder, no
   // icon or cover editing, no contact suggestion.
   const periodicNote = dailyNote || weeklyWeek !== null
+  const tabsInSidebar = useTabsInSidebar()
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
   const resources = useResourceCollection(generation, path, document.header, saveFile)
@@ -543,7 +545,8 @@ export function NotePaneComponent({
         onCoverChange={editableAppearance?.setCover}
         uploadCover={editableAppearance === null ? undefined : saveFile}
         onCoverPositionChange={editableAppearance?.setCoverPosition}
-        breadcrumbPath={periodicNote ? undefined : path}
+        // With the tabs in the sidebar the bar above already names the folder.
+        breadcrumbPath={periodicNote || tabsInSidebar ? undefined : path}
         flushCover={weeklyWeek === null}
       />
 

@@ -227,6 +227,14 @@ export const sidebarNavSchema = z
     return [...ordered, ...SIDEBAR_NAV_IDS.filter((id) => !ordered.includes(id))]
   })
 
+/**
+ * Whether the open tabs live in the workspace sidebar, as a Tabs shelf above
+ * the others, instead of in the tab strip (Folio-style; Mario, 2026-11-24).
+ * The tabs are only ever in one place: with the sidebar collapsed they go
+ * back to the strip. Off by default.
+ */
+export const sidebarTabsSchema = z.boolean().catch(false)
+
 /** Anything on the sidebar's Home surface the user can hide: a row or a shelf. */
 export type SidebarHideable = SidebarNavItem | SidebarSection
 

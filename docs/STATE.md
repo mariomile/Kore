@@ -1,5 +1,11 @@
 # Kore working state
 
+## Manage folders from iPhone, 2026-11-24 (0.147.0)
+
+- [x] iPhone folder page with folder rows (list) or cards (grid); Move to… for
+  notes and folders with suggested destinations on Mac and iPhone; swipe a
+  note to move it on iPhone (#665).
+
 ## Loose files as cards on folder pages, 2026-11-24 (0.146.0)
 
 - [x] Folder pages list loose files (attachments no note references) as cards

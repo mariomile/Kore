@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Folders: manage folders from iPhone and move notes to a folder (#665).
 - Folders: loose files as cards on a folder page (#658).
 - Sidebar: one left column, one row rhythm, same selection in both themes (#664).
 - Index: resume an interrupted full refresh instead of restarting it; pill

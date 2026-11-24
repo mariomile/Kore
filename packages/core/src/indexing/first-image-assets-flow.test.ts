@@ -30,6 +30,7 @@ describe('firstImageAssets', () => {
       'notes/assets/brief.pdf',
       'assets/brief.pdf',
       'assets/drawing.svg',
+      'assets/cover.heic',
       'notes/assets/face.jpg',
       'assets/face.jpg',
       'assets/second.png',
@@ -39,12 +40,15 @@ describe('firstImageAssets', () => {
     setAttachmentIndex([
       'assets/brief.pdf',
       'assets/drawing.svg',
+      'assets/cover.heic',
       'assets/face.jpg',
       'assets/second.png',
     ])
 
     const images = await firstImageAssets(['notes/person.md', 'notes/plain.md'])
 
+    // A HEIC cover is skipped: the asset protocol would refuse it, and the
+    // card would lose the JPEG it can show.
     expect([...images]).toEqual([['notes/person.md', 'assets/face.jpg']])
   })
 })

@@ -943,7 +943,8 @@ describe('AllNotesScreen grid view', () => {
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
     expect(view.getByText('Updated', { exact: true }).query()).toBeNull()
 
-    await view.getByText('Shop your health goals.').click()
+    // The card's button covers the whole card (all-notes-grid.tsx).
+    await view.getByRole('button', { name: 'Health Stacked' }).click()
     expect(probedRoute(view)).toEqual({ kind: 'note', path: 'notes/health.md' })
     await view.unmount()
   })
@@ -959,7 +960,7 @@ describe('AllNotesScreen grid view', () => {
     await view.unmount()
   })
 
-  it('stretches a body-less card to the height of its taller row neighbor', async () => {
+  it('keeps a body-less card as short as its own content beside a taller one', async () => {
     settingsState.allNotesView = 'grid'
     mockInvoke.mockImplementation(async (command, args) => {
       if (command !== 'db_query') {
@@ -997,8 +998,9 @@ describe('AllNotesScreen grid view', () => {
     expect(cards).toHaveLength(2)
     const tall = cards[0]?.getBoundingClientRect()
     const empty = cards[1]?.getBoundingClientRect()
+    // Masonry: each card is as tall as its note, never stretched to a row.
     expect(tall?.top).toBe(empty?.top)
-    expect(empty?.height).toBe(tall?.height)
+    expect(empty?.height ?? 0).toBeLessThan(tall?.height ?? 0)
     await view.unmount()
   })
 })

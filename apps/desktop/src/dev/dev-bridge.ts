@@ -19,6 +19,8 @@ export interface DevBridgeBackend {
   platform: AppPlatform
   files: DevFileStore
   index: DevIndexDb
+  /** Attachments the vault starts with (base64 by vault path), as if written this session. */
+  assets?: ReadonlyMap<string, string>
 }
 
 const dbQueryArgsSchema = z.object({ sql: z.string(), params: z.array(z.unknown()) })
@@ -107,7 +109,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
     defaultAiProviderId: demoProvider.id,
   }
   let workspaceLayoutDocument: Record<string, unknown> = {}
-  const assets = new Map<string, string>()
+  const assets = new Map<string, string>(backend.assets)
   // The vault-root `.kore.json` (shared integration settings), in memory.
   let vaultSettings: string | null = null
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
@@ -181,7 +183,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           templater: files.read('.obsidian/plugins/templater-obsidian/data.json'),
         }
       case 'list_attachments':
-        return []
+        return [...assets].map(([path, contents]) => ({
+          path,
+          size: Math.floor((contents.length * 3) / 4),
+          modifiedMs: 0,
+        }))
       case 'vault_scan_stats':
         return { notes: files.list().length, attachments: 0, skipped: 0 }
       case 'forget_recent':

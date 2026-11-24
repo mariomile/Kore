@@ -69,6 +69,18 @@ export function stripLeadingHeading(body: string): string {
   return body.replace(/^\s*#[ \t][^\n]*\n?/, '')
 }
 
+/** Whether a trimmed line is made only of `#tag`s the card already shows. */
+function isShownTagLine(line: string, shownTags: readonly string[]): boolean {
+  if (line === '') return false
+  const shown = new Set(shownTags.map(foldTag))
+  return line
+    .split(/\s+/)
+    .every(
+      (token) =>
+        token.startsWith('#') && isTagName(token.slice(1)) && shown.has(foldTag(token.slice(1))),
+    )
+}
+
 /**
  * `body` without a leading line made only of `#tag`s that `shownTags` already
  * carries — the habit of opening a note with its type (`#meeting`), which a
@@ -77,15 +89,23 @@ export function stripLeadingHeading(body: string): string {
  */
 export function stripLeadingTagLine(body: string, shownTags: readonly string[]): string {
   const match = /^\s*([^\n]*)\n?/.exec(body)
-  const line = match?.[1]?.trim() ?? ''
-  if (line === '') return body
-  const shown = new Set(shownTags.map(foldTag))
-  const tokens = line.split(/\s+/)
-  const onlyShownTags = tokens.every(
-    (token) =>
-      token.startsWith('#') && isTagName(token.slice(1)) && shown.has(foldTag(token.slice(1))),
-  )
-  return onlyShownTags ? body.slice(match?.[0].length ?? 0) : body
+  return isShownTagLine(match?.[1]?.trim() ?? '', shownTags)
+    ? body.slice(match?.[0].length ?? 0)
+    : body
+}
+
+/**
+ * `body` without a closing line made only of shown `#tag`s — the other habit,
+ * tagging a note at its end — by the same rule as {@link stripLeadingTagLine}.
+ */
+export function stripTrailingTagLine(body: string, shownTags: readonly string[]): string {
+  // String scans, not a `$`-anchored regex: that retries from every offset
+  // and goes quadratic on a long single paragraph.
+  const end = body.trimEnd().length
+  const lineStart = body.lastIndexOf('\n', end - 1) + 1
+  return isShownTagLine(body.slice(lineStart, end).trim(), shownTags)
+    ? body.slice(0, Math.max(0, lineStart - 1))
+    : body
 }
 
 /**

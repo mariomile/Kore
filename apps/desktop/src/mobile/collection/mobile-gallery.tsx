@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import type { CollectionEntry, TagType } from '@kore/core'
 import { CardPropertyChips } from '@/components/all-notes/card-property-chips'
-import { useFirstImages } from '@/mobile/note-card-grid'
+import { useFirstImages } from '@/hooks/use-note-card-images'
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GALLERY_CHUNK = 60

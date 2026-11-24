@@ -1159,6 +1159,17 @@ html:root {
   mask-composite: intersect;
 }
 
+/* A card that leads with the note's picture (the Mac and phone grids): the
+   band already shows the image, so the body drops every image view. A
+   paragraph that held only an image is left with no line box, so its margins
+   collapse through it instead of leaving a blank line; the empty paragraphs
+   (the stripped title, blank lines) go too. */
+.kore-card-preview-pictured img,
+.kore-card-preview-pictured .md-pack[data-key='image'],
+.kore-card-preview-pictured .kore-editor > p:empty {
+  display: none;
+}
+
 /* The phone grid's card body (mobile/note-card-grid.tsx): the same preview in
    a column half a phone wide. Body text matches the list's snippet size, and
    a table sizes to its words with tight cells (the editor's equal fixed

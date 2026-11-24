@@ -1,5 +1,6 @@
 import { parseFrontmatter, splitFrontmatter } from './frontmatter'
 import type { Frontmatter } from './model'
+import { wikiEmbedAssetPath } from './asset-paths'
 import { wikiEmbedKind } from './note-transclusion'
 
 /**
@@ -113,6 +114,17 @@ export function parseNoteCover(value: unknown): string | null {
     return null
   }
   return target
+}
+
+/**
+ * The vault file a `cover:` names, as the canonical graph-relative path the
+ * asset projection stores, or null for no cover, a remote (http) cover, or a
+ * target that resolves to no safe attachment. Covers are vault-root relative,
+ * like wiki embeds.
+ */
+export function noteCoverAssetPath(value: unknown): string | null {
+  const cover = parseNoteCover(value)
+  return cover === null || HTTP_URL_RE.test(cover) ? null : wikiEmbedAssetPath(cover)
 }
 
 /**

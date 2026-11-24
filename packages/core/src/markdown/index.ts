@@ -103,6 +103,7 @@ export {
   parseNoteAppearance,
   noteIconValue,
   parseNoteAppearanceFromSource,
+  noteCoverAssetPath,
   parseNoteCover,
   parseNoteCoverY,
   DEFAULT_COVER_Y,
@@ -156,6 +157,7 @@ export {
   displayNoteTitle,
   stripLeadingHeading,
   stripLeadingTagLine,
+  stripTrailingTagLine,
   wikiLinkTargetForTitle,
 } from './note-title'
 export { inlineEmbedSnapshots } from './embed-snapshot'

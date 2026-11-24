@@ -6,7 +6,7 @@ import { MobileGallery } from './mobile-gallery'
 
 const COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"/>'
-vi.mock('@/mobile/note-card-grid', () => ({
+vi.mock('@/hooks/use-note-card-images', () => ({
   useFirstImages: () => new Map([['notes/kitchen.md', COVER]]),
 }))
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({

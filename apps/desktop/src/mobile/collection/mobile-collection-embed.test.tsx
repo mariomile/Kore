@@ -11,7 +11,7 @@ import type {
 import { EMBED_PREVIEW_ROWS, MobileCollectionEmbed } from './mobile-collection-embed'
 
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
-vi.mock('@/mobile/note-card-grid', () => ({ useFirstImages: () => new Map() }))
+vi.mock('@/hooks/use-note-card-images', () => ({ useFirstImages: () => new Map() }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => () => {},
   useCommitNoteProperties: () => () => {},

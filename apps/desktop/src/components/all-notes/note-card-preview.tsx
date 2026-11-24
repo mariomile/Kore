@@ -5,6 +5,7 @@ import {
   splitFrontmatter,
   stripLeadingHeading,
   stripLeadingTagLine,
+  stripTrailingTagLine,
 } from '@kore/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useAfterScroll } from '@/hooks/use-after-scroll'
@@ -121,7 +122,10 @@ export function NoteCardPreview({
       // reads as its quoted words rather than its snapshot JSON.
       return truncateAtBlockBoundary(
         inlineEmbedSnapshots(
-          stripLeadingTagLine(stripLeadingHeading(splitFrontmatter(source).body), shownTags),
+          stripTrailingTagLine(
+            stripLeadingTagLine(stripLeadingHeading(splitFrontmatter(source).body), shownTags),
+            shownTags,
+          ),
         ),
         sourceBudget,
       )

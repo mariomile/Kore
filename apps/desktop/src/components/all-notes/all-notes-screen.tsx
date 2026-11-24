@@ -678,6 +678,9 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             ref={setScrollElement}
             data-testid="all-notes-scroll"
             onScroll={onScroll}
+            // Grid cards prepare their previews against this scroller
+            // (use-near-viewport.ts).
+            data-near-viewport-scroller
             className="h-full overflow-auto overscroll-x-none"
           >
             {inbox && notes?.length === 0 ? (

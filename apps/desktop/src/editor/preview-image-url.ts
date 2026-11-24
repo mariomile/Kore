@@ -13,9 +13,17 @@ function isSvgAsset(path: string): boolean {
   return path.toLowerCase().endsWith('.svg')
 }
 
-function previewRasterUrl(url: string): string {
+/**
+ * Append an asset-protocol query flag. A `data:` URL (the plain-browser dev
+ * bridge's assets) has no protocol to read it and a query would corrupt its
+ * payload, so it passes through untouched.
+ */
+function withAssetQueryFlag(url: string, flag: string): string {
+  if (url.startsWith('data:')) {
+    return url
+  }
   const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}kore-preview=raster`
+  return `${url}${separator}${flag}`
 }
 
 interface PassivePreviewImageSource {
@@ -36,6 +44,14 @@ export function passivePreviewImageResolver({
       return null
     }
     const url = resolveImageUrl(assetPath)
-    return url === null ? null : previewRasterUrl(url)
+    return url === null ? null : withAssetQueryFlag(url, 'kore-preview=raster')
   }
+}
+
+/**
+ * A passive preview URL asking for the card-sized thumbnail (a small JPEG the
+ * asset protocol makes once and caches) instead of the original photo.
+ */
+export function previewThumbnailUrl(url: string): string {
+  return withAssetQueryFlag(url, 'kore-thumb')
 }

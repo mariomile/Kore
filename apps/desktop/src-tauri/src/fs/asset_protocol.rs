@@ -19,6 +19,8 @@
 //! Passive previews append `?kore-preview=raster`; those responses are
 //! served only when byte sniffing identifies PNG, JPEG, GIF, or WebP content,
 //! so an SVG renamed with a raster extension cannot load subresources there.
+//! A note card's picture also adds `kore-thumb`, and gets a small cached JPEG
+//! instead of the original (see `thumbnails.rs`).
 
 use std::borrow::Cow;
 
@@ -33,6 +35,7 @@ use super::GraphState;
 /// the in-app PDF/HTML attachment viewer) spell it out literally.
 pub(crate) const SCHEME: &str = "kore-asset";
 const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
+const THUMBNAIL_QUERY: &str = "kore-thumb";
 
 /// Protocol entry point (`register_asynchronous_uri_scheme_protocol`). Runs
 /// on the webview's calling thread — on WebKit, the app's main thread — so it
@@ -47,14 +50,22 @@ pub(crate) fn handle<R: Runtime>(
     let request_path = percent_encoding::percent_decode(&request.uri().path().as_bytes()[1..])
         .decode_utf8_lossy()
         .into_owned();
-    let preview_raster_only = requests_preview_raster(request.uri().query());
+    let preview_raster_only = has_query_flag(request.uri().query(), PREVIEW_RASTER_QUERY);
+    // A thumbnail is a passive preview too: it never serves anything the
+    // raster-only rule would refuse.
+    let thumbnail = preview_raster_only && has_query_flag(request.uri().query(), THUMBNAIL_QUERY);
     let method_allowed = request.method() == tauri::http::Method::GET;
     tauri::async_runtime::spawn_blocking(move || {
         if !method_allowed {
             responder.respond(status_response(StatusCode::METHOD_NOT_ALLOWED));
             return;
         }
-        responder.respond(response_for(&app, &request_path, preview_raster_only));
+        responder.respond(response_for(
+            &app,
+            &request_path,
+            preview_raster_only,
+            thumbnail,
+        ));
     });
 }
 
@@ -62,18 +73,40 @@ fn response_for<R: Runtime>(
     app: &AppHandle<R>,
     request_path: &str,
     preview_raster_only: bool,
+    thumbnail: bool,
 ) -> Response<Cow<'static, [u8]>> {
-    match serve(app, request_path) {
-        Ok((mime, bytes)) => {
-            if preview_raster_only && !is_preview_safe_raster_mime(&mime) {
-                return status_response(StatusCode::UNSUPPORTED_MEDIA_TYPE);
-            }
-            Response::builder()
-                .header(header::CONTENT_TYPE, mime)
-                .header(header::CONTENT_LENGTH, bytes.len())
-                .body(Cow::Owned(bytes))
-                .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR))
+    let served = locate(app, request_path).and_then(|path| {
+        // A cached thumbnail answers without touching the original: it was
+        // only ever written from a file that passed the raster check.
+        let cache_file = thumbnail
+            .then(|| thumbnail_cache_file(app, &path))
+            .flatten();
+        if let Some(bytes) = cache_file
+            .as_deref()
+            .and_then(|file| std::fs::read(file).ok())
+        {
+            return Ok(("image/jpeg".to_owned(), bytes));
         }
+        let (mime, bytes) = read(&path)?;
+        if preview_raster_only && !is_preview_safe_raster_mime(&mime) {
+            return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        }
+        Ok(
+            match cache_file
+                .as_deref()
+                .and_then(|file| super::thumbnails::thumbnail(file, &bytes))
+            {
+                Some(jpeg) => ("image/jpeg".to_owned(), jpeg),
+                None => (mime, bytes),
+            },
+        )
+    });
+    match served {
+        Ok((mime, bytes)) => Response::builder()
+            .header(header::CONTENT_TYPE, mime)
+            .header(header::CONTENT_LENGTH, bytes.len())
+            .body(Cow::Owned(bytes))
+            .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR)),
         Err(status) => {
             tracing::warn!(path = request_path, %status, "asset protocol refused a request");
             status_response(status)
@@ -81,12 +114,18 @@ fn response_for<R: Runtime>(
     }
 }
 
-fn requests_preview_raster(query: Option<&str>) -> bool {
-    query.is_some_and(|query| {
-        query
-            .split('&')
-            .any(|parameter| parameter == PREVIEW_RASTER_QUERY)
-    })
+fn has_query_flag(query: Option<&str>, flag: &str) -> bool {
+    query.is_some_and(|query| query.split('&').any(|parameter| parameter == flag))
+}
+
+/// Where the card thumbnail of `path` is cached, or None without a cache
+/// directory (the original is then served as it is).
+fn thumbnail_cache_file<R: Runtime>(
+    app: &AppHandle<R>,
+    path: &std::path::Path,
+) -> Option<std::path::PathBuf> {
+    let dir = app.path().app_cache_dir().ok()?;
+    super::thumbnails::cache_path(&dir.join("thumbnails"), path)
 }
 
 fn is_preview_safe_raster_mime(mime: &str) -> bool {
@@ -103,23 +142,28 @@ fn status_response(status: StatusCode) -> Response<Cow<'static, [u8]>> {
         .expect("a status-only response always builds")
 }
 
-fn serve<R: Runtime>(
+/// The file a request names, after the generation pin and traversal guard.
+fn locate<R: Runtime>(
     app: &AppHandle<R>,
     request_path: &str,
-) -> Result<(String, Vec<u8>), StatusCode> {
+) -> Result<std::path::PathBuf, StatusCode> {
     let (generation, rel) = parse_request_path(request_path)?;
     let state = app.state::<GraphState>();
     let root = super::root_for_generation(&state, generation).map_err(|_| StatusCode::FORBIDDEN)?;
-    let abs = super::resolve::resolve(&root, rel).map_err(|_| StatusCode::FORBIDDEN)?;
+    super::resolve::resolve(&root, rel).map_err(|_| StatusCode::FORBIDDEN)
+}
+
+/// The file's bytes and sniffed type.
+fn read(path: &std::path::Path) -> Result<(String, Vec<u8>), StatusCode> {
     // On an iCloud graph this read blocks until the file is materialized on
     // the device — acceptable here on the blocking pool, and exactly the wait
     // that must never happen on the UI thread.
-    let bytes = std::fs::read(&abs).map_err(|err| match err.kind() {
+    let bytes = std::fs::read(path).map_err(|err| match err.kind() {
         std::io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
         std::io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     })?;
-    let mime = MimeType::parse(&bytes, rel);
+    let mime = MimeType::parse(&bytes, &path.to_string_lossy());
     Ok((mime, bytes))
 }
 
@@ -227,10 +271,19 @@ mod tests {
 
     #[test]
     fn recognizes_only_the_explicit_preview_raster_query() {
-        assert!(requests_preview_raster(Some("kore-preview=raster")));
-        assert!(requests_preview_raster(Some("cache=1&kore-preview=raster")));
-        assert!(!requests_preview_raster(None));
-        assert!(!requests_preview_raster(Some("kore-preview=svg")));
+        assert!(has_query_flag(
+            Some("kore-preview=raster"),
+            PREVIEW_RASTER_QUERY
+        ));
+        assert!(has_query_flag(
+            Some("cache=1&kore-preview=raster"),
+            PREVIEW_RASTER_QUERY
+        ));
+        assert!(!has_query_flag(None, PREVIEW_RASTER_QUERY));
+        assert!(!has_query_flag(
+            Some("kore-preview=svg"),
+            PREVIEW_RASTER_QUERY
+        ));
     }
 
     #[test]

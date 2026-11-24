@@ -11,7 +11,8 @@ import { lastWholeLineBottom } from '@/lib/whole-lines'
 import { cn } from '@/lib/utils'
 
 /**
- * The height of a phone grid card's preview (mobile/note-card-grid.tsx).
+ * The height of a grid card's preview (the Mac grid, all-notes-grid.tsx, and
+ * the phone's, mobile/note-card-grid.tsx).
  *
  * A card is as tall as the note it shows, and the note is read only near the
  * screen, so a card's height is not known when it mounts. The rule that keeps
@@ -159,6 +160,22 @@ export function CardPreviewSlot({
   const waiter = useRef<Waiter | null>(null)
   const settledRef = useRef(settled)
 
+  // A new note version or column width: the height this mount fixed for the
+  // old one no longer fits, so the box goes back to its content's height
+  // and measures again, in place. A height remembered for the new key is
+  // already on the box (the render's style).
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    if (
+      box !== null &&
+      keptFor.current !== null &&
+      keptFor.current !== heightKey &&
+      !heights.has(heightKey)
+    ) {
+      box.style.height = ''
+    }
+  }, [heightKey])
+
   useLayoutEffect(() => {
     settledRef.current = settled
     const box = boxRef.current
@@ -222,6 +239,7 @@ export function CardPreviewSlot({
   return (
     <div
       ref={setRoot}
+      data-testid="note-card-preview-slot"
       className={cn('overflow-hidden', className)}
       style={height === undefined ? undefined : { height }}
       data-preview-pending={height === undefined ? '' : undefined}

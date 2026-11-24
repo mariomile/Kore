@@ -37,8 +37,13 @@ export async function assetReferencingNotePaths(assetPath: string): Promise<stri
   return rows.map((row) => row.notePath)
 }
 
-/** Raster formats a card thumbnail can show (SVG is excluded on purpose). */
-const THUMBNAIL_EXTENSIONS = new Set(['avif', 'gif', 'heic', 'jpeg', 'jpg', 'png', 'webp'])
+/**
+ * Raster formats a card can show: exactly the ones the asset protocol's
+ * passive-preview check serves (PNG, JPEG, GIF, WebP). SVG is excluded on
+ * purpose, and HEIC/AVIF are refused there, so naming one as a note's picture
+ * would only hide a usable image further down the note.
+ */
+const THUMBNAIL_EXTENSIONS = new Set(['gif', 'jpeg', 'jpg', 'png', 'webp'])
 
 function isThumbnailAsset(assetPath: string): boolean {
   const dot = assetPath.lastIndexOf('.')

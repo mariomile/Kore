@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { NoteCardPicture } from '@/components/all-notes/note-card-picture'
 import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
@@ -15,6 +23,8 @@ import { useSettings } from '@/providers/settings-provider'
 interface NoteCardGridProps {
   rows: NoteRowModel[]
   onOpen: (path: string) => void
+  /** Content that scrolls above the cards (a folder page's title and cards). */
+  leading?: ReactNode
 }
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
@@ -32,7 +42,7 @@ const GRID_CHUNK = 120
  * height (see `card-preview-slot.tsx`), so the grid never moves under the
  * reader.
  */
-export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement {
+export function NoteCardGrid({ rows, onOpen, leading }: NoteCardGridProps): ReactElement {
   const { settings } = useSettings()
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -75,6 +85,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
         paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
       }}
     >
+      {leading}
       <div data-testid="all-notes-grid" className="flex items-start gap-3 px-4 py-4">
         {dealIntoColumns(mountedRows, GRID_COLUMNS).map((column, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col">

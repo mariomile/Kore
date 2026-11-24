@@ -1,6 +1,6 @@
 import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { LayoutGrid, List, Note, SearchOff, SortVertical } from '@/components/icons'
+import { Note, SearchOff, SortVertical } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { hapticImpactLight } from '@/mobile/haptics'
+import { LayoutToggle, type NotesLayout } from '@/mobile/layout-toggle'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
 import {
@@ -28,7 +29,6 @@ import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { AllNotesSortDrawer, allNotesSortSummary } from '@/mobile/all-notes-sort-drawer'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
-import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -113,8 +113,8 @@ export function MobileAllNotes({
   }, [feed, hits, sort])
   const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
-  const view: AllNotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
-  const setView = (next: AllNotesLayout): void => {
+  const view: NotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
+  const setView = (next: NotesLayout): void => {
     hapticImpactLight()
     updateSettings({ allNotesView: next })
   }
@@ -158,7 +158,7 @@ export function MobileAllNotes({
               setSorting(true)
             }}
           />
-          <AllNotesLayoutToggle view={view} onChange={setView} />
+          <LayoutToggle view={view} onChange={setView} />
         </div>
         {pending !== null ? (
           <TagSuggestions
@@ -285,62 +285,6 @@ function Empty({ icon, message }: { icon: ReactElement; message: string }): Reac
     >
       {icon}
       <p className="text-sm">{message}</p>
-    </div>
-  )
-}
-
-/** The Notes tab's two layouts (the same `allNotesView` setting as desktop). */
-type AllNotesLayout = 'list' | 'grid'
-
-interface AllNotesLayoutToggleProps {
-  view: AllNotesLayout
-  onChange: (view: AllNotesLayout) => void
-}
-
-/** Compact list/grid switch — the same labels as desktop so the setting is one. */
-function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
-  const controlRef = useRef<HTMLDivElement | null>(null)
-  const indicatorRef = useRef<HTMLSpanElement | null>(null)
-
-  useSlidingIndicator(controlRef, indicatorRef, view)
-
-  return (
-    <div
-      ref={controlRef}
-      role="group"
-      aria-label="Layout"
-      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
-    >
-      <span
-        ref={indicatorRef}
-        data-sliding-indicator
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
-      />
-      <button
-        type="button"
-        data-sliding-value="list"
-        aria-label="List view"
-        aria-pressed={view === 'list'}
-        onClick={() => onChange('list')}
-        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
-          view === 'list' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
-        }`}
-      >
-        <List aria-hidden className="size-4" />
-      </button>
-      <button
-        type="button"
-        data-sliding-value="grid"
-        aria-label="Grid view"
-        aria-pressed={view === 'grid'}
-        onClick={() => onChange('grid')}
-        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
-          view === 'grid' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
-        }`}
-      >
-        <LayoutGrid aria-hidden className="size-4" />
-      </button>
     </div>
   )
 }

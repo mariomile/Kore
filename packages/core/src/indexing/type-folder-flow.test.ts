@@ -10,7 +10,7 @@ import {
 } from './flow-test-harness'
 import { DEFAULT_VAULT_LAYOUT, setVaultLayout } from '../graph/vault-layout'
 import { getTagType } from './collections'
-import { birthPathForTitle, homePathForTaggedInboxNote } from './note-paths'
+import { birthPathForTitle, homePathForTaggedInboxNote, typeFoldersForNote } from './note-paths'
 import { refreshTagTypeResolutions } from './resolved-tag-types'
 
 /**
@@ -63,6 +63,15 @@ describe('type home folder', () => {
     await expect(
       birthPathForTitle('notes/01abc.md', 'Ada Lovelace', untitled('person'), free),
     ).resolves.toBe('CRM/People/ada-lovelace.md')
+  })
+
+  it('suggests the homes of the types a note is a member of', async () => {
+    addNote('notes/ada.md', untitled('person, book'))
+    addNote('notes/kore.md', untitled('type/project'))
+    addNote('notes/dune.md', '# Dune\n\nReading with #person in mind\n')
+    await expect(typeFoldersForNote('notes/ada.md')).resolves.toEqual(['CRM/People'])
+    await expect(typeFoldersForNote('notes/kore.md')).resolves.toEqual(['Active/Projects/kore'])
+    await expect(typeFoldersForNote('notes/dune.md')).resolves.toEqual([])
   })
 
   it('suffixes around an occupied home the same way as the new-note folder', async () => {

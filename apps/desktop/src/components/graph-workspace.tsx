@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { MoveToDialog } from '@/components/folders/move-to-dialog'
 import type { GraphInfo } from '@kore/core'
 import { PaletteProvider } from '@/components/command-palette/palette-provider'
 import { EnableLocalSyncDialog } from '@/components/enable-local-sync-dialog'
@@ -113,7 +114,12 @@ function WorkspaceProviders({
                     <DeepLinkProvider graph={graph}>
                       <AssetDescribeProvider graph={graph}>
                         <ConnectorSyncProvider graph={graph}>
-                          <ChatProvider graph={graph}>{children}</ChatProvider>
+                          <ChatProvider graph={graph}>
+                            {children}
+                            {/* Window-wide, on the active pane's router: a note
+                              or folder moved from any pane. */}
+                            <MoveToDialog />
+                          </ChatProvider>
                         </ConnectorSyncProvider>
                       </AssetDescribeProvider>
                     </DeepLinkProvider>

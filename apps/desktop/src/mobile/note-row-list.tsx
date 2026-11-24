@@ -1,7 +1,10 @@
-import { useState, type ReactElement } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { Virtualizer } from 'virtua'
+import { useElementHeight } from '@/hooks/use-element-height'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { NoteDeleteDialog } from '@/mobile/note-delete-dialog'
+import type { MoveTarget } from '@/lib/folders/use-folder-operations'
+import { MoveToDrawer } from '@/mobile/move-to-drawer'
 import { NOTE_ROW_HEIGHT, SwipeableNoteRow, type NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -10,6 +13,8 @@ interface NoteRowListProps {
   onOpen: (path: string) => void
   /** Called after a swipe action successfully deletes a row. */
   onDeleted: (path: string) => void
+  /** Content that scrolls above the rows (a folder page's title and cards). */
+  leading?: ReactNode
 }
 
 /**
@@ -18,10 +23,12 @@ interface NoteRowListProps {
  * line is one compact line; the virtualizer measures each) shared by
  * the plain list, the filtered feed, and search results — V1's one row shape.
  */
-export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): ReactElement {
+export function NoteRowList({ rows, onOpen, onDeleted, leading }: NoteRowListProps): ReactElement {
   const { graph } = useGraph()
+  const [leadingHeight, setLeadingElement] = useElementHeight()
   const [revealedPath, setRevealedPath] = useState<string | null>(null)
   const [deletePath, setDeletePath] = useState<string | null>(null)
+  const [moving, setMoving] = useState<MoveTarget | null>(null)
 
   const togglePin = (row: NoteRowModel): void => {
     if (graph !== null) {
@@ -44,7 +51,15 @@ export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): Reac
         }}
         onScroll={() => setRevealedPath(null)}
       >
-        <Virtualizer as="ul" item="li" data={rows} itemSize={NOTE_ROW_HEIGHT} bufferSize={640}>
+        {leading === undefined ? null : <div ref={setLeadingElement}>{leading}</div>}
+        <Virtualizer
+          as="ul"
+          item="li"
+          data={rows}
+          itemSize={NOTE_ROW_HEIGHT}
+          bufferSize={640}
+          startMargin={leadingHeight}
+        >
           {(row) => (
             <SwipeableNoteRow
               key={row.path}
@@ -57,6 +72,10 @@ export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): Reac
               }
               onOpen={() => onOpen(row.path)}
               onTogglePin={() => togglePin(row)}
+              onMove={() => {
+                setRevealedPath(null)
+                setMoving({ kind: 'note', path: row.path })
+              }}
               onDelete={() => {
                 setRevealedPath(null)
                 setDeletePath(row.path)
@@ -78,6 +97,7 @@ export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): Reac
           onDeleted={() => onDeleted(deletePath)}
         />
       ) : null}
+      {moving !== null ? <MoveToDrawer target={moving} onClose={() => setMoving(null)} /> : null}
     </>
   )
 }

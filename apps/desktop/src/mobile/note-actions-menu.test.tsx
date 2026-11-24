@@ -82,6 +82,7 @@ vi.mock('@/components/ui/drawer', async () => {
       return open ? <div {...props}>{children}</div> : null
     },
     DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+    DrawerBody: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   }
 })
 

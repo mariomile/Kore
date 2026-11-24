@@ -30,3 +30,10 @@ export const GRID_CARD_BUTTON_CLASS = 'kore-card-button absolute inset-0 z-[1] r
  */
 export const CARD_SECTION_CLASS =
   'grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-4 pb-8 pl-12 pr-7 pt-2'
+
+/**
+ * The iPhone folder page's card section: the phone grid's two columns and
+ * gutters (`mobile/note-card-grid.tsx`), so folder and file cards line up
+ * with the note cards under them.
+ */
+export const MOBILE_CARD_SECTION_CLASS = 'grid grid-cols-2 gap-3 px-4 pb-3'

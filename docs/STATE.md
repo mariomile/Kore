@@ -5,6 +5,9 @@
 - [x] Folder pages list loose files (attachments no note references) as cards
   with a thumbnail or type sheet, name and size; opening shares the note file
   chip's dispatch; the viewer shows images whole. Mac (#658).
+- [x] Sidebar: one left column, icon-to-chevron, 28px shelf rows and 30px
+  nav, readable section titles, same selection in both themes, press
+  feedback. Mac (#664).
 
 ## Resumable index refresh, 2026-11-24 (0.145.1)
 

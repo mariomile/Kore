@@ -20,7 +20,8 @@
 //! served only when byte sniffing identifies PNG, JPEG, GIF, or WebP content,
 //! so an SVG renamed with a raster extension cannot load subresources there.
 //! A note card's picture also adds `kore-thumb`, and gets a small cached JPEG
-//! instead of the original (see `thumbnails.rs`).
+//! instead of the original (see `thumbnails.rs`); a PDF's card asks the same
+//! way and gets a picture of its first page, never the PDF itself.
 //!
 //! Every response except a PDF carries [`DOCUMENT_POLICY`]: a file opened as
 //! a document (an HTML page, an SVG, XML) runs sandboxed in an opaque origin,
@@ -101,7 +102,7 @@ fn response_for<R: Runtime>(
 ) -> Response<Cow<'static, [u8]>> {
     let served = locate(app, request_path).and_then(|path| {
         // A cached thumbnail answers without touching the original: it was
-        // only ever written from a file that passed the raster check.
+        // only ever written from a file that passed the check below.
         let cache_file = thumbnail
             .then(|| thumbnail_cache_file(app, &path))
             .flatten();
@@ -112,18 +113,20 @@ fn response_for<R: Runtime>(
             return Ok(("image/jpeg".to_owned(), bytes));
         }
         let (mime, bytes) = read(&path)?;
-        if preview_raster_only && !is_preview_safe_raster_mime(&mime) {
+        // A PDF reaches a passive preview only as the picture of its first
+        // page, never as itself.
+        let pdf_thumbnail = thumbnail && mime == "application/pdf";
+        if preview_raster_only && !pdf_thumbnail && !is_preview_safe_raster_mime(&mime) {
             return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
         }
-        Ok(
-            match cache_file
-                .as_deref()
-                .and_then(|file| super::thumbnails::thumbnail(file, &bytes))
-            {
-                Some(jpeg) => ("image/jpeg".to_owned(), jpeg),
-                None => (mime, bytes),
-            },
-        )
+        match cache_file
+            .as_deref()
+            .and_then(|file| super::thumbnails::thumbnail(file, &mime, &bytes))
+        {
+            Some(jpeg) => Ok(("image/jpeg".to_owned(), jpeg)),
+            None if pdf_thumbnail => Err(StatusCode::UNSUPPORTED_MEDIA_TYPE),
+            None => Ok((mime, bytes)),
+        }
     });
     match served {
         Ok((mime, bytes)) => {

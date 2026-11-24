@@ -20,6 +20,7 @@ import {
   TableView,
   type Icon,
 } from '@/components/icons'
+import { HtmlPagePreview } from '@/components/html-file/html-page-preview'
 import { previewThumbnailUrl } from '@/editor/preview-image-url'
 import { useHtmlTitle } from '@/hooks/use-html-title'
 import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
@@ -134,7 +135,8 @@ export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps):
   const { graph } = useGraph()
   const generation = graph?.generation
   const resolve = usePassiveImageResolver()
-  const url = file.kind === 'image' ? resolve(file.path) : null
+  // A picture shows itself; a PDF its first page, drawn by the asset protocol.
+  const url = file.kind === 'image' || file.kind === 'pdf' ? resolve(file.path) : null
   const picture = url === null ? undefined : previewThumbnailUrl(url)
   const pageUrl =
     file.kind === 'html' && generation !== undefined ? htmlPageUrl(generation, file.path) : null
@@ -164,7 +166,7 @@ export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps):
         className={cn(
           'flex aspect-[16/10] w-full items-center justify-center overflow-hidden',
           // A picture fills the cover; a file without one is its icon on the card itself.
-          showPicture && 'bg-surface-hover',
+          (showPicture || pageUrl !== null) && 'bg-surface-hover',
         )}
       >
         {showPicture ? (
@@ -175,7 +177,13 @@ export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps):
             decoding="async"
             draggable={false}
             onError={() => setFailed(picture)}
-            className="size-full object-cover"
+            // A page reads from its top: a PDF shows its heading, not its middle.
+            className={cn('size-full object-cover', file.kind === 'pdf' && 'object-top')}
+          />
+        ) : pageUrl !== null ? (
+          <HtmlPagePreview
+            url={pageUrl}
+            fallback={<KindIcon className="size-10 text-text-muted" />}
           />
         ) : (
           <KindIcon className="size-10 text-text-muted" />

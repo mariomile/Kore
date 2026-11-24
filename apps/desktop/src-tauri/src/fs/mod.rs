@@ -13,6 +13,7 @@ pub mod chat_attachments;
 pub mod folders;
 mod io;
 mod legacy_descriptions;
+mod pdf_page;
 mod resolve;
 mod thumbnails;
 pub mod vault_copy;

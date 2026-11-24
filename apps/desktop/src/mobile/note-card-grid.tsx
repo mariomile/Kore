@@ -7,6 +7,7 @@ import { formatRecencyLabel } from '@/lib/dates'
 import { dealIntoColumns } from '@/lib/deal-columns'
 import { cn } from '@/lib/utils'
 import { CardPreviewSlot } from '@/components/all-notes/card-preview-slot'
+import { GRID_CARD_SURFACE_CLASS } from '@/components/all-notes/grid-card-classes'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useSettings } from '@/providers/settings-provider'
@@ -139,7 +140,8 @@ const NoteCard = memo(function NoteCard({
       <div
         data-note-path={row.path}
         className={cn(
-          'relative overflow-hidden rounded-xl border border-border bg-surface has-[button:active]:bg-surface-hover',
+          'relative overflow-hidden rounded-xl has-[button:active]:bg-surface-hover',
+          GRID_CARD_SURFACE_CLASS,
           // Hidden until its preview's height is kept (card-preview-slot.tsx).
           'transition-opacity duration-100 has-[[data-preview-pending]]:opacity-0',
         )}
@@ -149,7 +151,7 @@ const NoteCard = memo(function NoteCard({
           aria-label={title}
           onClick={() => onOpen(row.path)}
           // The card clips its picture, so the focus ring is drawn inside.
-          className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-offset-[-2px]"
+          className="kore-card-button absolute inset-0 z-[1] rounded-xl"
         />
         {imageUrl !== undefined ? <NoteCardPicture src={imageUrl} /> : null}
         <div className="p-3">

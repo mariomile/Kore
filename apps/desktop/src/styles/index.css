@@ -325,6 +325,14 @@ body {
   outline-offset: 2px;
 }
 
+/* A card's open button covers a card that clips what it holds (the note and
+   folder grids): the ring is drawn inside the card, where the clip cannot
+   cut it away. A plain selector, so it wins over the zero-specificity rule
+   above where a Tailwind utility could not. */
+.kore-card-button:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Text entry — inputs, textareas, contenteditable editors, the cmdk input:
    no outline and no ring, ever. `:focus-visible` matches a focused text field
    on every click, not just keyboard entry, so a ring here is a highlight that
@@ -1660,7 +1668,9 @@ html[data-sidebar-resizing] aside {
    the fade alone costs nothing measurable.
 
    `--veil-surface` exists for Liquid Glass: with a translucent pane the
-   fade must not be more opaque than the surface it fades into. */
+   fade must not be more opaque than the surface it fades into, and
+   `--veil-ground` for a surface standing on another ground than the pane's
+   (the All Notes grid on the sunken one). */
 .app-scroll-veil {
   position: absolute;
   inset-inline: 0;
@@ -1676,8 +1686,13 @@ html[data-sidebar-resizing] aside {
     visibility 0s linear 240ms;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--surface) var(--veil-surface, 100%), transparent) 0%,
-    color-mix(in srgb, var(--surface) calc(var(--veil-surface, 100%) * 0.72), transparent) 46%,
+    color-mix(in srgb, var(--veil-ground, var(--surface)) var(--veil-surface, 100%), transparent) 0%,
+    color-mix(
+        in srgb,
+        var(--veil-ground, var(--surface)) calc(var(--veil-surface, 100%) * 0.72),
+        transparent
+      )
+      46%,
     transparent 100%
   );
 }

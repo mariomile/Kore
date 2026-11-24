@@ -200,11 +200,13 @@ export {
 } from './task-priority'
 export {
   listNotes,
+  recentNotesByFolder,
   listNoteTags,
   listRecentNotes,
   listTagOccurrences,
   type TagOccurrence,
   type NoteListEntry,
+  type FolderPeekNote,
   type NoteListFolder,
   type NoteListOptions,
   type NoteTagFacet,

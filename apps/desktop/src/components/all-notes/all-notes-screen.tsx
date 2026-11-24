@@ -22,6 +22,7 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection, useTagChildren } from '@/hooks/use-collection'
+import { useElementHeight } from '@/hooks/use-element-height'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
@@ -135,6 +136,9 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     [folderPath, includeSubfolders],
   )
   const folderTree = useFolderTree()
+  // The subfolder cards sit above the table in its scroller; the table's
+  // virtualizer is told how tall they are.
+  const [subfoldersHeight, setSubfoldersElement] = useElementHeight()
   const folderNode =
     folderPath === null || folderTree === null ? null : findFolder(folderTree, folderPath)
   const { graph } = useGraph()
@@ -469,8 +473,14 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               : 'All notes'
             : `#${tag}`
       }
+      // The grid's cards stand on the sunken ground (grid-card-classes.ts);
+      // every other view keeps the page, and a folder's cards sink on it.
+      data-card-ground={view === 'grid' ? undefined : 'page'}
       // `relative`: the floating bulk bar positions against this root.
-      className="relative flex h-full min-h-0 flex-col outline-none"
+      className={cn(
+        'relative flex h-full min-h-0 flex-col outline-none',
+        view === 'grid' && 'bg-surface-sunken [--veil-ground:var(--surface-sunken)]',
+      )}
     >
       <AllNotesBulkBar
         paths={selectedPaths}
@@ -517,7 +527,6 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
           </div>
         ) : null}
       </header>
-      <FolderSubfolders folder={folderNode} />
       <TagPageDescription tag={tag} />
       <TagTasksSection tag={tag} />
       <TagMentionsSection tag={tag} />
@@ -683,6 +692,11 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             data-near-viewport-scroller
             className="h-full overflow-auto overscroll-x-none"
           >
+            {/* A folder's subfolders scroll away with its notes: above the
+                scroller, a folder of many folders left the notes no room. */}
+            <div ref={setSubfoldersElement}>
+              <FolderSubfolders folder={folderNode} />
+            </div>
             {inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
             ) : folderPath !== null && notes?.length === 0 ? (
@@ -765,6 +779,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 selection={selection}
                 onOpen={openNote}
                 registerScrollToIndex={registerScrollToIndex}
+                startMargin={subfoldersHeight}
               />
             )}
           </div>

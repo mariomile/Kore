@@ -25,6 +25,7 @@ import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
 import { CardPreviewSlot } from './card-preview-slot'
 import { CardPropertyChips } from './card-property-chips'
+import { GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 import { NoteCardPicture } from './note-card-picture'
 import { NoteCardPreview } from './note-card-preview'
 
@@ -45,9 +46,21 @@ const GRID_CHUNK = 120
 /** A card's footer names this many of the note's tags. */
 const MAX_FOOTER_TAGS = 3
 
-/** A column is at least this wide (17rem), with this gap (1.25rem) between columns. */
-const COLUMN_MIN_WIDTH = 272
-const COLUMN_GAP = 20
+/**
+ * A column is at least this wide, in rem so a larger text size makes fewer,
+ * wider columns instead of squeezing the cards: four columns in a wide
+ * window, two in a narrow one. The gap between columns is the grid's own
+ * (`gap-4`), read from its style.
+ */
+const COLUMN_MIN_WIDTH_REM = 13
+
+/**
+ * How much of a note's body a card shows: a few lines under a picture, which
+ * already carries the card, and a short read for a note of text alone, so
+ * one long note never fills a column. Part of the preview's height key.
+ */
+const PICTURED_PREVIEW_CAP = 'max-h-24'
+const TEXT_PREVIEW_CAP = 'max-h-48'
 
 /** Before the grid is measured (only ever seen by tests without layout). */
 const DEFAULT_COLUMNS = 3
@@ -130,8 +143,10 @@ export function AllNotesGrid({
         gridElement.clientWidth -
         Number.parseFloat(style.paddingLeft) -
         Number.parseFloat(style.paddingRight)
-      const count = columnsThatFit(width, COLUMN_MIN_WIDTH, COLUMN_GAP)
-      return { count, width: Math.round((width - COLUMN_GAP * (count - 1)) / count) }
+      const gap = Number.parseFloat(style.columnGap) || 0
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+      const count = columnsThatFit(width, COLUMN_MIN_WIDTH_REM * rem, gap)
+      return { count, width: Math.round((width - gap * (count - 1)) / count) }
     }
     const apply = (next: { count: number; width: number }): void => {
       setColumns((current) =>
@@ -190,10 +205,10 @@ export function AllNotesGrid({
     <div
       ref={setGridElement}
       data-testid="all-notes-grid"
-      className="flex items-start gap-5 pb-10 pl-12 pr-7 pt-2"
+      className="flex items-start gap-4 pb-10 pl-12 pr-7 pt-2"
     >
       {dealIntoColumns(mountedNotes, columns.count).map((column, columnIndex) => (
-        <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
+        <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
           {column.map((note) => (
             <GridCard
               key={note.path}
@@ -228,7 +243,7 @@ interface GridCardProps {
 
 /**
  * One card, as tall as the note it shows: the picture band (when the note
- * has one), the title, the live preview capped at {@link PREVIEW_MAX_HEIGHT}
+ * has one), the title, the live preview capped by {@link TEXT_PREVIEW_CAP}
  * and ending on a whole line, then the footer. Memoized so a thumbnail
  * arriving re-renders only its own card.
  */
@@ -244,34 +259,27 @@ const GridCard = memo(function GridCard({
 }: GridCardProps): ReactElement {
   const title = displayNoteTitle(note.title)
   const shownTags = note.tags.slice(0, MAX_FOOTER_TAGS)
+  const previewCap = picture !== undefined ? PICTURED_PREVIEW_CAP : TEXT_PREVIEW_CAP
   return (
     <div
       data-note-path={note.path}
       className={cn(
-        // No shadow or hover lift: a border tint carries the hover
-        // affordance. The sunken surface (not the page's own `surface`) is
-        // what draws the card's outline in dark themes, where the hairline
-        // border alone all but vanished.
-        'group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-sunken transition-colors duration-150 ease-swift hover:border-border-strong',
+        GRID_CARD_CLASS,
         // Hidden until its preview's height is kept (card-preview-slot.tsx),
         // so the column never moves under the reader.
         'has-[[data-preview-pending]]:opacity-0',
       )}
     >
-      {/* The button covers the card instead of wrapping it: WebKit does not
-          clip a box of definite height inside a <button>, and the preview
-          keeps one. */}
       <button
         type="button"
         aria-label={title}
         onClick={(event) => {
           onOpen(note.path, event)
         }}
-        // The card clips its picture, so the focus ring is drawn inside.
-        className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-offset-[-2px]"
+        className={GRID_CARD_BUTTON_CLASS}
       />
       {picture !== undefined ? <NoteCardPicture src={picture} /> : null}
-      <div className="flex min-w-0 flex-col p-5">
+      <div className="flex min-w-0 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <h2 className="min-w-0 text-sm font-semibold leading-snug text-text [overflow-wrap:anywhere]">
             {title}
@@ -285,8 +293,8 @@ const GridCard = memo(function GridCard({
         ) : null}
         {note.snippet === '' ? null : (
           <CardPreviewSlot
-            heightKey={`${note.path}\n${note.mtime}\n${columnWidth}`}
-            className="mt-2.5 max-h-80"
+            heightKey={`${note.path}\n${note.mtime}\n${columnWidth}\n${previewCap}`}
+            className={cn('mt-2.5', previewCap)}
           >
             {({ onSettled }) => (
               <NoteCardPreview
@@ -298,7 +306,7 @@ const GridCard = memo(function GridCard({
                 nearMargin={PREPARE_MARGIN}
                 onSettled={onSettled}
                 className={cn(
-                  'max-h-80',
+                  previewCap,
                   // The picture band already shows the note's image.
                   picture !== undefined && 'kore-card-preview-pictured',
                 )}

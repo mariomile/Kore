@@ -4,7 +4,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
 import { listCollection, listTagTypes } from './collections'
-import { listNotes, listNoteTags } from './note-list'
+import { listNotes, listNoteTags, recentNotesByFolder } from './note-list'
 import { getTagTree, type TagTreeNode } from './tag-tree'
 import { listTagMentions } from './tag-mentions'
 
@@ -238,5 +238,36 @@ describe('the tag tree against a real index', () => {
       ],
       ['solo', 'solo', 1, []],
     ])
+  })
+})
+
+describe('recentNotesByFolder against a real index', () => {
+  it("peeks each folder's newest notes, subfolders included, in one query", async () => {
+    addNote('Projects/Kore/Roadmap.md', '# Roadmap', 5000)
+    addNote('Projects/Kore/Design/Grid.md', '# Grid', 6000)
+    addNote('Projects/Kore/Old.md', '# Old', 1000)
+    addNote('Projects/Kore/Older.md', '# Older', 500)
+    addNote('Projects/Barn/Plan.md', '# Plan', 3000)
+    addNote('Projects/Barnyard/Other.md', '# Other', 9000)
+    addNote('Projects/Empty100%/a_b.md', '# Literal', 2000)
+
+    const peeks = await recentNotesByFolder(
+      ['Projects/Kore', 'Projects/Barn', 'Projects/Nothing', 'Projects/Empty1'],
+      3,
+    )
+
+    expect(peeks.get('Projects/Kore')?.map((note) => note.path)).toEqual([
+      'Projects/Kore/Design/Grid.md',
+      'Projects/Kore/Roadmap.md',
+      'Projects/Kore/Old.md',
+    ])
+    // A sibling whose name starts the same is not inside.
+    expect(peeks.get('Projects/Barn')).toEqual([{ path: 'Projects/Barn/Plan.md', title: 'Plan' }])
+    expect(peeks.has('Projects/Nothing')).toBe(false)
+    expect(peeks.has('Projects/Empty1')).toBe(false)
+  })
+
+  it('asks nothing for no folders', async () => {
+    expect((await recentNotesByFolder([], 3)).size).toBe(0)
   })
 })

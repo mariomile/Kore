@@ -54,6 +54,14 @@ const MAX_FOOTER_TAGS = 3
  */
 const COLUMN_MIN_WIDTH_REM = 13
 
+/**
+ * How much of a note's body a card shows: a few lines under a picture, which
+ * already carries the card, and a short read for a note of text alone, so
+ * one long note never fills a column. Part of the preview's height key.
+ */
+const PICTURED_PREVIEW_CAP = 'max-h-24'
+const TEXT_PREVIEW_CAP = 'max-h-48'
+
 /** Before the grid is measured (only ever seen by tests without layout). */
 const DEFAULT_COLUMNS = 3
 
@@ -235,7 +243,7 @@ interface GridCardProps {
 
 /**
  * One card, as tall as the note it shows: the picture band (when the note
- * has one), the title, the live preview capped at {@link PREVIEW_MAX_HEIGHT}
+ * has one), the title, the live preview capped by {@link TEXT_PREVIEW_CAP}
  * and ending on a whole line, then the footer. Memoized so a thumbnail
  * arriving re-renders only its own card.
  */
@@ -251,6 +259,7 @@ const GridCard = memo(function GridCard({
 }: GridCardProps): ReactElement {
   const title = displayNoteTitle(note.title)
   const shownTags = note.tags.slice(0, MAX_FOOTER_TAGS)
+  const previewCap = picture !== undefined ? PICTURED_PREVIEW_CAP : TEXT_PREVIEW_CAP
   return (
     <div
       data-note-path={note.path}
@@ -284,8 +293,8 @@ const GridCard = memo(function GridCard({
         ) : null}
         {note.snippet === '' ? null : (
           <CardPreviewSlot
-            heightKey={`${note.path}\n${note.mtime}\n${columnWidth}`}
-            className="mt-2.5 max-h-80"
+            heightKey={`${note.path}\n${note.mtime}\n${columnWidth}\n${previewCap}`}
+            className={cn('mt-2.5', previewCap)}
           >
             {({ onSettled }) => (
               <NoteCardPreview
@@ -297,7 +306,7 @@ const GridCard = memo(function GridCard({
                 nearMargin={PREPARE_MARGIN}
                 onSettled={onSettled}
                 className={cn(
-                  'max-h-80',
+                  previewCap,
                   // The picture band already shows the note's image.
                   picture !== undefined && 'kore-card-preview-pictured',
                 )}

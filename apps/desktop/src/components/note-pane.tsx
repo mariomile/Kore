@@ -22,7 +22,6 @@ import {
 } from '@kore/core'
 import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
-import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
 import { WeekHeader } from '@/components/weekly/week-header'
 import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
@@ -83,6 +82,7 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { useTabsInSidebar } from '@/providers/sidebar-provider'
 import { useRouter } from '@/routing/router'
 
 // A ```collection fence draws a table, board or calendar: the All Notes view
@@ -221,6 +221,7 @@ export function NotePaneComponent({
   // Named by a date or a week, never a title: no title placeholder, no
   // icon or cover editing, no contact suggestion.
   const periodicNote = dailyNote || weeklyWeek !== null
+  const tabsInSidebar = useTabsInSidebar()
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
   const resources = useResourceCollection(generation, path, document.header, saveFile)
@@ -529,13 +530,27 @@ export function NotePaneComponent({
 
   return (
     <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
-      <div className={gutterClassName}>
-        {weeklyWeek !== null ? (
+      {weeklyWeek !== null ? (
+        <div className={gutterClassName}>
           <WeekHeader week={weeklyWeek} />
-        ) : !dailyNote ? (
-          <NoteFolderBreadcrumb path={path} />
-        ) : null}
+        </div>
+      ) : null}
 
+      <NoteAppearance
+        source={document.header}
+        resolveImageUrl={resolveImageUrl}
+        gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
+        onIconChange={onIconChange}
+        onCoverChange={editableAppearance?.setCover}
+        uploadCover={editableAppearance === null ? undefined : saveFile}
+        onCoverPositionChange={editableAppearance?.setCoverPosition}
+        // With the tabs in the sidebar the bar above already names the folder.
+        breadcrumbPath={periodicNote || tabsInSidebar ? undefined : path}
+        flushCover={weeklyWeek === null}
+      />
+
+      <div className={gutterClassName}>
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
             Saving failed: {document.error}. Your edits are kept in the editor and the next
@@ -562,17 +577,6 @@ export function NotePaneComponent({
             state into the next note's card. */}
         {!periodicNote ? <SuggestedContactCard key={path} path={path} /> : null}
       </div>
-
-      <NoteAppearance
-        source={document.header}
-        resolveImageUrl={resolveImageUrl}
-        gutterClassName={gutterClassName}
-        showIcon={!titleDrawsIcon}
-        onIconChange={onIconChange}
-        onCoverChange={editableAppearance?.setCover}
-        uploadCover={editableAppearance === null ? undefined : saveFile}
-        onCoverPositionChange={editableAppearance?.setCoverPosition}
-      />
 
       <NoteEditor
         // X / YouTube embed cards fetch from those hosts: public notes only,

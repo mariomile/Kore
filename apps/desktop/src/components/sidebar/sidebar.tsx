@@ -7,6 +7,7 @@ import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { useTabsInSidebar } from '@/providers/sidebar-provider'
 import { GraphFooter } from './graph-footer'
 import { SidebarChatSection } from './sidebar-chat-section'
 import { SidebarMeetingsSection } from './sidebar-meetings-section'
@@ -14,6 +15,7 @@ import { SidebarNav } from './sidebar-nav'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarSections } from './sidebar-sections'
 import { SidebarSurfaceSwitcher } from './sidebar-surface-switcher'
+import { SidebarTabs } from './sidebar-tabs'
 import { readSidebarSurface, storeSidebarSurface, type SidebarSurface } from './sidebar-surface'
 
 interface SidebarProps {
@@ -40,6 +42,9 @@ export const Sidebar = memo(function Sidebar({ graph, context }: SidebarProps): 
   const { route } = useRouter()
   const today = useToday()
   const pinned = usePinnedNotes()
+  // One shelf, drawn under the nav on Home and above the list elsewhere: with
+  // the setting on, the strip no longer shows the tabs on any surface.
+  const tabsShelf = useTabsInSidebar() ? <SidebarTabs context={context} /> : null
   const [surface, setSurface] = useState<SidebarSurface>(readSidebarSurface)
   const currentNotePath = notePathForRoute(route, today)
   const hasActivePinnedNote =
@@ -92,11 +97,15 @@ export const Sidebar = memo(function Sidebar({ graph, context }: SidebarProps): 
         <>
           <SidebarNav context={context} route={route} hasActivePinnedNote={hasActivePinnedNote} />
           <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
+            {tabsShelf}
             <SidebarSections />
           </div>
         </>
       )}
 
+      {tabsShelf !== null && surface !== 'home' ? (
+        <div className="max-h-[40%] flex-none overflow-y-auto">{tabsShelf}</div>
+      ) : null}
       {surface === 'chat' && <SidebarChatSection />}
       {surface === 'meetings' && <SidebarMeetingsSection />}
 

@@ -923,6 +923,18 @@ html:root {
   scroll-margin-top: var(--kore-outline-scroll-margin, 3.5rem);
 }
 
+/* A note's cover can open the page flush: the hosting view publishes its top
+   inset (the single-note view's `pt-14`), and the cover pulls up through it
+   to the sheet's edge. Hosts that set nothing (the daily stream, the iPhone)
+   keep the cover where it is. */
+.kore-note-page-top {
+  --note-page-inset-top: calc(var(--spacing) * 14);
+}
+
+.kore-note-cover-flush {
+  margin-top: calc(-1 * var(--note-page-inset-top, 0px));
+}
+
 /* Mobile note-body gutter. This mirrors `.kore-content-gutter`'s cascade
    role with a fixed phone-sized inset: the class must be un-layered so it beats
    `.kore-editor { padding: 0; }` on the contenteditable itself. */
@@ -1469,6 +1481,31 @@ button[aria-selected='true'] .sidebar-icon-slot,
 /* Live rail drags must not fight the collapse/expand width animation. */
 html[data-sidebar-resizing] aside {
   transition: none;
+}
+
+/* A rail opening or collapsing settles in from its own window edge instead
+   of snapping: a short fade and a few pixels of slide. Transform and opacity
+   only, so the frame's layout changes once and the compositor does the rest
+   (the editor never reflows per frame). The reduced-motion rule below
+   collapses it to the instant snap. */
+@keyframes kore-rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--rail-in-from));
+  }
+}
+
+.kore-rail-in-start,
+.kore-rail-in-end {
+  animation: kore-rail-in var(--duration-base) var(--ease-swift);
+}
+
+.kore-rail-in-start {
+  --rail-in-from: -0.5rem;
+}
+
+.kore-rail-in-end {
+  --rail-in-from: 0.5rem;
 }
 
 /* Reduced motion is honored app-wide, not just in the editor: collapse every

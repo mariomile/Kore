@@ -32,6 +32,7 @@ describe('settingsSchema', () => {
       sidebarSections: ['pinned', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
       hiddenSidebarItems: ['library'],
+      sidebarTabs: false,
       libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [
@@ -157,6 +158,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.remoteAccessReadOnly).toBe(true)
     expect(DEFAULT_SETTINGS.quickCaptureShortcut).toBe('Mod-Shift-Slash')
     expect(DEFAULT_SETTINGS.hapticFeedback).toBe(true)
+    expect(DEFAULT_SETTINGS.sidebarTabs).toBe(false)
     expect(DEFAULT_SETTINGS.browserSearchEngine).toBe('duckduckgo')
     expect(DEFAULT_SETTINGS.browserOpenLinksInApp).toBe(true)
     expect(DEFAULT_SETTINGS.describeAssets).toBe(true)
@@ -278,6 +280,7 @@ describe('settingsSchema', () => {
     )
     expect(settingsSchema.parse({ hapticFeedback: true }).hapticFeedback).toBe(true)
     expect(settingsSchema.parse({ hapticFeedback: false }).hapticFeedback).toBe(false)
+    expect(settingsSchema.parse({ sidebarTabs: true }).sidebarTabs).toBe(true)
     expect(settingsSchema.parse({ browserSearchEngine: 'google' }).browserSearchEngine).toBe(
       'google',
     )
@@ -404,6 +407,7 @@ describe('settingsSchema', () => {
     )
     expect(settingsSchema.parse({ hapticFeedback: 'off' }).hapticFeedback).toBe(true)
     expect(settingsSchema.parse({ hapticFeedback: 0 }).hapticFeedback).toBe(true)
+    expect(settingsSchema.parse({ sidebarTabs: 'on' }).sidebarTabs).toBe(false)
     expect(settingsSchema.parse({ browserSearchEngine: 'yahoo' }).browserSearchEngine).toBe(
       'duckduckgo',
     )
@@ -463,6 +467,7 @@ describe('settingsSchema', () => {
       sidebarSections: ['pinned', 'tags', 'folders', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph', 'memory'],
       hiddenSidebarItems: ['library'],
+      sidebarTabs: false,
       libraryShelfDefaulted: true,
       contextSidebarWidth: 320,
       detailsSections: [

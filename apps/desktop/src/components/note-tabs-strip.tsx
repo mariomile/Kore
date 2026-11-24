@@ -1,5 +1,5 @@
-import type { OpenTab } from '@kore/core'
-import { useMemo, type MouseEvent, type ReactElement } from 'react'
+import { noteFolderCrumbs, type OpenTab } from '@kore/core'
+import { useMemo, type ReactElement } from 'react'
 import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
@@ -8,16 +8,21 @@ import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
-import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
+import {
+  closeOnMiddleClick,
+  tabCloseClass,
+  tabPillClass,
+  useTabScrollIntoView,
+} from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { resolveTabDrop } from '@/lib/tab-drop'
 import { cn } from '@/lib/utils'
-import { tabKey } from '@/providers/open-tab'
+import { tabKey, tabsEqual } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
-import { useSidebar } from '@/providers/sidebar-provider'
+import { useSidebar, useTabsInSidebar } from '@/providers/sidebar-provider'
 
 interface WorkspaceTabsStripProps {
   /** Commands for the "+" menu (new note vs the built-in browser). */
@@ -50,6 +55,7 @@ export function WorkspaceTabsStrip({
   const { activeTab, activateTab, closeTab, togglePin, moveTab } = useOpenTabs()
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
+  const tabsInSidebar = useTabsInSidebar()
   const activeKey = activeTab === null ? null : tabKey(activeTab)
   // An inactive column still shows which tab it is on, but quietly: only the
   // active pane's selected pill reads as selected. No panes (the note window,
@@ -99,34 +105,39 @@ export function WorkspaceTabsStrip({
         <NavigateArrows />
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Workspace tabs"
-        className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
-      >
-        <TabContextMenu>
-          <SortableContext
-            items={items.map((item) => tabKey(item.tab))}
-            strategy={horizontalListSortingStrategy}
-          >
-            {items.map((item) => (
-              <StripTab
-                key={tabKey(item.tab)}
-                item={item}
-                paneId={paneId}
-                active={tabKey(item.tab) === activeKey}
-                paneActive={paneActive}
-                onActivate={activateTab}
-                onClose={closeTab}
-                onTogglePin={togglePin}
-              />
-            ))}
-          </SortableContext>
-        </TabContextMenu>
+      {tabsInSidebar ? (
+        // The tabs are the sidebar's Tabs shelf: the bar names the page instead.
+        <StripPageTitle items={items} activeTab={activeTab} muted={!paneActive} />
+      ) : (
+        <div
+          role="tablist"
+          aria-label="Workspace tabs"
+          className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        >
+          <TabContextMenu>
+            <SortableContext
+              items={items.map((item) => tabKey(item.tab))}
+              strategy={horizontalListSortingStrategy}
+            >
+              {items.map((item) => (
+                <StripTab
+                  key={tabKey(item.tab)}
+                  item={item}
+                  paneId={paneId}
+                  active={tabKey(item.tab) === activeKey}
+                  paneActive={paneActive}
+                  onActivate={activateTab}
+                  onClose={closeTab}
+                  onTogglePin={togglePin}
+                />
+              ))}
+            </SortableContext>
+          </TabContextMenu>
 
-        {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
-        <NoteTabsListMenu />
-      </div>
+          {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
+          <NoteTabsListMenu />
+        </div>
+      )}
 
       {showContextToggle ? (
         <div
@@ -143,6 +154,46 @@ export function WorkspaceTabsStrip({
           />
         </div>
       ) : null}
+    </div>
+  )
+}
+
+interface StripPageTitleProps {
+  items: readonly OpenTabItem[]
+  activeTab: OpenTab | null
+  /** True in a pane the user is not in. */
+  muted: boolean
+}
+
+/**
+ * The bar's stand-in for the pills while the tabs live in the sidebar: the
+ * active page's title over its folder path (notes only), Folio-style. It is
+ * part of the window's drag region, like the bar's empty stretch.
+ */
+function StripPageTitle({ items, activeTab, muted }: StripPageTitleProps): ReactElement {
+  const item = activeTab === null ? undefined : items.find((open) => tabsEqual(open.tab, activeTab))
+  if (item === undefined) {
+    return <div className="flex-1" />
+  }
+  const folder =
+    item.tab.kind === 'note'
+      ? noteFolderCrumbs(item.tab.path)
+          .map((crumb) => crumb.name)
+          .join(' / ')
+      : ''
+  return (
+    <div className="ml-2 flex min-w-0 flex-1 flex-col justify-center">
+      <span
+        className={cn(
+          'truncate text-xs leading-4 font-semibold',
+          muted ? 'text-text-secondary' : 'text-text',
+        )}
+      >
+        {item.title}
+      </span>
+      {folder === '' ? null : (
+        <span className="truncate text-2xs leading-4 text-text-muted">{folder}</span>
+      )}
     </div>
   )
 }
@@ -217,12 +268,9 @@ function StripTab({
     scrollRef.current = element
   }
   const sortableStyle = sortableTranslateStyle(transform, transition)
-  const handleAuxClick = (event: MouseEvent): void => {
-    if (event.button === 1) {
-      event.preventDefault()
-      onClose(tab)
-    }
-  }
+  const handleAuxClick = closeOnMiddleClick(() => {
+    onClose(tab)
+  })
   if (tab.pinned) {
     return (
       <button

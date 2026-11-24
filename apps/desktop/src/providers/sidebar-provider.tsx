@@ -13,6 +13,7 @@ import {
   type ContextPanel,
 } from '@/components/context-sidebar/context-panel'
 import { haptic } from '@/lib/haptics'
+import { useSettings } from '@/providers/settings-provider'
 
 /**
  * Side-panel visibility state, provided once per workspace so the shell
@@ -131,4 +132,17 @@ export function useSidebar(): SidebarContextValue {
     throw new Error('useSidebar must be used within a SidebarProvider')
   }
   return context
+}
+
+/**
+ * Whether the open tabs show as the sidebar's Tabs shelf right now: the
+ * "Tabs in sidebar" setting is on and the sidebar is expanded. The tabs are
+ * only ever in one place, so the strip shows the page's title and folder in
+ * their stead, and the note drops the breadcrumb the strip already carries.
+ * False outside the workspace (no provider: the note window, the iPhone).
+ */
+export function useTabsInSidebar(): boolean {
+  const context = use(SidebarContext)
+  const { settings } = useSettings()
+  return context !== null && !context.collapsed && settings.sidebarTabs
 }

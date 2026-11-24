@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, type MouseEvent, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -59,4 +59,14 @@ export function useTabScrollIntoView<TabElement extends HTMLElement = HTMLElemen
     }
   }, [active])
   return ref
+}
+
+/** A middle click closes a tab, wherever its row or pill is drawn. */
+export function closeOnMiddleClick(close: () => void): (event: MouseEvent) => void {
+  return (event) => {
+    if (event.button === 1) {
+      event.preventDefault()
+      close()
+    }
+  }
 }

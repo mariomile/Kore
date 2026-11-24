@@ -1,6 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import { RouterProvider } from '@/routing/router'
 import { NoteAppearance } from './note-appearance'
 import { dragCoverPosition } from './note-cover'
 
@@ -34,6 +35,42 @@ describe('NoteAppearance', () => {
     )
     const cover = view.getByTestId('note-cover').element()
     expect(cover.getAttribute('src')).toBe('resolved:assets/hero.png')
+    await view.unmount()
+  })
+
+  it('draws the folder breadcrumb on the cover, and the cover flush when asked', async () => {
+    const view = await render(
+      <RouterProvider initialRoute={{ kind: 'today' }}>
+        <NoteAppearance
+          source={'---\ncover: assets/hero.png\n---\n'}
+          resolveImageUrl={resolve}
+          breadcrumbPath="Projects/Studio/Identity.md"
+          flushCover
+        />
+      </RouterProvider>,
+    )
+    const crumbs = view.getByRole('navigation', { name: 'Folder' })
+    await expect.element(crumbs.getByRole('button', { name: 'Studio' })).toBeVisible()
+    const header = crumbs.element().closest('.kore-note-cover-flush')
+    expect(header?.contains(view.getByTestId('note-cover').element())).toBe(true)
+    await view.unmount()
+  })
+
+  it('keeps the breadcrumb above the icon when there is no cover', async () => {
+    const view = await render(
+      <RouterProvider initialRoute={{ kind: 'today' }}>
+        <NoteAppearance
+          source={'---\nicon: ✨\n---\n'}
+          resolveImageUrl={resolve}
+          breadcrumbPath="Projects/Identity.md"
+          flushCover
+        />
+      </RouterProvider>,
+    )
+    const crumbs = view.getByRole('navigation', { name: 'Folder' }).element()
+    const icon = view.getByTestId('note-icon').element()
+    expect(crumbs.compareDocumentPosition(icon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(view.container.querySelector('.kore-note-cover-flush')).toBeNull()
     await view.unmount()
   })
 

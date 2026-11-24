@@ -68,6 +68,7 @@ import {
   hiddenSidebarItemsSchema,
   sidebarNavSchema,
   sidebarSectionsSchema,
+  sidebarTabsSchema,
   sidebarWidthSchema,
 } from './schema-editor'
 
@@ -369,6 +370,7 @@ const settingsDocumentSchema = z.looseObject({
   sidebarSections: sidebarSectionsSchema,
   sidebarNav: sidebarNavSchema,
   hiddenSidebarItems: hiddenSidebarItemsSchema,
+  sidebarTabs: sidebarTabsSchema,
   libraryShelfDefaulted: z.boolean().catch(false),
   contextSidebarWidth: contextSidebarWidthSchema,
   detailsSections: detailsSectionsSchema,

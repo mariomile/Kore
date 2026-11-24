@@ -13,6 +13,8 @@ import { SidebarProvider } from '@/providers/sidebar-provider'
 import { tabKey } from '@/providers/open-tab'
 import { routeForPath } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
+import type { CommandContext } from '@/lib/commands/types'
+import { SidebarTabs } from './sidebar/sidebar-tabs'
 import { WorkspaceTabsStrip } from './note-tabs-strip'
 
 /**
@@ -346,20 +348,20 @@ function DragHarness({ children }: { children: ReactNode }): ReactElement {
   return <DndContext sensors={sensors}>{children}</DndContext>
 }
 
-function renderTabs() {
+function renderTabs({ shelf = false }: { shelf?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       {/* The strip monitors the frame's drag context; mounted alone it still
         needs one above it. */}
       <DragHarness>
-        <GraphHarness />
+        <GraphHarness shelf={shelf} />
       </DragHarness>
     </QueryClientProvider>,
   )
 }
 
-function GraphHarness(): ReactElement {
+function GraphHarness({ shelf }: { shelf: boolean }): ReactElement {
   const root = useSyncExternalStore(
     (listener: () => void) => graphStore.subscribe(listener),
     () => graphStore.get(),
@@ -369,6 +371,7 @@ function GraphHarness(): ReactElement {
       <SidebarProvider>
         <OpenTabsProvider paneId="main">
           <WorkspaceTabsStrip />
+          {shelf ? <SidebarTabs context={{} as CommandContext} /> : null}
           <Probe />
         </OpenTabsProvider>
       </SidebarProvider>
@@ -566,6 +569,30 @@ describe('workspace tabs', () => {
     await view.getByRole('button', { name: 'Close Alpha Plan' }).first().click()
     await vi.waitFor(() => expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull())
     expect(routeOf(view).path).toBe('notes/beta.md')
+    await view.unmount()
+  })
+
+  it('with tabs in the sidebar, the shelf holds them and the bar names the page', async () => {
+    settingsStore.set({ sidebarTabs: true } as never)
+    const view = await renderTabs({ shelf: true })
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+
+    // Never in both places: the strip drops its pills for the page's title.
+    expect(view.getByRole('tablist').query()).toBeNull()
+    const shelf = view.getByRole('region', { name: 'Tabs' })
+    await expect
+      .element(shelf.getByRole('button', { name: 'Beta Review', exact: true }))
+      .toHaveAttribute('aria-current', 'page')
+
+    // A row opens its tab; its × closes it without leaving the current page.
+    await shelf.getByRole('button', { name: 'Alpha Plan', exact: true }).click()
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
+    await shelf.getByRole('button', { name: 'Close Beta Review' }).click()
+    await vi.waitFor(() =>
+      expect(shelf.getByRole('button', { name: 'Beta Review', exact: true }).query()).toBeNull(),
+    )
+    expect(routeOf(view).path).toBe('notes/alpha.md')
     await view.unmount()
   })
 

@@ -45,10 +45,10 @@ interface WorkspaceContentProps {
  * panel switcher) over a floating card with all four corners rounded. A
  * sunken gutter keeps every card off the window's edges so collapsing a
  * rail does not send a sheet flush to the screen; the left rail stays flat,
- * carrying the window's own ground. A collapsed rail unmounts — the layout
- * snaps instead of
- * animating, and panels hosting live surfaces (the embedded browser)
- * release them. The always-mounted global surfaces (⌘K palette, embeddings
+ * carrying the window's own ground. A collapsed rail unmounts, so panels
+ * hosting live surfaces (the embedded browser) release them; the layout
+ * changes in one step and the arriving rail fades in from its window edge
+ * (`kore-rail-in-*`, transform and opacity only). The always-mounted global surfaces (⌘K palette, embeddings
  * sync) sit on the window, beside the Settings modal that floats over the frame.
  * Find stays in the note pane. Split from {@link GraphWorkspace} because
  * these hooks need the providers it mounts.
@@ -144,7 +144,7 @@ function ContextRailSlot({ collapsed }: { collapsed: boolean }): ReactElement {
       <nav
         aria-label="Context rail"
         data-testid="context-collapsed-rail"
-        className="app-window-chrome ml-2 hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
+        className="app-window-chrome kore-rail-in-end ml-2 hidden w-11 shrink-0 bg-surface-sunken lg:flex lg:flex-col"
       >
         <ContextCollapsedRail showDetails routeKind={route.kind} />
       </nav>
@@ -154,7 +154,7 @@ function ContextRailSlot({ collapsed }: { collapsed: boolean }): ReactElement {
     <aside
       id="context-sidebar"
       aria-label="Context"
-      className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
+      className="app-window-chrome kore-rail-in-end relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
     >
       <SidebarResizeHandle panel="context" />
       <ContextSidebar target={contextTarget} showDetails routeKind={route.kind} />
@@ -234,7 +234,7 @@ const WorkspaceFrame = memo(function WorkspaceFrame({
         <nav
           aria-label="Workspace rail"
           data-testid="workspace-collapsed-rail"
-          className="app-window-chrome flex w-11 shrink-0 flex-col bg-surface-sunken"
+          className="app-window-chrome kore-rail-in-start flex w-11 shrink-0 flex-col bg-surface-sunken"
         >
           <SidebarCollapsedRail graph={graph} context={commandContext} />
         </nav>
@@ -242,7 +242,7 @@ const WorkspaceFrame = memo(function WorkspaceFrame({
         <aside
           id="workspace-sidebar"
           aria-label="Workspace"
-          className="app-window-chrome relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
+          className="app-window-chrome kore-rail-in-start relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
         >
           <Sidebar graph={graph} context={commandContext} />
           <SidebarResizeHandle panel="workspace" />

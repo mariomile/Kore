@@ -36,6 +36,9 @@ import { useListSelection } from '@/lib/selection/use-list-selection'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
 import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
+import { useAssetPersistence } from '@/editor/use-asset-persistence'
+import { useAssetOpener } from '@/hooks/use-asset-opener'
+import { FolderFiles } from './folder-files'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -142,6 +145,12 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const folderNode =
     folderPath === null || folderTree === null ? null : findFolder(folderTree, folderPath)
   const { graph } = useGraph()
+  const { resolveImageUrl, openAsset } = useAssetPersistence(graph?.generation ?? null)
+  // A folder's file cards open files as a note's file chips do.
+  const { openAsset: openFile, viewer: fileViewer } = useAssetOpener({
+    resolveUrl: resolveImageUrl,
+    openExternally: openAsset,
+  })
   // Every tag is a collection (TDR 0005, amended): a tag with no definition
   // note reads as the zero-property schema, so the table always exists on a
   // tag route. Only the unfiltered list (no tag) has no collection, and a
@@ -696,6 +705,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 scroller, a folder of many folders left the notes no room. */}
             <div ref={setSubfoldersElement}>
               <FolderSubfolders folder={folderNode} />
+              {folderPath !== null ? (
+                <FolderFiles
+                  folder={folderPath}
+                  includeSubfolders={includeSubfolders}
+                  onOpen={(path) => void openFile(path)}
+                />
+              ) : null}
             </div>
             {inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
@@ -788,6 +804,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             list/table views pin a glass header row instead — the melt at the
             container's top edge belongs to the grid alone. */}
         {view === 'grid' ? <ScrollVeil scrollElement={scrollElement} /> : null}
+        {fileViewer}
       </div>
 
       <NoteTrashDialog

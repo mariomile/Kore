@@ -1,4 +1,4 @@
-import { memo, useMemo, type ReactElement } from 'react'
+import { memo, useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   displayNoteTitle,
@@ -122,15 +122,19 @@ function PeekTile({
   note: FolderPeekNote
   picture: string | undefined
 }): ReactElement {
+  // A thumbnail that fails (the file went away since the index named it)
+  // falls back to the title, like a note without a picture.
+  const [failed, setFailed] = useState<string | null>(null)
   return (
     <div className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface">
-      {picture !== undefined ? (
+      {picture !== undefined && failed !== picture ? (
         <img
           src={picture}
           alt=""
           loading="lazy"
           decoding="async"
           draggable={false}
+          onError={() => setFailed(picture)}
           className="size-full object-cover"
         />
       ) : (

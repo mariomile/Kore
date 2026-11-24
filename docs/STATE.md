@@ -1,5 +1,11 @@
 # Kore working state
 
+## Edge-to-edge covers and tabs in the sidebar, 2026-11-24 (0.148.0)
+
+- [x] Cover flush to the top of the page with the folder path in a frosted
+  pill; optional Appearance setting "Tabs in sidebar" (off by default); rails
+  fade in when opened or collapsed (#669).
+
 ## Manage folders from iPhone, 2026-11-24 (0.147.0)
 
 - [x] iPhone folder page with folder rows (list) or cards (grid); Move to… for

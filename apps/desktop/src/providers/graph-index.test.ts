@@ -339,15 +339,15 @@ describe('createGraphIndex', () => {
     const onFileProgress = vi.fn()
     let stale = false
     mockSync.mockImplementation(async (options) => {
-      options.onFileProgress?.(10, 100, 10)
+      options.onFileProgress?.(10, 100, 10, true)
       stale = true
-      options.onFileProgress?.(20, 100, 20) // a superseded pass must go quiet
+      options.onFileProgress?.(20, 100, 20, true) // a superseded pass must go quiet
     })
     const index = createGraphIndex({ onFileProgress })
     index.sync(5, () => stale)
     await index.stop()
 
     expect(onFileProgress).toHaveBeenCalledTimes(1)
-    expect(onFileProgress).toHaveBeenCalledWith(10, 100, 10)
+    expect(onFileProgress).toHaveBeenCalledWith(10, 100, 10, true)
   })
 })

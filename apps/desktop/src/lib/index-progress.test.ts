@@ -10,9 +10,9 @@ describe('index progress store', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeIndexProgress(listener)
 
-    setIndexProgress({ done: 16, total: 3000, worked: 16 })
+    setIndexProgress({ done: 16, total: 3000, worked: 16, fromEmpty: true })
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(getIndexProgress()).toEqual({ done: 16, total: 3000, worked: 16 })
+    expect(getIndexProgress()).toEqual({ done: 16, total: 3000, worked: 16, fromEmpty: true })
 
     setIndexProgress(null)
     expect(listener).toHaveBeenCalledTimes(2)
@@ -24,8 +24,8 @@ describe('index progress store', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeIndexProgress(listener)
 
-    setIndexProgress({ done: 16, total: 3000, worked: 0 })
-    setIndexProgress({ done: 16, total: 3000, worked: 0 }) // same values, new object
+    setIndexProgress({ done: 16, total: 3000, worked: 0, fromEmpty: true })
+    setIndexProgress({ done: 16, total: 3000, worked: 0, fromEmpty: true }) // same values, new object
     expect(listener).toHaveBeenCalledTimes(1)
 
     setIndexProgress(null)
@@ -38,7 +38,7 @@ describe('index progress store', () => {
     const listener = vi.fn()
     subscribeIndexProgress(listener)()
 
-    setIndexProgress({ done: 1, total: 200, worked: 1 })
+    setIndexProgress({ done: 1, total: 200, worked: 1, fromEmpty: true })
     expect(listener).not.toHaveBeenCalled()
   })
 })

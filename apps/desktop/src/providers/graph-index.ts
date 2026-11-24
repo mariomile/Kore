@@ -114,9 +114,11 @@ export interface GraphIndexOptions {
    * `total`, `worked`) — the substrate for a "Preparing your notes… 400 of
    * 3,000" surface during a first index. `worked` counts files the pass has
    * actually read (vs skipped read-free); the UI gates on it so a routine
-   * skip-everything pass never surfaces. Superseded passes stop reporting.
+   * skip-everything pass never surfaces. `fromEmpty` is false when the
+   * previous rows keep answering meanwhile (a refresh after an update, a
+   * reconcile), so the UI can stay quiet. Superseded passes stop reporting.
    */
-  onFileProgress?: (done: number, total: number, worked: number) => void
+  onFileProgress?: (done: number, total: number, worked: number, fromEmpty: boolean) => void
   /**
    * Called with iCloud-evicted notes whose content the index lacks (see
    * `IndexPassOptions.onStalePlaceholders`). The provider requests targeted
@@ -265,11 +267,16 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
                 },
               }
             : {}),
-          onFileProgress: (progressDone: number, total: number, worked: number) => {
+          onFileProgress: (
+            progressDone: number,
+            total: number,
+            worked: number,
+            fromEmpty: boolean,
+          ) => {
             passTotal = total
             passWorked = worked
             if (onFileProgress !== undefined && !isStale()) {
-              onFileProgress(progressDone, total, worked)
+              onFileProgress(progressDone, total, worked, fromEmpty)
             }
           },
         })

@@ -24,7 +24,7 @@
 //!
 //! Every response except a PDF carries [`DOCUMENT_POLICY`]: a file opened as
 //! a document (an HTML page, an SVG, XML) runs sandboxed in an opaque origin,
-//! with scripts but no network calls, wherever it is framed or opened. PDFs
+//! with scripts but no requests of its own, wherever it is framed or opened. PDFs
 //! are exempt because the webview's PDF plugin does not render sandboxed.
 
 use std::borrow::Cow;
@@ -48,8 +48,10 @@ const THUMBNAIL_QUERY: &str = "kore-thumb";
 /// frame only, and IPC from any other origin is refused). Scripts, styles,
 /// fonts and media may come from the vault or any HTTPS host, so pages made
 /// by AI tools that load a chart or CSS library from a CDN render as their
-/// author saw them; `connect-src 'none'` and `form-action 'none'` stop the
-/// page from sending anything anywhere.
+/// author saw them. `connect-src 'none'` and `form-action 'none'` block the
+/// page's own requests (fetch, XHR, WebSocket, beacons, form posts); a
+/// resource load can still carry data in its URL, so all a page can ever
+/// leak is itself: it cannot read the vault, a note, or another origin.
 const DOCUMENT_POLICY: &str = "sandbox allow-scripts; \
 default-src 'none'; \
 script-src 'unsafe-inline' 'unsafe-eval' kore-asset: http://kore-asset.localhost https: data: blob:; \

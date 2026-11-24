@@ -24,8 +24,8 @@ const PILL_CLASS =
 /**
  * An HTML file from the vault as a page of its own, the way a PDF reads: the
  * page renders whole, scripts included, in a frame the `kore-asset`
- * protocol sandboxes (an opaque origin with no network calls and no way
- * into the app). The header names it by its own title and offers its source,
+ * protocol sandboxes (an opaque origin with no requests of its own and no
+ * way into the app). The header names it by its own title and offers its source,
  * and the system's browser (Mac) or share sheet (iPhone).
  */
 export function HtmlFileScreen({ path }: HtmlFileScreenProps): ReactElement {
@@ -53,7 +53,7 @@ export function HtmlFileScreen({ path }: HtmlFileScreenProps): ReactElement {
             }
           />
           <TooltipContent>
-            Its scripts run apart from Kore and can’t send anything over the network.
+            Its scripts run apart from Kore: they can’t read your notes or post data anywhere.
           </TooltipContent>
         </Tooltip>
         <div

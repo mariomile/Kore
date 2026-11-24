@@ -1668,7 +1668,9 @@ html[data-sidebar-resizing] aside {
    the fade alone costs nothing measurable.
 
    `--veil-surface` exists for Liquid Glass: with a translucent pane the
-   fade must not be more opaque than the surface it fades into. */
+   fade must not be more opaque than the surface it fades into, and
+   `--veil-ground` for a surface standing on another ground than the pane's
+   (the All Notes grid on the sunken one). */
 .app-scroll-veil {
   position: absolute;
   inset-inline: 0;
@@ -1684,8 +1686,13 @@ html[data-sidebar-resizing] aside {
     visibility 0s linear 240ms;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--surface) var(--veil-surface, 100%), transparent) 0%,
-    color-mix(in srgb, var(--surface) calc(var(--veil-surface, 100%) * 0.72), transparent) 46%,
+    color-mix(in srgb, var(--veil-ground, var(--surface)) var(--veil-surface, 100%), transparent) 0%,
+    color-mix(
+        in srgb,
+        var(--veil-ground, var(--surface)) calc(var(--veil-surface, 100%) * 0.72),
+        transparent
+      )
+      46%,
     transparent 100%
   );
 }

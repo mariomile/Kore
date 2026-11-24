@@ -473,8 +473,14 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               : 'All notes'
             : `#${tag}`
       }
+      // The grid's cards stand on the sunken ground (grid-card-classes.ts);
+      // every other view keeps the page, and a folder's cards sink on it.
+      data-card-ground={view === 'grid' ? undefined : 'page'}
       // `relative`: the floating bulk bar positions against this root.
-      className="relative flex h-full min-h-0 flex-col outline-none"
+      className={cn(
+        'relative flex h-full min-h-0 flex-col outline-none',
+        view === 'grid' && 'bg-surface-sunken [--veil-ground:var(--surface-sunken)]',
+      )}
     >
       <AllNotesBulkBar
         paths={selectedPaths}

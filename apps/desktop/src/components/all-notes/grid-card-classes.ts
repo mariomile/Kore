@@ -1,12 +1,19 @@
 /**
- * The Mac grid's card surface, shared by note cards (all-notes-grid.tsx)
- * and folder cards (folder-subfolders.tsx). No shadow or hover lift: a
- * border tint carries the hover affordance. The sunken surface (not the
- * page's own `surface`) is what draws the card's outline in dark themes,
- * where the hairline border alone all but vanished.
+ * The surface of a grid card, on the Mac and the phone alike (Craft's
+ * register): one step above the ground it sits on, with no border. The
+ * grids sit on the sunken ground, so a card is the page's own `surface`
+ * with a soft shadow. Where cards sit on the page itself (a folder's
+ * subfolder cards above the list view), the ground says so with
+ * `data-card-ground="page"` and the card sinks a step instead.
  */
-export const GRID_CARD_CLASS =
-  'group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-sunken transition-colors duration-150 ease-swift hover:border-border-strong'
+export const GRID_CARD_SURFACE_CLASS =
+  'bg-surface shadow-sm in-data-[card-ground=page]:bg-surface-sunken in-data-[card-ground=page]:shadow-none'
+
+/**
+ * The Mac grid's card, shared by note cards (all-notes-grid.tsx) and folder
+ * cards (folder-subfolders.tsx). The hover lifts the shadow a tier.
+ */
+export const GRID_CARD_CLASS = `group relative flex flex-col overflow-hidden rounded-2xl ${GRID_CARD_SURFACE_CLASS} transition-shadow duration-150 ease-swift hover:shadow-md`
 
 /**
  * The button that opens a card. It covers the card instead of wrapping it:

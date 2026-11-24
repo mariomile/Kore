@@ -75,8 +75,11 @@ describe('MoveToDrawer', () => {
     expect(moveTo).toHaveBeenCalledWith({ kind: 'folder', path: 'CRM' }, 'Archive/2026')
   })
 
-  it('suggests the note’s type folder, then the latest destinations, and remembers a pick', async () => {
-    localStorage.setItem('kore.recentMoveDestinations', JSON.stringify(['CRM', 'CRM/People']))
+  it('suggests the note’s type folder, then this vault’s existing latest destinations, and remembers a pick', async () => {
+    localStorage.setItem(
+      'kore.recentMoveDestinations',
+      JSON.stringify({ '/vault': ['Gone', 'CRM', 'CRM/People'], '/other': ['CRM/Companies'] }),
+    )
     await render(
       <MoveToDrawer target={{ kind: 'note', path: 'Inbox/Ada.md' }} onClose={() => {}} />,
     )
@@ -86,9 +89,9 @@ describe('MoveToDrawer', () => {
     expect(suggested.getByRole('button').all()).toHaveLength(2)
     await suggested.getByRole('button').nth(1).click()
     expect(moveTo).toHaveBeenCalledWith({ kind: 'note', path: 'Inbox/Ada.md' }, 'CRM')
-    expect(JSON.parse(localStorage.getItem('kore.recentMoveDestinations') ?? '[]')).toEqual([
-      'CRM',
-      'CRM/People',
-    ])
+    expect(JSON.parse(localStorage.getItem('kore.recentMoveDestinations') ?? '{}')).toEqual({
+      '/vault': ['CRM', 'Gone', 'CRM/People'],
+      '/other': ['CRM/Companies'],
+    })
   })
 })

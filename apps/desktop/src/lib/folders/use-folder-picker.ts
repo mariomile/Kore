@@ -61,19 +61,28 @@ export function useFolderPicker(target: MoveTarget | null): FolderPicker {
     queryFn: () => typeFoldersForNote(notePath!),
     enabled: notePath !== null && graph !== null && graph !== undefined,
   })
+  const vault = graph?.root ?? null
   // Read once per target: the list must not reshuffle under the finger.
-  const recent = useMemo(() => (target === null ? [] : recentMoveDestinations()), [target])
-  const suggestions = useMemo(
-    () => suggestFolders([...typeFolders, ...recent], current, exclude),
-    [typeFolders, recent, current, exclude],
+  const recent = useMemo(
+    () => (target === null || vault === null ? [] : recentMoveDestinations(vault)),
+    [target, vault],
   )
+  const suggestions = useMemo(() => {
+    // Only recent folders that still exist: a renamed or trashed one is not a
+    // destination. A type's home may not exist yet; moving there creates it.
+    const existing = new Set(options.map((option) => option.path))
+    const live = recent.filter((folder) => existing.has(folder))
+    return suggestFolders([...typeFolders, ...live], current, exclude)
+  }, [options, typeFolders, recent, current, exclude])
   const { moveTo } = useFolderOperations()
   const choose = (destination: string): void => {
     setQuery('')
     if (target === null) {
       return
     }
-    rememberMoveDestination(destination)
+    if (vault !== null) {
+      rememberMoveDestination(vault, destination)
+    }
     // A note's move reports through its own batch toast; a folder's here.
     moveTo(target, destination).catch((cause: unknown) => {
       startOperation('Moving folder').fail(errorMessage(cause))

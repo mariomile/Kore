@@ -64,7 +64,9 @@ export function HtmlPagePreview({
     }
   }, [cover])
 
-  const scale = size.width / PAGE_WIDTH
+  // One pixel over the cover, which clips it: a scaled page never leaves a
+  // hairline of its frame showing at the edge.
+  const scale = (size.width + 1) / PAGE_WIDTH
   const loaded = live && loadedUrl === url
   return (
     <div ref={setCover} className="relative size-full overflow-hidden">
@@ -86,7 +88,7 @@ export function HtmlPagePreview({
           style={{
             width: PAGE_WIDTH,
             // The cover's own aspect, at the page's width.
-            height: size.height / scale,
+            height: (size.height + 1) / scale,
             transform: `scale(${scale})`,
           }}
           className={cn(

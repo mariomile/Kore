@@ -104,11 +104,12 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                   <Button
                     type="button"
                     variant="ghost"
-                    className="group h-auto min-w-0 flex-1 justify-start gap-2.5 px-1.5 py-1 text-left"
+                    // Swatch on the rows' 18px icon slot, name on their label line.
+                    className="group h-auto min-w-0 flex-1 justify-start gap-3 px-2.5 py-1 text-left"
                   >
                     <GraphSwatch
                       color={colorFor(graph.root)}
-                      className={cn('h-5 w-5', indexing && 'motion-safe:animate-pulse')}
+                      className={cn('size-4.5', indexing && 'motion-safe:animate-pulse')}
                     />
                     <span className="min-w-0 truncate text-xs font-medium text-text-secondary transition-colors duration-100 group-hover:text-text">
                       {graph.name}

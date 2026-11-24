@@ -1,5 +1,6 @@
-import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@kore/core'
+import { errorMessage, getNote, getPinnedNotes, isDaily, randomNotePath } from '@kore/core'
 import { attachFilesToNote } from '@/lib/attach-files'
+import { openMoveTo } from '@/lib/folders/move-to-store'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
 import { runGistPublish } from '@/lib/note-gist'
@@ -68,6 +69,20 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
         await toggleNotePrivate(path, generation)
       } catch (cause) {
         startOperation(wasPrivate ? 'Unlocking note' : 'Locking note').fail(errorMessage(cause))
+      }
+    },
+  },
+  {
+    id: 'note.moveToFolder',
+    title: 'Move note to folder…',
+    keywords: ['folder', 'move', 'file', 'directory', 'organize', 'refile'],
+    // Opens the Move to… picker for the note the current route edits. No
+    // default keybinding: ⌘⇧M already moves a block inside the editor.
+    // Daily notes stay in their folder (the chronological spine).
+    run: (context) => {
+      const path = context.notePath()
+      if (path !== null && !isDaily(path)) {
+        openMoveTo({ kind: 'note', path })
       }
     },
   },

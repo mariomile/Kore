@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Close } from '@/components/icons'
+import { Close, Folder } from '@/components/icons'
 import { foldTag, type NoteTagFacet } from '@kore/core'
 import { useRouter } from '@/routing/router'
 import { FilterChip } from './filter-chip'
@@ -64,6 +64,12 @@ export function FilterBar({ filters, onFiltersChange, facets }: FilterBarProps):
             Reset
           </FilterChip>
         )}
+        <FilterChip
+          onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'folder', folder: '' } })}
+        >
+          <Folder className="-ml-1 size-4" />
+          Folders
+        </FilterChip>
         <FilterChip active={filters.pinned} onClick={() => patch({ pinned: !filters.pinned })}>
           Pinned
         </FilterChip>

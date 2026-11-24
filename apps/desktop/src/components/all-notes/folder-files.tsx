@@ -31,6 +31,8 @@ interface FolderFilesProps {
   includeSubfolders: boolean
   /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
   onOpen: (path: string) => void
+  /** The section's grid; the Mac page's columns unless the phone passes its own. */
+  className?: string
 }
 
 const NO_FILES: readonly LooseFile[] = []
@@ -64,6 +66,7 @@ export function FolderFiles({
   folder,
   includeSubfolders,
   onOpen,
+  className = CARD_SECTION_CLASS,
 }: FolderFilesProps): ReactElement | null {
   const { graph } = useGraph()
   const resolve = usePassiveImageResolver()
@@ -96,7 +99,7 @@ export function FolderFiles({
     return null
   }
   return (
-    <ul aria-label="Files" className={CARD_SECTION_CLASS}>
+    <ul aria-label="Files" className={className}>
       {files.map((file) => {
         const url = file.kind === 'image' ? resolve(file.path) : null
         return (

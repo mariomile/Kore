@@ -469,7 +469,11 @@ describe('AllNotesScreen', () => {
 
     await expect.element(view.getByRole('heading', { name: 'People' })).toBeInTheDocument()
     // Each subfolder is a card peeking at its newest notes, with its counts.
-    const subfolders = view.getByRole('list', { name: 'Subfolders' })
+    // They scroll with the notes: above the scroller, many folders left the
+    // notes no room.
+    const subfolders = view
+      .getByTestId('all-notes-scroll')
+      .getByRole('list', { name: 'Subfolders' })
     await expect.element(subfolders.getByText('Ada')).toBeInTheDocument()
     await expect.element(subfolders.getByText('1 note')).toBeInTheDocument()
     await expect.element(subfolders.getByRole('button', { name: 'Team' })).toBeInTheDocument()

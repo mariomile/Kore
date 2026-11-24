@@ -24,6 +24,11 @@ interface AllNotesTableProps {
    * it; only the virtualizer's own `scrollToIndex` reaches an unmounted row.
    */
   registerScrollToIndex: (scrollToIndex: (index: number) => void) => void
+  /**
+   * Height in px of what scrolls above the table in the same scroller (a
+   * folder page's subfolder cards), so the virtualizer places rows right.
+   */
+  startMargin?: number
 }
 
 /**
@@ -41,6 +46,7 @@ export function AllNotesTable({
   selection,
   onOpen,
   registerScrollToIndex,
+  startMargin = 0,
 }: AllNotesTableProps): ReactElement | null {
   // The same number the row's `h-(--row-height)` resolves to — the design
   // system's density scope and this map are held equal by a token test.
@@ -96,6 +102,7 @@ export function AllNotesTable({
           data={rows}
           itemSize={rowHeight}
           bufferSize={10 * rowHeight}
+          startMargin={startMargin}
         >
           {(note) => (
             <AllNotesRow

@@ -50,6 +50,37 @@ getting them wrong is the most common way a change is rejected in review:
   they call a typed per-domain binding that funnels through `call` in
   `packages/core/src/ipc/invoke.ts`, where every response is zod-validated.
 
+## Design system: always, no exceptions
+
+Every pixel follows Kore's design system and
+[docs/design.md](docs/design.md) (principles, tokens, states, motion). A
+change that looks right but invents its own shape is rejected (Mario,
+2026-11-24: "dobbiamo essere sempre fedeli al nostro design system e design
+principles").
+
+- **Tokens only.** Colors, type, spacing, radius, and motion come from
+  `design-system/tokens/` through their Tailwind names (`bg-surface-hover`,
+  `text-text-muted`, `bg-accent`, `bg-destructive`…). No hex values, no
+  one-off sizes when a token exists.
+- **Primitives before custom UI.** Use `apps/desktop/src/components/ui/`
+  and the icons in `apps/desktop/src/components/icons/`. Search fields:
+  `ui/search-pill.tsx` on Mac, `mobile/search-input.tsx` on iPhone. Toggles:
+  `ui/switch`. List/grid: `mobile/layout-toggle.tsx`. Folder rows on iPhone:
+  `mobile/folder-row.tsx`. Never native inputs or checkboxes.
+- **No new shapes.** Reuse the shapes the app already has: round icon
+  buttons, pills, rounded cards, rounded list rows. Nothing square,
+  full-bleed, or slab-like (a swipe action is a round button, not a coloured
+  block). No divider lines between rows; separate with space or surface tone
+  (Craft is the visual reference).
+- **One accent, state as tone.** Only the accent and the status inks carry
+  colour; hover, pressed, and selected are steps in the surface ramp.
+- **Mac and iPhone stay coherent.** A UI change lands on both, in the same
+  language.
+- **Check before you show it.** Screenshot light and dark, check alignment,
+  44pt touch targets, and every state (pressed, selected, disabled, empty),
+  and compare with the screens around it. Third-party tools get their real
+  logos, never initials.
+
 ## Checks CI runs that the daily loop doesn't
 
 `pnpm check` (typecheck + lint) plus targeted tests is the daily loop described

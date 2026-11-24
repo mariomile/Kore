@@ -1,5 +1,5 @@
 import { noteFolderCrumbs, type OpenTab } from '@kore/core'
-import { useMemo, type MouseEvent, type ReactElement } from 'react'
+import { useMemo, type ReactElement } from 'react'
 import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
@@ -8,7 +8,12 @@ import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
-import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
+import {
+  closeOnMiddleClick,
+  tabCloseClass,
+  tabPillClass,
+  useTabScrollIntoView,
+} from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
@@ -165,7 +170,7 @@ interface StripPageTitleProps {
  * active page's title over its folder path (notes only), Folio-style. It is
  * part of the window's drag region, like the bar's empty stretch.
  */
-function StripPageTitle({ items, activeTab, muted }: StripPageTitleProps): ReactElement | null {
+function StripPageTitle({ items, activeTab, muted }: StripPageTitleProps): ReactElement {
   const item = activeTab === null ? undefined : items.find((open) => tabsEqual(open.tab, activeTab))
   if (item === undefined) {
     return <div className="flex-1" />
@@ -263,12 +268,9 @@ function StripTab({
     scrollRef.current = element
   }
   const sortableStyle = sortableTranslateStyle(transform, transition)
-  const handleAuxClick = (event: MouseEvent): void => {
-    if (event.button === 1) {
-      event.preventDefault()
-      onClose(tab)
-    }
-  }
+  const handleAuxClick = closeOnMiddleClick(() => {
+    onClose(tab)
+  })
   if (tab.pinned) {
     return (
       <button

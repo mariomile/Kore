@@ -1,4 +1,4 @@
-import { memo, useCallback, type MouseEvent, type ReactElement } from 'react'
+import { memo, useCallback, type ReactElement } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -10,9 +10,9 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { OpenTab } from '@kore/core'
 import { Close, Plus } from '@/components/icons'
-import { TAB_KEY_ATTRIBUTE, TabContextMenu } from '@/components/note-tabs-context-menu'
+import { TabContextMenu } from '@/components/note-tabs-context-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
-import { tabCloseClass } from '@/components/tab-pill'
+import { closeOnMiddleClick, tabCloseClass } from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
@@ -109,19 +109,15 @@ const SidebarTabRow = memo(function SidebarTabRow({
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: tabKey(tab),
   })
-  const handleAuxClick = (event: MouseEvent): void => {
-    if (event.button === 1) {
-      event.preventDefault()
-      onClose(tab)
-    }
-  }
   return (
     <li
       ref={setNodeRef}
       style={sortableTranslateStyle(transform, transition)}
-      {...{ [TAB_KEY_ATTRIBUTE]: tabKey(tab) }}
+      data-tab-key={tabKey(tab)}
       className={cn('group relative touch-none', isDragging && 'z-10 opacity-70')}
-      onAuxClick={handleAuxClick}
+      onAuxClick={closeOnMiddleClick(() => {
+        onClose(tab)
+      })}
       {...listeners}
     >
       <button

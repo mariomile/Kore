@@ -46,9 +46,13 @@ const GRID_CHUNK = 120
 /** A card's footer names this many of the note's tags. */
 const MAX_FOOTER_TAGS = 3
 
-/** A column is at least this wide (17rem), with this gap (1.25rem) between columns. */
-const COLUMN_MIN_WIDTH = 272
-const COLUMN_GAP = 20
+/**
+ * A column is at least this wide, in rem so a larger text size makes fewer,
+ * wider columns instead of squeezing the cards: four columns in a wide
+ * window, two in a narrow one. The gap between columns is the grid's own
+ * (`gap-4`), read from its style.
+ */
+const COLUMN_MIN_WIDTH_REM = 13
 
 /** Before the grid is measured (only ever seen by tests without layout). */
 const DEFAULT_COLUMNS = 3
@@ -131,8 +135,10 @@ export function AllNotesGrid({
         gridElement.clientWidth -
         Number.parseFloat(style.paddingLeft) -
         Number.parseFloat(style.paddingRight)
-      const count = columnsThatFit(width, COLUMN_MIN_WIDTH, COLUMN_GAP)
-      return { count, width: Math.round((width - COLUMN_GAP * (count - 1)) / count) }
+      const gap = Number.parseFloat(style.columnGap) || 0
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+      const count = columnsThatFit(width, COLUMN_MIN_WIDTH_REM * rem, gap)
+      return { count, width: Math.round((width - gap * (count - 1)) / count) }
     }
     const apply = (next: { count: number; width: number }): void => {
       setColumns((current) =>
@@ -191,10 +197,10 @@ export function AllNotesGrid({
     <div
       ref={setGridElement}
       data-testid="all-notes-grid"
-      className="flex items-start gap-5 pb-10 pl-12 pr-7 pt-2"
+      className="flex items-start gap-4 pb-10 pl-12 pr-7 pt-2"
     >
       {dealIntoColumns(mountedNotes, columns.count).map((column, columnIndex) => (
-        <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
+        <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
           {column.map((note) => (
             <GridCard
               key={note.path}
@@ -264,7 +270,7 @@ const GridCard = memo(function GridCard({
         className={GRID_CARD_BUTTON_CLASS}
       />
       {picture !== undefined ? <NoteCardPicture src={picture} /> : null}
-      <div className="flex min-w-0 flex-col p-5">
+      <div className="flex min-w-0 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <h2 className="min-w-0 text-sm font-semibold leading-snug text-text [overflow-wrap:anywhere]">
             {title}

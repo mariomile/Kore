@@ -43,7 +43,7 @@ export function FolderSubfolders({ folder }: FolderSubfoldersProps): ReactElemen
   return (
     <ul
       aria-label="Subfolders"
-      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 pb-8 pl-12 pr-7 pt-2"
+      className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-4 pb-8 pl-12 pr-7 pt-2"
     >
       {children.map((child) => (
         <li key={child.path} className="min-w-0">

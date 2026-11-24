@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactElement } from 'react'
-import { isBasePath, isCanvasPath, isHtmlPath } from '@kore/core'
 import { AssetViewerDialog, opensInAssetViewer } from '@/components/asset-viewer-dialog'
+import { fileScreenRoute } from '@/routing/file-screen-route'
 import { useRouter } from '@/routing/router'
 
 interface AssetOpenerOptions {
@@ -29,16 +29,9 @@ export function useAssetOpener({ resolveUrl, openExternally }: AssetOpenerOption
   const { navigate } = useRouter()
   const openAsset = useCallback(
     async (assetPath: string): Promise<void> => {
-      if (isBasePath(assetPath)) {
-        navigate({ kind: 'base', path: assetPath, view: null })
-        return
-      }
-      if (isCanvasPath(assetPath)) {
-        navigate({ kind: 'canvas', path: assetPath })
-        return
-      }
-      if (isHtmlPath(assetPath)) {
-        navigate({ kind: 'html', path: assetPath })
+      const screen = fileScreenRoute(assetPath)
+      if (screen !== null) {
+        navigate(screen)
         return
       }
       if (opensInAssetViewer(assetPath)) {

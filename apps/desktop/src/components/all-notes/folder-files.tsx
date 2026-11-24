@@ -16,7 +16,7 @@ import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatBytes } from '@/lib/format-bytes'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
-import { GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
+import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 
 interface FolderFilesProps {
   /** The folder page's folder. */
@@ -61,10 +61,7 @@ export function FolderFiles({
     return null
   }
   return (
-    <ul
-      aria-label="Files"
-      className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-4 pb-8 pl-12 pr-7 pt-2"
-    >
+    <ul aria-label="Files" className={CARD_SECTION_CLASS}>
       {files.map((file) => {
         const url = file.kind === 'image' ? resolve(file.path) : null
         return (

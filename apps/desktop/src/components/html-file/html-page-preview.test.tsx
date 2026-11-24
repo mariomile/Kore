@@ -17,7 +17,7 @@ describe('HtmlPagePreview', () => {
     expect(iframe.tabIndex).toBe(-1)
     // Laid out at a laptop's width, scaled a pixel past the 256px cover.
     expect(iframe.style.width).toBe('1024px')
-    expect(iframe.style.transform).toBe(`scale(${257 / 1024})`)
+    expect(iframe.getBoundingClientRect().width).toBeCloseTo(257, 0)
     await expect.poll(() => view.container.textContent).not.toContain('icon')
     await view.unmount()
   })

@@ -149,7 +149,7 @@ const NoteCard = memo(function NoteCard({
           aria-label={title}
           onClick={() => onOpen(row.path)}
           // The card clips its picture, so the focus ring is drawn inside.
-          className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-offset-[-2px]"
+          className="kore-card-button absolute inset-0 z-[1] rounded-xl"
         />
         {imageUrl !== undefined ? <NoteCardPicture src={imageUrl} /> : null}
         <div className="p-3">

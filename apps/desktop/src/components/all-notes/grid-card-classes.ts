@@ -11,7 +11,7 @@ export const GRID_CARD_CLASS =
 /**
  * The button that opens a card. It covers the card instead of wrapping it:
  * WebKit does not clip a box of definite height inside a <button>. The card
- * clips what it holds, so the focus ring is drawn inside.
+ * clips what it holds, so the focus ring is drawn inside (`.kore-card-button`
+ * in styles/index.css: the app's unlayered focus rule outranks utilities).
  */
-export const GRID_CARD_BUTTON_CLASS =
-  'absolute inset-0 z-[1] rounded-2xl focus-visible:outline-offset-[-2px]'
+export const GRID_CARD_BUTTON_CLASS = 'kore-card-button absolute inset-0 z-[1] rounded-2xl'

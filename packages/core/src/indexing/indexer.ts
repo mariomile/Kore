@@ -333,7 +333,12 @@ async function reprojectAllNotes(options: IndexPassOptions, plan: ReprojectPlan)
       return
     }
     await batch.add(projection)
-    sinceCheckpoint += 1
+    // Prefix re-reads (materialized placeholders) never move the
+    // checkpoint: one written there would rewind it behind notes the
+    // interrupted pass already finished.
+    if (resume === undefined || file.path > resume.after) {
+      sinceCheckpoint += 1
+    }
     // Once a note has been skipped, stop advancing: the next run must
     // retry it, so it has to resume from before it.
     if (sinceCheckpoint >= REPROJECT_CHECKPOINT_EVERY && !skipped) {

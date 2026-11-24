@@ -610,6 +610,34 @@ describe('syncIndex', () => {
       expect(second.reads).toEqual([evicted, ...paths.slice(REPROJECT_CHECKPOINT_EVERY + 1)])
     })
 
+    it('never rewinds the checkpoint while re-reading prefix placeholders', async () => {
+      const after = paths[REPROJECT_CHECKPOINT_EVERY + 5]!
+      const evicted = paths.slice(0, REPROJECT_CHECKPOINT_EVERY + 1)
+      const writes: string[] = []
+      const { meta } = serveVault({
+        [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION - 1),
+        [REPROJECT_CHECKPOINT_KEY]: JSON.stringify({
+          stamp: String(PROJECTION_VERSION),
+          after,
+          evicted,
+        }),
+      })
+      const fallback = mockInvoke.getMockImplementation()!
+      mockInvoke.mockImplementation(async (command, args) => {
+        if (command === 'index_meta_set' && args['key'] === REPROJECT_CHECKPOINT_KEY) {
+          writes.push(String(args['value']))
+        }
+        return await fallback(command, args)
+      })
+      await syncIndex({ generation: 4 })
+      // Every checkpoint written lies beyond the resumed one.
+      const written = writes
+        .filter((write) => write !== '')
+        .map((write) => (JSON.parse(write) as { after: string }).after)
+      expect(written.every((path) => path > after)).toBe(true)
+      expect(meta.get(PROJECTION_VERSION_KEY)).toBe(String(PROJECTION_VERSION))
+    })
+
     it('ignores a checkpoint written for another projection', async () => {
       const { reads, meta } = serveVault({
         [PROJECTION_VERSION_KEY]: String(PROJECTION_VERSION - 1),

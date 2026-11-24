@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   displayNoteTitle,
   recentNotesByFolder,
@@ -43,7 +43,7 @@ export function FolderSubfolders({ folder }: FolderSubfoldersProps): ReactElemen
   return (
     <ul
       aria-label="Subfolders"
-      className="grid flex-none grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 pb-8 pl-12 pr-7"
+      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 pb-8 pl-12 pr-7 pt-2"
     >
       {children.map((child) => (
         <li key={child.path} className="min-w-0">
@@ -60,6 +60,7 @@ function useFolderPeeks(paths: readonly string[]): ReadonlyMap<string, readonly 
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'folder-peeks', paths],
     queryFn: () => recentNotesByFolder(paths, PEEK_COUNT),
     enabled: graph !== null && graph !== undefined && paths.length > 0,
+    placeholderData: keepPreviousData,
   })
   return data ?? NO_PEEKS
 }
@@ -80,7 +81,7 @@ const FolderCard = memo(function FolderCard({
     <div className={GRID_CARD_CLASS}>
       <button
         type="button"
-        aria-label={folder.name}
+        aria-label={`${folder.name}, ${folderCountLabel(folder)}`}
         onClick={() =>
           navigate({ kind: 'allNotes', filter: { kind: 'folder', folder: folder.path } })
         }
@@ -106,7 +107,7 @@ const FolderCard = memo(function FolderCard({
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
           {folder.name}
         </span>
-        <span className="flex-none text-2xs tabular-nums text-text-muted">
+        <span className="flex-none text-2xs tabular-nums text-text-secondary">
           {folderCountLabel(folder)}
         </span>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { firstImageAssets } from '@kore/core'
 import { passivePreviewImageResolver, previewThumbnailUrl } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -42,6 +42,10 @@ export function useFirstImages(paths: readonly string[]): ReadonlyMap<string, st
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'card-images', paths],
     queryFn: () => firstImageAssets(paths),
     enabled: graph !== null && graph !== undefined && paths.length > 0,
+    // A new set of paths (a filter, a sort, the next chunk) keeps the
+    // pictures it already has while the new set loads: dropping them for a
+    // render collapsed every band and the columns jumped.
+    placeholderData: keepPreviousData,
   })
   return useMemo(() => {
     if (data === undefined) {

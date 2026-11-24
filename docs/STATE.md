@@ -1,5 +1,11 @@
 # Kore working state
 
+## Note cards lead with their picture, 2026-11-24 (0.144.0)
+
+- [x] Grid cards lead with the note's cover or first image, cached
+  thumbnails, masonry grid on Mac like the iPhone. Projection 41, the index
+  rebuilds once (#652).
+
 ## One page header and empty state across the app, 2026-11-23 (0.143.0)
 
 - [x] Insights, Activity, Memory, Canvases and Bases share one page header and

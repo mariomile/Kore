@@ -14,6 +14,7 @@ import {
 import { previewThumbnailUrl } from '@/editor/preview-image-url'
 import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatBytes } from '@/lib/format-bytes'
+import { cn } from '@/lib/utils'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
@@ -42,7 +43,7 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
 /**
  * A folder page's loose files (images, PDFs, documents no note references)
  * as cards beside its subfolders, in the same columns: a picture shows
- * itself, any other file a sheet of paper naming its type. A card opens the
+ * itself, any other file its icon (its type is in the line under the name). A card opens the
  * file in the in-app viewer, or the app the OS picks for it.
  */
 export function FolderFiles({
@@ -86,11 +87,12 @@ interface FileCardProps {
 
 const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps): ReactElement {
   // A picture that fails (a format the card can't draw, a file gone since
-  // the catalog listed it) falls back to the paper sheet.
+  // the catalog listed it) falls back to the file's icon.
   const [failed, setFailed] = useState<string | null>(null)
   const type = file.extension === '' ? 'File' : file.extension.toUpperCase()
   const meta = `${type} · ${formatBytes(file.size)}`
   const KindIcon = KIND_ICON[file.kind]
+  const showPicture = picture !== undefined && failed !== picture
   return (
     <div className={GRID_CARD_CLASS}>
       <button
@@ -102,9 +104,13 @@ const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps
       <div
         aria-hidden
         data-testid="file-card-cover"
-        className="flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-surface-hover"
+        className={cn(
+          'flex aspect-[16/10] w-full items-center justify-center overflow-hidden',
+          // A picture fills the cover; a file without one is its icon on the card itself.
+          showPicture && 'bg-surface-hover',
+        )}
       >
-        {picture !== undefined && failed !== picture ? (
+        {showPicture ? (
           <img
             src={picture}
             alt=""
@@ -115,10 +121,7 @@ const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps
             className="size-full object-cover"
           />
         ) : (
-          <div className="flex aspect-[3/4] h-3/4 flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-surface">
-            <KindIcon className="size-5 text-text-muted" />
-            <span className="text-2xs font-semibold tracking-wide text-text-secondary">{type}</span>
-          </div>
+          <KindIcon className="size-10 text-text-muted" />
         )}
       </div>
       <div className="flex min-w-0 flex-col gap-0.5 px-4 py-3">

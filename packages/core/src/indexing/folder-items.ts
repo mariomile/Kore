@@ -4,7 +4,10 @@ import type { LooseFile } from './loose-files'
 import { sortNoteList, type SortableNoteRow } from './note-list-sort'
 
 /** One card of a folder page's grid: a note, or a loose file beside it. */
-export type FolderItem<T extends SortableNoteRow> =
+/** What a note needs for {@link mergeFolderItems}: its title comes from `titleOf`. */
+type MergeableNote = Pick<SortableNoteRow, 'path' | 'mtime' | 'isPinned'>
+
+export type FolderItem<T extends MergeableNote> =
   | { readonly kind: 'note'; readonly path: string; readonly note: T }
   | { readonly kind: 'file'; readonly path: string; readonly file: LooseFile }
 
@@ -36,16 +39,17 @@ export function filterLooseFiles(
  * is a document of the folder like any note, so it takes its place by date
  * or name instead of a section of its own. Pinned notes still lead; a file is
  * never pinned. `notes` arrive in that sort already, so their pinned order
- * holds.
+ * holds. `titleOf` reads a note's title, whatever shape the list keeps it in.
  */
-export function mergeFolderItems<T extends SortableNoteRow>(
+export function mergeFolderItems<T extends MergeableNote>(
   notes: readonly T[],
   files: readonly LooseFile[],
   sort: AllNotesSort,
+  titleOf: (note: T) => string,
 ): FolderItem<T>[] {
   const noteItems = notes.map((note) => ({
     path: note.path,
-    title: note.title,
+    title: titleOf(note),
     mtime: note.mtime,
     isPinned: note.isPinned,
     item: { kind: 'note', path: note.path, note } as const,

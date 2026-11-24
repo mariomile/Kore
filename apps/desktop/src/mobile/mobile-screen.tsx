@@ -8,6 +8,7 @@ import { MobileTypePage } from '@/mobile/collection/mobile-type-page'
 import { MobileAllNotes } from '@/mobile/screens/all-notes'
 import { MobileChat } from '@/mobile/screens/chat'
 import { MobileDaily } from '@/mobile/screens/daily'
+import { MobileFolder } from '@/mobile/screens/folder'
 import { MobileGraphs } from '@/mobile/screens/graphs'
 import { MobileNote } from '@/mobile/screens/note'
 import { MobileSettings } from '@/mobile/screens/settings'
@@ -82,6 +83,8 @@ export function MobileScreen({
       // filter is the Notes tab.
       return route.filter.kind === 'tag' ? (
         <MobileTypePage key={foldTag(route.filter.tag)} tag={route.filter.tag} />
+      ) : route.filter.kind === 'folder' ? (
+        <MobileFolder key={`folder:${route.filter.folder}`} folder={route.filter.folder} />
       ) : (
         <MobileAllNotes
           query={allQuery}

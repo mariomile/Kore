@@ -29,14 +29,15 @@ import {
 } from '@/components/ui/context-menu'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
+import { FolderDialogs, type FolderDialogState } from '@/components/folders/folder-dialogs'
 import { runCopyFolderPath } from '@/lib/folders/folder-actions'
+import { openMoveTo } from '@/lib/folders/move-to-store'
 import { startOperation } from '@/lib/operations'
 import { cn } from '@/lib/utils'
 import { useToday } from '@/lib/use-today'
 import { useGraph } from '@/providers/graph-provider'
 import { notePathForRoute, routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-import { SidebarFolderDialogs, type FolderDialogState } from './sidebar-folder-dialogs'
 import { SidebarSortableSection } from './sidebar-sortable-section'
 import {
   SIDEBAR_TREE_ITEM_CLASS,
@@ -159,7 +160,7 @@ export function SidebarFolders(): ReactElement | null {
               setDialog({ kind: 'newSubfolder', folderPath: contextTarget.path })
             }
             onRename={() => setDialog({ kind: 'rename', folderPath: contextTarget.path })}
-            onMove={() => setDialog({ kind: 'move', folderPath: contextTarget.path })}
+            onMove={() => openMoveTo({ kind: 'folder', path: contextTarget.path })}
             onReveal={() => handleReveal(contextTarget.path)}
             onCopyPath={() => void runCopyFolderPath(graph?.root ?? null, contextTarget.path)}
             onTrash={() => setDialog({ kind: 'trash', folderPath: contextTarget.path })}
@@ -169,12 +170,7 @@ export function SidebarFolders(): ReactElement | null {
         ) : null}
       </ContextMenu>
 
-      <SidebarFolderDialogs
-        dialog={dialog}
-        tree={tree}
-        onClose={() => setDialog(null)}
-        onEnsureExpanded={ensureExpanded}
-      />
+      <FolderDialogs dialog={dialog} onClose={() => setDialog(null)} onCreatedIn={ensureExpanded} />
     </SidebarSortableSection>
   )
 }

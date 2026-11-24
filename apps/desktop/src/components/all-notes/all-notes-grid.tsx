@@ -52,6 +52,8 @@ interface AllNotesGridProps {
 
 const NO_FILES: readonly LooseFile[] = []
 
+const noteTitle = (note: NoteListEntry): string => note.title
+
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
 
@@ -114,7 +116,10 @@ export function AllNotesGrid({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   // A folder's files are documents of it like its notes: one grid, one order.
   const items = useMemo(
-    () => (notes === undefined ? undefined : mergeFolderItems(notes, files, settings.allNotesSort)),
+    () =>
+      notes === undefined
+        ? undefined
+        : mergeFolderItems(notes, files, settings.allNotesSort, noteTitle),
     [notes, files, settings.allNotesSort],
   )
   const hasMore = items !== undefined && items.length > visibleCount

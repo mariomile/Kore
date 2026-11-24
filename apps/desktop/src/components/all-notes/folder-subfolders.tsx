@@ -7,6 +7,7 @@ import {
   type FolderTreeFolder,
 } from '@kore/core'
 import { Folder } from '@/components/icons'
+import { cn } from '@/lib/utils'
 import { useFirstImages } from '@/hooks/use-note-card-images'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -16,10 +17,18 @@ import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './g
 interface FolderSubfoldersProps {
   /** The page's folder from the tree; renders nothing without subfolders. */
   folder: FolderTreeFolder | null
+  /** The section's grid; the Mac page's columns unless the phone passes its own. */
+  className?: string
+  /**
+   * `compact` is the phone's half-width card: two notes peek instead of
+   * three, and the counts sit under the name so neither crowds the other.
+   */
+  density?: 'regular' | 'compact'
 }
 
-/** A folder card shows this many of the notes inside it. */
+/** A folder card shows this many of the notes inside it (two on a phone). */
 const PEEK_COUNT = 3
+const COMPACT_PEEK_COUNT = 2
 
 const NO_PEEKS: ReadonlyMap<string, readonly FolderPeekNote[]> = new Map()
 
@@ -30,7 +39,11 @@ const NO_PEEKS: ReadonlyMap<string, readonly FolderPeekNote[]> = new Map()
  * folder and counts what it holds. A card opens that subfolder's own page.
  * One indexed query for every card's peek, one for their pictures.
  */
-export function FolderSubfolders({ folder }: FolderSubfoldersProps): ReactElement | null {
+export function FolderSubfolders({
+  folder,
+  className = CARD_SECTION_CLASS,
+  density = 'regular',
+}: FolderSubfoldersProps): ReactElement | null {
   const children = folder?.folders ?? []
   const paths = useMemo(() => children.map((child) => child.path), [children])
   const peeks = useFolderPeeks(paths)
@@ -41,10 +54,15 @@ export function FolderSubfolders({ folder }: FolderSubfoldersProps): ReactElemen
     return null
   }
   return (
-    <ul aria-label="Subfolders" className={CARD_SECTION_CLASS}>
+    <ul aria-label="Subfolders" className={className}>
       {children.map((child) => (
         <li key={child.path} className="min-w-0">
-          <FolderCard folder={child} peek={peeks.get(child.path)} pictures={pictures} />
+          <FolderCard
+            folder={child}
+            peek={peeks.get(child.path)}
+            pictures={pictures}
+            compact={density === 'compact'}
+          />
         </li>
       ))}
     </ul>
@@ -66,14 +84,17 @@ interface FolderCardProps {
   folder: FolderTreeFolder
   peek: readonly FolderPeekNote[] | undefined
   pictures: ReadonlyMap<string, string>
+  compact: boolean
 }
 
 const FolderCard = memo(function FolderCard({
   folder,
   peek,
   pictures,
+  compact,
 }: FolderCardProps): ReactElement {
   const { navigate } = useRouter()
+  const shown = compact ? peek?.slice(0, COMPACT_PEEK_COUNT) : peek
   return (
     <div className={GRID_CARD_CLASS}>
       <button
@@ -87,27 +108,46 @@ const FolderCard = memo(function FolderCard({
       <div
         aria-hidden
         data-testid="folder-card-peek"
-        className="flex aspect-[16/7] w-full gap-2 bg-surface-hover p-3"
+        // overflow-hidden holds the band to its ratio: a long peek title would
+        // otherwise stretch it and leave cards in one row at different heights.
+        className="flex aspect-[16/7] w-full gap-2 overflow-hidden bg-surface-hover p-3"
       >
-        {peek === undefined || peek.length === 0 ? (
+        {shown === undefined || shown.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
             <Folder className="size-6 text-text-muted" />
           </div>
         ) : (
-          peek.map((note) => (
-            <PeekTile key={note.path} note={note} picture={pictures.get(note.path)} />
+          shown.map((note) => (
+            <PeekTile
+              key={note.path}
+              note={note}
+              picture={pictures.get(note.path)}
+              compact={compact}
+            />
           ))
         )}
       </div>
-      <div className="flex min-w-0 items-center gap-2 px-4 py-3.5">
-        <Folder aria-hidden className="size-3.5 flex-none text-text-muted" />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
-          {folder.name}
-        </span>
-        <span className="flex-none text-2xs tabular-nums text-text-secondary">
-          {folderCountLabel(folder)}
-        </span>
-      </div>
+      {compact ? (
+        <div className="flex min-w-0 flex-col gap-0.5 px-3.5 py-3">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Folder aria-hidden className="size-3.5 flex-none text-text-muted" />
+            <span className="min-w-0 truncate text-sm font-semibold text-text">{folder.name}</span>
+          </span>
+          <span className="truncate text-2xs tabular-nums text-text-secondary">
+            {folderCountLabel(folder)}
+          </span>
+        </div>
+      ) : (
+        <div className="flex min-w-0 items-center gap-2 px-4 py-3.5">
+          <Folder aria-hidden className="size-3.5 flex-none text-text-muted" />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
+            {folder.name}
+          </span>
+          <span className="flex-none text-2xs tabular-nums text-text-secondary">
+            {folderCountLabel(folder)}
+          </span>
+        </div>
+      )}
     </div>
   )
 })
@@ -116,9 +156,12 @@ const FolderCard = memo(function FolderCard({
 function PeekTile({
   note,
   picture,
+  compact,
 }: {
   note: FolderPeekNote
   picture: string | undefined
+  /** A phone card's tile is short: two lines of title, never a cut third. */
+  compact: boolean
 }): ReactElement {
   // A thumbnail that fails (the file went away since the index named it)
   // falls back to the title, like a note without a picture.
@@ -136,7 +179,12 @@ function PeekTile({
           className="size-full object-cover"
         />
       ) : (
-        <p className="line-clamp-4 p-2 text-2xs font-medium leading-snug text-text-secondary [overflow-wrap:anywhere]">
+        <p
+          className={cn(
+            'm-2 text-2xs font-medium leading-snug text-text-secondary [overflow-wrap:anywhere]',
+            compact ? 'line-clamp-2' : 'line-clamp-4',
+          )}
+        >
           {displayNoteTitle(note.title)}
         </p>
       )}
@@ -145,7 +193,7 @@ function PeekTile({
 }
 
 /** "12 notes", plus its folders when it has some: "3 folders · 12 notes". */
-function folderCountLabel(folder: FolderTreeFolder): string {
+export function folderCountLabel(folder: FolderTreeFolder): string {
   const notes = `${folder.noteCount} ${folder.noteCount === 1 ? 'note' : 'notes'}`
   const folders = folder.folders.length
   return folders === 0 ? notes : `${folders} ${folders === 1 ? 'folder' : 'folders'} · ${notes}`

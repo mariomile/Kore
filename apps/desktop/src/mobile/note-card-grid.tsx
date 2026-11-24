@@ -1,4 +1,15 @@
-import { memo, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
+import { mergeFolderItems, type LooseFile } from '@kore/core'
+import { FileCard } from '@/components/all-notes/folder-files'
 import { NoteCardPicture } from '@/components/all-notes/note-card-picture'
 import { NoteCardPreview } from '@/components/all-notes/note-card-preview'
 import { Pin } from '@/components/icons'
@@ -15,6 +26,21 @@ import { useSettings } from '@/providers/settings-provider'
 interface NoteCardGridProps {
   rows: NoteRowModel[]
   onOpen: (path: string) => void
+  /** Content that scrolls above the cards (a folder page's title and cards). */
+  leading?: ReactNode
+  /**
+   * A folder page's loose files, dealt among the notes in the page's sort,
+   * as the Mac grid does.
+   */
+  files?: readonly LooseFile[]
+  /** Opens a loose file; required with `files`. */
+  onOpenFile?: (path: string) => void
+}
+
+const NO_FILES: readonly LooseFile[] = []
+
+function rowTitle(row: NoteRowModel): string {
+  return row.titleSegments.map((segment) => segment.text).join('')
 }
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
@@ -32,19 +58,35 @@ const GRID_CHUNK = 120
  * height (see `card-preview-slot.tsx`), so the grid never moves under the
  * reader.
  */
-export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement {
+export function NoteCardGrid({
+  rows,
+  onOpen,
+  leading,
+  files = NO_FILES,
+  onOpenFile,
+}: NoteCardGridProps): ReactElement {
   const { settings } = useSettings()
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const hasMore = rows.length > visibleCount
-  const mountedRows = rows.slice(0, visibleCount)
-  const firstImages = useFirstImages(mountedRows.map((row) => row.path))
+  // A folder's files are documents of it like its notes: one grid, one order.
+  const items = useMemo(
+    () => mergeFolderItems(rows, files, settings.allNotesSort, rowTitle),
+    [rows, files, settings.allNotesSort],
+  )
+  const hasMore = items.length > visibleCount
+  const mountedItems = items.slice(0, visibleCount)
+  const firstImages = useFirstImages(
+    mountedItems.flatMap((item) => (item.kind === 'note' ? [item.path] : [])),
+  )
   const resolveImageUrl = usePassiveImageResolver()
   // The screen passes a fresh onOpen each render; a stable one lets the
   // memoized cards skip re-rendering when only the thumbnails arrive.
   const onOpenRef = useRef(onOpen)
   onOpenRef.current = onOpen
   const openPath = useCallback((path: string) => onOpenRef.current(path), [])
+  const onOpenFileRef = useRef(onOpenFile)
+  onOpenFileRef.current = onOpenFile
+  const openFile = useCallback((path: string) => onOpenFileRef.current?.(path), [])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -75,19 +117,28 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
         paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
       }}
     >
+      {leading}
       <div data-testid="all-notes-grid" className="flex items-start gap-3 px-4 py-4">
-        {dealIntoColumns(mountedRows, GRID_COLUMNS).map((column, columnIndex) => (
+        {dealIntoColumns(mountedItems, GRID_COLUMNS).map((column, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col">
-            {column.map((row) => (
-              <NoteCard
-                key={row.path}
-                row={row}
-                imageUrl={firstImages.get(row.path)}
-                resolveImageUrl={resolveImageUrl}
-                recency={row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
-                onOpen={openPath}
-              />
-            ))}
+            {column.map((item) =>
+              item.kind === 'file' ? (
+                <div key={item.path} className="pb-3">
+                  <FileCard file={item.file} onOpen={openFile} />
+                </div>
+              ) : (
+                <NoteCard
+                  key={item.path}
+                  row={item.note}
+                  imageUrl={firstImages.get(item.path)}
+                  resolveImageUrl={resolveImageUrl}
+                  recency={
+                    item.note.mtime > 0 ? formatRecencyLabel(item.note.mtime, settings) : '—'
+                  }
+                  onOpen={openPath}
+                />
+              ),
+            )}
           </div>
         ))}
       </div>

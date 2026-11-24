@@ -6,6 +6,8 @@ function note(path: string, title: string, mtime: number, isPinned = false) {
   return { path, title, mtime, isPinned }
 }
 
+const byTitle = (n: { title: string }): string => n.title
+
 function file(path: string, modifiedMs: number, kind: LooseFile['kind'] = 'pdf'): LooseFile {
   const name = path.split('/').at(-1) ?? path
   return { path, name, extension: name.split('.').at(-1) ?? '', kind, size: 1, modifiedMs }
@@ -17,6 +19,7 @@ describe('mergeFolderItems', () => {
       [note('p.md', 'Pinned', 1, true), note('a.md', 'A', 30), note('b.md', 'B', 10)],
       [file('deck.pdf', 20), file('old.pdf', 5)],
       'updated-desc',
+      byTitle,
     )
     expect(items.map((item) => item.path)).toEqual(['p.md', 'a.md', 'deck.pdf', 'b.md', 'old.pdf'])
   })
@@ -26,13 +29,14 @@ describe('mergeFolderItems', () => {
       [note('m.md', 'Mango', 1)],
       [file('apple.html', 1, 'html'), file('zebra.pdf', 1)],
       'title-asc',
+      byTitle,
     )
     expect(items.map((item) => item.path)).toEqual(['apple.html', 'm.md', 'zebra.pdf'])
   })
 
   it('keeps the notes untouched without files', () => {
     const notes = [note('b.md', 'B', 1), note('a.md', 'A', 2)]
-    expect(mergeFolderItems(notes, [], 'updated-desc').map((item) => item.path)).toEqual([
+    expect(mergeFolderItems(notes, [], 'updated-desc', byTitle).map((item) => item.path)).toEqual([
       'b.md',
       'a.md',
     ])

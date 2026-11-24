@@ -93,18 +93,24 @@ interface FolderFilesProps {
   files: readonly LooseFile[]
   /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
   onOpen: (path: string) => void
+  /** The section's grid; the Mac page's columns unless the phone passes its own. */
+  className?: string
 }
 
 /**
  * A folder page's loose files as a row of cards above a list view. The grid
  * view deals them among the notes instead (all-notes-grid.tsx).
  */
-export function FolderFiles({ files, onOpen }: FolderFilesProps): ReactElement | null {
+export function FolderFiles({
+  files,
+  onOpen,
+  className = CARD_SECTION_CLASS,
+}: FolderFilesProps): ReactElement | null {
   if (files.length === 0) {
     return null
   }
   return (
-    <ul aria-label="Files" className={CARD_SECTION_CLASS}>
+    <ul aria-label="Files" className={className}>
       {files.map((file) => (
         <li key={file.path} className="min-w-0">
           <FileCard file={file} onOpen={onOpen} />

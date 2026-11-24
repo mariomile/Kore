@@ -248,3 +248,28 @@ export async function homePathForTaggedInboxNote(
     return folder === '' ? `${candidate}.md` : `${folder}/${candidate}.md`
   })
 }
+
+/**
+ * The folders a note's types say it belongs in: each tag the note is a
+ * member of whose type declares a `folder:` home, resolved like a new note
+ * of that type would be ({@link typedNoteFolder}). The Move to picker offers
+ * them first; nothing moves on its own. Tree order of the note's tags,
+ * duplicates dropped.
+ */
+export async function typeFoldersForNote(path: string): Promise<string[]> {
+  const rows = await db
+    .selectFrom('tags')
+    .where('notePath', '=', path)
+    .where('member', '=', 1)
+    .select('tag')
+    .execute()
+  const stem = noteFileStem(path)
+  const folders = new Set<string>()
+  for (const { tag } of rows) {
+    const home = (await getTagType(tag))?.folder
+    if (home !== undefined) {
+      folders.add(typedNoteFolder(home, stem).replaceAll(/^\/+|\/+$/g, ''))
+    }
+  }
+  return [...folders]
+}

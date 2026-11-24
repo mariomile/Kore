@@ -590,6 +590,7 @@ export {
   slugPathForTitle,
   birthPathForTitle,
   homePathForTaggedInboxNote,
+  typeFoldersForNote,
   templateSlugPathForTitle,
   titleFilePathForRetitle,
   listTemplates,

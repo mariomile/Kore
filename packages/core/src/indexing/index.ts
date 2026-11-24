@@ -39,6 +39,7 @@ export {
   availableTemplatePath,
   birthPathForTitle,
   homePathForTaggedInboxNote,
+  typeFoldersForNote,
   slugPathForTitle,
   templateSlugPathForTitle,
   titleFilePathForRetitle,

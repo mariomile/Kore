@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isMobileSurface } from '@/lib/platform-surface'
 
 /** What the in-app viewer can render; anything else keeps the OS-open path. */
-export type ViewableAssetKind = 'pdf' | 'html' | 'csv' | 'docx' | 'text'
+export type ViewableAssetKind = 'pdf' | 'html' | 'csv' | 'docx' | 'text' | 'image'
 
 /** The viewer kind for a graph-relative asset path, or null to open externally. */
 export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
@@ -24,6 +24,9 @@ export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
   }
   if (/\.(?:txt|markdown|md|log|json)$/i.test(assetPath)) {
     return 'text'
+  }
+  if (/\.(?:avif|bmp|gif|heic|jpe?g|png|webp)$/i.test(assetPath)) {
+    return 'image'
   }
   return null
 }
@@ -55,7 +58,7 @@ interface AssetViewerDialogProps {
  * app. PDFs use the webview's native renderer; HTML (and converted DOCX)
  * renders in a fully sandboxed iframe (no scripts, no same-origin, no forms
  * — `sandbox=""`), so a note attachment can never run code against the app;
- * CSV/TSV renders as a table and plain text as a scroller. "Open externally"
+ * CSV/TSV renders as a table, plain text as a scroller and an image whole. "Open externally"
  * keeps the old path one click away — including for platforms whose webview
  * can't render PDFs inline.
  */
@@ -102,6 +105,13 @@ export function AssetViewerDialog({
           <DocxAssetView url={url} />
         ) : kind === 'text' ? (
           <TextAssetView url={url} />
+        ) : kind === 'image' ? (
+          <img
+            src={url}
+            alt={fileName}
+            draggable={false}
+            className="min-h-0 w-full flex-1 rounded-lg object-contain"
+          />
         ) : (
           <iframe
             title={fileName}

@@ -12,8 +12,6 @@ import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
 import type { CodeBlockRenderer } from '@meowdown/react'
 import {
   detectConflictMarkers,
-  isBasePath,
-  isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
   parseEmbedFenceBody,
@@ -30,7 +28,6 @@ import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/b
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
-import { AssetViewerDialog, opensInAssetViewer } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
 import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
@@ -47,6 +44,7 @@ import { MermaidDiagram } from '@/editor/mermaid-diagram'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { useResourceCollection } from '@/editor/use-resource-collection'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
+import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { TagActionsMenu } from '@/editor/tag-actions-menu'
@@ -226,29 +224,12 @@ export function NotePaneComponent({
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
   const resources = useResourceCollection(generation, path, document.header, saveFile)
-  // PDF and HTML attachments open in the in-app viewer; everything else keeps
-  // the OS-open path. The viewer's "Open externally" routes back to openAsset.
-  const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null)
   const { navigate } = useRouter()
-  const openOrViewAsset = useCallback(
-    async (assetPath: string): Promise<void> => {
-      // A `.base` chip opens Kore's own Base screen, not Obsidian.
-      if (isBasePath(assetPath)) {
-        navigate({ kind: 'base', path: assetPath, view: null })
-        return
-      }
-      if (isCanvasPath(assetPath)) {
-        navigate({ kind: 'canvas', path: assetPath })
-        return
-      }
-      if (opensInAssetViewer(assetPath)) {
-        setViewerAssetPath(assetPath)
-        return
-      }
-      await openAsset(assetPath)
-    },
-    [navigate, openAsset],
-  )
+  // A file chip opens the way every vault file does (use-asset-opener.tsx).
+  const { openAsset: openOrViewAsset, viewer: assetViewer } = useAssetOpener({
+    resolveUrl: resolveImageUrl,
+    openExternally: openAsset,
+  })
   const renderWikilinkHoverCard = useWikiLinkHoverPreview({
     generation,
     graphKey: graph?.root ?? null,
@@ -734,19 +715,7 @@ export function NotePaneComponent({
         </div>
       ) : null}
 
-      {viewerAssetPath !== null ? (
-        <AssetViewerDialog
-          assetPath={viewerAssetPath}
-          url={resolveImageUrl(viewerAssetPath)}
-          onClose={() => {
-            setViewerAssetPath(null)
-          }}
-          onOpenExternally={() => {
-            void openAsset(viewerAssetPath)
-            setViewerAssetPath(null)
-          }}
-        />
-      ) : null}
+      {assetViewer}
     </div>
   )
 }

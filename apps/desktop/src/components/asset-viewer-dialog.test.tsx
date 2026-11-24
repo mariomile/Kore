@@ -17,6 +17,8 @@ describe('viewableAssetKind', () => {
     expect(viewableAssetKind('assets/notes.md')).toBe('text')
     expect(viewableAssetKind('assets/build.log')).toBe('text')
     expect(viewableAssetKind('assets/config.json')).toBe('text')
+    expect(viewableAssetKind('Studio/Mood.JPG')).toBe('image')
+    expect(viewableAssetKind('assets/photo.webp')).toBe('image')
     expect(viewableAssetKind('assets/archive.zip')).toBeNull()
     expect(viewableAssetKind('assets/notes.pdf.bak')).toBeNull()
   })

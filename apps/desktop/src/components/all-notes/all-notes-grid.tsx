@@ -25,6 +25,7 @@ import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
 import { CardPreviewSlot } from './card-preview-slot'
 import { CardPropertyChips } from './card-property-chips'
+import { GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
 import { NoteCardPicture } from './note-card-picture'
 import { NoteCardPreview } from './note-card-preview'
 
@@ -248,27 +249,19 @@ const GridCard = memo(function GridCard({
     <div
       data-note-path={note.path}
       className={cn(
-        // No shadow or hover lift: a border tint carries the hover
-        // affordance. The sunken surface (not the page's own `surface`) is
-        // what draws the card's outline in dark themes, where the hairline
-        // border alone all but vanished.
-        'group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-sunken transition-colors duration-150 ease-swift hover:border-border-strong',
+        GRID_CARD_CLASS,
         // Hidden until its preview's height is kept (card-preview-slot.tsx),
         // so the column never moves under the reader.
         'has-[[data-preview-pending]]:opacity-0',
       )}
     >
-      {/* The button covers the card instead of wrapping it: WebKit does not
-          clip a box of definite height inside a <button>, and the preview
-          keeps one. */}
       <button
         type="button"
         aria-label={title}
         onClick={(event) => {
           onOpen(note.path, event)
         }}
-        // The card clips its picture, so the focus ring is drawn inside.
-        className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-offset-[-2px]"
+        className={GRID_CARD_BUTTON_CLASS}
       />
       {picture !== undefined ? <NoteCardPicture src={picture} /> : null}
       <div className="flex min-w-0 flex-col p-5">

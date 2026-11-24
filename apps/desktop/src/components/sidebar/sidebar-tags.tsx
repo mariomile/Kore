@@ -120,6 +120,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
         <button
           type="button"
           onClick={() => context.open(node.tag)}
+          aria-current={active ? 'page' : undefined}
           className="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left"
         >
           {hasChildren ? null : <SidebarIconSlot>{icon}</SidebarIconSlot>}

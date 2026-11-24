@@ -12,7 +12,8 @@ interface SidebarTreeIconProps {
 /**
  * An expandable row's icon, Notion-style: the glyph sits in the shared icon
  * column and turns into the disclosure chevron while the row is hovered or
- * the button has keyboard focus, so a tree needs no extra chevron column and
+ * the button (its own toggle, or the whole row when the row toggles) has
+ * keyboard focus, so a tree needs no extra chevron column and
  * its icons stay level with the flat rows above. Pure CSS swap: no state.
  */
 export function SidebarTreeIcon({ icon, open, toggle }: SidebarTreeIconProps): ReactElement {
@@ -25,7 +26,9 @@ export function SidebarTreeIcon({ icon, open, toggle }: SidebarTreeIconProps): R
         className={cn(
           swap,
           'group-hover/tree-row:invisible',
-          toggle && 'group-focus-visible/toggle:invisible',
+          toggle
+            ? 'group-focus-visible/toggle:invisible'
+            : 'group-focus-visible/tree-row:invisible',
         )}
       >
         {icon}
@@ -35,7 +38,9 @@ export function SidebarTreeIcon({ icon, open, toggle }: SidebarTreeIconProps): R
         className={cn(
           swap,
           'invisible text-text-muted group-hover/tree-row:visible',
-          toggle && 'group-focus-visible/toggle:visible group-hover/toggle:text-text',
+          toggle
+            ? 'group-focus-visible/toggle:visible group-hover/toggle:text-text'
+            : 'group-focus-visible/tree-row:visible',
         )}
       >
         <Chevron className="size-3" />

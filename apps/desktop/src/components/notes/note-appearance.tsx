@@ -1,6 +1,7 @@
 import { useMemo, type ReactElement } from 'react'
 import { noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
 import { Image, Smile } from '@/components/icons'
+import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
 import { cn } from '@/lib/utils'
 import { NoteCover, type CoverEdit } from './note-cover'
 import { NoteCoverPicker, type CoverUpload } from './note-cover-picker'
@@ -34,14 +35,26 @@ interface NoteAppearanceProps {
   uploadCover?: CoverUpload | undefined
   /** Saves the cover's vertical position; the cover shows Reposition when set. */
   onCoverPositionChange?: ((coverY: number) => void) | undefined
+  /**
+   * The note's path, to show its folder breadcrumb at the top of the header:
+   * in a frosted pill on the cover, or above the icon and title without one.
+   * Omitted, no breadcrumb.
+   */
+  breadcrumbPath?: string | undefined
+  /**
+   * The header opens the page: the cover bleeds up through the page's top
+   * inset (`--note-page-inset-top`, set by the hosting view) to its edge.
+   */
+  flushCover?: boolean
 }
 
 const HOVER_ACTION_CLASS =
   'flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-hover hover:text-text'
 
 /**
- * Cover image and icon from reserved frontmatter keys. Absent or unresolvable
- * values render nothing — the keys stay in the file either way.
+ * The note's header: folder breadcrumb, then the cover image and icon from
+ * reserved frontmatter keys. Absent or unresolvable values render nothing —
+ * the keys stay in the file either way.
  */
 export function NoteAppearance({
   source,
@@ -52,7 +65,9 @@ export function NoteAppearance({
   onCoverChange,
   uploadCover,
   onCoverPositionChange,
-}: NoteAppearanceProps): ReactElement | null {
+  breadcrumbPath,
+  flushCover = false,
+}: NoteAppearanceProps): ReactElement {
   const appearance = useMemo(() => parseNoteAppearanceFromSource(source), [source])
   const coverUrl = appearance.coverSrc !== null ? resolveImageUrl(appearance.coverSrc) : null
   const icon = appearance.icon
@@ -120,14 +135,27 @@ export function NoteAppearance({
       </div>
     ) : null
 
-  if (coverUrl === null && iconEl === null) {
-    return addRow
-  }
-
   if (coverUrl !== null) {
     return (
-      <div className={cn('relative', iconEl !== null ? 'mb-10' : 'mb-3')}>
+      <div
+        className={cn(
+          'relative',
+          iconEl !== null ? 'mb-10' : 'mb-3',
+          flushCover && 'kore-note-cover-flush',
+        )}
+      >
         <NoteCover url={coverUrl} position={appearance.coverY} edit={coverEdit} />
+        {breadcrumbPath === undefined ? null : (
+          // Click-through outside the pill, so the cover keeps its hover
+          // actions and drop target under the empty band.
+          <div className={cn('pointer-events-none absolute inset-x-0 top-4', gutterClassName)}>
+            <NoteFolderBreadcrumb
+              path={breadcrumbPath}
+              onCover
+              className="pointer-events-auto max-w-full"
+            />
+          </div>
+        )}
         {iconEl !== null ? (
           <div className={cn('absolute -bottom-6', gutterClassName)}>{iconEl}</div>
         ) : null}
@@ -136,9 +164,14 @@ export function NoteAppearance({
     )
   }
 
+  const breadcrumb =
+    breadcrumbPath === undefined ? null : (
+      <NoteFolderBreadcrumb path={breadcrumbPath} className={gutterClassName} />
+    )
   return (
     <>
-      <div className={cn('mb-2', gutterClassName)}>{iconEl}</div>
+      {breadcrumb}
+      {iconEl === null ? null : <div className={cn('mb-2', gutterClassName)}>{iconEl}</div>}
       {addRow}
     </>
   )

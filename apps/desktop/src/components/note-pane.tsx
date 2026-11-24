@@ -22,7 +22,6 @@ import {
 } from '@kore/core'
 import { EmbedHostContext } from '@/components/notes/embed-host-context'
 import { BacklinksPanel } from '@/components/backlinks-panel'
-import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
 import { WeekHeader } from '@/components/weekly/week-header'
 import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
@@ -529,13 +528,26 @@ export function NotePaneComponent({
 
   return (
     <div className={cn('group/note relative', className)} aria-label={`Editing ${path}`}>
-      <div className={gutterClassName}>
-        {weeklyWeek !== null ? (
+      {weeklyWeek !== null ? (
+        <div className={gutterClassName}>
           <WeekHeader week={weeklyWeek} />
-        ) : !dailyNote ? (
-          <NoteFolderBreadcrumb path={path} />
-        ) : null}
+        </div>
+      ) : null}
 
+      <NoteAppearance
+        source={document.header}
+        resolveImageUrl={resolveImageUrl}
+        gutterClassName={gutterClassName}
+        showIcon={!titleDrawsIcon}
+        onIconChange={onIconChange}
+        onCoverChange={editableAppearance?.setCover}
+        uploadCover={editableAppearance === null ? undefined : saveFile}
+        onCoverPositionChange={editableAppearance?.setCoverPosition}
+        breadcrumbPath={periodicNote ? undefined : path}
+        flushCover={weeklyWeek === null}
+      />
+
+      <div className={gutterClassName}>
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
             Saving failed: {document.error}. Your edits are kept in the editor and the next
@@ -562,17 +574,6 @@ export function NotePaneComponent({
             state into the next note's card. */}
         {!periodicNote ? <SuggestedContactCard key={path} path={path} /> : null}
       </div>
-
-      <NoteAppearance
-        source={document.header}
-        resolveImageUrl={resolveImageUrl}
-        gutterClassName={gutterClassName}
-        showIcon={!titleDrawsIcon}
-        onIconChange={onIconChange}
-        onCoverChange={editableAppearance?.setCover}
-        uploadCover={editableAppearance === null ? undefined : saveFile}
-        onCoverPositionChange={editableAppearance?.setCoverPosition}
-      />
 
       <NoteEditor
         // X / YouTube embed cards fetch from those hosts: public notes only,

@@ -1,6 +1,7 @@
 import { Fragment, type ReactElement } from 'react'
 import { noteFolderCrumbs, type FolderCrumb } from '@kore/core'
 import { ChevronRight, Folder } from '@/components/icons'
+import { COVER_GLASS_CLASS } from '@/components/notes/note-cover'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
 
@@ -8,14 +9,19 @@ interface NoteFolderBreadcrumbProps {
   /** Graph-relative path of the open note. */
   path: string
   /** Additional classes applied to the nav. */
-  className?: string
+  className?: string | undefined
+  /**
+   * Drawn over the note's cover: a frosted pill in place of the plain row,
+   * so the path stays legible on any image.
+   */
+  onCover?: boolean
 }
 
 /** Past this many folders the middle ones fold into an ellipsis. */
 const MAX_VISIBLE_CRUMBS = 3
 
 const CRUMB_CLASS =
-  'flex max-w-[12rem] min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-left transition-colors hover:bg-surface-hover hover:text-text focus-visible:bg-surface-hover focus-visible:text-text focus-visible:outline-none'
+  'flex max-w-[12rem] min-w-0 items-center gap-1 px-1.5 py-0.5 text-left transition-colors hover:bg-surface-hover hover:text-text focus-visible:bg-surface-hover focus-visible:text-text focus-visible:outline-none'
 
 /**
  * Where the note lives, above its title: `📁 Active › Projects ›`. Kore
@@ -28,6 +34,7 @@ const CRUMB_CLASS =
 export function NoteFolderBreadcrumb({
   path,
   className,
+  onCover = false,
 }: NoteFolderBreadcrumbProps): ReactElement | null {
   const { navigate } = useRouter()
   const crumbs = noteFolderCrumbs(path)
@@ -42,8 +49,19 @@ export function NoteFolderBreadcrumb({
   const fullPath = crumbs.at(-1)!.path
 
   return (
-    <nav aria-label="Folder" className={cn('mb-1.5', className)}>
-      <ol className="-ml-1.5 flex min-w-0 items-center gap-0.5 text-xs text-text-muted">
+    <nav
+      aria-label="Folder"
+      className={cn(
+        onCover ? cn('inline-flex rounded-full p-0.5', COVER_GLASS_CLASS) : 'mb-1.5',
+        className,
+      )}
+    >
+      <ol
+        className={cn(
+          'flex min-w-0 items-center gap-0.5 text-xs',
+          onCover ? 'text-text-secondary' : '-ml-1.5 text-text-muted',
+        )}
+      >
         {visible.map((crumb, index) => (
           <Fragment key={crumb?.path ?? 'folded'}>
             <li className="flex min-w-0 items-center">
@@ -58,7 +76,7 @@ export function NoteFolderBreadcrumb({
                   onClick={() => {
                     navigate({ kind: 'allNotes', filter: { kind: 'folder', folder: crumb.path } })
                   }}
-                  className={CRUMB_CLASS}
+                  className={cn(CRUMB_CLASS, onCover ? 'rounded-full' : 'rounded-md')}
                 >
                   {index === 0 ? <Folder aria-hidden className="size-3.5 shrink-0" /> : null}
                   <span className="truncate">{crumb.name}</span>

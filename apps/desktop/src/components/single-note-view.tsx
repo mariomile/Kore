@@ -2,6 +2,7 @@ import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { ScrollVeil } from '@/components/scroll-veil'
+import { cn } from '@/lib/utils'
 import { usePaneIsActive } from '@/providers/panes-provider'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
@@ -51,7 +52,14 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
     // edge of the pane while the note itself scrolls beneath it.
     <div ref={rootRef} className="relative h-full">
       <ScrollRestored className="h-full overflow-auto px-0" elementRef={setScrollElement}>
-        <div className="mx-auto flex min-h-full w-full max-w-full flex-col pt-14 pb-8">
+        {/* With no heading the note opens the page, so its cover may bleed
+            up through the top inset (`kore-note-page-top`). */}
+        <div
+          className={cn(
+            'mx-auto flex min-h-full w-full max-w-full flex-col pt-14 pb-8',
+            heading === undefined && 'kore-note-page-top',
+          )}
+        >
           {heading}
           <NotePane
             path={path}

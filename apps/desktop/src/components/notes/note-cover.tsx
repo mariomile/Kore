@@ -23,8 +23,13 @@ export interface CoverEdit {
   onPositionChange?: ((coverY: number) => void) | undefined
 }
 
-const COVER_ACTION_CLASS =
-  'rounded-md bg-surface/90 px-2 py-1 text-xs text-text-secondary shadow-sm backdrop-blur-sm transition-colors hover:bg-surface hover:text-text'
+/** Frosted surface for chrome that sits on the cover image. */
+export const COVER_GLASS_CLASS = 'bg-surface/90 shadow-sm backdrop-blur-sm'
+
+const COVER_ACTION_CLASS = cn(
+  'rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface hover:text-text',
+  COVER_GLASS_CLASS,
+)
 
 /** Arrow keys move the cover by this many percentage points. */
 const KEY_STEP = 5

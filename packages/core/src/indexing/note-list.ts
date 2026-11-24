@@ -146,6 +146,59 @@ function folderMembership(folder: NoteListFolder): RawBuilder<boolean> {
     : sql<boolean>`${under} and instr(substr("notes"."path", ${length + 1}), '/') = 0`
 }
 
+/** One of a folder's most recently edited notes (a folder card's peek). */
+export interface FolderPeekNote {
+  readonly path: string
+  readonly title: string
+}
+
+/**
+ * Each folder's `perFolder` most recently edited notes, its subfolders'
+ * included, newest first: what a folder card shows of what is inside.
+ * One query for every folder, however many: each note is matched to the
+ * folders it is filed under by the same path prefix as {@link listNotes}'s
+ * folder pages, ranked within each, and only the top ones come back.
+ * A folder with no notes is absent from the map.
+ */
+export async function recentNotesByFolder(
+  folders: readonly string[],
+  perFolder: number,
+): Promise<ReadonlyMap<string, readonly FolderPeekNote[]>> {
+  const peeks = new Map<string, FolderPeekNote[]>()
+  if (folders.length === 0 || perFolder < 1) {
+    return peeks
+  }
+  // `length` counts code points, like `substr`, so a prefix with accents or
+  // emoji compares the same text the tree grouped by.
+  const prefixes = sql.join(folders.map((folder) => sql`(${folder}, ${`${folder}/`})`))
+  const result = await sql<{ folder: string; path: string; title: string }>`
+    WITH folders(folder, prefix) AS (VALUES ${prefixes})
+    SELECT folder, path, title FROM (
+      SELECT
+        folders.folder AS folder,
+        notes.path AS path,
+        notes.title AS title,
+        row_number() OVER (
+          PARTITION BY folders.folder ORDER BY notes.mtime DESC, notes.path
+        ) AS rank
+      FROM folders
+      JOIN notes ON substr(notes.path, 1, length(folders.prefix)) = folders.prefix
+    )
+    WHERE rank <= ${perFolder}
+    ORDER BY folder, rank
+  `.execute(db)
+  for (const row of result.rows) {
+    const notes = peeks.get(row.folder)
+    const note = { path: row.path, title: row.title }
+    if (notes === undefined) {
+      peeks.set(row.folder, [note])
+    } else {
+      notes.push(note)
+    }
+  }
+  return peeks
+}
+
 /** Match the properties panel: a malformed schema does not make a tag typed. */
 function hasValidTagSchema(column: string, validity: Map<string, boolean>): boolean {
   // Most rows carry no schema at all (`[null]`, or one null per untyped

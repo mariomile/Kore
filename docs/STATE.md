@@ -1,5 +1,12 @@
 # Kore working state
 
+## Resumable index refresh, 2026-11-24 (0.145.1)
+
+- [x] A full reprojection checkpoints every 256 notes and resumes after the
+  checkpoint on the next open (then reconciles), so iOS suspension no longer
+  restarts it from note 1; the Preparing notes pill shows only when the index
+  starts empty (#659).
+
 ## Subfolder cards on folder pages, 2026-11-24 (0.145.0)
 
 - [x] Subfolders as cards that peek at their three newest notes with counts;

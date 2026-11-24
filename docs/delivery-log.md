@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Index: resume an interrupted full refresh instead of restarting it; pill
+  only for an empty index (#659).
 - Folders: subfolders as cards that peek at their newest notes, denser Mac
   grid (#655).
 - Grid: note cards lead with their picture, Mac masonry grid (#652).

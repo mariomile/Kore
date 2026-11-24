@@ -210,7 +210,7 @@ interface HiddenItemsMenuProps {
 /** The way back for hidden rows and shelves: a quiet line with a menu of them. */
 function HiddenItemsMenu({ items, onShow }: HiddenItemsMenuProps): ReactElement {
   return (
-    <div className="mt-4 px-4.5">
+    <div className="mt-4 px-5">
       <DropdownMenu>
         <DropdownMenuTrigger
           render={

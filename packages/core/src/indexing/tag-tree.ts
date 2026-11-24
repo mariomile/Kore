@@ -101,11 +101,6 @@ export function buildTagTree(rows: readonly TagTreeCount[]): TagTreeNode[] {
   return roots.map(freeze)
 }
 
-/** Whether any tag in the tree has children — i.e. the vault nests tags. */
-export function hasNestedTags(tree: readonly TagTreeNode[]): boolean {
-  return tree.some((node) => node.children.length > 0)
-}
-
 /**
  * One row of the sidebar's configured-tags group: a tag with a definition note,
  * carrying any unconfigured sub-tags nested beneath it so no tag appears twice.

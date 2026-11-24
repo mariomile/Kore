@@ -104,12 +104,15 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                   <Button
                     type="button"
                     variant="ghost"
-                    className="group h-auto min-w-0 flex-1 justify-start gap-2.5 px-1.5 py-1 text-left"
+                    // Swatch on the rows' 18px icon slot, name on their label line.
+                    className="group h-auto min-w-0 flex-1 justify-start gap-3 px-2.5 py-1 text-left"
                   >
-                    <GraphSwatch
-                      color={colorFor(graph.root)}
-                      className={cn('h-5 w-5', indexing && 'motion-safe:animate-pulse')}
-                    />
+                    <SidebarIconSlot>
+                      <GraphSwatch
+                        color={colorFor(graph.root)}
+                        className={cn('size-3.5 rounded', indexing && 'motion-safe:animate-pulse')}
+                      />
+                    </SidebarIconSlot>
                     <span className="min-w-0 truncate text-xs font-medium text-text-secondary transition-colors duration-100 group-hover:text-text">
                       {graph.name}
                     </span>
@@ -248,9 +251,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
               onClick={() => void runCommand('settings.open', context)}
               className={cn(
                 'size-7 shrink-0 text-text-muted transition-colors duration-100 hover:bg-surface-hover hover:text-text-secondary',
-                settingsActive
-                  ? 'bg-surface-hover text-text dark:bg-transparent dark:text-accent'
-                  : null,
+                settingsActive ? 'bg-surface-hover text-text' : null,
               )}
             >
               <SidebarIconSlot>

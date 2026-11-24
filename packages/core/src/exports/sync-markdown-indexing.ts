@@ -551,7 +551,6 @@ export {
   getTagTree,
   listTagMentions,
   type TagMention,
-  hasNestedTags,
   splitTypesFromTags,
   type TypeShelfEntry,
   listTagTreeCounts,

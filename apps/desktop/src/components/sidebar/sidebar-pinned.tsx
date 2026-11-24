@@ -70,7 +70,7 @@ export function SidebarPinned(): ReactElement | null {
           items={pinned.map((note) => note.path)}
           strategy={verticalListSortingStrategy}
         >
-          <ul className="mt-2 flex flex-col space-y-1">
+          <ul className="mt-2 flex flex-col space-y-px">
             {pinned.map((note) => (
               <SidebarSortablePinnedRow key={note.path} note={note} />
             ))}

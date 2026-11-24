@@ -30,7 +30,7 @@ export function SidebarPinnedRowPreview({
         overlay && 'shadow-sm',
       )}
     >
-      <span className={cn('min-w-0 flex-1 py-1 px-2.5 text-left', placeholder && 'invisible')}>
+      <span className={cn('min-w-0 flex-1 py-1 pl-3 pr-2.5 text-left', placeholder && 'invisible')}>
         <span className="block truncate text-xs font-medium">{label}</span>
       </span>
     </span>

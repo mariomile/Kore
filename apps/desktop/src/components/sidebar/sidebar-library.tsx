@@ -1,20 +1,21 @@
 import { memo, useCallback, type ReactElement } from 'react'
 import { isModEvent } from '@meowdown/core'
 import { libraryFileTitle, type LibraryRoot } from '@kore/core'
-import { Bot, ChevronDown, ChevronRight, Folder, FolderOpen } from '@/components/icons'
+import { Bot, Folder, FolderOpen } from '@/components/icons'
 import { useLibraryDir, useLibraryRoots } from '@/hooks/use-library'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
+import {
+  SIDEBAR_TREE_ITEM_CLASS,
+  SIDEBAR_TREE_ROW_CLASS,
+  SidebarTreeIcon,
+  sidebarTreePadding,
+} from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.library.expanded'
-
-const ROW_CLASS =
-  'flex w-full items-center gap-1.5 rounded-md py-1 pr-2.5 text-left leading-5 transition-colors duration-[50ms]'
-const INDENT_PX = 12
-const BASE_PADDING_PX = 10
 
 interface LibraryTreeContext {
   root: string
@@ -81,7 +82,7 @@ function RootRow({ root, context }: RootRowProps): ReactElement {
         title={root.path}
         open={open}
         depth={0}
-        icon={<Bot aria-hidden className="size-3.5 flex-none" />}
+        icon={<Bot className="size-3.5" />}
         onToggle={() => context.toggle(key)}
       />
       {open ? <FolderLevel dir="" depth={1} context={context} /> : null}
@@ -104,7 +105,7 @@ function FolderLevel({ dir, depth, context }: FolderLevelProps): ReactElement {
     return (
       <p
         className="py-1 text-2xs text-text-muted"
-        style={{ paddingLeft: BASE_PADDING_PX + depth * INDENT_PX + 18 }}
+        style={{ paddingLeft: sidebarTreePadding(depth, true) }}
       >
         {level === 'error' ? 'This folder couldn’t be opened' : 'No markdown here'}
       </p>
@@ -154,7 +155,7 @@ function FolderRow({ path, name, depth, context }: FolderRowProps): ReactElement
         name={name}
         open={open}
         depth={depth}
-        icon={<Icon aria-hidden className="size-3.5 flex-none" />}
+        icon={<Icon className="size-3.5" />}
         onToggle={() => context.toggle(key)}
       />
       {open ? <FolderLevel dir={path} depth={depth + 1} context={context} /> : null}
@@ -180,20 +181,20 @@ function FolderToggle({
   icon,
   onToggle,
 }: FolderToggleProps): ReactElement {
-  const Chevron = open ? ChevronDown : ChevronRight
   return (
     <button
       type="button"
       aria-expanded={open}
       title={title}
       onClick={onToggle}
-      className={cn(ROW_CLASS, 'text-text-secondary hover:bg-surface-hover hover:text-text')}
-      style={{ paddingLeft: BASE_PADDING_PX - 4 + depth * INDENT_PX }}
+      className={cn(
+        SIDEBAR_TREE_ITEM_CLASS,
+        SIDEBAR_TREE_ROW_CLASS,
+        'text-text-secondary hover:bg-surface-hover hover:text-text',
+      )}
+      style={{ paddingLeft: sidebarTreePadding(depth) }}
     >
-      <span className="flex size-5 flex-none items-center justify-center text-text-muted">
-        <Chevron aria-hidden className="size-3" />
-      </span>
-      {icon}
+      <SidebarTreeIcon icon={icon} open={open} />
       <span className="min-w-0 flex-1 truncate text-xs font-medium">{name}</span>
     </button>
   )
@@ -221,12 +222,12 @@ const FileRow = memo(function FileRow({ root, path, depth, active }: FileRowProp
         aria-current={active ? 'page' : undefined}
         title={path}
         className={cn(
-          ROW_CLASS,
+          SIDEBAR_TREE_ITEM_CLASS,
           active
             ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
             : 'text-text-secondary hover:bg-surface-hover hover:text-text',
         )}
-        style={{ paddingLeft: BASE_PADDING_PX + depth * INDENT_PX + 18 }}
+        style={{ paddingLeft: sidebarTreePadding(depth, true) }}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium">
           {libraryFileTitle(path)}

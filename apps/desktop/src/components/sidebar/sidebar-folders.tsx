@@ -10,8 +10,6 @@ import {
   type FolderTreeNote,
 } from '@kore/core'
 import {
-  ChevronDown,
-  ChevronRight,
   Folder,
   FolderMove,
   FolderOpen,
@@ -40,15 +38,17 @@ import { notePathForRoute, routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { SidebarFolderDialogs, type FolderDialogState } from './sidebar-folder-dialogs'
 import { SidebarSortableSection } from './sidebar-sortable-section'
+import {
+  SIDEBAR_TREE_ITEM_CLASS,
+  SIDEBAR_TREE_ROW_CLASS,
+  SidebarTreeIcon,
+  sidebarTreePadding,
+} from './sidebar-tree-icon'
 import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'kore.workspace-sidebar.folders.expanded'
 const FOLDER_PATH_ATTRIBUTE = 'data-folder-path'
 
-const ROW_CLASS =
-  'flex w-full items-center gap-1.5 rounded-md py-1 pr-2.5 text-left leading-5 transition-colors duration-[50ms]'
-const INDENT_PX = 12
-const BASE_PADDING_PX = 10
 /**
  * Note rows an expanded folder shows before a "Show all" row hands the rest
  * to its page — a 600-person `CRM/People` would otherwise bury the sidebar.
@@ -276,8 +276,11 @@ function FolderChildren({ folder, depth, context }: FolderChildrenProps): ReactE
           <button
             type="button"
             onClick={() => context.open(folder.path)}
-            className={cn(ROW_CLASS, 'text-text-muted hover:bg-surface-hover hover:text-text')}
-            style={{ paddingLeft: BASE_PADDING_PX + depth * INDENT_PX + 18 }}
+            className={cn(
+              SIDEBAR_TREE_ITEM_CLASS,
+              'text-text-muted hover:bg-surface-hover hover:text-text',
+            )}
+            style={{ paddingLeft: sidebarTreePadding(depth, true) }}
           >
             <span className="min-w-0 flex-1 truncate text-xs font-medium">
               Show all {folder.notes.length}
@@ -291,7 +294,6 @@ function FolderChildren({ folder, depth, context }: FolderChildrenProps): ReactE
 
 function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElement {
   const open = context.expanded.has(folder.path)
-  const Chevron = open ? ChevronDown : ChevronRight
   const Icon = open ? FolderOpen : Folder
   const active = context.activeFolder === folder.path
   return (
@@ -299,29 +301,28 @@ function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElemen
       <div
         data-folder-path={folder.path}
         className={cn(
-          'flex w-full items-center rounded-md transition-colors duration-[50ms]',
+          SIDEBAR_TREE_ROW_CLASS,
+          'flex w-full items-center gap-3 rounded-md transition-colors duration-[50ms]',
           active
             ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
             : 'text-text-secondary hover:bg-surface-hover hover:text-text',
         )}
-        style={{ paddingLeft: BASE_PADDING_PX - 4 + depth * INDENT_PX }}
+        style={{ paddingLeft: sidebarTreePadding(depth) }}
       >
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-label={`${open ? 'Collapse' : 'Expand'} ${folder.name}`}
-          onClick={() => context.toggle(folder.path)}
-          className="flex size-5 flex-none items-center justify-center rounded-sm text-text-muted hover:text-text"
-        >
-          <Chevron aria-hidden className="size-3" />
-        </button>
+        <SidebarTreeIcon
+          icon={<Icon className="size-3.5" />}
+          open={open}
+          toggle={{
+            label: `${open ? 'Collapse' : 'Expand'} ${folder.name}`,
+            onToggle: () => context.toggle(folder.path),
+          }}
+        />
         <button
           type="button"
           onClick={() => context.open(folder.path)}
           aria-current={active ? 'page' : undefined}
-          className={cn(ROW_CLASS, 'min-w-0 flex-1 pl-0.5')}
+          className={cn(SIDEBAR_TREE_ITEM_CLASS, 'min-w-0 flex-1')}
         >
-          <Icon aria-hidden className="size-3.5 flex-none" />
           <span className="min-w-0 flex-1 truncate text-xs font-medium">{folder.name}</span>
           <span className="flex-none text-2xs tabular-nums text-text-muted">
             {folder.noteCount}
@@ -358,14 +359,13 @@ const NoteRow = memo(function NoteRow({ note, depth, active }: NoteRowProps): Re
         }
         aria-current={active ? 'page' : undefined}
         className={cn(
-          ROW_CLASS,
+          SIDEBAR_TREE_ITEM_CLASS,
           active
             ? 'bg-surface-hover text-text-secondary dark:bg-transparent dark:text-accent'
             : 'text-text-secondary hover:bg-surface-hover hover:text-text',
         )}
-        // The chevron column (12px + gap) keeps a note level with its
-        // sibling folders' names rather than their chevrons.
-        style={{ paddingLeft: BASE_PADDING_PX + depth * INDENT_PX + 18 }}
+        // Starts on the label line, level with its sibling folders' names.
+        style={{ paddingLeft: sidebarTreePadding(depth, true) }}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium">
           {displayNoteTitle(note.title)}

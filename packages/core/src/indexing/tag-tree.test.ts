@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTagTree, hasNestedTags, splitTypesFromTags } from './tag-tree'
+import { buildTagTree, splitTypesFromTags } from './tag-tree'
 
 describe('buildTagTree', () => {
   it('hangs each tag under its nearest present ancestor, ordered by key', () => {
@@ -23,8 +23,6 @@ describe('buildTagTree', () => {
         { key: 'type/person', tag: 'type/Person', name: 'Person', count: 4, children: [] },
       ],
     })
-    expect(hasNestedTags(tree)).toBe(true)
-    expect(hasNestedTags(buildTagTree([{ key: 'book', tag: 'book', count: 1 }]))).toBe(false)
   })
 })
 

@@ -83,8 +83,9 @@ export function SidebarDisclosure({
 
   const Chevron = open ? ChevronDown : ChevronRight
   return (
-    <section aria-label={label} className="px-4.5">
-      <div className="group flex items-center gap-1 pt-4">
+    <section aria-label={label} className="px-2">
+      {/* The title starts on the icon column of the rows below (see sidebar-tree-icon). */}
+      <div className="group flex items-center gap-1 pl-3 pr-2.5 pt-4">
         <button
           type="button"
           ref={handle?.ref}

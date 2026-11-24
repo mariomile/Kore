@@ -1,5 +1,11 @@
 # Kore working state
 
+## Loose files as cards on folder pages, 2026-11-24 (0.146.0)
+
+- [x] Folder pages list loose files (attachments no note references) as cards
+  with a thumbnail or type sheet, name and size; opening shares the note file
+  chip's dispatch; the viewer shows images whole. Mac (#658).
+
 ## Resumable index refresh, 2026-11-24 (0.145.1)
 
 - [x] A full reprojection checkpoints every 256 notes and resumes after the

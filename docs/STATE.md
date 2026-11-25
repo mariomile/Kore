@@ -2,7 +2,7 @@
 
 ## 2026-11-25 — 0.152.0
 
-- Shipped #682 (subscription chat on Claude Code and Codex runs Kore tools: proposal cards, private-note protection, CLI model list), #673 (Craft-like block swipe and one-row action bar on iPhone), #684 (no large title on iPhone Notes and Tasks).
+- Shipped #682 (subscription chat on Claude Code and Codex runs Kore tools: proposal cards, private-note protection, CLI model list), #673 (Craft-like block swipe and one-row action bar on iPhone), #684 (no large title on iPhone Notes and Tasks), #685 (filter Notes by file type on Mac and iPhone).
 
 ## 2026-11-25 — 0.151.0
 

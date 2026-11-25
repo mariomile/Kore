@@ -299,7 +299,7 @@ export function stopLinkCardPlayer(): void {
  * Swap `card`'s contents for the provider's player. The card element itself
  * stays (it is a ProseMirror widget's root), so the editor never notices.
  * The player goes away, and the card comes back, on the close button, on
- * another card's Play, or once the card scrolls out of view: nothing keeps
+ * another card's Play, or once a video scrolls out of view: no video keeps
  * playing, or loading, off screen.
  */
 function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): void {
@@ -327,7 +327,9 @@ function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): voi
     event.preventDefault()
     stop()
   })
-  if (typeof IntersectionObserver !== 'undefined') {
+  // A video stops once it leaves the screen; an audio player (it has a
+  // fixed height) keeps going while you scroll, as music should.
+  if (player.height === null && typeof IntersectionObserver !== 'undefined') {
     observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => !entry.isIntersecting) || !card.isConnected) {
         stop()

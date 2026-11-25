@@ -47,9 +47,10 @@ type Sheet = 'turn' | 'date' | null
  * The bar that takes the tab bar's place while blocks are selected (swipe a
  * block left): one row with the tab bar's measures, the verbs in its wide
  * capsule and Done where the "+" sits. Moving up and down lives in the
- * Turn into sheet, next to indenting; the hold-and-drag moves blocks too. Its verbs are Kore's own rather than Craft's: turn the block
- * into another kind, give it a date (it becomes a task that shows up in
- * Tasks), move it to another note, zoom into it, ask the AI about it, delete.
+ * Turn into sheet, next to indenting; the hold-and-drag moves blocks too.
+ * Its verbs are Kore's own rather than Craft's: turn the block into another
+ * kind, give it a date (it becomes a task that shows up in Tasks), move it to
+ * another note, zoom into it, ask the AI about it, delete.
  */
 export function MobileBlockActionBar({ selection }: { selection: BlockSelection }): ReactElement {
   const { settings } = useSettings()

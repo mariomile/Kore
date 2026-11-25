@@ -1,5 +1,5 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { NoteEdit, NotePlus, Note } from '@/components/icons'
+import { LayoutTemplate, Note, NoteEdit, NotePlus } from '@/components/icons'
 import {
   Command,
   CommandDialog,
@@ -12,6 +12,10 @@ import {
 import { useWikiSuggestions } from '@/hooks/use-wiki-suggestions'
 import { cn } from '@/lib/utils'
 
+/** The look of every floating control box on the board (zoom, add, a selection's menu). */
+export const CANVAS_TOOL_BOX =
+  'flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 shadow-sm'
+
 /** The floating box the board's controls sit in (zoom, add). */
 export function CanvasToolBox({
   className,
@@ -20,25 +24,19 @@ export function CanvasToolBox({
   className: string
   children: ReactNode
 }): ReactElement {
-  return (
-    <div
-      className={cn(
-        'absolute bottom-3 flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 shadow-sm',
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
+  return <div className={cn('absolute bottom-3', CANVAS_TOOL_BOX, className)}>{children}</div>
 }
 
 export function CanvasToolButton({
   label,
   onClick,
+  pressed,
   children,
 }: {
   label: string
   onClick: () => void
+  /** Set for a toggle (a selection's current shape); left out for a plain action. */
+  pressed?: boolean
   children: ReactElement
 }): ReactElement {
   return (
@@ -46,8 +44,12 @@ export function CanvasToolButton({
       type="button"
       aria-label={label}
       title={label}
+      aria-pressed={pressed}
       onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+      className={cn(
+        'flex size-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text',
+        pressed === true && 'bg-surface-active text-text',
+      )}
     >
       {children}
     </button>
@@ -57,10 +59,15 @@ export function CanvasToolButton({
 interface CanvasAddToolsProps {
   onAddNote: (path: string) => void
   onAddText: () => void
+  onAddGroup: () => void
 }
 
-/** Add a note card (picked by title) or a text card: the Mac's editable board only. */
-export function CanvasAddTools({ onAddNote, onAddText }: CanvasAddToolsProps): ReactElement {
+/** Add a note card (picked by title), a text card or a group: the Mac's editable board only. */
+export function CanvasAddTools({
+  onAddNote,
+  onAddText,
+  onAddGroup,
+}: CanvasAddToolsProps): ReactElement {
   const [query, setQuery] = useState<string | null>(null)
   const suggestions = useWikiSuggestions(query)
   const close = (): void => {
@@ -78,6 +85,9 @@ export function CanvasAddTools({ onAddNote, onAddText }: CanvasAddToolsProps): R
       </CanvasToolButton>
       <CanvasToolButton label="Add text card" onClick={onAddText}>
         <NoteEdit aria-hidden className="size-3.5" />
+      </CanvasToolButton>
+      <CanvasToolButton label="Add group" onClick={onAddGroup}>
+        <LayoutTemplate aria-hidden className="size-3.5" />
       </CanvasToolButton>
       <CommandDialog
         open={query !== null}

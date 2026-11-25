@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseCanvasFile } from './canvas-file'
 import { applyCanvasEdits, canvasFreeSpot, newCanvasNodeId, snapToCanvasGrid } from './edit'
-import { nodesInsideGroup } from './geometry'
+import { canvasNodeAt, nearestSide, nodesInsideGroup } from './geometry'
 
 const SOURCE = JSON.stringify({
   nodes: [
@@ -155,5 +155,96 @@ describe('canvasFreeSpot', () => {
     // Over card `a` (40..240 × 40..140): it lands just below, still inside the group.
     const spot = canvasFreeSpot({ x: 140, y: 90 }, { width: 200, height: 100 }, doc.nodes)
     expect(spot).toMatchObject({ x: 40, y: 160 })
+  })
+})
+
+describe('whiteboard edits', () => {
+  it('colours, shapes and relabels, keeping the plugin’s other style attributes', () => {
+    const source = applyCanvasEdits(SOURCE, [
+      { kind: 'color', id: 'a', color: '3' },
+      { kind: 'shape', id: 'a', shape: 'diamond' },
+      { kind: 'label', id: 'g', label: 'Phase 1' },
+      { kind: 'color', id: 'e1', color: '1' },
+    ])
+    const out = raw(source)
+    expect(out.nodes[1]).toMatchObject({ color: '3', styleAttributes: { shape: 'diamond' } })
+    expect(out.nodes[0]).toMatchObject({ label: 'Phase 1' })
+    expect(out.edges[0]).toMatchObject({ id: 'e1', color: '1' })
+    const doc = parseCanvasFile(source)
+    expect(doc.nodes[1]).toMatchObject({ type: 'text', shape: 'diamond', color: '3' })
+    const cleared = raw(
+      applyCanvasEdits(source, [
+        { kind: 'color', id: 'a', color: null },
+        { kind: 'shape', id: 'a', shape: null },
+      ]),
+    )
+    expect(cleared.nodes[1]).not.toHaveProperty('color')
+    expect(cleared.nodes[1]!.styleAttributes).toEqual({})
+  })
+
+  it('connects two nodes with sides, removes an edge by id, and adds a group', () => {
+    const out = raw(
+      applyCanvasEdits(SOURCE, [
+        {
+          kind: 'connect',
+          id: 'e3',
+          fromNode: 'a',
+          fromSide: 'bottom',
+          toNode: 'g',
+          toSide: 'top',
+        },
+        {
+          kind: 'connect',
+          id: 'e4',
+          fromNode: 'a',
+          fromSide: 'right',
+          toNode: 'gone',
+          toSide: 'left',
+        },
+        { kind: 'remove', ids: ['e1'] },
+        {
+          kind: 'add',
+          id: 'g2',
+          rect: { x: 0, y: 600, width: 720, height: 440 },
+          card: { type: 'group', label: 'Phase 2' },
+        },
+      ]),
+    )
+    expect(out.edges).toEqual([
+      { id: 'e2', fromNode: 'b', toNode: 'p' },
+      { id: 'e3', fromNode: 'a', fromSide: 'bottom', toNode: 'g', toSide: 'top' },
+    ])
+    expect(out.nodes.at(-1)).toMatchObject({ id: 'g2', type: 'group', label: 'Phase 2' })
+  })
+
+  it('reads only the shapes Kore draws', () => {
+    const doc = parseCanvasFile(
+      JSON.stringify({
+        nodes: [
+          {
+            id: 'x',
+            type: 'text',
+            text: '',
+            x: 0,
+            y: 0,
+            width: 10,
+            height: 10,
+            styleAttributes: { shape: 'database' },
+          },
+        ],
+      }),
+    )
+    expect(doc.nodes[0]).toMatchObject({ shape: null })
+  })
+})
+
+describe('hit testing', () => {
+  it('finds the card under a point before the group behind it, and the nearest side', () => {
+    const doc = parseCanvasFile(SOURCE)
+    expect(canvasNodeAt(doc.nodes, { x: 100, y: 60 })?.id).toBe('a')
+    expect(canvasNodeAt(doc.nodes, { x: 280, y: 300 })?.id).toBe('g')
+    expect(canvasNodeAt(doc.nodes, { x: 5000, y: 5000 })).toBeNull()
+    expect(nearestSide({ x: 0, y: 0, width: 200, height: 100 }, { x: 190, y: 50 })).toBe('right')
+    expect(nearestSide({ x: 0, y: 0, width: 200, height: 100 }, { x: 100, y: 95 })).toBe('bottom')
   })
 })

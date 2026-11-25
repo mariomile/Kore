@@ -113,8 +113,17 @@ async function textCard(view: Awaited<ReturnType<typeof renderScreen>>): Promise
 
 /** The JSON the last write put in the file. */
 function written(): {
-  nodes: { id: string; x: number; y: number; width: number; text?: string }[]
-  edges: unknown[]
+  nodes: {
+    id: string
+    x: number
+    y: number
+    width: number
+    text?: string
+    label?: string
+    color?: string
+    styleAttributes?: Record<string, unknown>
+  }[]
+  edges: { id: string; fromNode?: string; toNode?: string; toSide?: string }[]
 } {
   const source = mocks.writeCanvasFile.mock.lastCall?.[1]
   expect(source).toBeDefined()
@@ -229,6 +238,84 @@ describe('CanvasScreen', () => {
     await view.getByRole('option', { name: 'Brief' }).click()
     await vi.waitFor(() => {
       expect(written().nodes.at(-1)).toMatchObject({ type: 'file', file: 'Projects/Brief.md' })
+    })
+  })
+
+  it('colours and shapes the selected text card from its menu', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    const card = await textCard(view)
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(card, 'pointerup', 100, 100)
+    await view.getByRole('button', { name: 'Diamond' }).click()
+    await vi.waitFor(() => {
+      expect(written().nodes.find((node) => node.id === 't')?.styleAttributes).toEqual({
+        shape: 'diamond',
+      })
+    })
+    await expect
+      .element(view.getByRole('button', { name: 'Diamond' }))
+      .toHaveAttribute('aria-pressed', 'true')
+    await view.getByRole('radio', { name: 'Color 3' }).click()
+    await vi.waitFor(() => {
+      expect(written().nodes.find((node) => node.id === 't')?.color).toBe('3')
+    })
+    // A group's menu has colours but no shapes.
+    pointer(view.getByText('Captoo', { exact: true }).element(), 'pointerdown', 50, 50)
+    pointer(view.getByText('Captoo', { exact: true }).element(), 'pointerup', 50, 50)
+    await expect
+      .element(view.getByRole('radio', { name: 'Color 4' }))
+      .toHaveAttribute('aria-checked', 'true')
+    expect(view.container.querySelector('[aria-label="Diamond"]')).toBeNull()
+  })
+
+  it('draws an arrow pulled from a card onto another', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    const card = await textCard(view)
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(card, 'pointerup', 100, 100)
+    await expect.element(view.getByTestId('canvas-selection')).toBeInTheDocument()
+    const dot = view.container.querySelector(
+      '[data-canvas-node-id="t"][data-canvas-connect="bottom"]',
+    )!
+    const target = view.getByText('Vault Map').element().closest('[data-canvas-card]')!
+    const box = target.getBoundingClientRect()
+    const start = dot.getBoundingClientRect()
+    pointer(dot, 'pointerdown', start.x, start.y)
+    pointer(dot, 'pointermove', box.x + box.width / 2, box.y + 4)
+    await expect.element(view.getByTestId('canvas-pending-edge')).toBeInTheDocument()
+    pointer(dot, 'pointerup', box.x + box.width / 2, box.y + 4)
+    await vi.waitFor(() => {
+      expect(written().edges.at(-1)).toMatchObject({ fromNode: 't', toNode: 'c', toSide: 'top' })
+    })
+    expect(view.container.querySelector('[data-testid="canvas-pending-edge"]')).toBeNull()
+  })
+
+  it('selects an arrow and removes it with Backspace', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    await textCard(view)
+    const hit = view.container.querySelector('[data-canvas-edge-id="e"]')!
+    pointer(hit, 'pointerdown', 0, 0)
+    pointer(hit, 'pointerup', 0, 0)
+    await expect.element(view.getByTestId('canvas-selection-menu')).toBeInTheDocument()
+    view
+      .getByTestId('canvas-board')
+      .element()
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }))
+    await vi.waitFor(() => {
+      expect(written().edges).toEqual([])
+    })
+    expect(written().nodes).toHaveLength(4)
+  })
+
+  it('adds a group and names it', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    await view.getByRole('button', { name: 'Add group' }).click()
+    const name = view.getByRole('textbox', { name: 'Group name' })
+    await expect.element(name).toHaveFocus()
+    await name.fill('Phase 1')
+    name.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await vi.waitFor(() => {
+      expect(written().nodes.at(-1)).toMatchObject({ type: 'group', label: 'Phase 1', width: 720 })
     })
   })
 

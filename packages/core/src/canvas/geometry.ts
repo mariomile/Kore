@@ -70,6 +70,37 @@ export function nodesInsideGroup(group: CanvasNode, nodes: readonly CanvasNode[]
     .map((node) => node.id)
 }
 
+/**
+ * The node under `point`: the topmost card holding it, else the smallest
+ * group (cards sit over groups); null on empty board.
+ */
+export function canvasNodeAt(nodes: readonly CanvasNode[], point: CanvasPoint): CanvasNode | null {
+  const holding = nodes.filter(
+    (node) =>
+      point.x >= node.x &&
+      point.y >= node.y &&
+      point.x <= node.x + node.width &&
+      point.y <= node.y + node.height,
+  )
+  const card = holding.findLast((node) => node.type !== 'group')
+  if (card !== undefined) {
+    return card
+  }
+  const groups = holding.sort((a, b) => a.width * a.height - b.width * b.height)
+  return groups[0] ?? null
+}
+
+/** The side of `node` nearest `point`: where an arrow dropped there attaches. */
+export function nearestSide(node: CanvasRect, point: CanvasPoint): CanvasSide {
+  const distances: [CanvasSide, number][] = [
+    ['top', Math.abs(point.y - node.y)],
+    ['right', Math.abs(node.x + node.width - point.x)],
+    ['bottom', Math.abs(node.y + node.height - point.y)],
+    ['left', Math.abs(point.x - node.x)],
+  ]
+  return distances.reduce((best, next) => (next[1] < best[1] ? next : best))[0]
+}
+
 /** The midpoint of `side` of `node`, where an edge attaches. */
 export function sideAnchor(node: CanvasRect, side: CanvasSide): CanvasPoint {
   switch (side) {

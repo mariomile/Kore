@@ -129,6 +129,112 @@ const LOOSE_DOCUMENTS: ReadonlyArray<readonly [string, string]> = [
 ]
 
 /** A board as `kore canvas` draws one, plus a text card and a picture, for the canvas screen. */
+/** A whiteboard flowchart: shapes, sticky-note colours, a group, coloured arrows. */
+const LAUNCH_FLOW = JSON.stringify(
+  {
+    nodes: [
+      {
+        id: 'f0',
+        type: 'group',
+        label: 'Phase 1: brief',
+        x: -40,
+        y: -60,
+        width: 1000,
+        height: 340,
+        color: '5',
+      },
+      {
+        id: 'f1',
+        type: 'text',
+        text: 'Kickoff',
+        x: 0,
+        y: 40,
+        width: 200,
+        height: 100,
+        styleAttributes: { shape: 'pill' },
+      },
+      {
+        id: 'f2',
+        type: 'text',
+        text: '## Draft brief\nGoals, audience, budget',
+        x: 280,
+        y: 0,
+        width: 300,
+        height: 180,
+        color: '3',
+      },
+      {
+        id: 'f3',
+        type: 'text',
+        text: 'Client approves?',
+        x: 660,
+        y: 0,
+        width: 260,
+        height: 180,
+        styleAttributes: { shape: 'diamond' },
+      },
+      {
+        id: 'f4',
+        type: 'text',
+        text: 'Feedback round',
+        x: 640,
+        y: 380,
+        width: 300,
+        height: 120,
+        color: '2',
+        styleAttributes: { shape: 'parallelogram' },
+      },
+      {
+        id: 'f5',
+        type: 'text',
+        text: '## Build\n- Identity\n- Site',
+        x: 1060,
+        y: 0,
+        width: 280,
+        height: 180,
+        color: '4',
+      },
+      {
+        id: 'f6',
+        type: 'text',
+        text: 'Launch',
+        x: 1440,
+        y: 10,
+        width: 160,
+        height: 160,
+        color: '6',
+        styleAttributes: { shape: 'circle' },
+      },
+    ],
+    edges: [
+      { id: 'e1', fromNode: 'f1', fromSide: 'right', toNode: 'f2', toSide: 'left' },
+      { id: 'e2', fromNode: 'f2', fromSide: 'right', toNode: 'f3', toSide: 'left' },
+      {
+        id: 'e3',
+        fromNode: 'f3',
+        fromSide: 'right',
+        toNode: 'f5',
+        toSide: 'left',
+        label: 'yes',
+        color: '4',
+      },
+      {
+        id: 'e4',
+        fromNode: 'f3',
+        fromSide: 'bottom',
+        toNode: 'f4',
+        toSide: 'top',
+        label: 'no',
+        color: '1',
+      },
+      { id: 'e5', fromNode: 'f4', fromSide: 'left', toNode: 'f2', toSide: 'bottom' },
+      { id: 'e6', fromNode: 'f5', fromSide: 'right', toNode: 'f6', toSide: 'left' },
+    ],
+  },
+  null,
+  '\t',
+)
+
 const STUDIO_MAP = JSON.stringify(
   {
     nodes: [
@@ -238,6 +344,7 @@ export function seedVisualVault(): VisualVaultSeed {
     assets.set(path, btoa(text))
   }
   assets.set('Maps/Studio map.canvas', btoa(STUDIO_MAP))
+  assets.set('Maps/Launch flow.canvas', btoa(LAUNCH_FLOW))
   const files: Record<string, string> = {
     'notes/Kore brand directions.md': [
       '---',

@@ -10,8 +10,10 @@ import {
   transclusionMarkdown,
   wikiEmbedKind,
   type CanvasNode,
+  type CanvasShape,
 } from '@kore/core'
 import { ExternalLink, Link, Paperclip } from '@/components/icons'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useOpenExternalLink } from '@/editor/open-external-link'
@@ -48,6 +50,63 @@ function tinted(color: string | null, percent: number): CSSProperties {
       }
 }
 
+/** A shaped card's inset: its text stays inside the outline. */
+const SHAPE_CONTENT_CLASS: Record<CanvasShape, string> = {
+  pill: 'px-8 py-3',
+  circle: 'px-[16%] py-[16%]',
+  diamond: 'px-[24%] py-[22%]',
+  parallelogram: 'px-[18%] py-3',
+}
+
+/** Outline points (in a 100×100 box stretched over the card) for the angled shapes. */
+const SHAPE_POINTS: Partial<Record<CanvasShape, string>> = {
+  diamond: '50,1 99,50 50,99 1,50',
+  parallelogram: '16,1 99,1 84,99 1,99',
+}
+
+/** The drawn outline behind a shaped text card, tinted like any card. */
+function ShapeOutline({
+  shape,
+  color,
+}: {
+  shape: CanvasShape
+  color: string | null
+}): ReactElement {
+  const points = SHAPE_POINTS[shape]
+  if (points === undefined) {
+    // Pill and circle are rounded boxes: a border draws them crisply at any size.
+    return (
+      <div
+        aria-hidden
+        className="absolute inset-0 rounded-full border-2 border-border bg-surface shadow-sm"
+        style={tinted(color, 8)}
+      />
+    )
+  }
+  const css = canvasColor(color)
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      className="absolute inset-0 size-full overflow-visible drop-shadow-sm"
+    >
+      <polygon
+        points={points}
+        vectorEffect="non-scaling-stroke"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        stroke={css ?? 'var(--color-border)'}
+        fill={
+          css === null
+            ? 'var(--color-surface)'
+            : `color-mix(in srgb, ${css} 8%, var(--color-surface))`
+        }
+      />
+    </svg>
+  )
+}
+
 function fileName(path: string): string {
   return path.split('/').at(-1) ?? path
 }
@@ -63,7 +122,7 @@ interface CanvasCardProps {
   actions: CanvasCardActions
   /** Whether the node can be pressed to select, drag and resize it (the Mac). */
   editable: boolean
-  /** This text card's text is open for editing. */
+  /** This text card's text (a group's label) is open for editing. */
   editingText: boolean
   /** End text editing: the new text, or null to keep it. Stable across renders. */
   onCommitText: (id: string, text: string | null) => void
@@ -90,7 +149,24 @@ export const CanvasCard = memo(function CanvasCard({
         className="absolute rounded-xl border-2 border-border bg-surface/40"
         style={{ ...placement(node), ...tinted(node.color, 6) }}
       >
-        {node.label !== null ? (
+        {editingText ? (
+          <Input
+            autoFocus
+            aria-label="Group name"
+            defaultValue={node.label ?? ''}
+            onBlur={(event) => {
+              const label = event.currentTarget.value
+              onCommitText(node.id, label === (node.label ?? '') ? null : label)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' || event.key === 'Enter') {
+                event.preventDefault()
+                event.currentTarget.blur()
+              }
+            }}
+            className="absolute bottom-full left-0 mb-1.5 h-8 w-64 rounded-md border-0 bg-surface px-2 text-lg font-medium text-text shadow-sm md:text-lg dark:bg-surface"
+          />
+        ) : node.label !== null ? (
           <span
             data-canvas-node-id={handle}
             className={cn(
@@ -104,17 +180,23 @@ export const CanvasCard = memo(function CanvasCard({
       </div>
     )
   }
+  const shape = node.type === 'text' ? node.shape : null
   return (
     <div
       data-canvas-card
       data-canvas-node-id={handle}
       data-testid="canvas-card"
+      data-shape={shape ?? undefined}
       className={cn(
-        'absolute flex flex-col overflow-hidden rounded-lg border-2 border-border bg-surface shadow-sm',
+        'absolute flex flex-col',
+        shape === null
+          ? 'overflow-hidden rounded-lg border-2 border-border bg-surface shadow-sm'
+          : SHAPE_CONTENT_CLASS[shape],
         editable ? 'cursor-default' : 'cursor-auto',
       )}
-      style={{ ...placement(node), ...tinted(node.color, 8) }}
+      style={{ ...placement(node), ...(shape === null ? tinted(node.color, 8) : {}) }}
     >
+      {shape === null ? null : <ShapeOutline shape={shape} color={node.color} />}
       {node.type === 'text' && editingText ? (
         <Textarea
           autoFocus
@@ -137,7 +219,13 @@ export const CanvasCard = memo(function CanvasCard({
           className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-3 text-sm text-text placeholder:text-text-muted md:text-sm dark:bg-transparent"
         />
       ) : node.type === 'text' ? (
-        <div data-canvas-scroll className="min-h-0 flex-1 overflow-auto px-4 py-3">
+        <div
+          data-canvas-scroll
+          className={cn(
+            'relative min-h-0 flex-1 overflow-auto',
+            shape === null ? 'px-4 py-3' : 'flex flex-col justify-center text-center',
+          )}
+        >
           <MarkdownPreview
             content={node.text}
             resolveImageUrl={actions.resolveImageUrl}

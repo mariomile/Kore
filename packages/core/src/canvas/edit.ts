@@ -1,9 +1,10 @@
-import { CanvasFileError, type CanvasNode } from './canvas-file'
+import { CanvasFileError, type CanvasNode, type CanvasShape, type CanvasSide } from './canvas-file'
 import type { CanvasRect } from './geometry'
 
 /**
  * The light edits Kore makes to a `.canvas` file: move or resize a node,
- * change a text card's text, add a note or text card, remove nodes.
+ * retext a card or relabel a group, colour a node, shape a text card, add
+ * cards and groups, connect two nodes with an arrow, remove nodes and edges.
  *
  * Edits apply to the file's own JSON, not to the parsed document, so every
  * key Kore doesn't know (a plugin's node type, Obsidian's future fields)
@@ -12,6 +13,12 @@ import type { CanvasRect } from './geometry'
 export type CanvasEdit =
   | { readonly kind: 'place'; readonly id: string; readonly rect: CanvasRect }
   | { readonly kind: 'text'; readonly id: string; readonly text: string }
+  | { readonly kind: 'label'; readonly id: string; readonly label: string }
+  /** A node's or an edge's colour: a preset `"1"`–`"6"`, or null to clear it. */
+  | { readonly kind: 'color'; readonly id: string; readonly color: string | null }
+  /** Null puts back the default rounded rectangle. */
+  | { readonly kind: 'shape'; readonly id: string; readonly shape: CanvasShape | null }
+  /** Nodes or edges, by id; a removed node takes its edges with it. */
   | { readonly kind: 'remove'; readonly ids: readonly string[] }
   | {
       readonly kind: 'add'
@@ -20,6 +27,15 @@ export type CanvasEdit =
       readonly card:
         | { readonly type: 'file'; readonly file: string }
         | { readonly type: 'text'; readonly text: string }
+        | { readonly type: 'group'; readonly label: string }
+    }
+  | {
+      readonly kind: 'connect'
+      readonly id: string
+      readonly fromNode: string
+      readonly fromSide: CanvasSide
+      readonly toNode: string
+      readonly toSide: CanvasSide
     }
 
 /** Obsidian's canvas grid: positions and sizes snap to it. */
@@ -31,6 +47,7 @@ export const CANVAS_MIN_SIZE = 60
 /** A note card's default size (as `kore canvas` lays them out) and a text card's. */
 export const CANVAS_NOTE_SIZE = { width: 400, height: 280 } as const
 export const CANVAS_TEXT_SIZE = { width: 300, height: 160 } as const
+export const CANVAS_GROUP_SIZE = { width: 720, height: 440 } as const
 
 /** `value` on the canvas grid. */
 export function snapToCanvasGrid(value: number): number {
@@ -69,6 +86,14 @@ export function canvasFreeSpot(
 }
 
 type JsonObject = Record<string, unknown>
+
+function setOrDelete(target: JsonObject, key: string, value: string | null): void {
+  if (value === null) {
+    delete target[key]
+  } else {
+    target[key] = value
+  }
+}
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -124,16 +149,56 @@ export function applyCanvasEdits(source: string, edits: readonly CanvasEdit[]): 
         }
         break
       }
+      case 'label': {
+        const node = byId(edit.id)
+        if (node?.type === 'group') {
+          node.label = edit.label
+        }
+        break
+      }
+      case 'color': {
+        const target = byId(edit.id) ?? objects(edges).find((edge) => edge.id === edit.id)
+        if (target !== undefined) {
+          setOrDelete(target, 'color', edit.color)
+        }
+        break
+      }
+      case 'shape': {
+        const node = byId(edit.id)
+        if (node?.type === 'text') {
+          // Other style attributes (border, alignment) are the plugin's: keep them.
+          const style = isObject(node.styleAttributes) ? { ...node.styleAttributes } : {}
+          setOrDelete(style, 'shape', edit.shape)
+          node.styleAttributes = style
+        }
+        break
+      }
       case 'remove': {
         const removed = new Set(edit.ids)
         nodes = nodes.filter((node) => !isObject(node) || !removed.has(node.id as string))
         edges = edges.filter(
           (edge) =>
             !isObject(edge) ||
-            (!removed.has(edge.fromNode as string) && !removed.has(edge.toNode as string)),
+            (!removed.has(edge.id as string) &&
+              !removed.has(edge.fromNode as string) &&
+              !removed.has(edge.toNode as string)),
         )
         break
       }
+      case 'connect':
+        if (byId(edit.fromNode) !== undefined && byId(edit.toNode) !== undefined) {
+          edges = [
+            ...edges,
+            {
+              id: edit.id,
+              fromNode: edit.fromNode,
+              fromSide: edit.fromSide,
+              toNode: edit.toNode,
+              toSide: edit.toSide,
+            },
+          ]
+        }
+        break
       case 'add':
         nodes = [...nodes, { id: edit.id, ...edit.card, ...rectKeys(edit.rect) }]
         break

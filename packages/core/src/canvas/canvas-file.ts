@@ -13,6 +13,14 @@ import { z } from 'zod'
 
 export type CanvasSide = 'top' | 'right' | 'bottom' | 'left'
 
+/**
+ * A text card's flowchart shape, as the Advanced Canvas plugin stores it
+ * (`styleAttributes.shape`); plain Obsidian draws every one as a rectangle.
+ */
+export type CanvasShape = 'pill' | 'diamond' | 'circle' | 'parallelogram'
+
+export const CANVAS_SHAPES: readonly CanvasShape[] = ['pill', 'diamond', 'circle', 'parallelogram']
+
 interface CanvasNodeBase {
   readonly id: string
   readonly x: number
@@ -24,7 +32,12 @@ interface CanvasNodeBase {
 }
 
 export type CanvasNode =
-  | (CanvasNodeBase & { readonly type: 'text'; readonly text: string })
+  | (CanvasNodeBase & {
+      readonly type: 'text'
+      readonly text: string
+      /** Null for the default rounded rectangle (and any shape Kore doesn't draw). */
+      readonly shape: CanvasShape | null
+    })
   | (CanvasNodeBase & {
       readonly type: 'file'
       /** Vault-relative path of the note or attachment. */
@@ -73,6 +86,12 @@ function side(value: unknown): CanvasSide | null {
     : null
 }
 
+function shape(value: unknown): CanvasShape | null {
+  const record = looseRecord.safeParse(value)
+  const raw = record.success ? record.data.shape : undefined
+  return CANVAS_SHAPES.find((candidate) => candidate === raw) ?? null
+}
+
 function parseNode(node: unknown): CanvasNode | null {
   const record = looseRecord.safeParse(node)
   if (!record.success) {
@@ -93,7 +112,12 @@ function parseNode(node: unknown): CanvasNode | null {
   const base = { id, x, y, width, height, color: text(data.color) }
   switch (data.type) {
     case 'text':
-      return { ...base, type: 'text', text: typeof data.text === 'string' ? data.text : '' }
+      return {
+        ...base,
+        type: 'text',
+        text: typeof data.text === 'string' ? data.text : '',
+        shape: shape(data.styleAttributes),
+      }
     case 'file': {
       const file = text(data.file)
       if (file === null) {

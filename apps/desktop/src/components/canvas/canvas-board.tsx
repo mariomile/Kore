@@ -10,7 +10,13 @@ import {
   type PointerEvent,
   type ReactElement,
 } from 'react'
-import { canvasBounds, isBasePath, isCanvasPath, type CanvasDocument } from '@kore/core'
+import {
+  canvasBounds,
+  isBasePath,
+  isCanvasPath,
+  type CanvasDocument,
+  type CanvasNode,
+} from '@kore/core'
 import { Locate, Plus } from '@/components/icons'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
@@ -23,7 +29,7 @@ import type { CanvasCardActions } from './canvas-card'
 import { CanvasLayer } from './canvas-layer'
 import { CanvasAddTools, CanvasToolBox, CanvasToolButton } from './canvas-toolbar'
 import type { CanvasEditor } from './use-canvas'
-import { useCanvasEditing } from './use-canvas-editing'
+import { useCanvasEditing, type CanvasViewport } from './use-canvas-editing'
 
 interface Viewport {
   /** Screen offset of the canvas origin inside the board. */
@@ -160,12 +166,27 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
   }, [])
 
   const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null)
+  /** The board's view for the editing gestures: screen points to canvas units. */
+  const viewport = (current: Viewport): CanvasViewport => ({
+    zoom: current.zoom,
+    toCanvas: (clientX, clientY) => {
+      const rect = boardRef.current!.getBoundingClientRect()
+      return {
+        x: (clientX - rect.left - current.x) / current.zoom,
+        y: (clientY - rect.top - current.y) / current.zoom,
+      }
+    },
+  })
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
     if (editing.pointerDown(event)) {
       event.currentTarget.focus({ preventScroll: true })
       return
     }
-    if (event.button !== 0 || (event.target as Element).closest('[data-canvas-card]') !== null) {
+    // A card's own content and the selection's menu keep their presses.
+    if (
+      event.button !== 0 ||
+      (event.target as Element).closest('[data-canvas-card], [data-canvas-ui]') !== null
+    ) {
       return
     }
     editing.select(null)
@@ -173,7 +194,7 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
-    if (view !== null && editing.pointerMove(event, view.zoom)) {
+    if (view !== null && editing.pointerMove(event, viewport(view))) {
       return
     }
     const start = drag.current
@@ -188,7 +209,7 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
     )
   }
   const endDrag = (event: PointerEvent<HTMLDivElement>): void => {
-    if (editing.pointerUp(event)) {
+    if (view !== null && editing.pointerUp(event, viewport(view))) {
       return
     }
     if (drag.current?.pointerId === event.pointerId) {
@@ -256,7 +277,8 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>): void => {
     const id = (event.target as Element).closest<HTMLElement>('[data-canvas-node-id]')?.dataset
       .canvasNodeId
-    if (id !== undefined && canvas.nodes.some((node) => node.id === id && node.type === 'text')) {
+    const editable = (node: CanvasNode): boolean => node.type === 'text' || node.type === 'group'
+    if (id !== undefined && canvas.nodes.some((node) => node.id === id && editable(node))) {
       editing.editText(id)
     }
   }
@@ -304,7 +326,11 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
               editable={editor !== null}
               editingId={editing.editingId}
               selectedId={editing.selectedId}
+              pendingEdge={editing.pendingEdge}
               onCommitText={editing.commitText}
+              onColor={editing.colorSelected}
+              onShape={editing.shapeSelected}
+              onRemove={editing.removeSelected}
             />
           </div>
         ) : null}
@@ -316,6 +342,9 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
           }}
           onAddText={() => {
             editing.add({ type: 'text' }, boardCenter())
+          }}
+          onAddGroup={() => {
+            editing.add({ type: 'group' }, boardCenter())
           }}
         />
       )}

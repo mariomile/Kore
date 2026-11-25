@@ -62,6 +62,7 @@ export {
 } from './link-kind'
 export { embedPlayer, startSeconds, type EmbedPlayer } from './embed-player'
 export { vaultMediaKind, type VaultMediaKind } from './vault-media'
+export { parseIframeEmbed, type IframeEmbed } from './iframe-embed'
 export {
   blockIdsIn,
   blockLinkLabel,

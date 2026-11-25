@@ -31,8 +31,9 @@
  *   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  *   USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * Every player host here must also be in the desktop CSP `frame-src`
- * (`apps/desktop/src-tauri/tauri.conf.json`), or the frame stays blank.
+ * Players load in sandboxed frames (`PLAYER_SANDBOX`), and the desktop CSP
+ * `frame-src` allows any https page for them: a pasted iframe (a map, a
+ * chart) can come from any host, and a frame is only ever loaded by a press.
  */
 
 /** One provider's player for a link. */

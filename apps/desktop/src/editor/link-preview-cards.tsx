@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, type ReactElement } from 'react'
+import { useMemo, type ReactElement } from 'react'
 import { definePlugin } from '@prosekit/core'
 import { loadLinkPreview } from '@kore/core'
 import { useExtension } from '@meowdown/react'
-import { openExternalUrl, preferOsBrowser } from '@/editor/open-external-link'
-import { useSettings } from '@/providers/settings-provider'
 import { createLinkCardPlugin, deliverLinkPreview } from './link-card-plugin'
+import { useOpenCardLink } from './use-open-card-link'
 
 interface LinkPreviewCardsProps {
   /**
@@ -27,12 +26,7 @@ export function LinkPreviewCards({ enabled }: LinkPreviewCardsProps): ReactEleme
 }
 
 function LinkCards(): null {
-  const openLinksInApp = useSettings().settings.browserOpenLinksInApp
-  const openLinksInAppRef = useRef(openLinksInApp)
-  useEffect(() => {
-    openLinksInAppRef.current = openLinksInApp
-  }, [openLinksInApp])
-
+  const open = useOpenCardLink()
   const extension = useMemo(
     () =>
       definePlugin(
@@ -47,14 +41,10 @@ function LinkCards(): null {
               }
             })
           },
-          open: (url, event) => {
-            openExternalUrl(url, {
-              osBrowser: preferOsBrowser(event.altKey, openLinksInAppRef.current),
-            })
-          },
+          open,
         }),
       ),
-    [],
+    [open],
   )
 
   useExtension(extension)

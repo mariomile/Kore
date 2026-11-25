@@ -196,6 +196,8 @@ export {
   embedPlayer,
   type EmbedPlayer,
   vaultMediaKind,
+  parseIframeEmbed,
+  type IframeEmbed,
   type VaultMediaKind,
   type EmbedBlock,
   type HtmlEmbed,

@@ -1,7 +1,7 @@
 import { vaultMediaKind, type VaultMediaKind } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
-import { Plugin, PluginKey, type EditorState, type Transaction } from '@prosekit/pm/state'
-import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
+import type { Plugin } from '@prosekit/pm/state'
+import { createBlockWidgetPlugin } from './block-widget-plugin'
 import { memoByNode } from './node-memo'
 import { claimPlayback, releasePlayback } from './playback'
 
@@ -20,13 +20,6 @@ export interface VaultMediaOptions {
   /** The URL the webview loads a vault file from, or null when it has none. */
   resolveUrl: (href: string) => string | null
 }
-
-interface VaultMediaState {
-  readonly decorations: DecorationSet
-  readonly focused: boolean
-}
-
-const vaultMediaKey = new PluginKey<VaultMediaState>('kore-vault-media')
 
 const FILE_MARK = 'mdFile'
 
@@ -107,89 +100,17 @@ function mediaElement(media: MediaParagraph, url: string): HTMLElement {
   return box
 }
 
-function buildDecorations(
-  state: EditorState,
-  focused: boolean,
-  options: VaultMediaOptions,
-): DecorationSet {
-  const { doc, selection } = state
-  const decorations: Decoration[] = []
-  const seen = new Map<string, number>()
-  doc.descendants((node, pos) => {
-    if (!node.isTextblock) {
-      return true
-    }
-    const media = paragraphMedia(node)
-    const url = media === null ? null : options.resolveUrl(media.href)
-    if (media === null || url === null) {
-      return false
-    }
-    // Keyed by file and copy, not position, so typing above a playing video
-    // keeps it playing.
-    const copy = seen.get(url) ?? 0
-    seen.set(url, copy + 1)
-    const end = pos + node.nodeSize
-    const onLine = focused && selection.from <= end - 1 && selection.to >= pos + 1
-    decorations.push(
-      Decoration.widget(pos, () => mediaElement(media, url), {
-        side: -1,
-        ignoreSelection: true,
-        stopEvent: () => true,
-        key: `vault-media:${copy}:${url}`,
-      }),
-      Decoration.node(pos, end, {
-        class: onLine ? 'kore-vault-media-source is-editing' : 'kore-vault-media-source',
-      }),
-    )
-    return false
-  })
-  return DecorationSet.create(doc, decorations)
-}
-
-function readFocused(tr: Transaction): boolean | null {
-  const meta: unknown = tr.getMeta(vaultMediaKey)
-  return typeof meta === 'boolean' ? meta : null
-}
-
-function setFocused(view: EditorView, focused: boolean): boolean {
-  if (vaultMediaKey.getState(view.state)?.focused !== focused) {
-    view.dispatch(view.state.tr.setMeta(vaultMediaKey, focused))
-  }
-  return false
-}
-
 /** The ProseMirror plugin behind `VaultMedia`. */
-export function createVaultMediaPlugin(options: VaultMediaOptions): Plugin<VaultMediaState> {
-  return new Plugin<VaultMediaState>({
-    key: vaultMediaKey,
-    state: {
-      init: (_config, state) => ({
-        decorations: buildDecorations(state, false, options),
-        focused: false,
-      }),
-      apply: (tr, previous, _oldState, newState) => {
-        const meta = readFocused(tr)
-        if (!tr.docChanged && !tr.selectionSet && meta === null) {
-          return previous
-        }
-        const focused = meta ?? previous.focused
-        return { decorations: buildDecorations(newState, focused, options), focused }
-      },
+export function createVaultMediaPlugin(options: VaultMediaOptions): Plugin {
+  return createBlockWidgetPlugin<{ media: MediaParagraph; url: string }>({
+    name: 'kore-vault-media',
+    match: (paragraph) => {
+      const media = paragraphMedia(paragraph)
+      const url = media === null ? null : options.resolveUrl(media.href)
+      return media === null || url === null ? null : { media, url }
     },
-    view: (view) => {
-      if (view.hasFocus()) {
-        queueMicrotask(() => {
-          if (!view.isDestroyed) setFocused(view, view.hasFocus())
-        })
-      }
-      return {}
-    },
-    props: {
-      decorations: (state) => vaultMediaKey.getState(state)?.decorations ?? DecorationSet.empty,
-      handleDOMEvents: {
-        focus: (view) => setFocused(view, true),
-        blur: (view) => setFocused(view, false),
-      },
-    },
+    identity: ({ url }) => url,
+    render: ({ media, url }) => mediaElement(media, url),
+    sourceClass: 'kore-vault-media-source',
   })
 }

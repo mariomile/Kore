@@ -1,13 +1,8 @@
 import type { LinkPreview } from '@kore/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
-import {
-  Plugin,
-  PluginKey,
-  TextSelection,
-  type EditorState,
-  type Transaction,
-} from '@prosekit/pm/state'
+import { Plugin, PluginKey, type EditorState, type Transaction } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
+import { handleCardPress } from './card-press'
 import { linkCardElement } from './link-card-dom'
 import { memoByNode } from './node-memo'
 
@@ -112,47 +107,10 @@ function cardParagraphs(
 function cardWidget(options: LinkCardOptions, preview: LinkPreview) {
   return (view: EditorView): HTMLElement => {
     const card = linkCardElement(preview)
-    card.addEventListener('mousedown', (event) => {
-      if (event.button !== 0) {
-        return
-      }
-      event.preventDefault()
-      // The appearance, Play and close buttons act on click (link-card-dom),
-      // and a playing card is the provider's: here a press only keeps the
-      // caret where it is.
-      if (
-        event.target instanceof Element &&
-        event.target.closest(
-          '[data-link-card-layout], [data-link-card-play], [data-link-card-close], .kore-link-card-player',
-        )
-      ) {
-        return
-      }
-      const onOpenButton =
-        event.target instanceof Element && event.target.closest('[data-link-card-open]') !== null
-      if (onOpenButton || event.metaKey || event.ctrlKey) {
-        options.open(preview.url, event)
-        return
-      }
-      // The widget is kept across edits above it (see its key), so where its
-      // paragraph sits now is read from the DOM, not from when it was drawn.
-      let paragraphPos: number
-      try {
-        paragraphPos = view.posAtDOM(card, 0)
-      } catch {
-        return
-      }
-      const paragraph = view.state.doc.nodeAt(paragraphPos)
-      if (paragraph === null || paragraphCardUrl(paragraph) !== preview.url) {
-        return
-      }
-      const end = paragraphPos + 1 + paragraph.content.size
-      view.focus()
-      view.dispatch(
-        view.state.tr
-          .setSelection(TextSelection.create(view.state.doc, end))
-          .setMeta(linkCardKey, { focused: true }),
-      )
+    handleCardPress(card, view, {
+      url: preview.url,
+      open: options.open,
+      drawn: (paragraph) => paragraphCardUrl(paragraph) === preview.url,
     })
     return card
   }

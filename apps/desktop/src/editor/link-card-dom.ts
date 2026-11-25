@@ -175,6 +175,7 @@ function siteLine(
   preview: LinkPreview,
   extras: readonly string[],
   layout: EmbedLayout,
+  appearance = true,
 ): HTMLElement {
   const line = element('div', 'kore-link-card-site')
   if (preview.provider !== null) {
@@ -185,19 +186,22 @@ function siteLine(
   const host = hostOf(preview.url)
   const name = preview.siteName.toLowerCase() === host ? [host] : [preview.siteName, host]
   line.append(element('span', '', [...name, ...extras].join(' · ')))
-  const appearance = footerButton('Link appearance', layoutGlyph())
-  appearance.dataset.linkCardLayout = ''
-  appearance.addEventListener('click', (event) => {
-    event.preventDefault()
-    requestLinkLayout(appearance, {
-      url: preview.url,
-      title: preview.kind === 'page' ? preview.title : null,
-      layout,
+  if (appearance) {
+    const button = footerButton('Link appearance', layoutGlyph())
+    button.dataset.linkCardLayout = ''
+    button.addEventListener('click', (event) => {
+      event.preventDefault()
+      requestLinkLayout(button, {
+        url: preview.url,
+        title: preview.kind === 'page' ? preview.title : null,
+        layout,
+      })
     })
-  })
+    line.append(button)
+  }
   const open = footerButton(`Open ${host}`, openGlyph())
   open.dataset.linkCardOpen = ''
-  line.append(appearance, open)
+  line.append(open)
   return line
 }
 
@@ -359,11 +363,26 @@ function playButton(player: EmbedPlayer, className: string): HTMLButtonElement {
   return button
 }
 
+/** How a card differs from a pasted link's. */
+export interface LinkCardSource {
+  /** The player Play loads; by default the link's own provider player. */
+  readonly player?: EmbedPlayer | null
+  /**
+   * Whether the footer offers the appearance menu. Only a pasted link has an
+   * appearance to change (its layout lives with the link).
+   */
+  readonly appearance?: boolean
+}
+
 /**
  * One card for one preview, in one of the three card layouts. The caller owns
  * events and placement; the appearance button fires {@link LINK_LAYOUT_EVENT}.
  */
-export function linkCardElement(preview: LinkPreview, layout: EmbedLayout = 'card'): HTMLElement {
+export function linkCardElement(
+  preview: LinkPreview,
+  layout: EmbedLayout = 'card',
+  { player = embedPlayer(preview.url), appearance = true }: LinkCardSource = {},
+): HTMLElement {
   const card = element('div', 'kore-link-card')
   card.contentEditable = 'false'
   card.dataset.kind = preview.kind
@@ -376,13 +395,12 @@ export function linkCardElement(preview: LinkPreview, layout: EmbedLayout = 'car
     postCard(card, preview, layout)
     return card
   }
-  const player = embedPlayer(preview.url)
   const body = element('div', 'kore-link-card-body')
   body.append(element('div', 'kore-link-card-title', preview.title))
   if (preview.description !== null && preview.description !== preview.title) {
     body.append(element('div', 'kore-link-card-description', preview.description))
   }
-  const site = siteLine(preview, [], layout)
+  const site = siteLine(preview, [], layout, appearance)
   if (player !== null) {
     // Compact has no image to put the button on: it sits in the footer.
     site.lastElementChild?.before(

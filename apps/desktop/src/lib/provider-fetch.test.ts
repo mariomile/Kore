@@ -52,4 +52,15 @@ describe('providerFetch', () => {
     expect(globalFetch).toHaveBeenCalledWith('https://api.anthropic.com/v1/models', undefined)
     expect(httpFetch).not.toHaveBeenCalled()
   })
+
+  it('refuses to send a key over plain http beyond the local network', async () => {
+    isNativeShell.mockReturnValue(true)
+
+    await expect(
+      providerFetch('http://models.example.com/v1/chat/completions', {
+        headers: { Authorization: 'Bearer sk-test-123456' },
+      }),
+    ).rejects.toThrow(/never sends an API key over plain http/u)
+    expect(httpFetch).not.toHaveBeenCalled()
+  })
 })

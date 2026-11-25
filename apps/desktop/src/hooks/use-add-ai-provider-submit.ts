@@ -9,7 +9,9 @@ import {
   isCliAgentProvider,
   errorMessage,
   isHttpBaseUrl,
+  isPlainHttpPublicUrl,
   normalizeOpenAICompatibleBaseUrl,
+  PLAIN_HTTP_KEY_REFUSAL,
   validateApiKey,
 } from '@kore/core'
 import { providerFetch } from '@/lib/provider-fetch'
@@ -88,6 +90,10 @@ export function useAddAiProviderSubmit({
         (baseUrl === undefined || !isHttpBaseUrl(baseUrl))
       ) {
         setSubmitError('Enter an http(s) endpoint URL.')
+        return
+      }
+      if (baseUrl !== undefined && apiKey !== '' && isPlainHttpPublicUrl(baseUrl)) {
+        setSubmitError(PLAIN_HTTP_KEY_REFUSAL)
         return
       }
       if (isCliAgentProvider(draft.provider)) {

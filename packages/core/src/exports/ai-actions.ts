@@ -9,6 +9,12 @@ export {
   type AiModelOption,
 } from '../ai/provider-catalog'
 export { aiKeySecretName, aiApiKeyForConfig } from '../ai/secrets'
+export {
+  credentialTransportRefusal,
+  isPlainHttpPublicUrl,
+  PLAIN_HTTP_KEY_REFUSAL,
+} from '../ai/credential-transport'
+export { redactSecrets } from '../ai/redact-secrets'
 export { APP_REVIEW_STUB_KEY } from '../ai/app-review-demo'
 export {
   DEFAULT_OPENAI_COMPATIBLE_BASE_URL,

@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { Close, Folder } from '@/components/icons'
-import { foldTag, type NoteTagFacet } from '@kore/core'
+import { fileKindLabel, foldTag, type NoteTagFacet } from '@kore/core'
 import { useRouter } from '@/routing/router'
 import { FilterChip } from './filter-chip'
 import {
@@ -9,11 +9,12 @@ import {
   type AllNotesFilters,
   type NoteFilterRef,
 } from './filter-state'
+import { FileKindDrawer } from './file-kind-drawer'
 import { NotePickerDrawer } from './note-picker-drawer'
 import { TagFilterDrawer } from './tag-filter-drawer'
 import { UpdatedFilterDrawer } from './updated-filter-drawer'
 
-type OpenDrawer = 'tags' | 'linkedTo' | 'linkedBy' | 'updated' | null
+type OpenDrawer = 'fileKind' | 'tags' | 'linkedTo' | 'linkedBy' | 'updated' | null
 
 interface FilterBarProps {
   filters: AllNotesFilters
@@ -38,8 +39,8 @@ function linkLabel(word: string, note: NoteFilterRef | null): string {
 
 /**
  * The filter badge row under the All tab's search bar (Plan 19, V1 parity):
- * horizontally scrollable chips that AND together — Pinned, Tags, Linked
- * to/by, Updated, Daily — with a Reset chip appearing once anything is
+ * horizontally scrollable chips that AND together — File type, Pinned,
+ * Tags, Linked to/by, Updated, Daily — with a Reset chip appearing once anything is
  * active. Chips with a value set open their picker drawer to change it.
  */
 export function FilterBar({ filters, onFiltersChange, facets }: FilterBarProps): ReactElement {
@@ -69,6 +70,13 @@ export function FilterBar({ filters, onFiltersChange, facets }: FilterBarProps):
         >
           <Folder className="-ml-1 size-4" />
           Folders
+        </FilterChip>
+        <FilterChip
+          active={filters.fileKind !== null}
+          hasMenu
+          onClick={() => setOpenDrawer('fileKind')}
+        >
+          {filters.fileKind === null ? 'File type' : fileKindLabel(filters.fileKind)}
         </FilterChip>
         <FilterChip active={filters.pinned} onClick={() => patch({ pinned: !filters.pinned })}>
           Pinned
@@ -102,6 +110,12 @@ export function FilterBar({ filters, onFiltersChange, facets }: FilterBarProps):
         </FilterChip>
       </div>
 
+      <FileKindDrawer
+        open={openDrawer === 'fileKind'}
+        onOpenChange={(open) => setOpenDrawer(open ? 'fileKind' : null)}
+        current={filters.fileKind}
+        onPick={(fileKind) => patch({ fileKind })}
+      />
       <TagFilterDrawer
         open={openDrawer === 'tags'}
         onOpenChange={(open) => setOpenDrawer(open ? 'tags' : null)}

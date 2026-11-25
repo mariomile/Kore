@@ -54,19 +54,29 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
 
 /**
  * A folder's loose files (images, PDFs, pages, documents no note
- * references), newest first, kept fresh as files come and go.
+ * references), newest first, kept fresh as files come and go. `''` is the
+ * whole vault; `null` asks for none.
  */
 export function useFolderLooseFiles(
   folder: string | null,
   includeSubfolders: boolean,
 ): readonly LooseFile[] {
+  return useLooseFilesQuery(folder, includeSubfolders).files
+}
+
+/** {@link useFolderLooseFiles}, plus whether the first read is still running. */
+export function useLooseFilesQuery(
+  folder: string | null,
+  includeSubfolders: boolean,
+): { files: readonly LooseFile[]; loading: boolean } {
   const { graph } = useGraph()
   const generation = graph?.generation
   const root = graph?.root
-  const { data: files = NO_FILES } = useQuery({
+  const enabled = generation !== undefined && folder !== null
+  const { data: files = NO_FILES, isPending } = useQuery({
     queryKey: looseFilesQueryKey(root, folder ?? '', includeSubfolders),
     queryFn: () => looseFiles(folder ?? '', includeSubfolders, generation),
-    enabled: generation !== undefined && folder !== null,
+    enabled,
   })
   // The index queries refresh when notes change; a file added, changed or
   // removed here changes no note, so the files listen for it themselves.
@@ -87,7 +97,9 @@ export function useFolderLooseFiles(
       }
     })
   }, [queryClient, root, generation, folder, includeSubfolders])
-  return folder === null ? NO_FILES : files
+  return folder === null
+    ? { files: NO_FILES, loading: false }
+    : { files, loading: enabled && isPending }
 }
 
 interface FolderFilesProps {

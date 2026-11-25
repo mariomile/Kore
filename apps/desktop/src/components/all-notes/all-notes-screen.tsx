@@ -9,7 +9,11 @@ import {
   listNotes,
   listNoteTags,
   filterLooseFiles,
+  filterLooseFilesByKind,
+  fileKindShowsNotes,
   sortNoteList,
+  type ClassifiedNoteListEntry,
+  type FileKindFilter,
   type NoteListFilter,
   type TimelineZoom,
   type NoteListFolder,
@@ -39,7 +43,8 @@ import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
-import { FolderFiles, useFolderLooseFiles } from './folder-files'
+import { FileKindMenu } from './file-kind-menu'
+import { FolderFiles, useLooseFilesQuery } from './folder-files'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -89,6 +94,9 @@ interface AllNotesScreenProps {
 /** A type with no stored views: one stable list, so the tabs never re-key. */
 const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 
+/** The notes a file-kind filter lists: none, one stable list. */
+const NO_NOTES: ClassifiedNoteListEntry[] = []
+
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
  * newest first. The active tag lives on the route so back/forward and "open a
@@ -130,11 +138,17 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   // The title filter is ephemeral and belongs to one folder: moving to
   // another clears it.
   const [titleQuery, setTitleQuery] = useState('')
+  // The File type menu (Notes and folder pages): notes only, or one kind of
+  // loose file in place of the notes. Ephemeral like the title filter.
+  const [fileKind, setFileKind] = useState<FileKindFilter | null>(null)
   const [lensFolder, setLensFolder] = useState(folderPath)
   if (lensFolder !== folderPath) {
     setLensFolder(folderPath)
     setTitleQuery('')
+    setFileKind(null)
   }
+  const kindFilter = tag === null && !inbox ? fileKind : null
+  const filesOnly = !fileKindShowsNotes(kindFilter)
   const folder = useMemo<NoteListFolder | null>(
     () => (folderPath === null ? null : { path: folderPath, recursive: includeSubfolders }),
     [folderPath, includeSubfolders],
@@ -282,7 +296,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         : allNotes?.filter((note) => note.title.toLocaleLowerCase().includes(titleNeedle)),
     [allNotes, titleNeedle],
   )
-  const unsortedNotes = inbox ? inboxNotes : matchingNotes
+  const unsortedNotes = filesOnly ? NO_NOTES : inbox ? inboxNotes : matchingNotes
   const notes = useMemo(
     () => (unsortedNotes ? sortNoteList(unsortedNotes, allNotesSort) : unsortedNotes),
     [unsortedNotes, allNotesSort],
@@ -327,12 +341,19 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     return notes.filter((note) => allowed.has(note.path))
   }, [notes, collectionFilters, filteredCollection])
 
-  // A folder's loose files share its title filter; a property filter asks
-  // about notes, which a file never matches.
-  const looseFilesHere = useFolderLooseFiles(folderPath, includeSubfolders)
+  // A folder's loose files share its title filter and File type; a property
+  // filter asks about notes, which a file never matches. On the Notes page a
+  // file kind lists the whole vault's.
+  const { files: looseFilesHere, loading: looseFilesLoading } = useLooseFilesQuery(
+    folderPath ?? (filesOnly ? '' : null),
+    folderPath === null || includeSubfolders,
+  )
   const folderFiles = useMemo(
-    () => (collectionFilters.length > 0 ? [] : filterLooseFiles(looseFilesHere, titleNeedle)),
-    [looseFilesHere, collectionFilters, titleNeedle],
+    () =>
+      collectionFilters.length > 0
+        ? []
+        : filterLooseFilesByKind(filterLooseFiles(looseFilesHere, titleNeedle), kindFilter),
+    [looseFilesHere, collectionFilters, titleNeedle, kindFilter],
   )
   const openLooseFile = useCallback(
     (path: string) => {
@@ -536,6 +557,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 onSelect={handleFilterSelect}
               />
             )}
+            {inbox ? null : <FileKindMenu value={fileKind} onChange={setFileKind} />}
             <AllNotesViewControls view={view} onViewChange={setViewMode} />
             {folderPath !== null ? (
               <>
@@ -722,7 +744,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               <FolderSubfolders folder={folderNode} />
               {view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />}
             </div>
-            {inbox && notes?.length === 0 ? (
+            {filesOnly && (folderFiles.length === 0 || view !== 'grid') ? (
+              // Files alone: the list view shows their cards above, the grid
+              // deals them below; with none, say so once they've loaded.
+              folderFiles.length === 0 && !looseFilesLoading ? (
+                <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No matching files.</p>
+              ) : null
+            ) : inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
             ) : folderPath !== null &&
               notes?.length === 0 &&

@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- 0.152.0 (2026-11-25): #682 subscription chat on Kore tools; #673 iPhone block swipe and one-row action bar; #684 no large title on iPhone Notes and Tasks.
 - 0.151.0 (2026-11-25): #675 sign in to Claude Code from Settings → AI, shared with Codex; clearer CLI messages.
 - Files: HTML files as sandboxed pages, page and PDF previews on folder cards
   (#668).

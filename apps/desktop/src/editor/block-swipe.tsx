@@ -236,11 +236,15 @@ export function BlockSwipeGestures({
         selectShown = false
         committed = next
         if (next === null) return
-        hapticImpactLight()
         if (next === 'select' && !view.hasFocus()) {
-          if (!wasSelected) selectStart()
           selectShown = true
+          // A block joining the selection ticks through the action bar.
+          if (!wasSelected) {
+            selectStart()
+            return
+          }
         }
+        hapticImpactLight()
       }
 
       const onTouchStart = (event: TouchEvent): void => {
@@ -316,7 +320,6 @@ export function BlockSwipeGestures({
         if (swept === 0 && !selectShown && !wasSelected) selectStart()
         selectShown = true
         swept += 1
-        hapticImpactLight()
         view.dispatch(withBlockSelection(view.state.tr, { type: 'add', anchor: over }))
       }
 

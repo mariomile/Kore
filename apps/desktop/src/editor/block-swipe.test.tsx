@@ -160,9 +160,9 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 20, y))
     expect(currentBlockSelection()).toBeNull()
     editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - (SWIPE_COMMIT_PX + 6), y))
-    // Selected while the finger is still down, with one tick.
+    // Selected while the finger is still down; the action bar gives the tick.
     expect(currentBlockSelection()?.state.count).toBe(1)
-    expect(hapticImpactLight).toHaveBeenCalledTimes(1)
+    expect(hapticImpactLight).not.toHaveBeenCalled()
     editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 10, y))
     expect(currentBlockSelection()).toBeNull()
     editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 10, y))

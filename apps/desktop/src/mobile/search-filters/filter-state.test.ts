@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { emptySearchFilters } from '@kore/core'
+import { emptySearchFilters, type LooseFile } from '@kore/core'
 import {
   EMPTY_ALL_NOTES_FILTERS,
   buildAllNotesSearch,
+  filesForFilters,
   folderSearchQuery,
   hasActiveFilters,
   pendingTagToken,
@@ -185,5 +186,34 @@ describe('updatedRangeFilter', () => {
   it('labels one-sided ranges', () => {
     expect(updatedRangeFilter('2026-06-01', '')?.label).toBe('Since Jun 1')
     expect(updatedRangeFilter('', '2026-06-15')?.label).toBe('Until Jun 15')
+  })
+})
+
+describe('filesForFilters', () => {
+  const file = (name: string, kind: LooseFile['kind'], modifiedMs: number): LooseFile => ({
+    path: `Docs/${name}`,
+    name,
+    extension: name.slice(name.lastIndexOf('.') + 1),
+    kind,
+    size: 1,
+    modifiedMs,
+  })
+  const files = [
+    file('Contract.pdf', 'pdf', 300),
+    file('Invoice.pdf', 'pdf', 100),
+    file('Photo.jpg', 'image', 200),
+  ]
+
+  it('keeps the chosen kind, named like the text, within the Updated range', () => {
+    const filters = filtersWith({
+      fileKind: 'pdf',
+      updated: { label: 'Since', afterMs: 200, beforeMs: null },
+    })
+    expect(filesForFilters(files, '', filters).map((entry) => entry.name)).toEqual(['Contract.pdf'])
+    expect(filesForFilters(files, 'invoice', filtersWith({ fileKind: 'pdf' }))).toEqual([files[1]])
+  })
+
+  it('lists no file under a badge only notes can match', () => {
+    expect(filesForFilters(files, '', filtersWith({ fileKind: 'pdf', pinned: true }))).toEqual([])
   })
 })

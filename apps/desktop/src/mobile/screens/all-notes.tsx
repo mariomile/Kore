@@ -2,15 +2,20 @@ import { useDeferredValue, useId, useMemo, useRef, useState, type ReactElement }
 import { useQuery } from '@tanstack/react-query'
 import { Note, SearchOff, SortVertical } from '@/components/icons'
 import {
+  fileKindShowsNotes,
   foldTag,
   listNoteTags,
   sortNoteList,
   type AllNotesSort,
   type NoteTagFacet,
 } from '@kore/core'
+import { FolderFiles, useLooseFilesQuery } from '@/components/all-notes/folder-files'
+import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import { useAssetPersistence } from '@/editor/use-asset-persistence'
+import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { haptic } from '@/lib/haptics'
@@ -19,10 +24,12 @@ import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
 import {
   buildAllNotesSearch,
+  filesForFilters,
   pendingTagToken,
   type AllNotesFilters,
 } from '@/mobile/search-filters/filter-state'
 import { NoteRowList } from '@/mobile/note-row-list'
+import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { SearchInput } from '@/mobile/search-input'
 import { rowForHit, useNoteSearchFeed } from '@/mobile/note-search-feed'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
@@ -38,6 +45,8 @@ export function matchingTagFacets(facets: NoteTagFacet[], partial: string): Note
   const needle = foldTag(partial)
   return facets.filter((facet) => foldTag(facet.tag).includes(needle))
 }
+
+const NO_ROWS: NoteRowModel[] = []
 
 interface MobileAllNotesProps {
   /** The live search text — lifted to the shell so it survives navigation. */
@@ -109,6 +118,23 @@ export function MobileAllNotes({
       feed?.recall === true && sort !== 'updated-desc' ? sortNoteList(feed.hits, sort) : hits
     return (ordered ?? []).map(rowForHit)
   }, [feed, hits, sort])
+  // A file-type badge lists the vault's loose files of that kind in place of
+  // the notes: the cards a folder page shows, from every folder.
+  const filesOnly = !fileKindShowsNotes(filters.fileKind)
+  const { files: vaultFiles, loading: filesLoading } = useLooseFilesQuery(
+    filesOnly ? '' : null,
+    true,
+  )
+  const files = useMemo(
+    () => filesForFilters(vaultFiles, parsed.text, filters),
+    [vaultFiles, parsed.text, filters],
+  )
+  const { resolveImageUrl, openAsset } = useAssetPersistence(graph?.generation ?? null)
+  const { openAsset: openFile, viewer: fileViewer } = useAssetOpener({
+    resolveUrl: resolveImageUrl,
+    openExternally: openAsset,
+  })
+  const openVaultFile = (path: string): void => void openFile(path)
   const [sorting, setSorting] = useState(false)
   const pristine = parsed.text === '' && !parsed.filtered
   const view: NotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
@@ -162,7 +188,40 @@ export function MobileAllNotes({
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
-      {isError ? (
+      {filesOnly ? (
+        filesLoading ? (
+          <div
+            className="flex flex-1 items-center justify-center"
+            style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+            aria-label="Loading files"
+          >
+            <Spinner className="size-5 text-text-muted" />
+          </div>
+        ) : files.length === 0 ? (
+          <Empty icon={<SearchOff className="size-6" />} message="No matching files" />
+        ) : view === 'grid' ? (
+          <NoteCardGrid
+            rows={NO_ROWS}
+            onOpen={openVaultFile}
+            files={files}
+            onOpenFile={openVaultFile}
+          />
+        ) : (
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            style={{
+              paddingTop: 'var(--mobile-header-height, 0px)',
+              paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+            }}
+          >
+            <FolderFiles
+              files={files}
+              onOpen={openVaultFile}
+              className={cn(MOBILE_CARD_SECTION_CLASS, 'pt-4')}
+            />
+          </div>
+        )
+      ) : isError ? (
         <div
           role="alert"
           className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
@@ -203,6 +262,7 @@ export function MobileAllNotes({
         sort={sort}
         onSortChange={(next) => updateSettings({ allNotesSort: next })}
       />
+      {fileViewer}
     </div>
   )
 }

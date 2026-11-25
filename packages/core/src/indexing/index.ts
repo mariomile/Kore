@@ -207,6 +207,7 @@ export {
   listTagOccurrences,
   type TagOccurrence,
   type NoteListEntry,
+  type ClassifiedNoteListEntry,
   type FolderPeekNote,
   type NoteListFolder,
   type NoteListOptions,
@@ -345,6 +346,13 @@ export {
 export { firstImageAssets } from './asset-refs'
 export { looseFiles, looseFilesAffectedBy, type LooseFile, type LooseFileKind } from './loose-files'
 export { filterLooseFiles, looseFileTitle, mergeFolderItems, type FolderItem } from './folder-items'
+export {
+  FILE_KIND_FILTERS,
+  fileKindLabel,
+  fileKindShowsNotes,
+  filterLooseFilesByKind,
+  type FileKindFilter,
+} from './file-kind-filter'
 export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,

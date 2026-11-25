@@ -15,6 +15,13 @@ interface AllNotesViewControlsProps {
   onViewChange: (mode: AllNotesView) => void
 }
 
+/**
+ * A header Select dressed as the filter bar's pills, not the form-field
+ * Select, so the header reads as one row of 28px controls.
+ */
+export const HEADER_SELECT_TRIGGER_CLASS =
+  'h-7 gap-1 rounded-full border-0 data-[size=sm]:rounded-full bg-surface-hover py-0 pr-2 pl-3 text-[13px] font-medium text-text-secondary hover:text-text dark:bg-surface-hover dark:hover:bg-surface-hover [&_svg]:size-3.5! [&_svg]:text-text-muted'
+
 const SORT_LABELS: Record<AllNotesSort, string> = {
   'updated-desc': 'Last updated',
   'updated-asc': 'Oldest updated',
@@ -45,11 +52,7 @@ export function AllNotesViewControls({
         {/* Dressed as the filter bar's pills, not the form-field Select, so the
             header reads as one row of 28px controls; the menu drops below like
             the Custom menu instead of covering its own trigger. */}
-        <SelectTrigger
-          aria-label="Sort"
-          size="sm"
-          className="h-7 gap-1 rounded-full border-0 data-[size=sm]:rounded-full bg-surface-hover py-0 pr-2 pl-3 text-[13px] font-medium text-text-secondary hover:text-text dark:bg-surface-hover dark:hover:bg-surface-hover [&_svg]:size-3.5! [&_svg]:text-text-muted"
-        >
+        <SelectTrigger aria-label="Sort" size="sm" className={HEADER_SELECT_TRIGGER_CLASS}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent

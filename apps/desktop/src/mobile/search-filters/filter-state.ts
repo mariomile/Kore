@@ -1,8 +1,12 @@
 import { format } from 'date-fns'
 import {
+  filterLooseFiles,
+  filterLooseFilesByKind,
   foldTag,
   parseSearchQuery,
+  type FileKindFilter,
   type FilteredSearchOptions,
+  type LooseFile,
   type ParsedSearchQuery,
 } from '@kore/core'
 
@@ -45,6 +49,8 @@ export interface AllNotesFilters {
   /** Results must be linked **from** this note. */
   linkedBy: NoteFilterRef | null
   updated: UpdatedFilter | null
+  /** Notes only, or one kind of the vault's loose files instead of notes. */
+  fileKind: FileKindFilter | null
 }
 
 export const EMPTY_ALL_NOTES_FILTERS: AllNotesFilters = {
@@ -54,6 +60,7 @@ export const EMPTY_ALL_NOTES_FILTERS: AllNotesFilters = {
   linkedTo: null,
   linkedBy: null,
   updated: null,
+  fileKind: null,
 }
 
 /**
@@ -74,7 +81,39 @@ export function hasActiveFilters(filters: AllNotesFilters): boolean {
     filters.tags.length > 0 ||
     filters.linkedTo !== null ||
     filters.linkedBy !== null ||
-    filters.updated !== null
+    filters.updated !== null ||
+    filters.fileKind !== null
+  )
+}
+
+/**
+ * The loose files a file-kind badge lists: that kind, named like the search
+ * text, changed within the Updated range. The other badges ask about notes
+ * (pins, tags, links, dailies), which a file never matches.
+ */
+export function filesForFilters(
+  files: readonly LooseFile[],
+  text: string,
+  filters: AllNotesFilters,
+): readonly LooseFile[] {
+  if (
+    filters.pinned ||
+    filters.daily ||
+    filters.tags.length > 0 ||
+    filters.linkedTo !== null ||
+    filters.linkedBy !== null
+  ) {
+    return []
+  }
+  const afterMs = filters.updated?.afterMs ?? null
+  const beforeMs = filters.updated?.beforeMs ?? null
+  return filterLooseFiles(
+    filterLooseFilesByKind(files, filters.fileKind),
+    text.trim().toLocaleLowerCase(),
+  ).filter(
+    (file) =>
+      (afterMs === null || file.modifiedMs >= afterMs) &&
+      (beforeMs === null || file.modifiedMs < beforeMs),
   )
 }
 

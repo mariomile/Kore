@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  chatModelOptions,
   chatProviderCanSteer,
   deleteChatAttachmentFiles,
   deleteChatConversation,
@@ -25,6 +24,7 @@ import {
 } from '@kore/core'
 import { toast } from '@/components/ui/toast'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useChatModelOptions } from '@/hooks/use-chat-model-options'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { isNativeShell } from '@/lib/platform'
@@ -101,7 +101,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const status: ChatStatus = turns.at(-1)?.status === 'streaming' ? 'streaming' : 'idle'
 
   const providers = settings.aiProviders
-  const modelOptions = useMemo(() => chatModelOptions(providers), [providers])
+  const modelOptions = useChatModelOptions(providers)
   // The picker's choice lives in the settings document, not session state, so
   // the model used last is the one the next session starts on.
   const activeModel = resolveChatModel(

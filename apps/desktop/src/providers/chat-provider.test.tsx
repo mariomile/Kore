@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
@@ -114,6 +115,7 @@ const GRAPH: GraphInfo = { root: '/g', name: 'test-graph', generation: 1 }
 
 function renderProvider() {
   session = null
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return renderHook(
     () => {
       session = useChatSession()
@@ -121,7 +123,9 @@ function renderProvider() {
     },
     {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        <QueryClientProvider client={queryClient}>
+          <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        </QueryClientProvider>
       ),
     },
   )
@@ -676,16 +680,10 @@ describe('ChatProvider message queue', () => {
 })
 
 describe('ChatProvider mid-turn steering', () => {
-  const CLAUDE: AiProviderConfig = {
-    id: 'c1',
-    provider: 'claude-cli',
-    model: 'default',
-    keyHint: '',
-  }
-
   /**
-   * A CLI turn that hands out its steer function and only settles when the
-   * test says so — the shape `streamAgentCliTurn` gives an inject engine.
+   * A turn that hands out its steer function and only settles when the test
+   * says so: the shape `streamChat` gives every steer-capable engine (the
+   * API-key engines and the subscription CLIs on Kore's tools alike).
    */
   function scriptSteerableTurn() {
     const state = {
@@ -694,11 +692,8 @@ describe('ChatProvider mid-turn steering', () => {
       /** Set to reject, mimicking a run that no longer accepts input. */
       refuse: false,
     }
-    core.streamCliAgentChat.mockImplementation((_id, options) => {
-      const steering = options['steering'] as
-        | { onSteerReady: (steer: (text: string) => Promise<void>) => void }
-        | undefined
-      steering?.onSteerReady(async (text: string) => {
+    core.streamChat.mockImplementation((options) => {
+      options.steering?.onSteerReady(async (text) => {
         if (state.refuse) {
           throw new Error('the run is no longer accepting input')
         }
@@ -715,140 +710,86 @@ describe('ChatProvider mid-turn steering', () => {
     return state
   }
 
-  it('a send mid-turn injects into the live run instead of queueing, and shows in the transcript', async () => {
-    settingsState.models = [CLAUDE]
-    settingsState.defaultId = 'c1'
-    const cli = scriptSteerableTurn()
+  async function startTurn() {
     const { act } = await renderProvider()
     await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
-    expect(session?.canSteer).toBe(true)
-
-    let sendDone: Promise<void> | undefined
-    await act(async () => {
-      sendDone = session?.send('start the work')
-      await Promise.resolve()
-    })
-    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
-
-    await act(() => session?.send('actually, do it differently'))
-
-    // Delivered into the running process — not queued, no second run.
-    await vi.waitFor(() => expect(cli.steers).toEqual(['actually, do it differently']))
-    expect(session?.queued).toEqual([])
-    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
-    // And visible in the turn, where the reply splits around it.
-    expect(session?.turns.at(-1)?.parts).toContainEqual({
-      kind: 'steer',
-      text: 'actually, do it differently',
-    })
-
-    cli.release()
-    await act(async () => {
-      await sendDone
-    })
-    expect(session?.turns.at(-1)?.status).toBe('done')
-  })
-
-  it('a steer on a BYOK turn rides the engine (which yields the steer event itself)', async () => {
-    const engine = { steers: [] as string[], release: () => {} }
-    core.streamChat.mockImplementation((options) => {
-      options.steering?.onSteerReady(async (text) => {
-        engine.steers.push(text)
-      })
-      return (async function* (): AsyncGenerator<ChatStreamEvent> {
-        yield { type: 'text-delta', text: 'Working…' }
-        await new Promise<void>((resolve) => {
-          engine.release = resolve
-        })
-        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
-      })()
-    })
-    const { act } = await renderProvider()
-    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
-    expect(session?.canSteer).toBe(true)
-
     let sendDone: Promise<void> | undefined
     await act(async () => {
       sendDone = session?.send('start the work')
       await Promise.resolve()
     })
     await vi.waitFor(() => expect(core.streamChat).toHaveBeenCalled())
+    return { act, settle: async () => await act(async () => await sendDone) }
+  }
+
+  it('a send mid-turn rides the engine (which yields the steer event itself)', async () => {
+    const engine = scriptSteerableTurn()
+    const { act, settle } = await startTurn()
+    expect(session?.canSteer).toBe(true)
+
     await act(() => session?.send('actually, mountains'))
 
     await vi.waitFor(() => expect(engine.steers).toEqual(['actually, mountains']))
     expect(session?.queued).toEqual([])
     expect(core.streamChat).toHaveBeenCalledTimes(1)
-    // The BYOK engine emits the `steer` event at the split point — the
-    // provider adds no part of its own, so nothing shows twice.
+    // The engine emits the `steer` event at the split point: the provider
+    // adds no part of its own, so nothing shows twice.
     expect(session?.turns.at(-1)?.parts.filter((part) => part.kind === 'steer')).toEqual([])
 
     engine.release()
-    await act(async () => {
-      await sendDone
-    })
+    await settle()
+    expect(session?.turns.at(-1)?.status).toBe('done')
+  })
+
+  it('steers a subscription CLI turn the same way, since it runs on Kore’s tools', async () => {
+    settingsState.models = [{ id: 'c1', provider: 'codex-cli', model: 'default', keyHint: '' }]
+    settingsState.defaultId = 'c1'
+    const engine = scriptSteerableTurn()
+    const { act, settle } = await startTurn()
+    expect(session?.canSteer).toBe(true)
+
+    await act(() => session?.send('actually, mountains'))
+
+    await vi.waitFor(() => expect(engine.steers).toEqual(['actually, mountains']))
+    expect(core.streamCliAgentChat).not.toHaveBeenCalled()
+    engine.release()
+    await settle()
   })
 
   it('⌘-Enter holds the message for after the reply instead of steering', async () => {
-    settingsState.models = [CLAUDE]
-    settingsState.defaultId = 'c1'
-    const cli = scriptSteerableTurn()
-    const { act } = await renderProvider()
-    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+    const engine = scriptSteerableTurn()
+    const { act, settle } = await startTurn()
 
-    let sendDone: Promise<void> | undefined
-    await act(async () => {
-      sendDone = session?.send('start the work')
-      await Promise.resolve()
-    })
-    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
     await act(() => session?.queue('and then this'))
 
-    expect(cli.steers).toEqual([])
+    expect(engine.steers).toEqual([])
     expect(session?.queued.map((entry) => entry.text)).toEqual(['and then this'])
 
-    cli.release()
-    await act(async () => {
-      await sendDone
-    })
+    engine.release()
+    await settle()
   })
 
   it('falls back to the queue when the run refuses the steer', async () => {
-    settingsState.models = [CLAUDE]
-    settingsState.defaultId = 'c1'
-    const cli = scriptSteerableTurn()
-    const { act } = await renderProvider()
-    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
-
-    let sendDone: Promise<void> | undefined
-    await act(async () => {
-      sendDone = session?.send('start the work')
-      await Promise.resolve()
-    })
-    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
+    const engine = scriptSteerableTurn()
+    const { act, settle } = await startTurn()
 
     // The run settled or stopped between the check and the write.
-    cli.refuse = true
+    engine.refuse = true
     await act(() => session?.send('too late for this one'))
 
-    expect(cli.steers).toEqual([])
+    expect(engine.steers).toEqual([])
     expect(session?.queued.map((entry) => entry.text)).toEqual(['too late for this one'])
-    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
-    expect(session?.turns.at(-1)?.parts).not.toContainEqual({
-      kind: 'steer',
-      text: 'too late for this one',
-    })
+    expect(core.streamChat).toHaveBeenCalledTimes(1)
 
-    cli.release()
-    await act(async () => {
-      await sendDone
-    })
+    engine.release()
+    await settle()
   })
 })
 
 describe('ChatProvider read-mode external tools', () => {
-  const CLAUDE: AiProviderConfig = {
+  const CODEX: AiProviderConfig = {
     id: 'c1',
-    provider: 'claude-cli',
+    provider: 'codex-cli',
     model: 'default',
     keyHint: '',
   }
@@ -859,20 +800,17 @@ describe('ChatProvider read-mode external tools', () => {
     envKeys: [],
     enabled: true,
   }
-
-  function scriptCliTurn() {
-    core.streamCliAgentChat.mockImplementation(() =>
-      (async function* (): AsyncGenerator<ChatStreamEvent> {
-        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
-      })(),
-    )
+  const RESOLVED_LINEAR = {
+    name: 'linear',
+    transport: { kind: 'http', url: 'https://mcp.linear.app' },
+    env: {},
   }
 
   beforeEach(() => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     settingsState.mcpServers = [LINEAR]
-    scriptCliTurn()
+    scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }])
   })
 
   it('keeps a read-mode turn zero-egress until the conversation opts in', async () => {
@@ -884,25 +822,28 @@ describe('ChatProvider read-mode external tools', () => {
       await session?.send('search my mail')
     })
 
-    expect(core.streamCliAgentChat.mock.lastCall?.[1]['mcpServers']).toEqual([])
+    expect(core.streamChat.mock.lastCall?.[0]['mcpServers']).toEqual([])
   })
 
-  it('mounts the resolved servers once the conversation opted in', async () => {
-    const { act } = await renderProvider()
-    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+  it.each(['codex-cli', 'claude-cli'] as const)(
+    'runs a %s turn on Kore’s tools, with the opted-in servers alongside',
+    async (provider) => {
+      settingsState.models = [{ ...CODEX, provider }]
+      const { act } = await renderProvider()
+      await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
 
-    await act(async () => {
-      session?.setChatTools(true)
-    })
-    await act(async () => {
-      await session?.send('search my mail')
-    })
+      await act(async () => {
+        session?.setChatTools(true)
+      })
+      await act(async () => {
+        await session?.send('search my mail')
+      })
 
-    expect(core.streamCliAgentChat.mock.lastCall?.[1]['mcpServers']).toEqual([
-      { name: 'linear', transport: { kind: 'http', url: 'https://mcp.linear.app' }, env: {} },
-    ])
-    expect(core.streamCliAgentChat.mock.lastCall?.[1]['allowEdits']).not.toBe(true)
-  })
+      expect(core.streamCliAgentChat).not.toHaveBeenCalled()
+      expect(core.streamChat.mock.lastCall?.[0]['mcpServers']).toEqual([RESOLVED_LINEAR])
+      expect(core.streamChat.mock.lastCall?.[0]['allowEdits']).toBe(false)
+    },
+  )
 
   it('New chat turns the opt-in back off', async () => {
     const { act } = await renderProvider()
@@ -952,15 +893,16 @@ describe('ChatProvider model selection', () => {
 })
 
 describe('ChatProvider private-note deny list', () => {
-  const CLAUDE: AiProviderConfig = {
+  // Cursor is the engine that still reads the vault with its own file tools.
+  const CURSOR: AiProviderConfig = {
     id: 'c1',
-    provider: 'claude-cli',
+    provider: 'cursor-cli',
     model: 'default',
     keyHint: '',
   }
 
   it('refuses a CLI turn when the index cannot say which notes are private', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CURSOR]
     settingsState.defaultId = 'c1'
     // `null` is the rebuild window: the projection is wiped and refilling, so
     // an empty list would be a partial answer wearing a complete answer's
@@ -982,7 +924,7 @@ describe('ChatProvider private-note deny list', () => {
   })
 
   it('starts the run and forwards the deny list once the index can answer', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CURSOR]
     settingsState.defaultId = 'c1'
     core.listPrivateNotePaths.mockResolvedValue(['notes/diary.md'])
     core.streamCliAgentChat.mockImplementation(() =>
@@ -1004,7 +946,7 @@ describe('ChatProvider private-note deny list', () => {
   })
 
   it('runs on a clean vault, where an empty list is a complete answer', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CURSOR]
     settingsState.defaultId = 'c1'
     core.listPrivateNotePaths.mockResolvedValue([])
     core.streamCliAgentChat.mockImplementation(() =>

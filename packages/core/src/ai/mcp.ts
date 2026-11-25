@@ -101,6 +101,13 @@ export async function resolveMcpServers(servers: McpServer[]): Promise<ResolvedM
  * as `{type: "http", url}`.
  */
 export function claudeMcpConfigJson(servers: ResolvedMcpServer[]): string {
+  return JSON.stringify({ mcpServers: claudeMcpServerEntries(servers) })
+}
+
+/** The `mcpServers` entries of a Claude Code `--mcp-config`, by server name. */
+export function claudeMcpServerEntries(
+  servers: readonly ResolvedMcpServer[],
+): Record<string, unknown> {
   const entries: Record<string, unknown> = {}
   for (const server of servers) {
     // No env entries: secrets reach stdio servers by inheriting the CLI
@@ -110,7 +117,7 @@ export function claudeMcpConfigJson(servers: ResolvedMcpServer[]): string {
         ? { command: server.transport.command, args: server.transport.args }
         : { type: 'http', url: server.transport.url }
   }
-  return JSON.stringify({ mcpServers: entries })
+  return entries
 }
 
 /** Escape a string for a TOML basic (double-quoted) string. */

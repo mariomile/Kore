@@ -37,7 +37,9 @@ export {
   resolveChatModel,
   type ChatModelOption,
   type ChatModelSelection,
+  type LiveModelLists,
 } from '../ai/chat/model-options'
+export { listCliModels } from '../ai/cli-models'
 export {
   validateApiKey,
   type ApiKeyValidation,
@@ -293,6 +295,8 @@ export {
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
   isCliAgentProvider,
+  isFileChatProvider,
+  cliChatRunsKoreTools,
   streamCliAgentChat,
   type CliAgentProviderId,
 } from '../ai/cli-providers'

@@ -6,15 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isMobileSurface } from '@/lib/platform-surface'
 
 /** What the in-app viewer can render; anything else keeps the OS-open path. */
-export type ViewableAssetKind = 'pdf' | 'html' | 'csv' | 'docx' | 'text' | 'image'
+export type ViewableAssetKind = 'pdf' | 'csv' | 'docx' | 'text' | 'image'
 
 /** The viewer kind for a graph-relative asset path, or null to open externally. */
 export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
   if (/\.pdf$/i.test(assetPath)) {
     return 'pdf'
-  }
-  if (/\.html?$/i.test(assetPath)) {
-    return 'html'
   }
   if (/\.[ct]sv$/i.test(assetPath)) {
     return 'csv'
@@ -56,10 +53,9 @@ interface AssetViewerDialogProps {
 /**
  * The in-app attachment viewer: a large dialog rendering the asset off the
  * graph's `kore-asset://` protocol instead of bouncing to an external
- * app. PDFs use the webview's native renderer; HTML (and converted DOCX)
- * renders in a fully sandboxed iframe (no scripts, no same-origin, no forms
- * — `sandbox=""`), so a note attachment can never run code against the app;
- * CSV/TSV renders as a table, plain text as a scroller and an image whole. "Open externally"
+ * app. PDFs use the webview's native renderer; converted DOCX renders in a
+ * fully sandboxed iframe (`sandbox=""`); HTML pages open as a screen of their
+ * own (`HtmlFileScreen`); CSV/TSV renders as a table, plain text as a scroller and an image whole. "Open externally"
  * keeps the old path one click away — including for platforms whose webview
  * can't render PDFs inline.
  */
@@ -117,11 +113,8 @@ export function AssetViewerDialog({
           <iframe
             title={fileName}
             src={url}
-            // HTML attachments are untrusted note content: the empty sandbox
-            // blocks scripts, same-origin access, forms, and popups outright.
-            // PDFs skip the sandbox — the webview's built-in PDF plugin does
+            // Unsandboxed on purpose: the webview's built-in PDF plugin does
             // not run inside a sandboxed frame.
-            {...(kind === 'html' ? { sandbox: '' } : {})}
             className="min-h-0 w-full flex-1 rounded-lg border border-border bg-surface"
           />
         )}

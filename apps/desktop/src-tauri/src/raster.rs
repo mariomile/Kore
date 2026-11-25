@@ -30,10 +30,15 @@ pub(crate) fn downscale_jpeg(bytes: &[u8], max_dim: u32) -> AppResult<Vec<u8>> {
     } else {
         decoded
     };
+    encode_jpeg(&resized)
+}
+
+/// `image` as a JPEG at the quality every Kore-made JPEG uses.
+pub(crate) fn encode_jpeg(image: &image::DynamicImage) -> AppResult<Vec<u8>> {
     let mut out = Vec::new();
     let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 80);
-    resized
-        .into_rgb8() // JPEG carries no alpha
+    image
+        .to_rgb8() // JPEG carries no alpha
         .write_with_encoder(encoder)
         .map_err(|err| AppError::io(format!("image re-encode failed: {err}")))?;
     Ok(out)

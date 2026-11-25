@@ -34,14 +34,20 @@ pub(super) fn cache_path(cache_dir: &Path, image: &Path) -> Option<PathBuf> {
     Some(cache_dir.join(format!("{}.jpg", &sha256_hex(key.as_bytes())[..32])))
 }
 
-/// A fresh thumbnail of `original`, written to `cache_file` for next time
-/// (the caller reads a cache hit itself, before reading the original). None
-/// when the original doesn't decode (a WebP or GIF without a decoder here):
-/// the caller serves the original bytes as they are.
-pub(super) fn thumbnail(cache_file: &Path, original: &[u8]) -> Option<Vec<u8>> {
-    let jpeg = crate::raster::downscale_jpeg(original, THUMBNAIL_LONG_EDGE).ok()?;
+/// A fresh thumbnail of `original` (of type `mime`), written to `cache_file`
+/// for next time (the caller reads a cache hit itself, before reading the
+/// original). A raster image is shrunk; a PDF shows its first page. None for
+/// anything else, or when the original doesn't decode (a WebP or GIF without
+/// a decoder here, a locked PDF): the caller decides what to serve instead.
+pub(super) fn thumbnail(cache_file: &Path, mime: &str, original: &[u8]) -> Option<Vec<u8>> {
+    let jpeg = if mime == "application/pdf" {
+        let page = super::pdf_page::first_page(original, THUMBNAIL_LONG_EDGE)?;
+        crate::raster::encode_jpeg(&image::DynamicImage::ImageRgb8(page)).ok()?
+    } else {
+        crate::raster::downscale_jpeg(original, THUMBNAIL_LONG_EDGE).ok()?
+    };
     if let Some(dir) = cache_file.parent() {
-        // A failed write only costs the next request a fresh downscale. Each
+        // A failed write only costs the next request a fresh thumbnail. Each
         // writer stages its own file: two cards asking for the same picture at
         // once must not interleave into one half-written JPEG.
         let staged = cache_file.with_extension(format!("{}.tmp", next_stage_id()));
@@ -85,7 +91,7 @@ mod tests {
         std::fs::write(&image, png(3000, 2000)).unwrap();
         let cache_file = cache_path(&dir.path().join("cache"), &image).unwrap();
 
-        let jpeg = thumbnail(&cache_file, &std::fs::read(&image).unwrap()).unwrap();
+        let jpeg = thumbnail(&cache_file, "image/png", &std::fs::read(&image).unwrap()).unwrap();
         let decoded = image::load_from_memory(&jpeg).unwrap();
         assert_eq!((decoded.width(), decoded.height()), (960, 640));
         assert_eq!(std::fs::read(&cache_file).unwrap(), jpeg);
@@ -108,7 +114,7 @@ mod tests {
         let original = png(1200, 800);
         std::thread::scope(|scope| {
             for _ in 0..8 {
-                scope.spawn(|| thumbnail(&cache_file, &original).unwrap());
+                scope.spawn(|| thumbnail(&cache_file, "image/png", &original).unwrap());
             }
         });
         let cached = image::load_from_memory(&std::fs::read(&cache_file).unwrap()).unwrap();
@@ -117,9 +123,61 @@ mod tests {
         assert_eq!(leftovers, 1, "staging files left behind");
     }
 
+    /// A one-page US Letter PDF with a black square in its top left corner.
+    fn letter_pdf() -> Vec<u8> {
+        let content = "0 0 0 rg 0 692 100 100 re f";
+        format!(
+            "%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n\
+             2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n\
+             3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj\n\
+             4 0 obj << /Length {} >> stream\n{content}\nendstream endobj\n\
+             trailer << /Root 1 0 R >>\n%%EOF\n",
+            content.len()
+        )
+        .into_bytes()
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    #[test]
+    fn a_pdf_shows_its_first_page_from_the_top() {
+        let dir = tempfile::tempdir().unwrap();
+        let jpeg = thumbnail(
+            &dir.path().join("deck.jpg"),
+            "application/pdf",
+            &letter_pdf(),
+        )
+        .unwrap();
+        let page = image::load_from_memory(&jpeg).unwrap().to_rgb8();
+        assert_eq!((page.width(), page.height()), (742, 960));
+        // The square sits top left; the rest of the page is white.
+        assert!(page.get_pixel(20, 20).0.iter().all(|&channel| channel < 40));
+        assert!(page
+            .get_pixel(600, 800)
+            .0
+            .iter()
+            .all(|&channel| channel > 215));
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+    #[test]
+    fn a_pdf_off_apple_keeps_its_icon() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(thumbnail(
+            &dir.path().join("deck.jpg"),
+            "application/pdf",
+            &letter_pdf()
+        )
+        .is_none());
+    }
+
     #[test]
     fn an_undecodable_original_is_left_to_the_caller() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(thumbnail(&dir.path().join("x.jpg"), b"GIF89a not decodable").is_none());
+        assert!(thumbnail(
+            &dir.path().join("x.jpg"),
+            "image/gif",
+            b"GIF89a not decodable"
+        )
+        .is_none());
     }
 }

@@ -34,6 +34,8 @@
   { "path": "Documents/reference.pdf", "kind": "attachment" },
   { "path": "Documents/archive.zip", "kind": "attachment" },
   { "path": "Documents/report.docx", "kind": "attachment" },
+  { "path": "Documents/dashboard.html", "kind": "attachment" },
+  { "path": "Documents/legacy.HTM", "kind": "attachment" },
   { "path": "Documents/data.JSON", "kind": "attachment" },
   { "path": "assets/archive.7z", "kind": "attachment" },
   { "path": "tools/script.sh", "kind": null },

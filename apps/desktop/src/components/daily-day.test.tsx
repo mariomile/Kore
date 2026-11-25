@@ -17,6 +17,7 @@ import type { NotePaneProps } from './note-pane'
 
 const settings = vi.hoisted(() => ({ editorMarkdownSyntax: 'hide' as 'hide' | 'show' | 'hybrid' }))
 const images = vi.hoisted(() => ({ url: null as string | null }))
+const noteRow = vi.hoisted(() => ({ value: null as { isPrivate: boolean } | null }))
 
 vi.mock('@/components/note-pane', () => ({
   NotePane: ({
@@ -39,7 +40,7 @@ vi.mock('@/components/note-pane', () => ({
 }))
 vi.mock('@/components/backlinks-panel', () => ({ BacklinksPanel: () => null }))
 vi.mock('@/components/unlinked-mentions-panel', () => ({ UnlinkedMentionsPanel: () => null }))
-vi.mock('@/hooks/use-note-row', () => ({ useNoteRow: () => null }))
+vi.mock('@/hooks/use-note-row', () => ({ useNoteRow: () => noteRow.value }))
 vi.mock('@/editor/use-asset-persistence', () => ({
   useAssetPersistence: () => ({ resolveImageUrl: () => images.url }),
 }))
@@ -58,9 +59,12 @@ vi.mock('@/providers/settings-provider', () => ({
 
 const PATH = 'daily/2026-06-27.md'
 
-function serveNote(source: string | null): void {
+function serveNote(source: string | null, pageHtml: string | null = null): void {
   setBridge({
     invoke: async (command) => {
+      if (command === 'capture_meta_fetch' && pageHtml !== null) {
+        return pageHtml
+      }
       if (command === 'note_read') {
         if (source === null) {
           throw { kind: 'notFound', message: 'no such note' }
@@ -110,6 +114,7 @@ afterEach(async () => {
   await cleanup()
   settings.editorMarkdownSyntax = 'hide'
   images.url = null
+  noteRow.value = null
 })
 
 describe('DailyDay', () => {
@@ -201,5 +206,19 @@ describe('DailyDay', () => {
     fireEvent.pointerDown(staticDay().element(), { button: 0, clientX: 40, clientY: 12 })
 
     expect(onActivate).toHaveBeenCalledWith('2026-06-27', { x: 40, y: 12 })
+  })
+
+  it('draws a link alone in a bullet as a preview card, as the editor does', async () => {
+    noteRow.value = { isPrivate: false }
+    serveNote(
+      '- https://www.youtube.com/post/bullet-card\n',
+      '<html><head><meta property="og:title" content="A community post"></head></html>',
+    )
+    await renderDay(<Day live={false} />)
+
+    await expect.element(staticDay()).toBeInTheDocument()
+    await expect
+      .element(page.locate('.prosemirror-flat-list .kore-link-card'))
+      .toHaveTextContent(/A community post/)
   })
 })

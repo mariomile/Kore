@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { parseLinkPreview, parseXLinkPreview } from './link-preview'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setBridge } from '../ipc/bridge'
+import {
+  LINK_PREVIEW_RETRY_MS,
+  loadLinkPreview,
+  parseLinkPreview,
+  parseXLinkPreview,
+} from './link-preview'
 
 /**
  * Preview parsing runs in a real browser: `parseLinkPreview` reads the page
@@ -115,5 +121,58 @@ describe('parseXLinkPreview', () => {
     expect(parseXLinkPreview('{"__typename":"TweetTombstone"}', 'https://x.com/a/status/1')).toBe(
       null,
     )
+  })
+})
+
+describe('loadLinkPreview', () => {
+  afterEach(() => {
+    setBridge(null)
+  })
+
+  /** A bridge whose meta fetch fails `failures` times, then answers PAGE. */
+  function installMetaFetch(failures: number): { calls: number } {
+    const seen = { calls: 0 }
+    setBridge({
+      invoke: async (command) => {
+        if (command !== 'capture_meta_fetch') {
+          throw new Error(`unexpected ${command}`)
+        }
+        seen.calls += 1
+        if (seen.calls <= failures) {
+          throw new Error('timed out')
+        }
+        return PAGE
+      },
+      listen: async () => () => {},
+    })
+    return seen
+  }
+
+  it('asks a failed link again once the retry window has passed', async () => {
+    const seen = installMetaFetch(1)
+    let clock = 1_000
+    const now = (): number => clock
+    const url = 'https://www.youtube.com/post/retry-after-timeout'
+
+    expect(await loadLinkPreview(url, now)).toBeNull()
+    clock += LINK_PREVIEW_RETRY_MS - 1
+    expect(await loadLinkPreview(url, now)).toBeNull()
+    expect(seen.calls).toBe(1)
+
+    clock += 1
+    expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Startup School' })
+    expect(seen.calls).toBe(2)
+  })
+
+  it('remembers an answer for the session', async () => {
+    const seen = installMetaFetch(0)
+    let clock = 1_000
+    const now = (): number => clock
+    const url = 'https://www.ycombinator.com/library/remembered'
+
+    expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Startup School' })
+    clock += LINK_PREVIEW_RETRY_MS * 10
+    expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Startup School' })
+    expect(seen.calls).toBe(1)
   })
 })

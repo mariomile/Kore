@@ -7,6 +7,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Files: HTML files as sandboxed pages, page and PDF previews on folder cards
+  (#668).
 - CLI: `kore canvas` draws a folder as a canvas board, kore-canvas skill (#672).
 - Haptics: one haptic vocabulary for Mac and iPhone (#674).
 - Note page: edge-to-edge cover with folder pill, Tabs in sidebar setting,

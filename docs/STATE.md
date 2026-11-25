@@ -1,5 +1,12 @@
 # Kore working state
 
+## HTML files as sandboxed pages, 2026-11-25 (0.150.0)
+
+- [x] HTML files as first-class pages: live-preview cards, a sandboxed page
+  screen with Page/Code, Open in browser on Mac and Share on iPhone; PDF
+  cards show their first page; folder pages use one grid for files and notes
+  (#668).
+
 ## Agents draw canvas boards, 2026-11-25 (0.149.0)
 
 - [x] `kore canvas <folder>` and MCP `draw_canvas` turn a folder into a JSON

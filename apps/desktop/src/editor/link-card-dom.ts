@@ -1,4 +1,12 @@
-import type { EmbedLayout, LinkPreview, LinkPreviewProvider, PostLinkPreview } from '@kore/core'
+import {
+  embedPlayer,
+  type EmbedLayout,
+  type EmbedPlayer,
+  type LinkPreview,
+  type LinkPreviewProvider,
+  type PageLinkPreview,
+  type PostLinkPreview,
+} from '@kore/core'
 
 /**
  * The DOM of one link preview card. Built by hand because it renders as a
@@ -223,6 +231,139 @@ function postCard(card: HTMLElement, preview: PostLinkPreview, layout: EmbedLayo
 }
 
 /**
+ * Everything a player frame may do: run its own scripts in its own origin,
+ * open the provider in a new window, go fullscreen. Never navigate the app.
+ * Shared by every card that holds a player (`EmbeddedLinkCard` too).
+ */
+export const PLAYER_SANDBOX =
+  'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms'
+
+/** What a player frame may ask the browser for. */
+export const PLAYER_ALLOW =
+  'autoplay; accelerometer; clipboard-write; encrypted-media; picture-in-picture; fullscreen'
+
+/** The provider's player, ready to drop in where the card was. */
+export function playerFrame(player: EmbedPlayer, title: string): HTMLIFrameElement {
+  const frame = element('iframe', 'kore-link-card-frame')
+  frame.src = player.url
+  frame.title = `${player.provider}: ${title}`
+  frame.allow = PLAYER_ALLOW
+  frame.allowFullscreen = true
+  frame.referrerPolicy = 'strict-origin-when-cross-origin'
+  frame.setAttribute('sandbox', PLAYER_SANDBOX)
+  if (player.height !== null) {
+    frame.style.height = `${player.height}px`
+  } else {
+    frame.dataset.ratio = 'video'
+  }
+  return frame
+}
+
+/** The filled triangle a Play button draws. */
+function playGlyph(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('aria-hidden', 'true')
+  const path = document.createElementNS(SVG_NS, 'path')
+  path.setAttribute(
+    'd',
+    'M8 5.14v13.72a1 1 0 0 0 1.52.85l10.6-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z',
+  )
+  path.setAttribute('fill', 'currentColor')
+  svg.append(path)
+  return svg
+}
+
+/** The cross a player's close button draws. */
+function closeGlyph(): SVGSVGElement {
+  return strokeGlyph(['M6 6l12 12', 'M18 6L6 18'])
+}
+
+interface Playing {
+  readonly card: HTMLElement
+  readonly stop: () => void
+}
+
+/**
+ * The one card playing right now. A second Play stops the first, so a note
+ * full of videos never runs two players (or their network and CPU) at once.
+ */
+let playing: Playing | null = null
+
+/** Stop whatever card is playing, putting its card back. */
+export function stopLinkCardPlayer(): void {
+  playing?.stop()
+}
+
+/**
+ * Swap `card`'s contents for the provider's player. The card element itself
+ * stays (it is a ProseMirror widget's root), so the editor never notices.
+ * The player goes away, and the card comes back, on the close button, on
+ * another card's Play, or once the card scrolls out of view: nothing keeps
+ * playing, or loading, off screen.
+ */
+function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): void {
+  stopLinkCardPlayer()
+  const saved = [...card.childNodes]
+  const stage = element('div', 'kore-link-card-player')
+  const close = footerButton('Close player', closeGlyph())
+  close.classList.add('kore-link-card-close')
+  close.dataset.linkCardClose = ''
+  stage.append(playerFrame(player, title), close)
+  card.dataset.playing = ''
+  card.replaceChildren(stage)
+
+  let observer: IntersectionObserver | null = null
+  const stop = (): void => {
+    observer?.disconnect()
+    observer = null
+    card.replaceChildren(...saved)
+    delete card.dataset.playing
+    if (playing?.card === card) {
+      playing = null
+    }
+  }
+  close.addEventListener('click', (event) => {
+    event.preventDefault()
+    stop()
+  })
+  if (typeof IntersectionObserver !== 'undefined') {
+    observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => !entry.isIntersecting) || !card.isConnected) {
+        stop()
+      }
+    })
+    observer.observe(card)
+  }
+  playing = { card, stop }
+}
+
+/**
+ * The poster of a card whose link has a player: the page's image (when it
+ * has one) under a round Play button. It takes the thumbnail's place in the
+ * layout, so Card and Large draw it where the image would be.
+ */
+function poster(preview: PageLinkPreview, player: EmbedPlayer): HTMLElement {
+  const slot = element('div', 'kore-link-card-thumb kore-link-card-poster')
+  if (preview.imageUrl !== null) {
+    slot.append(image('kore-link-card-poster-image', preview.imageUrl))
+  }
+  slot.append(playButton(player, 'kore-link-card-play'))
+  return slot
+}
+
+function playButton(player: EmbedPlayer, className: string): HTMLButtonElement {
+  const label = player.playable ? `Play on ${player.provider}` : `Show ${player.provider}`
+  const button = element('button', className)
+  button.type = 'button'
+  button.setAttribute('aria-label', label)
+  button.title = label
+  button.dataset.linkCardPlay = ''
+  button.append(playGlyph())
+  return button
+}
+
+/**
  * One card for one preview, in one of the three card layouts. The caller owns
  * events and placement; the appearance button fires {@link LINK_LAYOUT_EVENT}.
  */
@@ -239,14 +380,31 @@ export function linkCardElement(preview: LinkPreview, layout: EmbedLayout = 'car
     postCard(card, preview, layout)
     return card
   }
+  const player = embedPlayer(preview.url)
   const body = element('div', 'kore-link-card-body')
   body.append(element('div', 'kore-link-card-title', preview.title))
   if (preview.description !== null && preview.description !== preview.title) {
     body.append(element('div', 'kore-link-card-description', preview.description))
   }
-  body.append(siteLine(preview, [], layout))
+  const site = siteLine(preview, [], layout)
+  if (player !== null) {
+    // Compact has no image to put the button on: it sits in the footer.
+    site.lastElementChild?.before(
+      playButton(player, 'kore-link-card-button kore-link-card-play-inline'),
+    )
+  }
+  body.append(site)
   card.append(body)
-  if (preview.imageUrl !== null) {
+  if (player !== null) {
+    card.dataset.player = player.provider
+    card.append(poster(preview, player))
+    card.addEventListener('click', (event) => {
+      if (event.target instanceof Element && event.target.closest('[data-link-card-play]')) {
+        event.preventDefault()
+        startPlayer(card, player, preview.title)
+      }
+    })
+  } else if (preview.imageUrl !== null) {
     card.append(image('kore-link-card-thumb', preview.imageUrl))
   }
   return card

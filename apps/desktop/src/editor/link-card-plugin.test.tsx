@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { LinkPreview } from '@kore/core'
+import type { LinkPreview, PageLinkPreview } from '@kore/core'
 import { Schema } from '@prosekit/pm/model'
 import { EditorState } from '@prosekit/pm/state'
 import { EditorView } from '@prosekit/pm/view'
+import { stopLinkCardPlayer } from './link-card-dom'
 import { createLinkCardPlugin, deliverLinkPreview, paragraphCardUrl } from './link-card-plugin'
 
 /**
@@ -29,7 +30,7 @@ const schema = new Schema({
 const URL_X = 'https://x.com/grimcodes/status/1'
 const URL_PAGE = 'https://www.ycombinator.com/library'
 
-const PAGE: LinkPreview = {
+const PAGE: PageLinkPreview = {
   kind: 'page',
   url: URL_PAGE,
   title: 'Startup School',
@@ -38,6 +39,13 @@ const PAGE: LinkPreview = {
   provider: null,
   imageUrl: 'https://www.ycombinator.com/static/social.png',
   iconUrl: 'https://www.ycombinator.com/favicon.ico',
+}
+
+const URL_VIDEO = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+const URL_SONG = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC'
+
+function videoPage(url: string, title: string): PageLinkPreview {
+  return { ...PAGE, url, title, siteName: 'YouTube', imageUrl: 'https://i.ytimg.com/vi/x/hq.jpg' }
 }
 
 const POST: LinkPreview = {
@@ -86,6 +94,7 @@ function mount(blocks: ReturnType<typeof plainParagraph>[]) {
 }
 
 afterEach(() => {
+  stopLinkCardPlayer()
   view?.dom.parentElement?.remove()
   view?.destroy()
   view = null
@@ -170,5 +179,55 @@ describe('link cards', () => {
     const end = view.state.doc.content.size - 1
     view.dispatch(view.state.tr.insertText(' is great', end))
     expect(host.querySelector('.kore-link-card')).toBe(null)
+  })
+
+  it('holds a video behind Play, and loads nothing from the provider before it', () => {
+    const { view, host } = mount([linkParagraph(URL_VIDEO)])
+    deliverLinkPreview(view, videoPage(URL_VIDEO, 'A talk'))
+    const card = host.querySelector<HTMLElement>('.kore-link-card')!
+    expect(card.dataset.player).toBe('YouTube')
+    expect(host.querySelector('iframe')).toBe(null)
+    const play = card.querySelector<HTMLElement>('.kore-link-card-poster [data-link-card-play]')!
+    expect(play.getAttribute('aria-label')).toBe('Play on YouTube')
+
+    play.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+    play.click()
+    const frame = host.querySelector<HTMLIFrameElement>('.kore-link-card iframe')!
+    expect(frame.src).toContain('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+    expect(frame.getAttribute('sandbox')).toContain('allow-scripts')
+    expect(card.hasAttribute('data-playing')).toBe(true)
+    // Pressing Play is not a press on the card: the caret stays put.
+    expect(host.querySelector('p')?.classList.contains('is-editing')).toBe(false)
+
+    host.querySelector<HTMLElement>('[data-link-card-close]')!.click()
+    expect(host.querySelector('iframe')).toBe(null)
+    expect(card.querySelector('.kore-link-card-title')?.textContent).toBe('A talk')
+  })
+
+  it('plays one card at a time', () => {
+    const { view, host } = mount([linkParagraph(URL_VIDEO), linkParagraph(URL_SONG)])
+    deliverLinkPreview(view, videoPage(URL_VIDEO, 'A talk'))
+    deliverLinkPreview(view, videoPage(URL_SONG, 'A song'))
+    const [video, song] = host.querySelectorAll<HTMLElement>('.kore-link-card')
+    video!.querySelector<HTMLElement>('.kore-link-card-poster [data-link-card-play]')!.click()
+    song!.querySelector<HTMLElement>('.kore-link-card-poster [data-link-card-play]')!.click()
+    const frames = host.querySelectorAll('iframe')
+    expect(frames).toHaveLength(1)
+    expect(frames[0]?.src).toContain('open.spotify.com/embed/track/')
+    expect(video!.hasAttribute('data-playing')).toBe(false)
+  })
+
+  it('keeps a playing card through an edit above it', () => {
+    const { view, host } = mount([plainParagraph('intro'), linkParagraph(URL_VIDEO)])
+    deliverLinkPreview(view, videoPage(URL_VIDEO, 'A talk'))
+    host.querySelector<HTMLElement>('.kore-link-card-poster [data-link-card-play]')!.click()
+    view.dispatch(view.state.tr.insertText('more ', 1))
+    expect(host.querySelector('.kore-link-card iframe')).not.toBe(null)
+  })
+
+  it('draws no Play for a page without a player', () => {
+    const { view, host } = mount([linkParagraph(URL_PAGE)])
+    deliverLinkPreview(view, PAGE)
+    expect(host.querySelector('[data-link-card-play]')).toBe(null)
   })
 })

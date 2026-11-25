@@ -109,7 +109,7 @@ function cardParagraphs(
   return found
 }
 
-function cardWidget(options: LinkCardOptions, preview: LinkPreview, paragraphPos: number) {
+function cardWidget(options: LinkCardOptions, preview: LinkPreview) {
   return (view: EditorView): HTMLElement => {
     const card = linkCardElement(preview)
     card.addEventListener('mousedown', (event) => {
@@ -117,9 +117,15 @@ function cardWidget(options: LinkCardOptions, preview: LinkPreview, paragraphPos
         return
       }
       event.preventDefault()
-      // The appearance button acts on click (link-card-dom); here it only
-      // keeps the caret where it is.
-      if (event.target instanceof Element && event.target.closest('[data-link-card-layout]')) {
+      // The appearance, Play and close buttons act on click (link-card-dom),
+      // and a playing card is the provider's: here a press only keeps the
+      // caret where it is.
+      if (
+        event.target instanceof Element &&
+        event.target.closest(
+          '[data-link-card-layout], [data-link-card-play], [data-link-card-close], .kore-link-card-player',
+        )
+      ) {
         return
       }
       const onOpenButton =
@@ -128,8 +134,14 @@ function cardWidget(options: LinkCardOptions, preview: LinkPreview, paragraphPos
         options.open(preview.url, event)
         return
       }
-      // The paragraph may have moved since this widget was drawn; resolve it
-      // again from the current document rather than trusting the old offset.
+      // The widget is kept across edits above it (see its key), so where its
+      // paragraph sits now is read from the DOM, not from when it was drawn.
+      let paragraphPos: number
+      try {
+        paragraphPos = view.posAtDOM(card, 0)
+      } catch {
+        return
+      }
       const paragraph = view.state.doc.nodeAt(paragraphPos)
       if (paragraph === null || paragraphCardUrl(paragraph) !== preview.url) {
         return
@@ -154,19 +166,24 @@ function buildDecorations(
 ): DecorationSet {
   const { doc, selection } = state
   const decorations: Decoration[] = []
+  const seen = new Map<string, number>()
   for (const { url, pos, node } of cardParagraphs(doc)) {
     const preview = previews.get(url)
     if (preview === undefined) {
       continue
     }
+    // Keyed by the link and which copy of it this is, not by position: an
+    // edit above the card keeps its DOM, so a playing video plays on.
+    const copy = seen.get(url) ?? 0
+    seen.set(url, copy + 1)
     const end = pos + node.nodeSize
     const onLine = focused && selection.from <= end - 1 && selection.to >= pos + 1
     decorations.push(
-      Decoration.widget(pos, cardWidget(options, preview, pos), {
+      Decoration.widget(pos, cardWidget(options, preview), {
         side: -1,
         ignoreSelection: true,
         stopEvent: () => true,
-        key: `link-card:${pos}:${url}`,
+        key: `link-card:${copy}:${url}`,
       }),
     )
     decorations.push(

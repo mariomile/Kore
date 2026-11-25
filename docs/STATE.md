@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-25 — 0.156.0
+
+- Shipped #696: pasted iframes become sandboxed cards that load on Show; link previews cached on device for a week.
+
 ## 2026-11-25 — 0.155.0
 
 - Shipped #693: Play on link cards for playable links, inline vault video and audio (Range support in kore-asset, media-src in the CSP), one player at a time.

@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- 0.151.0 (2026-11-25): #675 sign in to Claude Code from Settings → AI, shared with Codex; clearer CLI messages.
 - Files: HTML files as sandboxed pages, page and PDF previews on folder cards
   (#668).
 - CLI: `kore canvas` draws a folder as a canvas board, kore-canvas skill (#672).

@@ -2047,6 +2047,16 @@ html[data-sidebar-resizing] aside {
 .ProseMirror[data-block-selecting] ::selection {
   background: transparent;
 }
+/* Selected blocks move with Kore's own drag (block-drag.ts), so the text in
+   them is not selectable or draggable: a hold on it must never start iOS's
+   text drag, which took over the gesture and dropped a copy. */
+.ProseMirror[data-block-selecting],
+.ProseMirror[data-block-selecting] * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
 
 /* A finger held on a block is heading for Kore's long-press: no iOS text
    selection, loupe or callout underneath it (see block-swipe.tsx). */
@@ -2055,6 +2065,7 @@ html[data-sidebar-resizing] aside {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 
 /* ---- Sub pages (page-block-plugin.ts) -----------------------------------

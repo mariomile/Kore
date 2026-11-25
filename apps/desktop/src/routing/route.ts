@@ -63,7 +63,7 @@ export type Route =
   // An Obsidian base (`.base` file), read-only. A null `path` lists every
   // base in the vault; a null `view` shows the base's first view.
   | { kind: 'base'; path: string | null; view: string | null }
-  // An Obsidian canvas (`.canvas` file), read-only. A null `path` lists
+  // A canvas board (`.canvas` file), editable on the Mac. A null `path` lists
   // every canvas in the vault.
   | { kind: 'canvas'; path: string | null }
   // One note's local graph as a page of its own: the Details panel's Local

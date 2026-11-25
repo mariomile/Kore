@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from 'react'
+import { memo, type CSSProperties, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isModEvent } from '@meowdown/core'
 import {
@@ -12,11 +12,13 @@ import {
   type CanvasNode,
 } from '@kore/core'
 import { ExternalLink, Link, Paperclip } from '@/components/icons'
+import { Textarea } from '@/components/ui/textarea'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { canvasColor } from './canvas-colors'
 
@@ -54,10 +56,28 @@ interface CanvasCardProps {
   node: CanvasNode
   zoom: number
   actions: CanvasCardActions
+  /** Whether the node can be pressed to select, drag and resize it (the Mac). */
+  editable: boolean
+  /** This text card's text is open for editing. */
+  editingText: boolean
+  /** End text editing: the new text, or null to keep it. Stable across renders. */
+  onCommitText: (id: string, text: string | null) => void
 }
 
-/** One canvas node, placed in canvas coordinates. */
-export function CanvasCard({ node, zoom, actions }: CanvasCardProps): ReactElement {
+/**
+ * One canvas node, placed in canvas coordinates. Memoised: a drag redraws
+ * only the cards it moves. A card's body (a group's label) carries
+ * `data-canvas-node-id`, the handle the board's drag starts from.
+ */
+export const CanvasCard = memo(function CanvasCard({
+  node,
+  zoom,
+  actions,
+  editable,
+  editingText,
+  onCommitText,
+}: CanvasCardProps): ReactElement {
+  const handle = editable ? node.id : undefined
   if (node.type === 'group') {
     return (
       <div
@@ -66,7 +86,13 @@ export function CanvasCard({ node, zoom, actions }: CanvasCardProps): ReactEleme
         style={{ ...placement(node), ...tinted(node.color, 6) }}
       >
         {node.label !== null ? (
-          <span className="absolute bottom-full left-0 mb-1.5 whitespace-nowrap text-lg font-medium text-text-secondary">
+          <span
+            data-canvas-node-id={handle}
+            className={cn(
+              'absolute bottom-full left-0 mb-1.5 whitespace-nowrap text-lg font-medium text-text-secondary',
+              editable && 'cursor-move',
+            )}
+          >
             {node.label}
           </span>
         ) : null}
@@ -76,11 +102,36 @@ export function CanvasCard({ node, zoom, actions }: CanvasCardProps): ReactEleme
   return (
     <div
       data-canvas-card
+      data-canvas-node-id={handle}
       data-testid="canvas-card"
-      className="absolute flex cursor-auto flex-col overflow-hidden rounded-lg border-2 border-border bg-surface shadow-sm"
+      className={cn(
+        'absolute flex flex-col overflow-hidden rounded-lg border-2 border-border bg-surface shadow-sm',
+        editable ? 'cursor-default' : 'cursor-auto',
+      )}
       style={{ ...placement(node), ...tinted(node.color, 8) }}
     >
-      {node.type === 'text' ? (
+      {node.type === 'text' && editingText ? (
+        <Textarea
+          autoFocus
+          aria-label="Card text"
+          defaultValue={node.text}
+          onBlur={(event) => {
+            const text = event.currentTarget.value
+            onCommitText(node.id, text === node.text ? null : text)
+          }}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Escape' ||
+              (event.key === 'Enter' && (event.metaKey || event.ctrlKey))
+            ) {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
+          placeholder="Write in Markdown"
+          className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-3 text-sm text-text placeholder:text-text-muted md:text-sm dark:bg-transparent"
+        />
+      ) : node.type === 'text' ? (
         <div data-canvas-scroll className="min-h-0 flex-1 overflow-auto px-4 py-3">
           <MarkdownPreview
             content={node.text}
@@ -95,7 +146,7 @@ export function CanvasCard({ node, zoom, actions }: CanvasCardProps): ReactEleme
       )}
     </div>
   )
-}
+})
 
 function LinkCard({ url }: { url: string }): ReactElement {
   const openLink = useOpenExternalLink()

@@ -89,6 +89,86 @@ const LOOSE_DOCUMENTS: ReadonlyArray<readonly [string, string]> = [
   ['Projects/Studio/Voice memo.m4a', 'ftyp'.padEnd(1_200_000, ' ')],
 ]
 
+/** A board as `kore canvas` draws one, plus a text card and a picture, for the canvas screen. */
+const STUDIO_MAP = JSON.stringify(
+  {
+    nodes: [
+      {
+        id: '6f2c1a0b9e8d7c6a',
+        type: 'group',
+        label: 'Studio',
+        x: 0,
+        y: 0,
+        width: 1320,
+        height: 360,
+      },
+      {
+        id: '1a2b3c4d5e6f7081',
+        type: 'file',
+        file: 'Projects/Studio/Brief.md',
+        x: 40,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '2a2b3c4d5e6f7082',
+        type: 'file',
+        file: 'Projects/Studio/Identity.md',
+        x: 480,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '3a2b3c4d5e6f7083',
+        type: 'file',
+        file: 'Projects/Studio/Palette.md',
+        x: 920,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '8a9b0c1d2e3f4051',
+        type: 'text',
+        text: '## Open questions\n- Which route goes to the client?\n- Print or screen first?',
+        x: 0,
+        y: 480,
+        width: 400,
+        height: 200,
+        color: '4',
+      },
+      {
+        id: '9a9b0c1d2e3f4052',
+        type: 'file',
+        file: 'assets/moodboard.png',
+        x: 480,
+        y: 480,
+        width: 400,
+        height: 260,
+      },
+    ],
+    edges: [
+      {
+        id: 'f0e1d2c3b4a59687',
+        fromNode: '1a2b3c4d5e6f7081',
+        toNode: '2a2b3c4d5e6f7082',
+        label: 'shapes',
+      },
+      {
+        id: 'f1e1d2c3b4a59688',
+        fromNode: '8a9b0c1d2e3f4051',
+        fromSide: 'top',
+        toNode: '1a2b3c4d5e6f7081',
+        toSide: 'bottom',
+      },
+    ],
+  },
+  null,
+  '\t',
+)
+
 /** Build the vault; needs a DOM (it paints its images on a canvas). */
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
@@ -96,6 +176,7 @@ export function seedVisualVault(): VisualVaultSeed {
   for (const [path, text] of LOOSE_DOCUMENTS) {
     assets.set(path, btoa(text))
   }
+  assets.set('Maps/Studio map.canvas', btoa(STUDIO_MAP))
   const files: Record<string, string> = {
     'notes/Kore brand directions.md': [
       '---',

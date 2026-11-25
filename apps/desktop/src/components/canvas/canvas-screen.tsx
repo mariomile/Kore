@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/ui/page-header'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
-import { useCanvasDocument, useCanvasFiles } from './use-canvas'
+import { useCanvasDocument, useCanvasEditor, useCanvasFiles } from './use-canvas'
 
 interface CanvasScreenProps {
   /** The `.canvas` file, or null for the list of every canvas. */
@@ -14,16 +14,19 @@ interface CanvasScreenProps {
 }
 
 /**
- * An Obsidian canvas, read-only: its cards, groups and arrows on a board you
- * can pan and zoom. The file is never written, so it keeps working in
- * Obsidian.
+ * A JSON Canvas board (Obsidian's `.canvas`): its cards, groups and arrows
+ * on a board you pan and zoom. On the Mac its cards can be moved, resized,
+ * added and removed; every write patches the file's own JSON, so it keeps
+ * working in Obsidian. On the iPhone it is a view.
  */
 export function CanvasScreen({ path }: CanvasScreenProps): ReactElement {
-  return path === null ? <CanvasIndex /> : <CanvasFileScreen path={path} />
+  // Keyed by path: the undo history belongs to one file.
+  return path === null ? <CanvasIndex /> : <CanvasFileScreen key={path} path={path} />
 }
 
 function CanvasFileScreen({ path }: { path: string }): ReactElement {
   const state = useCanvasDocument(path)
+  const editor = useCanvasEditor(path)
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader title={canvasDisplayName(path)} description={path} />
@@ -36,7 +39,7 @@ function CanvasFileScreen({ path }: { path: string }): ReactElement {
       ) : state.canvas.nodes.length === 0 ? (
         <EmptyState icon={LayoutTemplate} title="This canvas is empty" />
       ) : (
-        <CanvasBoard key={path} canvas={state.canvas} label={canvasDisplayName(path)} />
+        <CanvasBoard canvas={state.canvas} label={canvasDisplayName(path)} editor={editor} />
       )}
     </div>
   )
@@ -50,7 +53,7 @@ function CanvasIndex(): ReactElement {
     <div className="flex h-full min-h-0 flex-col overflow-auto">
       <PageHeader
         title="Canvases"
-        description="Obsidian canvases in this vault, shown read-only."
+        description="Canvas boards in this vault, from Obsidian or drawn by an agent."
       />
       {failed ? (
         <p role="alert" className="pr-7 pl-12 text-sm text-text-muted">

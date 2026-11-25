@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
 import { Priority } from '@meowdown/core'
 import { definePlugin } from '@prosekit/core'
 import { Plugin } from '@prosekit/pm/state'
 import type { EditorView } from '@prosekit/pm/view'
 import { useExtension, useKeymap } from '@meowdown/react'
-import { suggestWikiTargets, type WikiSuggestion } from '@kore/core'
+import type { WikiSuggestion } from '@kore/core'
 import { ArrowUturnRight } from '@/components/icons'
 import {
   Command,
@@ -15,6 +15,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { useWikiSuggestions } from '@/hooks/use-wiki-suggestions'
 import { branchAt, moveBranch, type MoveDestination } from './move-branch'
 import {
   hasMoveBranch,
@@ -41,32 +42,6 @@ interface MoveBranchProps {
 interface PickerState {
   readonly view: EditorView
   readonly pos: number | undefined
-}
-
-function useSuggestions(query: string | null): readonly WikiSuggestion[] {
-  const [results, setResults] = useState<readonly WikiSuggestion[]>([])
-  useEffect(() => {
-    if (query === null) {
-      return
-    }
-    let live = true
-    suggestWikiTargets(query.trim(), 8).then(
-      (found) => {
-        if (live) {
-          setResults(found)
-        }
-      },
-      () => {
-        if (live) {
-          setResults([])
-        }
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [query])
-  return results
 }
 
 /**
@@ -120,7 +95,7 @@ export function MoveBranch({
     { priority: Priority.high },
   )
 
-  const suggestions = useSuggestions(picker === null ? null : query)
+  const suggestions = useWikiSuggestions(picker === null ? null : query)
   const choices = suggestions.filter(
     (suggestion): suggestion is WikiSuggestion & { path: string } =>
       suggestion.path !== null && suggestion.path !== notePath,

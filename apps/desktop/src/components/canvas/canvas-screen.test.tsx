@@ -10,11 +10,22 @@ const mocks = vi.hoisted(() => ({
   listCanvasFiles: vi.fn<() => Promise<string[]>>(),
   readExistingNoteSource: vi.fn<(path: string) => Promise<string>>(),
   navigateNoteLink: vi.fn(),
+  writeCanvasFile: vi.fn<(path: string, source: string) => Promise<void>>(),
+  mobile: false,
 }))
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   readCanvasFile: mocks.readCanvasFile,
   listCanvasFiles: mocks.listCanvasFiles,
+  writeCanvasFile: mocks.writeCanvasFile,
+  suggestWikiTargets: () =>
+    Promise.resolve([
+      { target: 'Brief', path: 'Projects/Brief.md', title: 'Brief', alias: null, date: null },
+    ]),
+}))
+vi.mock('@/lib/platform-surface', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/platform-surface')>()),
+  isMobileSurface: () => mocks.mobile,
 }))
 vi.mock('@/lib/read-existing-note-source', () => ({
   readExistingNoteSource: mocks.readExistingNoteSource,
@@ -81,7 +92,34 @@ beforeEach(() => {
   mocks.listCanvasFiles.mockReset().mockResolvedValue(['Captoo/Captoo.io Canvas.canvas'])
   mocks.readExistingNoteSource.mockReset().mockResolvedValue('# Kore\n\nNote body')
   mocks.navigateNoteLink.mockReset()
+  // A write lands on disk: the next read sees it, as the real file would.
+  mocks.writeCanvasFile.mockReset().mockImplementation((_path, source) => {
+    mocks.readCanvasFile.mockResolvedValue(source)
+    return Promise.resolve()
+  })
+  mocks.mobile = false
 })
+
+function pointer(element: Element, type: string, clientX: number, clientY: number): void {
+  element.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX, clientY }),
+  )
+}
+
+async function textCard(view: Awaited<ReturnType<typeof renderScreen>>): Promise<Element> {
+  await expect.element(view.getByText('Claim shaping')).toBeInTheDocument()
+  return view.getByText('Claim shaping').element().closest('[data-canvas-card]')!
+}
+
+/** The JSON the last write put in the file. */
+function written(): {
+  nodes: { id: string; x: number; y: number; width: number; text?: string }[]
+  edges: unknown[]
+} {
+  const source = mocks.writeCanvasFile.mock.lastCall?.[1]
+  expect(source).toBeDefined()
+  return JSON.parse(source!) as ReturnType<typeof written>
+}
 
 async function renderScreen(initialRoute: Route) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -132,5 +170,77 @@ describe('CanvasScreen', () => {
     mocks.readCanvasFile.mockResolvedValue('not json')
     const view = await renderScreen({ kind: 'canvas', path: 'Broken.canvas' })
     await expect.element(view.getByRole('alert')).toHaveTextContent('Couldn’t open this canvas')
+  })
+
+  it('moves a card by dragging it, on the grid, and keeps the rest of the file', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    const card = await textCard(view)
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(card, 'pointermove', 300, 220)
+    pointer(card, 'pointerup', 300, 220)
+    await vi.waitFor(() => {
+      expect(mocks.writeCanvasFile).toHaveBeenCalledTimes(1)
+    })
+    const text = written().nodes.find((node) => node.id === 't')!
+    // The board is fitted below 1:1, so 200 screen px is more than 200 units;
+    // whatever the zoom, the card lands on the 20-unit grid, moved right and down.
+    expect(text.x % 20).toBe(0)
+    expect(text.y % 20).toBe(0)
+    expect(text.x).toBeGreaterThan(0)
+    expect(written().edges).toHaveLength(1)
+    await expect.element(view.getByTestId('canvas-selection')).toBeInTheDocument()
+  })
+
+  it('removes the selected card with Backspace and brings it back with ⌘Z', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    const card = await textCard(view)
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(card, 'pointerup', 100, 100)
+    await expect.element(view.getByTestId('canvas-selection')).toBeInTheDocument()
+    view
+      .getByTestId('canvas-board')
+      .element()
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }))
+    await vi.waitFor(() => {
+      expect(written().nodes.map((node) => node.id)).toEqual(['g', 'n', 'c'])
+    })
+    // Its edge goes with it.
+    expect(written().edges).toEqual([])
+    await expect.element(view.getByText('Claim shaping')).not.toBeInTheDocument()
+    view
+      .getByTestId('canvas-board')
+      .element()
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true }))
+    await expect.element(view.getByText('Claim shaping')).toBeInTheDocument()
+    expect(JSON.parse(mocks.writeCanvasFile.mock.lastCall![1])).toEqual(JSON.parse(CANVAS))
+  })
+
+  it('adds a text card, edits its text, and adds a picked note', async () => {
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    await view.getByRole('button', { name: 'Add text card' }).click()
+    const editor = view.getByRole('textbox', { name: 'Card text' })
+    await expect.element(editor).toHaveFocus()
+    await editor.fill('## Next')
+    editor.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => {
+      expect(written().nodes.at(-1)).toMatchObject({ type: 'text', text: '## Next', width: 300 })
+    })
+    await view.getByRole('button', { name: 'Add note' }).click()
+    await view.getByRole('option', { name: 'Brief' }).click()
+    await vi.waitFor(() => {
+      expect(written().nodes.at(-1)).toMatchObject({ type: 'file', file: 'Projects/Brief.md' })
+    })
+  })
+
+  it('stays a view on the iPhone', async () => {
+    mocks.mobile = true
+    const view = await renderScreen({ kind: 'canvas', path: 'Captoo/Captoo.io Canvas.canvas' })
+    const card = await textCard(view)
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(card, 'pointermove', 300, 220)
+    pointer(card, 'pointerup', 300, 220)
+    expect(view.container.querySelector('[data-testid="canvas-selection"]')).toBeNull()
+    expect(view.container.querySelector('[aria-label="Add note"]')).toBeNull()
+    expect(mocks.writeCanvasFile).not.toHaveBeenCalled()
   })
 })

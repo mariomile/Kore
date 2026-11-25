@@ -56,6 +56,20 @@ export function canvasBounds(nodes: readonly CanvasNode[]): CanvasRect | null {
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
+/** The ids of the nodes lying wholly inside `group` (what moves with it). */
+export function nodesInsideGroup(group: CanvasNode, nodes: readonly CanvasNode[]): string[] {
+  return nodes
+    .filter(
+      (node) =>
+        node.id !== group.id &&
+        node.x >= group.x &&
+        node.y >= group.y &&
+        node.x + node.width <= group.x + group.width &&
+        node.y + node.height <= group.y + group.height,
+    )
+    .map((node) => node.id)
+}
+
 /** The midpoint of `side` of `node`, where an edge attaches. */
 export function sideAnchor(node: CanvasRect, side: CanvasSide): CanvasPoint {
   switch (side) {

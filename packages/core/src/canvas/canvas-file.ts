@@ -3,7 +3,8 @@ import { z } from 'zod'
 /**
  * The `.canvas` file format (JSON Canvas 1.0, https://jsoncanvas.org), as
  * Obsidian writes it: a `nodes` array in z-order and an `edges` array.
- * Kore reads it as is and never writes it, so the file stays Obsidian's.
+ * Kore draws it from this parsed view and edits the file's own JSON
+ * (see `applyCanvasEdits`), so the file stays Obsidian's.
  *
  * Parsing is lenient: unknown keys are ignored, and a node or edge that
  * lacks what it needs to be drawn (an id, a position, a size, a known type;

@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-25 — 0.151.0
+
+- Shipped #675: sign in to Claude Code from Settings → AI (same sign-in for Codex), clearer CLI-missing and login-expired messages. Next: #682 (Claude Code and Codex chat on Kore tools).
+
 ## HTML files as sandboxed pages, 2026-11-25 (0.150.0)
 
 - [x] HTML files as first-class pages: live-preview cards, a sandboxed page

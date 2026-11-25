@@ -617,14 +617,14 @@ mod tests {
         let set = test_set(temp.path(), Path::new("/graphs/Personal"));
 
         let before = statuses_of(&set).expect("status");
-        assert_eq!(before.skills.len(), 4);
+        assert_eq!(before.skills.len(), 5);
         assert!(before
             .skills
             .iter()
             .all(|skill| skill.install_state == SkillInstallState::Missing));
 
         // A hand-written file where a shared skill would go survives the
-        // install untouched while the other three land.
+        // install untouched while the other four land.
         let taken = &set.contexts[2];
         std::fs::create_dir_all(&taken.dir).expect("mkdir");
         std::fs::write(&taken.target, "# my own collections skill\n").expect("write");
@@ -643,6 +643,7 @@ mod tests {
                 SkillInstallState::Current,
                 SkillInstallState::Current,
                 SkillInstallState::Conflict,
+                SkillInstallState::Current,
                 SkillInstallState::Current
             ]
         );

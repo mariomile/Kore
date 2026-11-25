@@ -69,7 +69,7 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
   const [contextCollapsed, setContextCollapsed] = useState(false)
   const [contextPanels, setContextPanels] = useState<ContextPanels>(INITIAL_CONTEXT_PANELS)
   const toggleSidebar = useCallback(() => {
-    haptic('level-change')
+    haptic('toggle')
     setCollapsed((current) => !current)
   }, [])
   // A ref, not state: availability only gates the toggle, it never renders.
@@ -81,7 +81,7 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
     if (!contextRailAvailable.current) {
       return
     }
-    haptic('level-change')
+    haptic('toggle')
     setContextCollapsed((current) => !current)
   }, [])
   const openContextPanel = useCallback((panel: ContextPanel) => {

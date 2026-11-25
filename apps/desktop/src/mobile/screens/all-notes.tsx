@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { LayoutToggle, type NotesLayout } from '@/mobile/layout-toggle'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
@@ -115,7 +115,7 @@ export function MobileAllNotes({
   const pristine = parsed.text === '' && !parsed.filtered
   const view: NotesLayout = settings.allNotesView === 'grid' ? 'grid' : 'list'
   const setView = (next: NotesLayout): void => {
-    hapticImpactLight()
+    haptic('selection')
     updateSettings({ allNotesView: next })
   }
 
@@ -154,7 +154,6 @@ export function MobileAllNotes({
           <SortButton
             sort={sort}
             onPress={() => {
-              hapticImpactLight()
               setSorting(true)
             }}
           />

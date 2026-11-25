@@ -30,7 +30,7 @@ import {
   MobileCellEditorDrawer,
   type MobileCellTarget,
 } from '@/mobile/collection/mobile-cell-editor-drawer'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useGraph } from '@/providers/graph-provider'
 import { NoteTypeField } from './note-type-field'
 import { MobileAddPropertySheet } from './property-label-sheet'
@@ -144,7 +144,7 @@ export function NoteFieldList({
               aria-checked={checked}
               aria-label={property.name}
               onClick={() => {
-                hapticImpactLight()
+                haptic('toggle')
                 commitProperty(path, property.key, !checked)
               }}
               className="flex min-w-0 flex-1 items-center text-left focus-visible:outline-none"
@@ -156,7 +156,6 @@ export function NoteFieldList({
               type="button"
               aria-label={`Edit ${property.name}`}
               onClick={() => {
-                hapticImpactLight()
                 setEditingCell({
                   entryPath: path,
                   entryTitle: noteTitle,
@@ -199,7 +198,6 @@ export function NoteFieldList({
               <button
                 type="button"
                 onClick={() => {
-                  hapticImpactLight()
                   setAddingMobile(true)
                 }}
                 className="flex min-h-9 w-full items-center gap-2 rounded-md px-1.5 text-left text-[14px] text-text-muted transition-colors active:bg-surface-hover active:text-text"

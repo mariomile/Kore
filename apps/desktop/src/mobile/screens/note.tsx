@@ -6,7 +6,7 @@ import { NoteTagPickerDrawer } from '@/components/notes/note-type-picker'
 import { registerMobileTagPicker } from '@/editor/formatting-toolbar-store'
 import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
 import { MobileScreenHeader } from '@/mobile/screen-header'
@@ -167,7 +167,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
       </main>
       {/* The Mac's outline, sized for the phone's margin: a tap opens the
           jump list, and it steps aside while the keyboard is up. */}
-      <NoteOutlineRail scope={mainRef} className="right-0" onOpen={hapticImpactLight} />
+      <NoteOutlineRail scope={mainRef} className="right-0" onOpen={() => haptic('selection')} />
       {canTagNote && tagPickerOpen ? (
         <MobileNoteTagSheet path={path} onClose={() => setTagPickerOpen(false)} />
       ) : null}

@@ -20,6 +20,7 @@ import { useRouter } from '@/routing/router'
 import { SidebarPinnedRowPreview } from './sidebar-pinned-row-preview'
 import { SidebarSortablePinnedRow } from './sidebar-sortable-pinned-row'
 import { SidebarSortableSection } from './sidebar-sortable-section'
+import { DragHaptics } from '@/components/drag-haptics'
 
 /**
  * The sidebar's Pinned section (the Mac app's "Pinned notes" shelf):
@@ -66,6 +67,7 @@ export function SidebarPinned(): ReactElement | null {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
+        <DragHaptics />
         <SortableContext
           items={pinned.map((note) => note.path)}
           strategy={verticalListSortingStrategy}

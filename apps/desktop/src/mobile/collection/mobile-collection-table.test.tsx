@@ -5,7 +5,7 @@ import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@ko
 import { MobileCollectionTable } from './mobile-collection-table'
 
 const commitProperty = vi.hoisted(() => vi.fn())
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
   useCommitNoteProperties: () => () => {},

@@ -7,7 +7,7 @@ import { formatShortDate } from '@/lib/dates'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { useTaskCheckboxToggle } from '@/lib/tasks/use-task-checkbox-toggle'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useSettings } from '@/providers/settings-provider'
 
 interface MobileTaskRowProps {
@@ -40,7 +40,7 @@ export function MobileTaskRow({ task, showSource, onEdit }: MobileTaskRowProps):
         aria-label={task.checked ? `Reopen: ${label}` : `Complete: ${label}`}
         disabled={isPending}
         onClick={() => {
-          hapticImpactLight()
+          haptic('toggle')
           toggle()
         }}
         // A generous touch target around the small glyph; self-stretch keeps

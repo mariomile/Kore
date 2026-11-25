@@ -32,7 +32,7 @@ const editorProbe = vi.hoisted(() => ({
   focusCalls: 0,
   selectionCalls: [] as Array<'start' | 'end'>,
 }))
-const hapticImpactLight = vi.hoisted(() => vi.fn())
+const haptic = vi.hoisted(() => vi.fn())
 
 vi.mock('@/editor/note-editor', async () => {
   const { useEffect, useRef } = await import('react')
@@ -89,8 +89,8 @@ vi.mock('@/editor/note-editor', async () => {
     },
   }
 })
-vi.mock('@/mobile/haptics', () => ({
-  hapticImpactLight,
+vi.mock('@/lib/haptics', () => ({
+  haptic,
 }))
 
 const indexFns = vi.hoisted(() => ({
@@ -215,7 +215,7 @@ beforeEach(async () => {
   editorProbe.focusCalls = 0
   editorProbe.selectionCalls = []
   mockInvoke.mockReset()
-  hapticImpactLight.mockClear()
+  haptic.mockClear()
   indexFns.dailyDatesInRange.mockReset().mockResolvedValue([])
   mockInvoke.mockImplementation(async (command, args) => {
     if (command === 'note_read') {
@@ -555,20 +555,21 @@ describe('MobileShell', () => {
     expect(view.getByRole('button', { name: 'Today' }).query()).toBeNull()
   })
 
-  it('fires haptics from the Daily header Today and Settings buttons', async () => {
+  it('ticks when Today changes the date, and stays silent opening Settings', async () => {
     const user = userEvent
     const today = todayIso()
     const other = otherDayInWeek(today)
     const view = await mount({ kind: 'today' })
 
     await user.click(view.getByRole('button', { name: dayCellLabel(other) }))
-    hapticImpactLight.mockClear()
+    haptic.mockClear()
 
     await user.click(view.getByRole('button', { name: 'Today' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(1)
+    expect(haptic.mock.calls).toEqual([['selection']])
 
+    // Opening a screen is navigation: no haptic.
     await user.click(view.getByRole('button', { name: 'Settings' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(haptic).toHaveBeenCalledTimes(1)
     await expect.element(view.getByRole('heading', { name: 'Settings' })).toBeVisible()
   })
 

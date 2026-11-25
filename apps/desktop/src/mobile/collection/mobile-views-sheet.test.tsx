@@ -4,7 +4,7 @@ import { userEvent } from 'vitest/browser'
 import type { SavedCollectionView } from '@kore/core'
 import { MobileViewsSheet } from './mobile-views-sheet'
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 
 const VIEWS: SavedCollectionView[] = [
   {

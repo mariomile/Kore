@@ -8,9 +8,9 @@ import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
 import { currentBlockSelection } from './block-selection-store'
 import { PageBlocks } from './page-blocks'
 import { BlockZoom } from './block-zoom'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 
 /**
  * The swipe wired to the live editor: left selects a block, right completes
@@ -170,7 +170,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange, 'intro\n\n- first\n- second\n')
     onChange.mockClear()
-    vi.mocked(hapticImpactLight).mockClear()
+    vi.mocked(haptic).mockClear()
     const intro = view.getByText('intro').element().getBoundingClientRect()
     const second = view.getByText('second').element().getBoundingClientRect()
     const x = intro.left + 20
@@ -185,7 +185,7 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     const firstItem = view.getByText('first').element().closest('.prosemirror-flat-list')
     expect(firstItem?.getAnimations()).toHaveLength(1)
     // One tick for the lift, one for the place that opened.
-    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(haptic).toHaveBeenCalledTimes(2)
     expect(onChange).not.toHaveBeenCalled()
 
     editable.dispatchEvent(touchEventOn(editable, 'touchend', x, second.bottom - 2))

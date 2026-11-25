@@ -67,7 +67,7 @@ vi.mock('@/editor/markdown-preview', () => ({
   ),
 }))
 vi.mock('@/lib/provider-fetch', () => ({ providerFetch: vi.fn() }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 
 // Keep sheet content inline so this suite isolates the chat flow. Honoring
 // `open` matters: the composer floats over the screen, and a closed sheet's

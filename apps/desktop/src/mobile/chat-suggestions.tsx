@@ -2,7 +2,7 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 import { chatStarterPrompts } from '@kore/core'
 import { CalendarDays, ChevronDown, Flag, Sparkles, Sun, type Icon } from '@/components/icons'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useChatSession } from '@/providers/chat-provider'
 
 interface ChatSuggestion {
@@ -63,7 +63,7 @@ export function MobileChatSuggestions({
             icon={suggestion.icon}
             label={suggestion.text}
             onClick={() => {
-              hapticImpactLight()
+              haptic('action')
               void send(suggestion.text)
             }}
           />
@@ -77,7 +77,7 @@ export function MobileChatSuggestions({
               icon={Sparkles}
               label={prompt.label}
               onClick={() => {
-                hapticImpactLight()
+                haptic('action')
                 setDraft(prompt.body)
                 onPromptPicked()
               }}

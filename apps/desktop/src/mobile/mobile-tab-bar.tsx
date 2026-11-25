@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { Chat, CheckCircle, NoteEdit, Notes, Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useTabBarScrolledAway } from '@/mobile/chrome-visibility'
 import type { Route } from '@/routing/route'
@@ -125,7 +125,7 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
             type="button"
             aria-label="New"
             onClick={() => {
-              hapticImpactLight()
+              haptic('action')
               onCapture()
             }}
             className="relative z-20 flex size-12 items-center justify-center rounded-full transition-transform duration-150 active:scale-90 motion-reduce:transition-none"
@@ -159,10 +159,10 @@ function TabButton({
       data-sliding-value={tab}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
-      // V1 parity: a light haptic on every tab press, including the two taps
+      // A selection tick on every tab press, including the two taps
       // that make Daily's double-tap-to-today gesture.
       onClick={() => {
-        hapticImpactLight()
+        haptic('selection')
         onClick()
       }}
       className={cn(

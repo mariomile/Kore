@@ -9,7 +9,6 @@ import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useChatSession } from '@/providers/chat-provider'
 import { conversationTitle } from '@/providers/chat-title'
 import { useRouter } from '@/routing/router'
-import { hapticImpactLight } from '@/mobile/haptics'
 
 /**
  * The Chat tab (Plan 23): desktop's dedicated chat view as a root tab —
@@ -110,7 +109,6 @@ function HeaderPillButton({
       type="button"
       aria-label={label}
       onClick={() => {
-        hapticImpactLight()
         onClick()
       }}
       className="mobile-nav-capsule flex size-11 items-center justify-center text-text transition-transform duration-150 ease-swift active:scale-90 motion-reduce:transition-none"

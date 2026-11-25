@@ -27,21 +27,36 @@
 //! a document (an HTML page, an SVG, XML) runs sandboxed in an opaque origin,
 //! with scripts but no requests of its own, wherever it is framed or opened. PDFs
 //! are exempt because the webview's PDF plugin does not render sandboxed.
+//!
+//! The app reads some files as text too (an HTML page's title and source,
+//! a file handed to the share sheet). Its own origin is not the scheme's,
+//! so a response names that origin in `Access-Control-Allow-Origin`, and
+//! only that one: a sandboxed page (origin `null`) and a site open in the
+//! in-app browser never get to read a response.
 
 use std::borrow::Cow;
 
-use tauri::http::{header, Request, Response, StatusCode};
+use tauri::http::{header, HeaderValue, Request, Response, StatusCode};
 use tauri::utils::mime_type::MimeType;
 use tauri::{AppHandle, Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 use super::GraphState;
 
 /// The scheme name, shared with the `lib.rs` registration. The frontend and
-/// the CSP `img-src` / `frame-src` grants in `tauri.conf.json` (images and
-/// the in-app PDF/HTML attachment viewer) spell it out literally.
+/// the CSP `img-src` / `frame-src` / `connect-src` grants in
+/// `tauri.conf.json` (images, the in-app PDF/HTML viewers, and the files the
+/// app reads as text) spell it out literally.
 pub(crate) const SCHEME: &str = "kore-asset";
 const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
 const THUMBNAIL_QUERY: &str = "kore-thumb";
+
+/// The origins the app's own pages load from, per platform: custom scheme
+/// on Apple and Linux, `tauri.localhost` on Windows and Android.
+const APP_ORIGINS: [&str; 3] = [
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+];
 
 /// The Content-Security-Policy of every served document. `sandbox` without
 /// `allow-same-origin` gives the page an opaque origin: no cookies, storage,
@@ -80,17 +95,24 @@ pub(crate) fn handle<R: Runtime>(
     // raster-only rule would refuse.
     let thumbnail = preview_raster_only && has_query_flag(request.uri().query(), THUMBNAIL_QUERY);
     let method_allowed = request.method() == tauri::http::Method::GET;
+    let allow_origin = request
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|origin| origin.to_str().ok())
+        .filter(|origin| is_app_origin(origin, dev_origin(&app).as_deref()))
+        .and_then(|origin| HeaderValue::from_str(origin).ok());
     tauri::async_runtime::spawn_blocking(move || {
         if !method_allowed {
             responder.respond(status_response(StatusCode::METHOD_NOT_ALLOWED));
             return;
         }
-        responder.respond(response_for(
-            &app,
-            &request_path,
-            preview_raster_only,
-            thumbnail,
-        ));
+        let mut response = response_for(&app, &request_path, preview_raster_only, thumbnail);
+        let headers = response.headers_mut();
+        headers.insert(header::VARY, HeaderValue::from_static("Origin"));
+        if let Some(origin) = allow_origin {
+            headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
+        }
+        responder.respond(response);
     });
 }
 
@@ -150,6 +172,21 @@ fn response_for<R: Runtime>(
 /// The sandbox policy a response of type `mime` carries: every type but PDF.
 fn document_policy(mime: &str) -> Option<&'static str> {
     (mime != "application/pdf").then_some(DOCUMENT_POLICY)
+}
+
+/// Whether `origin` is one of the app's own pages: its bundled origin, or
+/// the dev server it loads from in a debug build.
+fn is_app_origin(origin: &str, dev_origin: Option<&str>) -> bool {
+    APP_ORIGINS.contains(&origin) || dev_origin == Some(origin)
+}
+
+/// The dev server's origin in a debug build, None in a release one.
+fn dev_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+    let url = app.config().build.dev_url.as_ref()?;
+    Some(url.origin().ascii_serialization())
 }
 
 fn has_query_flag(query: Option<&str>, flag: &str) -> bool {
@@ -335,6 +372,19 @@ mod tests {
         let png_mime = MimeType::parse(png_signature, "assets/image.bin");
         assert_eq!(png_mime, "image/png");
         assert!(is_preview_safe_raster_mime(&png_mime));
+    }
+
+    #[test]
+    fn only_the_apps_own_origins_may_read_a_response() {
+        let dev = Some("http://localhost:1420");
+        assert!(is_app_origin("tauri://localhost", None));
+        assert!(is_app_origin("http://tauri.localhost", None));
+        assert!(is_app_origin("http://localhost:1420", dev));
+        assert!(!is_app_origin("http://localhost:1420", None));
+        // A sandboxed page, a site in the in-app browser.
+        assert!(!is_app_origin("null", dev));
+        assert!(!is_app_origin("https://example.com", dev));
+        assert!(!is_app_origin("tauri://localhost.example.com", dev));
     }
 
     #[test]

@@ -1,7 +1,8 @@
 import { useState, type ReactElement } from 'react'
 import { htmlDisplayName, htmlPageUrl } from '@kore/core'
 import { TextAssetView } from '@/components/asset-viewer-views'
-import { ExternalLink, Lock, Share } from '@/components/icons'
+import { ChevronLeft, ExternalLink, Lock, Share } from '@/components/icons'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
@@ -9,6 +10,7 @@ import { useHtmlTitle } from '@/hooks/use-html-title'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
+import { useRouter } from '@/routing/router'
 import { useShareableFile } from './use-shareable-file'
 
 interface HtmlFileScreenProps {
@@ -38,10 +40,11 @@ export function HtmlFileScreen({ path }: HtmlFileScreenProps): ReactElement {
   const mobile = isMobileSurface()
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {mobile ? <MobileBackBar /> : null}
       <PageHeader
         title={title ?? htmlDisplayName(path)}
         // The phone keeps the page tall: a narrow gutter and no path line.
-        {...(mobile ? { className: 'px-5 py-3' } : { description: path })}
+        {...(mobile ? { className: 'px-5 pt-0 pb-3' } : { description: path })}
       >
         <Tooltip>
           <TooltipTrigger
@@ -86,7 +89,12 @@ export function HtmlFileScreen({ path }: HtmlFileScreenProps): ReactElement {
           <OpenInBrowserButton path={path} generation={generation} />
         )}
       </PageHeader>
-      <div className={cn('flex min-h-0 flex-1 flex-col', !mobile && 'pr-7 pb-6 pl-12')}>
+      <div className={cn('relative flex min-h-0 flex-1 flex-col', !mobile && 'pr-7 pb-6 pl-12')}>
+        {mobile ? (
+          // A frame keeps its touches to itself: this strip leaves the
+          // screen's leading edge to the stack's back swipe.
+          <div aria-hidden className="absolute inset-y-0 left-0 z-10 w-6" />
+        ) : null}
         {url === null ? (
           <p className="flex flex-1 items-center justify-center text-sm text-text-muted">
             This page can’t be displayed here.
@@ -107,6 +115,33 @@ export function HtmlFileScreen({ path }: HtmlFileScreenProps): ReactElement {
           />
         )}
       </div>
+    </div>
+  )
+}
+
+/** The phone's way back: below the status bar, like every pushed screen. */
+function MobileBackBar(): ReactElement {
+  const { navigate, back, canBack } = useRouter()
+  return (
+    <div
+      className="flex h-11 shrink-0 items-center px-3"
+      style={{ boxSizing: 'content-box', paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label="Back"
+        onClick={() => {
+          if (canBack) {
+            back()
+          } else {
+            navigate({ kind: 'allNotes', filter: { kind: 'all' } })
+          }
+        }}
+      >
+        <ChevronLeft />
+      </Button>
     </div>
   )
 }

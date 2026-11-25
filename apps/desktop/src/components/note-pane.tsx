@@ -57,6 +57,7 @@ import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { VaultMedia } from '@/editor/vault-media'
+import { IframeCards } from '@/editor/iframe-cards'
 import { NoteTitleIcon } from '@/editor/note-title-icon'
 import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
@@ -658,6 +659,7 @@ export function NotePaneComponent({
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
         <VaultMedia resolveUrl={resolveImageUrl} />
+        <IframeCards />
         <LinkLayoutMenu />
         <NoteTitleIcon
           header={document.header}

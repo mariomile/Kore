@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
 import {
+  LINK_PREVIEW_MAX_AGE_MS,
   LINK_PREVIEW_RETRY_MS,
   loadLinkPreview,
+  setLinkPreviewStore,
   parseLinkPreview,
   parseXLinkPreview,
 } from './link-preview'
@@ -127,6 +129,7 @@ describe('parseXLinkPreview', () => {
 describe('loadLinkPreview', () => {
   afterEach(() => {
     setBridge(null)
+    setLinkPreviewStore(null)
   })
 
   /** A bridge whose meta fetch fails `failures` times, then answers PAGE. */
@@ -174,5 +177,69 @@ describe('loadLinkPreview', () => {
     clock += LINK_PREVIEW_RETRY_MS * 10
     expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Startup School' })
     expect(seen.calls).toBe(1)
+  })
+
+  /** An in-memory device store, seeded with `entries`. */
+  function installStore(entries: Record<string, unknown> = {}): Map<string, unknown> {
+    const kept = new Map(Object.entries(entries))
+    setLinkPreviewStore({
+      read: (url) => kept.get(url) ?? null,
+      write: (url, entry) => kept.set(url, entry),
+    })
+    return kept
+  }
+
+  function saved(url: string, savedAt: number): unknown {
+    return {
+      savedAt,
+      preview: {
+        kind: 'page',
+        url,
+        siteName: 'Y Combinator',
+        provider: null,
+        imageUrl: null,
+        iconUrl: null,
+        title: 'Saved title',
+        description: null,
+      },
+    }
+  }
+
+  it('draws a fresh saved preview without fetching', async () => {
+    const seen = installMetaFetch(0)
+    const url = 'https://www.ycombinator.com/library/saved-fresh'
+    installStore({ [url]: saved(url, 1_000) })
+    const now = (): number => 1_000 + LINK_PREVIEW_MAX_AGE_MS - 1
+    expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Saved title' })
+    expect(seen.calls).toBe(0)
+  })
+
+  it('fetches again once a saved preview is a week old, and saves the answer', async () => {
+    const seen = installMetaFetch(0)
+    const url = 'https://www.ycombinator.com/library/saved-stale'
+    const kept = installStore({ [url]: saved(url, 1_000) })
+    const now = (): number => 1_000 + LINK_PREVIEW_MAX_AGE_MS
+    expect(await loadLinkPreview(url, now)).toMatchObject({ title: 'Startup School' })
+    expect(seen.calls).toBe(1)
+    expect(kept.get(url)).toMatchObject({ savedAt: now(), preview: { title: 'Startup School' } })
+  })
+
+  it('ignores a corrupt or mismatched saved entry', async () => {
+    const seen = installMetaFetch(0)
+    const corrupt = 'https://www.ycombinator.com/library/saved-corrupt'
+    const other = 'https://www.ycombinator.com/library/saved-other'
+    installStore({ [corrupt]: { savedAt: 'yesterday' }, [other]: saved(corrupt, 1_000) })
+    const now = (): number => 2_000
+    expect(await loadLinkPreview(corrupt, now)).toMatchObject({ title: 'Startup School' })
+    expect(await loadLinkPreview(other, now)).toMatchObject({ title: 'Startup School' })
+    expect(seen.calls).toBe(2)
+  })
+
+  it('does not save a failed fetch', async () => {
+    installMetaFetch(1)
+    const url = 'https://www.ycombinator.com/library/saved-failed'
+    const kept = installStore()
+    expect(await loadLinkPreview(url, () => 1_000)).toBeNull()
+    expect(kept.has(url)).toBe(false)
   })
 })

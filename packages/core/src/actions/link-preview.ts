@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { captureMetaFetch, captureOEmbedFetch } from '../graph/commands'
 import { parsePageMeta } from './meta-scrape'
 import {
@@ -190,13 +191,99 @@ export const LINK_PREVIEW_RETRY_MS = 30_000
 const failedAt = new Map<string, number>()
 
 /**
+ * Where previews outlive the session: the host keeps them on the device
+ * (the desktop app in local storage), so a note opened after a relaunch
+ * draws its cards at once instead of fetching every link again. Core
+ * decides what is kept and for how long; the store only holds bytes.
+ */
+export interface LinkPreviewStore {
+  /** The entry saved for `url`, as saved, or null. */
+  read: (url: string) => unknown
+  write: (url: string, entry: StoredLinkPreview) => void
+}
+
+export interface StoredLinkPreview {
+  readonly preview: LinkPreview
+  /** When it was fetched, in epoch milliseconds. */
+  readonly savedAt: number
+}
+
+/** How long a saved preview is drawn before the page is asked again. */
+export const LINK_PREVIEW_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+let store: LinkPreviewStore | null = null
+
+/** Install (or with null, remove) the device's preview store. */
+export function setLinkPreviewStore(next: LinkPreviewStore | null): void {
+  store = next
+}
+
+const nullableString = z.string().nullable()
+const previewBase = {
+  url: z.string(),
+  siteName: z.string(),
+  provider: z.enum(['x', 'linkedin']).nullable(),
+  imageUrl: nullableString,
+  iconUrl: nullableString,
+}
+const storedPreviewSchema = z.object({
+  savedAt: z.number(),
+  preview: z.discriminatedUnion('kind', [
+    z.object({
+      ...previewBase,
+      kind: z.literal('page'),
+      title: z.string(),
+      description: nullableString,
+    }),
+    z.object({
+      ...previewBase,
+      kind: z.literal('post'),
+      authorName: z.string(),
+      authorHandle: z.string(),
+      avatarUrl: nullableString,
+      publishedAt: nullableString,
+      text: z.string(),
+      replies: z.number().nullable(),
+      reposts: z.number().nullable(),
+      likes: z.number().nullable(),
+    }),
+  ]),
+})
+
+/** The saved preview for `url` while it is fresh, or null. */
+function savedPreview(url: string, now: number): LinkPreview | null {
+  let entry: unknown
+  try {
+    entry = store?.read(url) ?? null
+  } catch {
+    return null
+  }
+  const parsed = storedPreviewSchema.safeParse(entry)
+  if (!parsed.success || parsed.data.preview.url !== url) {
+    return null
+  }
+  const age = now - parsed.data.savedAt
+  return age >= 0 && age < LINK_PREVIEW_MAX_AGE_MS ? parsed.data.preview : null
+}
+
+function savePreview(url: string, preview: LinkPreview, now: number): void {
+  try {
+    store?.write(url, { preview, savedAt: now })
+  } catch {
+    // A full or unavailable store costs the next launch a fetch, nothing more.
+  }
+}
+
+/**
  * The preview for one link, or `null` when the page cannot describe itself
  * (unreachable, blocked, or untitled). Every outcome is remembered per URL,
  * so a note full of the same link fetches once and a dead host is not
  * retried on every keystroke; a failed fetch is asked again once
- * {@link LINK_PREVIEW_RETRY_MS} has passed. Concurrent fetches are capped so
- * scrolling through link-heavy daily notes never saturates IPC or
- * main-thread HTML parsing.
+ * {@link LINK_PREVIEW_RETRY_MS} has passed. A preview fetched within
+ * {@link LINK_PREVIEW_MAX_AGE_MS}, in this session or an earlier one, is
+ * drawn without fetching. Concurrent fetches are capped so scrolling
+ * through link-heavy daily notes never saturates IPC or main-thread HTML
+ * parsing.
  */
 export function loadLinkPreview(
   url: string,
@@ -207,11 +294,27 @@ export function loadLinkPreview(
   if (cached !== undefined && (failed === undefined || now() - failed < LINK_PREVIEW_RETRY_MS)) {
     return cached
   }
+  if (cached === undefined) {
+    const saved = savedPreview(url, now())
+    if (saved !== null) {
+      const ready = Promise.resolve(saved)
+      previews.set(url, ready)
+      return ready
+    }
+  }
   failedAt.delete(url)
-  const pending = enqueuePreviewFetch(() => fetchLinkPreview(url)).catch(() => {
-    failedAt.set(url, now())
-    return null
-  })
+  const pending = enqueuePreviewFetch(() => fetchLinkPreview(url)).then(
+    (preview) => {
+      if (preview !== null) {
+        savePreview(url, preview, now())
+      }
+      return preview
+    },
+    () => {
+      failedAt.set(url, now())
+      return null
+    },
+  )
   previews.set(url, pending)
   return pending
 }

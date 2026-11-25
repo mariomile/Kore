@@ -445,7 +445,11 @@ export {
   parseLinkPreview,
   parseXLinkPreview,
   loadLinkPreview,
+  setLinkPreviewStore,
+  LINK_PREVIEW_MAX_AGE_MS,
   type LinkPreview,
+  type LinkPreviewStore,
+  type StoredLinkPreview,
   type PageLinkPreview,
   type PostLinkPreview,
 } from '../actions/link-preview'

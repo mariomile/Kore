@@ -5,6 +5,7 @@ import { queryClient } from '@/lib/query-client'
 import { registerAppCommands } from '@/lib/commands/app-commands'
 import { installLogForwarding } from '@/lib/log-forwarding'
 import { markLaunch } from '@/lib/launch-timing'
+import { installLinkPreviewStore } from '@/lib/link-preview-store'
 import { installNativeMenu } from '@/lib/native-menu/menu'
 import { installTauriBridge } from '@/lib/tauri-bridge'
 import { isQuickCaptureWindow } from '@/lib/windows/window-role'
@@ -22,6 +23,7 @@ import '@/styles/index.css'
 
 installTauriBridge()
 installLogForwarding()
+installLinkPreviewStore()
 markLaunch('script')
 if (isQuickCaptureWindow()) {
   document.documentElement.dataset.windowRole = 'quick-capture'

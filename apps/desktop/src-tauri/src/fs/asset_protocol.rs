@@ -231,6 +231,7 @@ fn range_response_for<R: Runtime>(
     }
 }
 
+#[derive(Debug)]
 struct RangeBody {
     mime: String,
     start: u64,

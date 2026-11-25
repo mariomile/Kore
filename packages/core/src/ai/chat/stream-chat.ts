@@ -2,12 +2,15 @@ import type { LanguageModel, ModelMessage } from 'ai'
 import { errorMessage } from '../../errors'
 import { languageModel } from '../language-model'
 import { loadAiSdk } from '../load-sdk'
+import { streamClaudeKoreChat } from '../claude-kore'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
 import { withMemoryTools, type AgentPromptContext } from '../agent-profiles'
 import type { AgentStep, AgentStepOutcome } from './agent-steps'
 import { fitToContextWindow } from './context-window'
+import { createHostToolRunner } from './host-tools'
+import type { ResolvedMcpServer } from '../mcp'
 import { MEMORY_TOOL_NAMES } from './memory-tools'
 import { chatSystemPrompt } from './system-prompt'
 import {
@@ -72,6 +75,12 @@ export interface StreamChatOptions {
   signal?: AbortSignal
   /** Mid-turn steering — see {@link ChatSteering}. */
   steering?: ChatSteering | undefined
+  /**
+   * The user's MCP servers for this turn (the Tools toggle or Full Access).
+   * Only an engine that can mount them uses them (Claude Code); the API-key
+   * loop has no MCP client.
+   */
+  mcpServers?: ResolvedMcpServer[] | undefined
 }
 
 /**
@@ -125,14 +134,7 @@ export async function* streamChat(options: StreamChatOptions): AsyncGenerator<Ch
       allowEdits: options.allowEdits,
     }),
   })
-  let model: LanguageModel
-  try {
-    model = await languageModel(options.config, options.apiKey, options.fetchFn)
-  } catch (cause) {
-    yield { type: 'error', message: errorMessage(cause), messages: [] }
-    return
-  }
-  yield* streamChatTurn(model, {
+  const turn: ChatTurnOptions = {
     messages,
     today: options.today,
     semanticSearchEnabled: options.semanticSearchEnabled,
@@ -143,7 +145,30 @@ export async function* streamChat(options: StreamChatOptions): AsyncGenerator<Ch
     toolDeps: options.toolDeps,
     signal: options.signal,
     steering: options.steering,
-  })
+  }
+  if (options.config.provider === 'claude-cli') {
+    // Claude Code runs the loop on the user's subscription; the tools,
+    // prompt and proposal cards are this engine's own (see `../claude-kore`).
+    const setup = chatTurnSetup(turn)
+    yield* streamClaudeKoreChat({
+      model: options.config.model,
+      instructions: setup.instructions,
+      messages,
+      tools: await createHostToolRunner(setup.tools, setup.activeTools),
+      mcpServers: options.mcpServers ?? [],
+      signal: options.signal,
+      steering: options.steering,
+    })
+    return
+  }
+  let model: LanguageModel
+  try {
+    model = await languageModel(options.config, options.apiKey, options.fetchFn)
+  } catch (cause) {
+    yield { type: 'error', message: errorMessage(cause), messages: [] }
+    return
+  }
+  yield* streamChatTurn(model, turn)
 }
 
 /** {@link streamChatTurn}'s options: {@link StreamChatOptions} minus provider wiring. */
@@ -200,23 +225,7 @@ export async function* streamChatTurn(
   model: LanguageModel,
   options: ChatTurnOptions,
 ): AsyncGenerator<ChatStreamEvent> {
-  const tools = buildNoteTools({
-    ...options.toolDeps,
-    semanticSearchEnabled: options.semanticSearchEnabled,
-    allowEdits: options.allowEdits,
-  })
-  const leg: LegOptions = {
-    tools,
-    activeTools: activeToolNames(tools, options.toolDeps),
-    instructions: chatSystemPrompt({
-      today: options.today,
-      context: options.context,
-      semanticSearchEnabled: options.semanticSearchEnabled,
-      customSystemPrompt: options.customSystemPrompt,
-      agentContext: turnAgentContext(options.agentContext, options.toolDeps),
-      allowEdits: options.allowEdits,
-    }),
-  }
+  const leg = chatTurnSetup(options)
 
   // What finished legs contributed, each followed by the steer that ended it.
   let settled: ModelMessage[] = []
@@ -305,11 +314,34 @@ export async function* streamChatTurn(
   }
 }
 
-interface LegOptions {
-  tools: ReturnType<typeof buildNoteTools>
+/** What one turn gives its model, whichever loop runs it. */
+export interface ChatTurnSetup {
+  tools: NoteTools
   /** The tools the model sees: the memory tools only in a kit vault. */
   activeTools: (keyof NoteTools)[]
+  /** The chat system prompt. */
   instructions: string
+}
+
+/** Build the turn's tool set and system prompt from its options. */
+export function chatTurnSetup(options: ChatTurnOptions): ChatTurnSetup {
+  const tools = buildNoteTools({
+    ...options.toolDeps,
+    semanticSearchEnabled: options.semanticSearchEnabled,
+    allowEdits: options.allowEdits,
+  })
+  return {
+    tools,
+    activeTools: activeToolNames(tools, options.toolDeps),
+    instructions: chatSystemPrompt({
+      today: options.today,
+      context: options.context,
+      semanticSearchEnabled: options.semanticSearchEnabled,
+      customSystemPrompt: options.customSystemPrompt,
+      agentContext: turnAgentContext(options.agentContext, options.toolDeps),
+      allowEdits: options.allowEdits,
+    }),
+  }
 }
 
 /** Whether this turn can write the vault's cyber-brain memory. */
@@ -350,7 +382,7 @@ type LegResult =
  */
 async function* streamLeg(
   model: LanguageModel,
-  leg: LegOptions,
+  leg: ChatTurnSetup,
   messages: ModelMessage[],
   signal: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent, LegResult> {

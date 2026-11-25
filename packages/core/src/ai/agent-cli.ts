@@ -100,6 +100,18 @@ export type AgentCliChunk =
   | { type: 'step-start'; step: AgentStep }
   /** A tool call settled — its content-free outcome. */
   | { type: 'step-end'; id: string; outcome: AgentStepOutcome }
+  /**
+   * A chat event the engine already speaks natively, relayed as is: an
+   * engine that runs Kore's own tools reports their calls and results in
+   * the chat engine's vocabulary rather than as opaque steps.
+   */
+  | { type: 'event'; event: AgentCliRelayedEvent }
+
+/** The chat events an engine may relay verbatim through an `event` chunk. */
+export type AgentCliRelayedEvent = Extract<
+  ChatStreamEvent,
+  { type: 'tool-call' | 'tool-result' | 'tool-error' | 'steer' }
+>
 
 /** The chunk list of a parser that yields at most one chunk per line. */
 export function chunkList(chunk: AgentCliChunk | null): AgentCliChunk[] {
@@ -238,8 +250,11 @@ export interface AgentCliTurnOptions {
   args: string[]
   /** The prompt written to the CLI's stdin. */
   prompt: string
-  /** Working directory for the run — the graph root. */
-  cwd: string
+  /**
+   * Working directory for the run: the graph root for engines that read the
+   * vault themselves, null (the app's own) for a run with no file tools.
+   */
+  cwd: string | null
   /**
    * Extra environment for the CLI process (and, by inheritance, the MCP
    * servers it spawns) — how secrets reach tools without ever riding the
@@ -449,7 +464,9 @@ export async function* streamAgentCliTurn(
         for (const chunk of options.parseLine(event.line)) {
           const open = segments.at(-1)
           const text = open?.role === 'assistant' ? open.text : ''
-          if (chunk.type === 'step-start') {
+          if (chunk.type === 'event') {
+            yield chunk.event
+          } else if (chunk.type === 'step-start') {
             yield { type: 'agent-step', step: chunk.step }
           } else if (chunk.type === 'step-end') {
             yield { type: 'agent-step-end', id: chunk.id, outcome: chunk.outcome }

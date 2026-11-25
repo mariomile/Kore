@@ -293,6 +293,8 @@ export {
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
   isCliAgentProvider,
+  isFileChatProvider,
+  cliChatRunsKoreTools,
   streamCliAgentChat,
   type CliAgentProviderId,
 } from '../ai/cli-providers'

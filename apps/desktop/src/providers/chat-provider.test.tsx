@@ -676,9 +676,9 @@ describe('ChatProvider message queue', () => {
 })
 
 describe('ChatProvider mid-turn steering', () => {
-  const CLAUDE: AiProviderConfig = {
+  const CODEX: AiProviderConfig = {
     id: 'c1',
-    provider: 'claude-cli',
+    provider: 'codex-cli',
     model: 'default',
     keyHint: '',
   }
@@ -716,7 +716,7 @@ describe('ChatProvider mid-turn steering', () => {
   }
 
   it('a send mid-turn injects into the live run instead of queueing, and shows in the transcript', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     const cli = scriptSteerableTurn()
     const { act } = await renderProvider()
@@ -789,7 +789,7 @@ describe('ChatProvider mid-turn steering', () => {
   })
 
   it('⌘-Enter holds the message for after the reply instead of steering', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     const cli = scriptSteerableTurn()
     const { act } = await renderProvider()
@@ -813,7 +813,7 @@ describe('ChatProvider mid-turn steering', () => {
   })
 
   it('falls back to the queue when the run refuses the steer', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     const cli = scriptSteerableTurn()
     const { act } = await renderProvider()
@@ -846,9 +846,9 @@ describe('ChatProvider mid-turn steering', () => {
 })
 
 describe('ChatProvider read-mode external tools', () => {
-  const CLAUDE: AiProviderConfig = {
+  const CODEX: AiProviderConfig = {
     id: 'c1',
-    provider: 'claude-cli',
+    provider: 'codex-cli',
     model: 'default',
     keyHint: '',
   }
@@ -869,7 +869,7 @@ describe('ChatProvider read-mode external tools', () => {
   }
 
   beforeEach(() => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     settingsState.mcpServers = [LINEAR]
     scriptCliTurn()
@@ -902,6 +902,25 @@ describe('ChatProvider read-mode external tools', () => {
       { name: 'linear', transport: { kind: 'http', url: 'https://mcp.linear.app' }, env: {} },
     ])
     expect(core.streamCliAgentChat.mock.lastCall?.[1]['allowEdits']).not.toBe(true)
+  })
+
+  it('runs a Claude turn on Kore’s tools, with the opted-in servers alongside', async () => {
+    settingsState.models = [{ ...CODEX, provider: 'claude-cli' }]
+    scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }])
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      session?.setChatTools(true)
+    })
+    await act(async () => {
+      await session?.send('search my mail')
+    })
+
+    expect(core.streamCliAgentChat).not.toHaveBeenCalled()
+    expect(core.streamChat.mock.lastCall?.[0]['mcpServers']).toEqual([
+      { name: 'linear', transport: { kind: 'http', url: 'https://mcp.linear.app' }, env: {} },
+    ])
   })
 
   it('New chat turns the opt-in back off', async () => {
@@ -952,15 +971,15 @@ describe('ChatProvider model selection', () => {
 })
 
 describe('ChatProvider private-note deny list', () => {
-  const CLAUDE: AiProviderConfig = {
+  const CODEX: AiProviderConfig = {
     id: 'c1',
-    provider: 'claude-cli',
+    provider: 'codex-cli',
     model: 'default',
     keyHint: '',
   }
 
   it('refuses a CLI turn when the index cannot say which notes are private', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     // `null` is the rebuild window: the projection is wiped and refilling, so
     // an empty list would be a partial answer wearing a complete answer's
@@ -982,7 +1001,7 @@ describe('ChatProvider private-note deny list', () => {
   })
 
   it('starts the run and forwards the deny list once the index can answer', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     core.listPrivateNotePaths.mockResolvedValue(['notes/diary.md'])
     core.streamCliAgentChat.mockImplementation(() =>
@@ -1004,7 +1023,7 @@ describe('ChatProvider private-note deny list', () => {
   })
 
   it('runs on a clean vault, where an empty list is a complete answer', async () => {
-    settingsState.models = [CLAUDE]
+    settingsState.models = [CODEX]
     settingsState.defaultId = 'c1'
     core.listPrivateNotePaths.mockResolvedValue([])
     core.streamCliAgentChat.mockImplementation(() =>

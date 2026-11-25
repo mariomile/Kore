@@ -28,7 +28,8 @@ import {
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
   chatModeAllowsEdits,
-  isCliAgentProvider,
+  isFileChatProvider,
+  cliChatRunsKoreTools,
   streamChat,
   streamCliAgentChat,
   userMessage,
@@ -319,7 +320,7 @@ export async function deliverChatTurn(
   // a restorable version. Best-effort — no snapshot, no ledger, but the
   // turn itself still runs.
   const editRun =
-    isCliAgentProvider(config.provider) &&
+    isFileChatProvider(config.provider) &&
     cliProviderSupportsEdits(config.provider) &&
     chatModeAllowsEdits(chatMode)
       ? { generation: graph.generation }
@@ -400,7 +401,7 @@ export async function deliverChatTurn(
       const agentContext = await loadAgentContext(agentProfile).catch(() => null)
       controller.signal.throwIfAborted()
       const events = await (async () => {
-        if (isCliAgentProvider(config.provider)) {
+        if (isFileChatProvider(config.provider)) {
           // The subscription engines: the CLI reads the graph itself, so
           // they need the private-note deny list, not an API key. Refusing
           // is deliberate for both null answers — a failed read and an index
@@ -470,7 +471,11 @@ export async function deliverChatTurn(
         }
         // The graph overview degrades to null (prompt without the block)
         // rather than blocking the turn — a cold index shouldn't kill chat.
-        const [apiKey, context, memoryWriteFn] = await Promise.all([
+        // Claude Code mounts the user's MCP servers next to Kore's tools when
+        // the conversation opted in (Tools toggle or Full Access).
+        const mcpAllowed =
+          cliChatRunsKoreTools(config.provider) && (chatMode === 'full-access' || chatTools)
+        const [apiKey, context, memoryWriteFn, mcpServers] = await Promise.all([
           aiApiKeyForConfig(config),
           loadChatGraphContext(graph.name).catch((cause: unknown) => {
             console.error('chat graph context failed:', errorMessage(cause))
@@ -478,6 +483,7 @@ export async function deliverChatTurn(
           }),
           // A cyber-brain vault's memory tools write through its own kit.
           memoryWriteForChat(agentContext, generation),
+          mcpAllowed ? resolveMcpServers(mcpServerSettings).catch(() => []) : [],
         ])
         if (apiKey === null) {
           applyEvent({
@@ -513,10 +519,11 @@ export async function deliverChatTurn(
           // and continues on the combined history; it yields the `steer`
           // event itself, exactly where the reply split.
           steering: { onSteerReady: (inject) => steerRelay.arm(inject) },
+          mcpServers,
         })
       })()
       if (events === null) {
-        if (isCliAgentProvider(config.provider)) {
+        if (isFileChatProvider(config.provider)) {
           applyEvent({
             type: 'error',
             message:

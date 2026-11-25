@@ -177,19 +177,41 @@ function enqueuePreviewFetch<T>(run: () => Promise<T>): Promise<T> {
 }
 
 /**
- * The preview for one link, or `null` when the page cannot describe itself
- * (unreachable, blocked, or untitled). Every outcome — the failures included —
- * is remembered per URL for the session, so a note full of the same link
- * fetches once and a dead host is not retried on every keystroke. Concurrent
- * fetches are capped so scrolling through link-heavy daily notes never saturates
- * IPC or main-thread HTML parsing.
+ * How long a failed fetch (a throw: offline, a timeout, a refused status)
+ * stays remembered before the next ask tries again. A phone on a weak
+ * connection times out on a heavy page (a YouTube page is ~1 MB behind three
+ * redirects); remembering that for the whole session left the link bare
+ * until the app restarted. An answer that parsed to nothing (an untitled
+ * page) is final for the session.
  */
-export function loadLinkPreview(url: string): Promise<LinkPreview | null> {
+export const LINK_PREVIEW_RETRY_MS = 30_000
+
+/** When each URL's last fetch failed, for {@link LINK_PREVIEW_RETRY_MS}. */
+const failedAt = new Map<string, number>()
+
+/**
+ * The preview for one link, or `null` when the page cannot describe itself
+ * (unreachable, blocked, or untitled). Every outcome is remembered per URL,
+ * so a note full of the same link fetches once and a dead host is not
+ * retried on every keystroke; a failed fetch is asked again once
+ * {@link LINK_PREVIEW_RETRY_MS} has passed. Concurrent fetches are capped so
+ * scrolling through link-heavy daily notes never saturates IPC or
+ * main-thread HTML parsing.
+ */
+export function loadLinkPreview(
+  url: string,
+  now: () => number = Date.now,
+): Promise<LinkPreview | null> {
   const cached = previews.get(url)
-  if (cached !== undefined) {
+  const failed = failedAt.get(url)
+  if (cached !== undefined && (failed === undefined || now() - failed < LINK_PREVIEW_RETRY_MS)) {
     return cached
   }
-  const pending = enqueuePreviewFetch(() => fetchLinkPreview(url)).catch(() => null)
+  failedAt.delete(url)
+  const pending = enqueuePreviewFetch(() => fetchLinkPreview(url)).catch(() => {
+    failedAt.set(url, now())
+    return null
+  })
   previews.set(url, pending)
   return pending
 }

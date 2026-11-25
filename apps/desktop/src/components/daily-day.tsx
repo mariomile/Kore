@@ -337,8 +337,9 @@ function StaticDayExtras({
   gutterClassName: string | undefined
 }): ReactElement {
   // The editor draws a line holding only a URL as a preview card
-  // (link-card-plugin). Same rule here, from the same session cache, and only
-  // for a note known to be public: a preview reaches the linked host.
+  // (link-card-plugin), wherever that line sits: a top-level paragraph or a
+  // bullet's. Same rule here, from the same session cache, and only for a
+  // note known to be public: a preview reaches the linked host.
   const cardsAllowed = useNoteRow(path)?.isPrivate === false
   useLayoutEffect(() => {
     const host = hostRef.current
@@ -346,7 +347,7 @@ function StaticDayExtras({
       return
     }
     let current = true
-    for (const paragraph of host.querySelectorAll<HTMLElement>('.kore-editor > p')) {
+    for (const paragraph of host.querySelectorAll<HTMLElement>('.kore-editor p')) {
       const url = (paragraph.textContent ?? '').trim()
       if (!BARE_URL.test(url) || paragraph.classList.contains('kore-link-card-source')) {
         continue

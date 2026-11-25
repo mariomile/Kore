@@ -452,6 +452,23 @@ pub(super) fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "draw_canvas",
+            description: "Draw a folder as a canvas board (a .canvas file, JSON Canvas, opened by Kore and Obsidian): the folder's own notes as a grid of note cards, each subfolder a labelled group of its notes, and an arrow for every wiki link between two notes on the board. Writes <folder>/<folder name>.canvas (or out) and never replaces an existing board. Use it when the user wants to see a project or area at a glance; for a hand-made layout, write the .canvas yourself (see the kore-canvas skill).",
+            effect: Effect::Add,
+            properties: || json!({
+                "folder": { "type": "string", "description": "Graph-relative folder, e.g. Projects/Studio" },
+                "out": { "type": "string", "description": "Graph-relative .canvas path to write instead of the default" },
+                "limit": { "type": "integer", "minimum": 1, "description": "Maximum notes on the board (default 120)" }
+            }),
+            required: &["folder"],
+            build: |args| {
+                Ok(Invocation::new("canvas")
+                    .option("out", string_arg(args, "out")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "folder")?]))
+            },
+        },
+        Tool {
             name: "explain_note",
             description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it, each with its named relations and the backlinks' context. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
             effect: Effect::Read,

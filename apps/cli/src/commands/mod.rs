@@ -10,6 +10,7 @@ pub mod active;
 pub mod append;
 pub mod backlinks;
 pub mod brain;
+pub mod canvas;
 pub mod capture;
 pub mod cloud;
 pub mod collection;

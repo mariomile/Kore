@@ -2080,3 +2080,47 @@ fn lint_flags_a_typed_relation_pointing_at_the_wrong_type() {
     assert_eq!(relations[0]["from"]["path"], "notes/ada.md");
     assert_eq!(relations[0]["expected"], "company");
 }
+
+#[test]
+fn canvas_draws_a_folder_as_cards_groups_and_link_arrows() {
+    let fixture = graph();
+    fixture.write_note("Projects/Plan.md", "# Plan\n\nSee [[Brief]].\n");
+    fixture.write_note("Projects/Studio/Brief.md", "# Brief\n");
+    fixture.write_note(
+        "Projects/Studio/Secret.md",
+        "---\nprivate: true\n---\n# Secret\n",
+    );
+    fixture.write_note("Elsewhere.md", "# Elsewhere\n");
+    fixture.build_index();
+    fixture.insert_wiki_link("Projects/Plan.md", "Brief", 6);
+    fixture.insert_wiki_link("Projects/Plan.md", "Secret", 20);
+
+    let value = json(&kore(&fixture, &["canvas", "Projects", "--json"]));
+    assert_eq!(value["path"], "Projects/Projects.canvas");
+    assert_eq!(value["notes"], 2);
+    assert_eq!(value["groups"], 1);
+    assert_eq!(value["edges"], 1);
+
+    let board: serde_json::Value =
+        serde_json::from_str(&read(&fixture, "Projects/Projects.canvas")).unwrap();
+    let files: Vec<&str> = board["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|node| node["file"].as_str())
+        .collect();
+    // The private note and the note outside the folder stay off the board.
+    assert_eq!(files, ["Projects/Plan.md", "Projects/Studio/Brief.md"]);
+    assert_eq!(board["nodes"][1]["type"], "group");
+    assert_eq!(board["nodes"][1]["label"], "Studio");
+
+    // A board someone may have arranged is never replaced without --force.
+    let again = kore(&fixture, &["canvas", "Projects"]);
+    assert_eq!(again.status.code(), Some(2));
+    assert!(stderr(&again).contains("--force"));
+    let forced = kore(&fixture, &["canvas", "Projects", "--force"]);
+    assert!(forced.status.success());
+
+    let escape = kore(&fixture, &["canvas", "Projects", "--out", "../x.canvas"]);
+    assert_eq!(escape.status.code(), Some(2));
+}

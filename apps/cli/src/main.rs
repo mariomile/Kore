@@ -289,6 +289,22 @@ enum Command {
         #[arg(long, default_value_t = commands::neighborhood::DEFAULT_LIMIT)]
         limit: usize,
     },
+    /// Draw a folder as a canvas board (.canvas, opened by Kore and
+    /// Obsidian): its notes as cards, each subfolder a group, wiki links
+    /// as arrows
+    Canvas {
+        /// Graph-relative folder (e.g. Projects/Studio)
+        folder: String,
+        /// Where to write the board (default: <folder>/<folder name>.canvas)
+        #[arg(long, value_name = "PATH")]
+        out: Option<String>,
+        /// Replace an existing board (by default an existing file is kept)
+        #[arg(long)]
+        force: bool,
+        /// Maximum number of notes on the board
+        #[arg(long, default_value_t = commands::canvas::DEFAULT_LIMIT)]
+        limit: usize,
+    },
     /// Graph health: broken links, orphan notes, unlinked mentions, inconsistent relations
     Lint {
         /// Only these checks, comma-separated: broken, orphans, unlinked, relations
@@ -573,6 +589,21 @@ fn run(cli: &Cli) -> Result<(), CliError> {
                 depth: *depth,
                 relation: relation.as_deref(),
                 tag: tag.as_deref(),
+                limit: *limit,
+            },
+        ),
+        Command::Canvas {
+            folder,
+            out,
+            force,
+            limit,
+        } => commands::canvas::run(
+            &graph,
+            cli.json,
+            folder,
+            commands::canvas::Options {
+                out: out.as_deref(),
+                force: *force,
                 limit: *limit,
             },
         ),

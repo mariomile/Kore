@@ -61,6 +61,7 @@ export {
   type LinkKindInfo,
 } from './link-kind'
 export { embedPlayer, startSeconds, type EmbedPlayer } from './embed-player'
+export { vaultMediaKind, type VaultMediaKind } from './vault-media'
 export {
   blockIdsIn,
   blockLinkLabel,

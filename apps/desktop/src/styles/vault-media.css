@@ -1,0 +1,48 @@
+/* Vault video and audio (vault-media-plugin): a paragraph that is one
+   embedded media file draws the file's own player, in the rounded card
+   shape link cards use. The paragraph (meowdown's file pill) hides until
+   the caret is on it, then shows under the player to edit or delete. */
+
+.kore-editor .kore-vault-media-source:not(.is-editing) {
+  display: none;
+}
+.kore-editor .kore-vault-media-source.is-editing {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.kore-editor .kore-vault-media {
+  margin: 0.4em 0;
+  overflow: hidden;
+  border-radius: var(--radius-xl, 12px);
+  background-color: var(--surface-hover);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kore-editor .kore-vault-media-player {
+  display: block;
+  width: 100%;
+}
+.kore-editor .kore-vault-media[data-kind='video'] .kore-vault-media-player {
+  /* The file's own shape once its metadata arrives (a phone's portrait
+     clip stays portrait), never taller than most of the screen. */
+  height: auto;
+  max-height: 70vh;
+  background-color: var(--surface-sunken);
+}
+.kore-editor .kore-vault-media[data-kind='audio'] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem 0.6rem;
+}
+.kore-editor .kore-vault-media-name {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kore-editor .kore-vault-media[data-kind='audio'] .kore-vault-media-player {
+  height: 2.5rem;
+}

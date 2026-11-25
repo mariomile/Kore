@@ -28,6 +28,11 @@
 //! with scripts but no requests of its own, wherever it is framed or opened. PDFs
 //! are exempt because the webview's PDF plugin does not render sandboxed.
 //!
+//! A `Range` request (WebKit asks for one before it plays any `<video>` or
+//! `<audio>`, and refuses media served without `206`) reads only the bytes
+//! asked for, at most [`MAX_RANGE_CHUNK`] at a time, so a long video in the
+//! vault streams instead of loading whole into memory per request.
+//!
 //! The app reads some files as text too (an HTML page's title and source,
 //! a file handed to the share sheet). Its own origin is not the scheme's,
 //! so a response names that origin in `Access-Control-Allow-Origin`, and
@@ -49,6 +54,11 @@ use super::GraphState;
 pub(crate) const SCHEME: &str = "kore-asset";
 const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
 const THUMBNAIL_QUERY: &str = "kore-thumb";
+/// The most one range response carries when the request leaves the end open
+/// (`bytes=N-`, how media elements ask): the player asks again for more.
+const MAX_RANGE_CHUNK: u64 = 4 * 1024 * 1024;
+/// How many leading bytes the type sniffing of a range response reads.
+const SNIFF_LEN: u64 = 512;
 
 /// The origins the app's own pages load from, per platform: custom scheme
 /// on Apple and Linux, `tauri.localhost` on Windows and Android.
@@ -95,6 +105,13 @@ pub(crate) fn handle<R: Runtime>(
     // raster-only rule would refuse.
     let thumbnail = preview_raster_only && has_query_flag(request.uri().query(), THUMBNAIL_QUERY);
     let method_allowed = request.method() == tauri::http::Method::GET;
+    // Passive previews always get the whole (vetted) file; only a plain
+    // request can stream.
+    let range = (!preview_raster_only)
+        .then(|| request.headers().get(header::RANGE))
+        .flatten()
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
     let allow_origin = request
         .headers()
         .get(header::ORIGIN)
@@ -106,7 +123,10 @@ pub(crate) fn handle<R: Runtime>(
             responder.respond(status_response(StatusCode::METHOD_NOT_ALLOWED));
             return;
         }
-        let mut response = response_for(&app, &request_path, preview_raster_only, thumbnail);
+        let mut response = match range {
+            Some(range) => range_response_for(&app, &request_path, &range),
+            None => response_for(&app, &request_path, preview_raster_only, thumbnail),
+        };
         let headers = response.headers_mut();
         headers.insert(header::VARY, HeaderValue::from_static("Origin"));
         if let Some(origin) = allow_origin {
@@ -152,7 +172,9 @@ fn response_for<R: Runtime>(
     });
     match served {
         Ok((mime, bytes)) => {
-            let builder = Response::builder().header(header::CONTENT_LENGTH, bytes.len());
+            let builder = Response::builder()
+                .header(header::CONTENT_LENGTH, bytes.len())
+                .header(header::ACCEPT_RANGES, "bytes");
             let builder = match document_policy(&mime) {
                 Some(policy) => builder.header(header::CONTENT_SECURITY_POLICY, policy),
                 None => builder,
@@ -167,6 +189,109 @@ fn response_for<R: Runtime>(
             status_response(status)
         }
     }
+}
+
+/// A `206` with the bytes `range` names, read straight from the file, or the
+/// status that refuses it (`416` for a range past the end).
+fn range_response_for<R: Runtime>(
+    app: &AppHandle<R>,
+    request_path: &str,
+    range: &str,
+) -> Response<Cow<'static, [u8]>> {
+    let served = locate(app, request_path).and_then(|path| read_range(&path, range));
+    match served {
+        Ok(RangeBody {
+            mime,
+            start,
+            end,
+            total,
+            bytes,
+        }) => {
+            let builder = Response::builder()
+                .status(StatusCode::PARTIAL_CONTENT)
+                .header(header::CONTENT_LENGTH, bytes.len())
+                .header(header::ACCEPT_RANGES, "bytes")
+                .header(
+                    header::CONTENT_RANGE,
+                    format!("bytes {start}-{end}/{total}"),
+                );
+            let builder = match document_policy(&mime) {
+                Some(policy) => builder.header(header::CONTENT_SECURITY_POLICY, policy),
+                None => builder,
+            };
+            builder
+                .header(header::CONTENT_TYPE, mime)
+                .body(Cow::Owned(bytes))
+                .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR))
+        }
+        Err(status) => {
+            tracing::warn!(path = request_path, %status, "asset protocol refused a range");
+            status_response(status)
+        }
+    }
+}
+
+#[derive(Debug)]
+struct RangeBody {
+    mime: String,
+    start: u64,
+    end: u64,
+    total: u64,
+    bytes: Vec<u8>,
+}
+
+/// The bytes `range` names of the file at `path`, with its sniffed type.
+fn read_range(path: &std::path::Path, range: &str) -> Result<RangeBody, StatusCode> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = std::fs::File::open(path).map_err(io_status)?;
+    let total = file.metadata().map_err(io_status)?.len();
+    let (start, end) = parse_range(range, total).ok_or(StatusCode::RANGE_NOT_SATISFIABLE)?;
+    let mut head = Vec::new();
+    (&mut file)
+        .take(SNIFF_LEN)
+        .read_to_end(&mut head)
+        .map_err(io_status)?;
+    let mime = MimeType::parse(&head, &path.to_string_lossy());
+    file.seek(SeekFrom::Start(start)).map_err(io_status)?;
+    let mut bytes = Vec::new();
+    file.take(end - start + 1)
+        .read_to_end(&mut bytes)
+        .map_err(io_status)?;
+    Ok(RangeBody {
+        mime,
+        start,
+        end,
+        total,
+        bytes,
+    })
+}
+
+/// The inclusive byte span one `Range` header asks of a `total`-byte file,
+/// or None when it cannot be served (malformed, several ranges, or past the
+/// end). An open end is capped at [`MAX_RANGE_CHUNK`].
+fn parse_range(header: &str, total: u64) -> Option<(u64, u64)> {
+    let spec = header.trim().strip_prefix("bytes=")?;
+    if spec.contains(',') || total == 0 {
+        return None;
+    }
+    let (first, last) = spec.split_once('-')?;
+    let (first, last) = (first.trim(), last.trim());
+    let (start, end) = if first.is_empty() {
+        let suffix: u64 = last.parse().ok()?;
+        if suffix == 0 {
+            return None;
+        }
+        (total.saturating_sub(suffix), total - 1)
+    } else {
+        let start: u64 = first.parse().ok()?;
+        let end = if last.is_empty() {
+            start.saturating_add(MAX_RANGE_CHUNK - 1)
+        } else {
+            last.parse().ok()?
+        };
+        (start, end.min(total - 1))
+    };
+    (start <= end && start < total).then_some((start, end))
 }
 
 /// The sandbox policy a response of type `mime` carries: every type but PDF.
@@ -233,13 +358,17 @@ fn read(path: &std::path::Path) -> Result<(String, Vec<u8>), StatusCode> {
     // On an iCloud graph this read blocks until the file is materialized on
     // the device — acceptable here on the blocking pool, and exactly the wait
     // that must never happen on the UI thread.
-    let bytes = std::fs::read(path).map_err(|err| match err.kind() {
+    let bytes = std::fs::read(path).map_err(io_status)?;
+    let mime = MimeType::parse(&bytes, &path.to_string_lossy());
+    Ok((mime, bytes))
+}
+
+fn io_status(err: std::io::Error) -> StatusCode {
+    match err.kind() {
         std::io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
         std::io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
-    })?;
-    let mime = MimeType::parse(&bytes, &path.to_string_lossy());
-    Ok((mime, bytes))
+    }
 }
 
 /// Split `<generation>/<graph-relative path>` and vet the path shape. Any
@@ -372,6 +501,53 @@ mod tests {
         let png_mime = MimeType::parse(png_signature, "assets/image.bin");
         assert_eq!(png_mime, "image/png");
         assert!(is_preview_safe_raster_mime(&png_mime));
+    }
+
+    #[test]
+    fn parses_the_ranges_media_elements_ask_for() {
+        assert_eq!(parse_range("bytes=0-1", 100), Some((0, 1)));
+        assert_eq!(parse_range("bytes=10-", 100), Some((10, 99)));
+        assert_eq!(parse_range("bytes=90-200", 100), Some((90, 99)));
+        assert_eq!(parse_range("bytes=-30", 100), Some((70, 99)));
+        assert_eq!(parse_range("bytes=-300", 100), Some((0, 99)));
+        let big = 100 * MAX_RANGE_CHUNK;
+        assert_eq!(parse_range("bytes=0-", big), Some((0, MAX_RANGE_CHUNK - 1)));
+    }
+
+    #[test]
+    fn refuses_ranges_it_cannot_serve() {
+        for header in [
+            "bytes=100-",
+            "bytes=5-2",
+            "bytes=-0",
+            "bytes=0-1,4-5",
+            "items=0-1",
+            "bytes=a-b",
+            "bytes",
+        ] {
+            assert_eq!(parse_range(header, 100), None, "{header}");
+        }
+        assert_eq!(parse_range("bytes=0-", 0), None);
+    }
+
+    #[test]
+    fn reads_only_the_requested_bytes_with_the_files_type() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("clip.mp4");
+        let mut bytes = b"\x00\x00\x00\x18ftypmp42".to_vec();
+        bytes.extend((0..1000u32).map(|i| (i % 251) as u8));
+        std::fs::write(&path, &bytes).unwrap();
+        let body = read_range(&path, "bytes=100-199").unwrap();
+        assert_eq!(
+            (body.start, body.end, body.total),
+            (100, 199, bytes.len() as u64)
+        );
+        assert_eq!(body.bytes, bytes[100..200]);
+        assert_eq!(body.mime, "video/mp4");
+        assert_eq!(
+            read_range(&path, "bytes=5000-").unwrap_err(),
+            StatusCode::RANGE_NOT_SATISFIABLE
+        );
     }
 
     #[test]

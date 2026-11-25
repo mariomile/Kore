@@ -592,6 +592,11 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   webp: 'image/webp',
   svg: 'image/svg+xml',
   html: 'text/html',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
 }
 
 function imageMimeType(path: string): string {

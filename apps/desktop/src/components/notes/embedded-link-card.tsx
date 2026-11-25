@@ -21,7 +21,12 @@ import {
 } from '@/components/icons'
 import type { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { linkCardElement, requestLinkLayout } from '@/editor/link-card-dom'
+import {
+  linkCardElement,
+  PLAYER_ALLOW,
+  PLAYER_SANDBOX,
+  requestLinkLayout,
+} from '@/editor/link-card-dom'
 import { openExternalUrl } from '@/editor/open-external-link'
 
 interface EmbeddedLinkCardProps {
@@ -70,15 +75,8 @@ function readableUrl(url: string): string {
 }
 
 /**
- * Everything a player frame may do: run its own scripts in its own origin,
- * open the provider in a new window, go fullscreen. Never navigate the app.
- */
-const PLAYER_SANDBOX =
-  'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms'
-
-/**
- * The page's own preview (title, description, image, favicon) for a link
- * that has no player, or null while it loads or when the page cannot
+ * The page's own preview (title, description, image, favicon) for a link,
+ * or null while it loads or when the page cannot
  * describe itself. Core keeps one lookup per URL for the session, so a
  * re-render or a second card for the same link never refetches. The caller
  * only renders this card for a note that is not private.
@@ -152,9 +150,11 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
   const info = linkKindInfo(block.linkKind)
   const Glyph = KIND_GLYPH[block.linkKind]
   const player = block.linkKind === 'image' ? null : embedPlayer(block.url)
-  const preview = useRichPreview(block.linkKind !== 'image' && player === null ? block.url : null)
+  // A link with a player draws the same rich card as any page once its
+  // preview arrives, with Play on its picture (link-card-dom).
+  const preview = useRichPreview(block.linkKind !== 'image' ? block.url : null)
 
-  if (preview !== null) {
+  if (preview !== null && !loaded) {
     return <RichLinkCard preview={preview} layout={block.layout} />
   }
   const eyebrow = player?.provider ?? (block.linkKind === 'link' ? null : info.label)
@@ -180,7 +180,7 @@ export function EmbeddedLinkCard({ block }: EmbeddedLinkCardProps): ReactElement
         <iframe
           src={player.url}
           title={`${player.provider}: ${readableUrl(block.url)}`}
-          allow="autoplay; accelerometer; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
+          allow={PLAYER_ALLOW}
           allowFullScreen
           // Scripts plus same-origin only unsandbox a frame of the app's own
           // origin; a player is always a third-party https host from core.

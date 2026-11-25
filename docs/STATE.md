@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-25 — 0.155.0
+
+- Shipped #693: Play on link cards for playable links, inline vault video and audio (Range support in kore-asset, media-src in the CSP), one player at a time.
+
 ## 2026-11-25 — 0.154.0
 
 - Shipped #692 (provider model lists refreshed live from each key's /models) and #689 (link preview cards for URLs alone in bullets in the static daily; failed fetches retried after 30 s).

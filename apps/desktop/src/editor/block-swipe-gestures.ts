@@ -1,6 +1,7 @@
 /**
- * The gesture half of Craft-style block handling: how far a horizontal drag
- * has to travel before it counts as a block swipe, and which way it went.
+ * The gesture half of Craft-style block handling: when a sideways drag on a
+ * block becomes a swipe, where it commits, and how far the block follows the
+ * finger.
  *
  * Kept as pure functions so the thresholds — the part that decides whether a
  * gesture feels deliberate or fires while someone is scrolling — are testable
@@ -11,15 +12,34 @@
 export const SWIPE_COMMIT_PX = 44
 
 /**
+ * How far back a committed swipe has to come before it lets go again. The gap
+ * keeps a finger resting near the threshold from flickering the selection on
+ * and off.
+ */
+const UNCOMMIT_PX = SWIPE_COMMIT_PX - 12
+
+/** Horizontal travel at which a drag can declare itself a swipe. */
+const CLAIM_PX = 10
+
+/**
  * How much more horizontal than vertical the drag must be to read as a swipe
  * rather than a scroll. A finger travelling down the page always carries some
- * sideways drift; requiring the horizontal component to dominate keeps the
- * page scrolling instead of re-indenting whatever it passed over.
+ * sideways drift; requiring the horizontal component to lead keeps the page
+ * scrolling instead of selecting whatever it passed over.
  */
-const HORIZONTAL_DOMINANCE = 1.7
+const HORIZONTAL_DOMINANCE = 1.3
 
-/** Vertical travel past which the gesture is a scroll, whatever the ratio. */
-const SCROLL_ESCAPE_PX = 34
+/**
+ * Vertical travel, after a block is selected, that turns the swipe into a
+ * sweep over the blocks above or below. Well past a finger's natural drift,
+ * so a swipe on a short line never takes its neighbour with it.
+ */
+export const SWEEP_START_PX = 24
+
+/** Past the commit point the block keeps following, with this much give. */
+const FOLLOW_RESISTANCE = 0.3
+/** The furthest a swiped block travels, however far the finger goes. */
+export const FOLLOW_MAX_PX = 88
 
 /**
  * The way a selecting swipe travels along x: right to left (Mario,
@@ -34,36 +54,43 @@ export function selectTravel(deltaX: number): number {
 }
 
 /**
- * What one finished drag means for the block under it: toward
- * {@link SELECT_DIRECTION} selects it as a block, the other way runs the
- * quick action.
+ * What a swipe means for the block under it: toward {@link SELECT_DIRECTION}
+ * selects it as a block, the other way runs the quick action.
  */
-export type BlockSwipe = 'select' | 'action' | null
+export type BlockSwipe = 'select' | 'action'
 
-/**
- * Classify a drag by its total displacement. Returns `null` for anything that
- * is not a committed, clearly horizontal swipe — the caller then leaves the
- * gesture to the browser.
- */
-export function classifyBlockSwipe(deltaX: number, deltaY: number): BlockSwipe {
-  const horizontal = Math.abs(deltaX)
-  const vertical = Math.abs(deltaY)
-  if (horizontal < SWIPE_COMMIT_PX || vertical > SCROLL_ESCAPE_PX) {
-    return null
-  }
-  if (horizontal < vertical * HORIZONTAL_DOMINANCE) {
-    return null
-  }
+export function swipeIntent(deltaX: number): BlockSwipe {
   return selectTravel(deltaX) > 0 ? 'select' : 'action'
 }
 
 /**
  * Whether a drag in progress has declared itself horizontal — the point at
- * which the handler claims the gesture (and stops the page scrolling under
- * it). Deliberately earlier than {@link classifyBlockSwipe}'s commit
- * threshold: claiming only at commit would let the page scroll for the first
- * half of every swipe and then jump back.
+ * which the handler claims the gesture and stops the page scrolling under it.
+ * Early, before iOS starts its own scroll: once the page scrolls the gesture
+ * is the scroll's for good, so claiming late gives half a swipe and half a
+ * scroll.
  */
 export function isHorizontalDrag(deltaX: number, deltaY: number): boolean {
-  return Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY) * HORIZONTAL_DOMINANCE
+  return Math.abs(deltaX) >= CLAIM_PX && Math.abs(deltaX) > Math.abs(deltaY) * HORIZONTAL_DOMINANCE
+}
+
+/**
+ * Whether a claimed swipe is committed now, given whether it was a moment
+ * ago. Only horizontal travel counts: once the gesture is claimed the page
+ * no longer scrolls, so a finger drifting down keeps the swipe.
+ */
+export function isCommitted(deltaX: number, wasCommitted: boolean): boolean {
+  return Math.abs(deltaX) >= (wasCommitted ? UNCOMMIT_PX : SWIPE_COMMIT_PX)
+}
+
+/**
+ * Where the swiped block sits for a finger `deltaX` along: with the finger up
+ * to the commit point, then with growing resistance, never past
+ * {@link FOLLOW_MAX_PX}.
+ */
+export function followOffset(deltaX: number): number {
+  const travel = Math.abs(deltaX)
+  const beyond = Math.max(0, travel - SWIPE_COMMIT_PX)
+  const offset = Math.min(travel, SWIPE_COMMIT_PX) + beyond * FOLLOW_RESISTANCE
+  return Math.sign(deltaX) * Math.min(offset, FOLLOW_MAX_PX)
 }

@@ -57,6 +57,15 @@ export function settle(
 
 export const LANDING = { from: LIFTED, to: RESTING }
 
+/** A swiped block let go `x` pixels to the side: it springs back into line. */
+export function slideBack(element: HTMLElement, x: number): void {
+  if (reducedMotion() || Math.abs(x) < SETTLED_PX || typeof element.animate !== 'function') return
+  element.animate([{ transform: `translateX(${x}px)` }, { transform: 'translateX(0)' }], {
+    duration: SETTLE_MS,
+    easing: SETTLE_EASING,
+  })
+}
+
 /** Elements held at an offset along one axis, sliding to each new one. */
 export interface Slide {
   /** Slide on to `offset` from wherever the elements are now. */

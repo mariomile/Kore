@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-25 — 0.154.0
+
+- Shipped #692 (provider model lists refreshed live from each key's /models) and #689 (link preview cards for URLs alone in bullets in the static daily; failed fetches retried after 30 s).
+
 ## 2026-11-25 — 0.153.0
 
 - Shipped #677: canvas editing and whiteboard tools on the Mac (move/resize on grid, edit, add, delete, undo, arrows, colours, Advanced Canvas shapes, no page header, smoother pan/zoom). iPhone canvases stay view-only.

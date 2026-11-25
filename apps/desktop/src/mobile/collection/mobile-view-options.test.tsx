@@ -15,7 +15,7 @@ import type {
 } from '@/components/all-notes/collection-filter-menu'
 import { MobileViewOptions } from './mobile-view-options'
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/providers/settings-provider')>()),
   useSettings: () => ({

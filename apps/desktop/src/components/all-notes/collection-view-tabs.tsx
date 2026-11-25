@@ -31,6 +31,7 @@ import {
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { collectionViewLabel } from './collection-view-model'
+import { DragHaptics } from '@/components/drag-haptics'
 
 const VIEW_GLYPH = {
   table: TableView,
@@ -115,6 +116,7 @@ export function CollectionViewTabs({
   return (
     <div className="flex min-w-0 items-center gap-0.5">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DragHaptics />
         <SortableContext items={tabs.map((tab) => tab.id)} strategy={horizontalListSortingStrategy}>
           <div
             role="tablist"

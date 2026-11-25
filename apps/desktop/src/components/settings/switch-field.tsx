@@ -41,8 +41,8 @@ export function SettingsSwitchField({
         aria-describedby={descriptionId}
         checked={checked}
         onCheckedChange={(next) => {
-          // A state flip earns the level-change knock (macOS trackpads only).
-          haptic('level-change')
+          // A state flip: a light tap on the iPhone, silent on the Mac click.
+          haptic('toggle')
           onCheckedChange(next)
         }}
         className="shrink-0"

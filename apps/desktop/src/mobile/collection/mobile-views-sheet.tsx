@@ -16,7 +16,7 @@ import {
 } from '@/components/icons'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SettingsActionRow, SettingsGroup, SettingsSelectRow } from '@/mobile/settings-list'
 import { mobileTypeView, storedTypeView, type MobileTypeView } from './mobile-type-view'
 
@@ -85,7 +85,6 @@ export function MobileViewsSheet({
     setPage(ROOT)
   }
   const go = (next: SheetPage): void => {
-    hapticImpactLight()
     setPage(next)
   }
 
@@ -150,7 +149,7 @@ export function MobileViewsSheet({
                           role="option"
                           aria-selected={selected}
                           onClick={() => {
-                            hapticImpactLight()
+                            haptic('selection')
                             onSelect(entry)
                             close()
                           }}
@@ -213,7 +212,7 @@ export function MobileViewsSheet({
                     key={entry}
                     type="button"
                     onClick={() => {
-                      hapticImpactLight()
+                      haptic('selection')
                       onAdd(storedTypeView(entry))
                       close()
                     }}
@@ -248,11 +247,11 @@ export function MobileViewsSheet({
                 go(ROOT)
               }}
               onChangeLayout={(nextLayout) => {
-                hapticImpactLight()
+                haptic('selection')
                 onChangeLayout(editingView.id, nextLayout)
               }}
               onDelete={() => {
-                hapticImpactLight()
+                haptic('warning')
                 onDelete(editingView.id)
                 go(ROOT)
               }}

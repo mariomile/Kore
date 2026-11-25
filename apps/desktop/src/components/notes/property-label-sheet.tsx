@@ -5,7 +5,7 @@ import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SettingsActionRow, SettingsGroup, SettingsNavRow } from '@/mobile/settings-list'
 
 interface PropertyLabelSheetProps {
@@ -47,7 +47,6 @@ export function PropertyLabelSheet({
     setPage('root')
   }
   const go = (next: SheetPage): void => {
-    hapticImpactLight()
     if (next === 'rename') {
       setDraftName(property.name)
     }
@@ -145,7 +144,7 @@ export function PropertyLabelSheet({
                 <button
                   type="button"
                   onClick={() => {
-                    hapticImpactLight()
+                    haptic('warning')
                     void onDelete().then((ok) => {
                       if (ok) {
                         close()
@@ -190,7 +189,7 @@ export function PropertyLabelSheet({
                     key={type}
                     type="button"
                     onClick={() => {
-                      hapticImpactLight()
+                      haptic('selection')
                       void onChangeType(type).then((ok) => {
                         if (ok) {
                           close()
@@ -257,7 +256,7 @@ export function MobileAddPropertySheet({
     setSaving(true)
     try {
       await onAdd(name, type)
-      hapticImpactLight()
+      haptic('success')
       onOpenChange(false)
       reset()
     } catch (cause) {
@@ -333,7 +332,7 @@ export function MobileAddPropertySheet({
                     key={entry}
                     type="button"
                     onClick={() => {
-                      hapticImpactLight()
+                      haptic('selection')
                       setType(entry)
                     }}
                     className="flex min-h-11 w-full items-center gap-3 px-3.5 text-left text-[15px] text-text active:bg-surface-hover"

@@ -48,7 +48,7 @@ export function ContextCollapsedRail({
   }
 
   const expandTo = (id: ContextPanel): void => {
-    haptic('alignment')
+    haptic('snap')
     openContextPanel(id)
     toggleContextSidebar()
   }

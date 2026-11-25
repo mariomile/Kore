@@ -12,7 +12,6 @@ import {
 import { taskKey } from '@/lib/tasks/task-identity'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
 import { MobileTaskRow } from '@/mobile/task-row'
 import { useSettings } from '@/providers/settings-provider'
 
@@ -68,7 +67,6 @@ export function MobileTaskGroup({
             <button
               type="button"
               onClick={() => {
-                hapticImpactLight()
                 onOpen(notePath)
               }}
               className="truncate"

@@ -3,10 +3,10 @@ import { setHapticsEnabled } from '@/lib/haptics-preference'
 import { useSettings } from '@/providers/settings-provider'
 
 /**
- * Applies the haptic-feedback preference to both haptic surfaces.
+ * Applies the haptic-feedback preference to the haptic entry point.
  *
  * Mirrors the `hapticFeedback` setting into the module latch that desktop's
- * trackpad knocks and iOS's light impacts both consult, so one switch covers
+ * trackpad knocks and iOS's feedback styles both consult, so one switch covers
  * every call site — including the ones outside React (the task-checkbox
  * document listener, the operations toaster). Mounted above the platform
  * gate, since both trees fire haptics. Side-effect-only; it renders nothing.

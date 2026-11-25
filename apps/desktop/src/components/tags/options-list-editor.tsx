@@ -26,6 +26,7 @@ import {
   optionColorDotClass,
 } from './select-colors'
 import { keptOptions, removeOption, type OptionDraft } from './tag-config-drafts'
+import { DragHaptics } from '@/components/drag-haptics'
 
 interface OptionsListEditorProps {
   options: readonly OptionDraft[]
@@ -130,6 +131,7 @@ export function OptionsListEditor({
           }
         }}
       >
+        <DragHaptics />
         <SortableContext
           items={options.map((option) => option.id)}
           strategy={verticalListSortingStrategy}

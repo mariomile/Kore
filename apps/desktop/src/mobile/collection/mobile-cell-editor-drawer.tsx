@@ -20,7 +20,7 @@ import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SearchInput } from '@/mobile/search-input'
 
 /** The tapped mobile table cell currently open in the editor sheet. */
@@ -167,12 +167,12 @@ function MobileSelectBody({
       : options.filter((option) => option.toLocaleLowerCase().includes(needle))
 
   const chooseSingle = (option: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     onCommit(localSelected.length === 1 && localSelected[0] === option ? undefined : option)
     onClose()
   }
   const toggleMultiple = (option: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     const next = localSelected.includes(option)
       ? localSelected.filter((entry) => entry !== option)
       : [...localSelected, option]
@@ -180,7 +180,7 @@ function MobileSelectBody({
     onCommit(next.length === 0 ? undefined : next)
   }
   const clear = (): void => {
-    hapticImpactLight()
+    haptic('action')
     setLocalSelected([])
     onCommit(undefined)
     onClose()
@@ -262,7 +262,7 @@ function MobileRatingBody({
   const current = parseRating(numeric)
 
   const pick = (score: number): void => {
-    hapticImpactLight()
+    haptic('selection')
     onCommit(current === score ? undefined : score)
     onClose()
   }
@@ -300,7 +300,7 @@ function MobileRatingBody({
         <button
           type="button"
           onClick={() => {
-            hapticImpactLight()
+            haptic('action')
             onCommit(undefined)
             onClose()
           }}
@@ -376,7 +376,7 @@ function MobileInputBody({
     ) {
       return
     }
-    hapticImpactLight()
+    haptic('action')
     onCommit(typedValueForText(property, draft))
   }
 
@@ -417,7 +417,7 @@ function MobileInputBody({
             onClick={() => {
               settledRef.current = true
               flushRef.current = null
-              hapticImpactLight()
+              haptic('action')
               onCommit(undefined)
               onClose()
             }}
@@ -460,12 +460,12 @@ function MobileRelationBody({
   const createEntry = useRelationCreateEntry(property, true, query, suggestions)
 
   const chooseSingle = (insertText: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     onCommit(relationValue(insertText))
     onClose()
   }
   const toggleMulti = (insertText: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     const candidate = relationValue(insertText)
     const next = links.some((link) => targetOf(link) === targetOf(candidate))
       ? links.filter((link) => targetOf(link) !== targetOf(candidate))
@@ -474,7 +474,7 @@ function MobileRelationBody({
     onCommit(next.length === 0 ? undefined : next)
   }
   const appendMulti = (insertText: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     const candidate = relationValue(insertText)
     if (links.some((link) => targetOf(link) === targetOf(candidate))) {
       return
@@ -484,7 +484,7 @@ function MobileRelationBody({
     onCommit(next)
   }
   const clear = (): void => {
-    hapticImpactLight()
+    haptic('action')
     setLinks([])
     onCommit(undefined)
     onClose()

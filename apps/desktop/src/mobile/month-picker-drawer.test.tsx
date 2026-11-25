@@ -22,7 +22,7 @@ vi.mock('@/components/ui/drawer', () => ({
 }))
 
 // Picking a month taps a haptic; the test browser has no haptics plugin.
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 
 afterEach(cleanup)
 

@@ -15,14 +15,27 @@ import WebKit
 /// (decision 0003); no keyboard state crosses the bridge.
 ///
 /// As Kore's only native UIKit touch bridge, it also carries the app's
-/// tiny haptics surface (`impactLight`) — WKWebView has no
-/// `navigator.vibrate`, so JS cannot fire haptics on its own.
+/// haptics surface (`haptic`): WKWebView has no `navigator.vibrate`, so JS
+/// cannot fire haptics on its own.
+/// The styles `haptic` can play, spelled as the Rust `HapticStyle` serializes
+/// them.
+enum HapticStyle: String, Decodable {
+  case selection, light, medium, success, warning, error
+}
+
+struct HapticArgs: Decodable {
+  let style: HapticStyle
+}
+
 class KeyboardPlugin: Plugin {
   private var scrollOffsetObservation: NSKeyValueObservation?
-  // Lazy so the generator is created on the main thread, inside the first
-  // `impactLight` dispatch; kept alive across taps to skip re-allocating
-  // the underlying haptic engine on every press.
+  // Lazy so each generator is created on the main thread, inside the first
+  // `haptic` dispatch that needs it; kept alive across taps to skip
+  // re-allocating the underlying haptic engine on every press.
+  private lazy var selectionGenerator = UISelectionFeedbackGenerator()
   private lazy var lightImpactGenerator = UIImpactFeedbackGenerator(style: .light)
+  private lazy var mediumImpactGenerator = UIImpactFeedbackGenerator(style: .medium)
+  private lazy var notificationGenerator = UINotificationFeedbackGenerator()
 
   @objc public override func load(webview: WKWebView) {
     // The system's automatic inset adjustment is the source of the jump:
@@ -50,14 +63,34 @@ class KeyboardPlugin: Plugin {
     Self.allowProgrammaticFocus()
   }
 
-  /// Fire a light impact haptic — V1 parity for date-selection, task controls,
-  /// and tab taps. `UIFeedbackGenerator` is main-thread-only; resolve immediately
-  /// rather than after the dispatch since the tap has already happened and
-  /// callers are fire-and-forget. Silently does nothing on hardware
-  /// without a haptic engine (iPads, the simulator).
-  @objc public func impactLight(_ invoke: Invoke) {
+  /// Play one feedback style. Which interaction gets which style is the
+  /// frontend's call (`apps/desktop/src/lib/haptics.ts`); this only plays it.
+  /// `UIFeedbackGenerator` is main-thread-only; resolve immediately rather
+  /// than after the dispatch since the gesture has already happened and
+  /// callers are fire-and-forget. Each generator is re-prepared after it
+  /// plays, so the next tick of a drag or a sweep lands without the engine's
+  /// wake-up latency. Silently does nothing on hardware without a haptic
+  /// engine (iPads, the simulator).
+  @objc public func haptic(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(HapticArgs.self)
     DispatchQueue.main.async {
-      self.lightImpactGenerator.impactOccurred()
+      switch args.style {
+      case .selection:
+        self.selectionGenerator.selectionChanged()
+        self.selectionGenerator.prepare()
+      case .light:
+        self.lightImpactGenerator.impactOccurred()
+        self.lightImpactGenerator.prepare()
+      case .medium:
+        self.mediumImpactGenerator.impactOccurred()
+        self.mediumImpactGenerator.prepare()
+      case .success:
+        self.notificationGenerator.notificationOccurred(.success)
+      case .warning:
+        self.notificationGenerator.notificationOccurred(.warning)
+      case .error:
+        self.notificationGenerator.notificationOccurred(.error)
+      }
     }
     invoke.resolve()
   }

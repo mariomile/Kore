@@ -5,6 +5,9 @@
 - [x] `kore canvas <folder>` and MCP `draw_canvas` turn a folder into a JSON
   Canvas board (notes as cards, subfolders as groups, wiki links as arrows);
   new kore-canvas agent skill for mind maps and moodboards. CLI only (#672).
+- [x] One haptic vocabulary on Mac and iPhone: block select, block add,
+  picks, toggles, saves, deletes; no haptics on navigation; Mac trackpad
+  feedback when dragging tabs, sidebar rows and blocks (#674).
 
 ## Edge-to-edge covers and tabs in the sidebar, 2026-11-24 (0.148.0)
 

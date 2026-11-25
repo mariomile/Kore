@@ -1,12 +1,15 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { canvasDisplayName } from '@kore/core'
 import { LayoutTemplate } from '@/components/icons'
 import { PageLoading } from '@/components/page-loading'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/ui/page-header'
+import { isMobileSurface } from '@/lib/platform-surface'
+import { MobileScreenHeader } from '@/mobile/screen-header'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
-import { useCanvasDocument, useCanvasFiles } from './use-canvas'
+import { useCanvasDocument, useCanvasEditor, useCanvasFiles } from './use-canvas'
 
 interface CanvasScreenProps {
   /** The `.canvas` file, or null for the list of every canvas. */
@@ -14,30 +17,63 @@ interface CanvasScreenProps {
 }
 
 /**
- * An Obsidian canvas, read-only: its cards, groups and arrows on a board you
- * can pan and zoom. The file is never written, so it keeps working in
- * Obsidian.
+ * A JSON Canvas board (Obsidian's `.canvas`): its cards, groups and arrows
+ * on a board you pan and zoom. On the Mac its cards can be moved, resized,
+ * added and removed; every write patches the file's own JSON, so it keeps
+ * working in Obsidian. On the iPhone it is a view.
  */
 export function CanvasScreen({ path }: CanvasScreenProps): ReactElement {
-  return path === null ? <CanvasIndex /> : <CanvasFileScreen path={path} />
+  // Keyed by path: the undo history belongs to one file.
+  return path === null ? <CanvasIndex /> : <CanvasFileScreen key={path} path={path} />
 }
 
 function CanvasFileScreen({ path }: { path: string }): ReactElement {
   const state = useCanvasDocument(path)
+  const editor = useCanvasEditor(path)
+  const name = canvasDisplayName(path)
+  // No page header: a board is all canvas. The Mac's tab names it; the
+  // iPhone gets the stack's glass bar, with the board running under it.
+  const body =
+    state.status === 'loading' ? (
+      <PageLoading label="Loading canvas" />
+    ) : state.status === 'error' ? (
+      <p role="alert" className="px-6 py-6 text-sm text-text-muted">
+        Couldn’t open this canvas: {state.message}
+      </p>
+    ) : state.canvas.nodes.length === 0 && editor === null ? (
+      <EmptyState icon={LayoutTemplate} title="This canvas is empty" />
+    ) : (
+      <CanvasBoard canvas={state.canvas} label={name} editor={editor} />
+    )
+  return isMobileSurface() ? (
+    <MobileCanvasFrame title={name}>{body}</MobileCanvasFrame>
+  ) : (
+    <div className="flex h-full min-h-0 flex-col">{body}</div>
+  )
+}
+
+function MobileCanvasFrame({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}): ReactElement {
+  const { navigate, back, canBack } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <PageHeader title={canvasDisplayName(path)} description={path} />
-      {state.status === 'loading' ? (
-        <PageLoading label="Loading canvas" />
-      ) : state.status === 'error' ? (
-        <p role="alert" className="px-6 py-6 text-sm text-text-muted">
-          Couldn’t open this canvas: {state.message}
-        </p>
-      ) : state.canvas.nodes.length === 0 ? (
-        <EmptyState icon={LayoutTemplate} title="This canvas is empty" />
-      ) : (
-        <CanvasBoard key={path} canvas={state.canvas} label={canvasDisplayName(path)} />
-      )}
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      <MobileScreenHeader
+        ref={barRef}
+        title={title}
+        onBack={() => (canBack ? back() : navigate({ kind: 'canvas', path: null }))}
+      />
+      <main
+        className="relative flex min-h-0 flex-1 flex-col"
+        style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+      >
+        {children}
+      </main>
     </div>
   )
 }
@@ -50,7 +86,7 @@ function CanvasIndex(): ReactElement {
     <div className="flex h-full min-h-0 flex-col overflow-auto">
       <PageHeader
         title="Canvases"
-        description="Obsidian canvases in this vault, shown read-only."
+        description="Canvas boards in this vault, from Obsidian or drawn by an agent."
       />
       {failed ? (
         <p role="alert" className="pr-7 pl-12 text-sm text-text-muted">

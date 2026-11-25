@@ -25,3 +25,6 @@ export function canvasColor(color: string | null): string | null {
     ? color.trim()
     : null
 }
+
+/** The six presets in order, for a colour picker. */
+export const CANVAS_COLOR_PRESETS: readonly string[] = Object.keys(PRESETS)

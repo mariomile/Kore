@@ -128,6 +128,214 @@ const LOOSE_DOCUMENTS: ReadonlyArray<readonly [string, string]> = [
   ['Projects/Studio/pitch.html', PITCH_SLIDE],
 ]
 
+/** A board as `kore canvas` draws one, plus a text card and a picture, for the canvas screen. */
+/** A whiteboard flowchart: shapes, sticky-note colours, a group, coloured arrows. */
+const LAUNCH_FLOW = JSON.stringify(
+  {
+    nodes: [
+      {
+        id: 'f0',
+        type: 'group',
+        label: 'Phase 1: brief',
+        x: -40,
+        y: -60,
+        width: 1000,
+        height: 340,
+        color: '5',
+      },
+      {
+        id: 'f1',
+        type: 'text',
+        text: 'Kickoff',
+        x: 0,
+        y: 40,
+        width: 200,
+        height: 100,
+        styleAttributes: { shape: 'pill' },
+      },
+      {
+        id: 'f2',
+        type: 'text',
+        text: '## Draft brief\nGoals, audience, budget',
+        x: 280,
+        y: 0,
+        width: 300,
+        height: 180,
+        color: '3',
+      },
+      {
+        id: 'f3',
+        type: 'text',
+        text: 'Client approves?',
+        x: 660,
+        y: 0,
+        width: 260,
+        height: 180,
+        styleAttributes: { shape: 'diamond' },
+      },
+      {
+        id: 'f4',
+        type: 'text',
+        text: 'Feedback round',
+        x: 640,
+        y: 380,
+        width: 300,
+        height: 120,
+        color: '2',
+        styleAttributes: { shape: 'parallelogram' },
+      },
+      {
+        id: 'f5',
+        type: 'text',
+        text: '## Build\n- Identity\n- Site',
+        x: 1060,
+        y: 0,
+        width: 280,
+        height: 180,
+        color: '4',
+      },
+      {
+        id: 'f6',
+        type: 'text',
+        text: 'Launch',
+        x: 1440,
+        y: 10,
+        width: 160,
+        height: 160,
+        color: '6',
+        styleAttributes: { shape: 'circle' },
+      },
+    ],
+    edges: [
+      { id: 'e1', fromNode: 'f1', fromSide: 'right', toNode: 'f2', toSide: 'left' },
+      { id: 'e2', fromNode: 'f2', fromSide: 'right', toNode: 'f3', toSide: 'left' },
+      {
+        id: 'e3',
+        fromNode: 'f3',
+        fromSide: 'right',
+        toNode: 'f5',
+        toSide: 'left',
+        label: 'yes',
+        color: '4',
+      },
+      {
+        id: 'e4',
+        fromNode: 'f3',
+        fromSide: 'bottom',
+        toNode: 'f4',
+        toSide: 'top',
+        label: 'no',
+        color: '1',
+      },
+      { id: 'e5', fromNode: 'f4', fromSide: 'left', toNode: 'f2', toSide: 'bottom' },
+      { id: 'e6', fromNode: 'f5', fromSide: 'right', toNode: 'f6', toSide: 'left' },
+    ],
+  },
+  null,
+  '\t',
+)
+
+const STUDIO_MAP = JSON.stringify(
+  {
+    nodes: [
+      {
+        id: '6f2c1a0b9e8d7c6a',
+        type: 'group',
+        label: 'Studio',
+        x: 0,
+        y: 0,
+        width: 1320,
+        height: 360,
+      },
+      {
+        id: '1a2b3c4d5e6f7081',
+        type: 'file',
+        file: 'Projects/Studio/Brief.md',
+        x: 40,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '2a2b3c4d5e6f7082',
+        type: 'file',
+        file: 'Projects/Studio/Identity.md',
+        x: 480,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '3a2b3c4d5e6f7083',
+        type: 'file',
+        file: 'Projects/Studio/Palette.md',
+        x: 920,
+        y: 40,
+        width: 400,
+        height: 280,
+      },
+      {
+        id: '8a9b0c1d2e3f4051',
+        type: 'text',
+        text: '## Open questions\n- Which route goes to the client?\n- Print or screen first?',
+        x: 0,
+        y: 480,
+        width: 400,
+        height: 200,
+        color: '4',
+      },
+      {
+        id: '9a9b0c1d2e3f4052',
+        type: 'file',
+        file: 'assets/moodboard.png',
+        x: 480,
+        y: 480,
+        width: 400,
+        height: 260,
+      },
+    ],
+    edges: [
+      {
+        id: 'f0e1d2c3b4a59687',
+        fromNode: '1a2b3c4d5e6f7081',
+        toNode: '2a2b3c4d5e6f7082',
+        label: 'shapes',
+      },
+      {
+        id: 'f1e1d2c3b4a59688',
+        fromNode: '8a9b0c1d2e3f4051',
+        fromSide: 'top',
+        toNode: '1a2b3c4d5e6f7081',
+        toSide: 'bottom',
+      },
+    ],
+  },
+  null,
+  '\t',
+)
+
+/**
+ * A 160-card board (note cards with live previews, chained by arrows), the
+ * canvas screen's perf case: drag one card on it with the CPU throttled.
+ */
+function bigBoard(notes: readonly string[]): string {
+  const nodes = Array.from({ length: 160 }, (_, index) => ({
+    id: `big${index.toString(16).padStart(13, '0')}`,
+    type: 'file',
+    file: notes[index % notes.length],
+    x: (index % 16) * 440,
+    y: Math.floor(index / 16) * 320,
+    width: 400,
+    height: 280,
+  }))
+  const edges = nodes.slice(1).map((node, index) => ({
+    id: `edge${index.toString(16).padStart(12, '0')}`,
+    fromNode: nodes[index]!.id,
+    toNode: node.id,
+  }))
+  return JSON.stringify({ nodes, edges })
+}
+
 /** Build the vault; needs a DOM (it paints its images on a canvas). */
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
@@ -135,6 +343,8 @@ export function seedVisualVault(): VisualVaultSeed {
   for (const [path, text] of LOOSE_DOCUMENTS) {
     assets.set(path, btoa(text))
   }
+  assets.set('Maps/Studio map.canvas', btoa(STUDIO_MAP))
+  assets.set('Maps/Launch flow.canvas', btoa(LAUNCH_FLOW))
   const files: Record<string, string> = {
     'notes/Kore brand directions.md': [
       '---',
@@ -234,5 +444,6 @@ export function seedVisualVault(): VisualVaultSeed {
       ),
     ].join('\n'),
   }
+  assets.set('Maps/Big board.canvas', btoa(bigBoard(Object.keys(files))))
   return { files, assets }
 }

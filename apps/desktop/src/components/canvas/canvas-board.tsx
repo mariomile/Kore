@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   type ReactElement,
 } from 'react'
@@ -13,7 +14,6 @@ import {
   canvasBounds,
   isBasePath,
   isCanvasPath,
-  layoutCanvasEdges,
   type CanvasDocument,
   type CanvasNode,
 } from '@kore/core'
@@ -24,8 +24,12 @@ import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-import { canvasColor } from './canvas-colors'
-import { CanvasCard, type CanvasCardActions } from './canvas-card'
+import { cn } from '@/lib/utils'
+import type { CanvasCardActions } from './canvas-card'
+import { CanvasLayer } from './canvas-layer'
+import { CanvasAddTools, CanvasToolBox, CanvasToolButton } from './canvas-toolbar'
+import type { CanvasEditor } from './use-canvas'
+import { useCanvasEditing, type CanvasViewport } from './use-canvas-editing'
 
 interface Viewport {
   /** Screen offset of the canvas origin inside the board. */
@@ -82,39 +86,41 @@ interface CanvasBoardProps {
   canvas: CanvasDocument
   /** Accessible name of the board (the canvas's name). */
   label: string
+  /** Writes the file; null keeps the board a view (the iPhone). */
+  editor: CanvasEditor | null
 }
 
 /**
  * The pannable, zoomable board a canvas is drawn on. Groups sit behind
- * cards, edges run between them in an SVG layer, and nothing on the board
- * can move or change: it is a view of the file.
+ * cards and edges run between them in an SVG layer.
  *
  * Trackpad scroll pans, pinch (or ⌘/Ctrl + scroll) zooms around the
  * pointer, dragging the background pans; with the board focused, arrows
  * pan, `+`/`-` zoom and `0` fits the whole canvas.
+ *
+ * With an `editor` (the Mac) a card is clicked to select it, dragged to
+ * move it (a group by its label, with the cards inside it) and resized by
+ * its corner; a double click edits a text card, Backspace removes the
+ * selection, ⌘Z undoes, and the bottom-left box adds note and text cards.
  */
-export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
+export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): ReactElement {
   const boardRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<Viewport | null>(null)
-  const edges = useMemo(() => layoutCanvasEdges(canvas), [canvas])
-  // Groups first so they stay behind the cards they hold; file order
-  // (JSON Canvas's z-order) is kept within each layer.
-  const nodes = useMemo(
-    (): CanvasNode[] => [
-      ...canvas.nodes.filter((node) => node.type === 'group'),
-      ...canvas.nodes.filter((node) => node.type !== 'group'),
-    ],
-    [canvas],
-  )
+  const editing = useCanvasEditing(file, editor)
+  const { canvas } = editing
   const bounds = useMemo(() => canvasBounds(canvas.nodes), [canvas])
   const actions = useCardActions()
 
+  // Fit reads the latest file but runs only on open and on `0`: an edit
+  // must not move the view under the hand that made it.
+  const fileRef = useRef(file)
+  fileRef.current = file
   const fit = useCallback(() => {
     const board = boardRef.current
     if (board !== null) {
-      setView(fitViewport(canvas, board.clientWidth, board.clientHeight))
+      setView(fitViewport(fileRef.current, board.clientWidth, board.clientHeight))
     }
-  }, [canvas])
+  }, [])
 
   useLayoutEffect(() => {
     fit()
@@ -160,14 +166,37 @@ export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
   }, [])
 
   const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null)
+  /** The board's view for the editing gestures: screen points to canvas units. */
+  const viewport = (current: Viewport): CanvasViewport => ({
+    zoom: current.zoom,
+    toCanvas: (clientX, clientY) => {
+      const rect = boardRef.current!.getBoundingClientRect()
+      return {
+        x: (clientX - rect.left - current.x) / current.zoom,
+        y: (clientY - rect.top - current.y) / current.zoom,
+      }
+    },
+  })
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
-    if (event.button !== 0 || (event.target as Element).closest('[data-canvas-card]') !== null) {
+    if (editing.pointerDown(event)) {
+      event.currentTarget.focus({ preventScroll: true })
       return
     }
+    // A card's own content and the selection's menu keep their presses.
+    if (
+      event.button !== 0 ||
+      (event.target as Element).closest('[data-canvas-card], [data-canvas-ui]') !== null
+    ) {
+      return
+    }
+    editing.select(null)
     drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    if (view !== null && editing.pointerMove(event, viewport(view))) {
+      return
+    }
     const start = drag.current
     if (start === null || start.pointerId !== event.pointerId) {
       return
@@ -180,13 +209,19 @@ export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
     )
   }
   const endDrag = (event: PointerEvent<HTMLDivElement>): void => {
+    if (view !== null && editing.pointerUp(event, viewport(view))) {
+      return
+    }
     if (drag.current?.pointerId === event.pointerId) {
       drag.current = null
     }
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.target !== event.currentTarget || event.metaKey || event.ctrlKey || event.altKey) {
+    if (event.target !== event.currentTarget || (editor !== null && editKey(event))) {
+      return
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) {
       return
     }
     const pan = (dx: number, dy: number): void => {
@@ -223,6 +258,42 @@ export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
     event.preventDefault()
   }
 
+  /** The board's editing keys; true when the key was one (and was handled). */
+  const editKey = (event: KeyboardEvent<HTMLDivElement>): boolean => {
+    const mod = event.metaKey || event.ctrlKey
+    if (mod && !event.shiftKey && event.key.toLowerCase() === 'z') {
+      void editor?.undo()
+    } else if (!mod && (event.key === 'Backspace' || event.key === 'Delete')) {
+      editing.removeSelected()
+    } else if (event.key === 'Escape' && editing.selectedId !== null) {
+      editing.select(null)
+    } else {
+      return false
+    }
+    event.preventDefault()
+    return true
+  }
+
+  const onDoubleClick = (event: MouseEvent<HTMLDivElement>): void => {
+    const id = (event.target as Element).closest<HTMLElement>('[data-canvas-node-id]')?.dataset
+      .canvasNodeId
+    const editable = (node: CanvasNode): boolean => node.type === 'text' || node.type === 'group'
+    if (id !== undefined && canvas.nodes.some((node) => node.id === id && editable(node))) {
+      editing.editText(id)
+    }
+  }
+
+  /** The canvas point at the middle of the board: where a new card goes. */
+  const boardCenter = (): { x: number; y: number } => {
+    const board = boardRef.current
+    if (board === null || view === null) {
+      return { x: 0, y: 0 }
+    }
+    return {
+      x: (board.clientWidth / 2 - view.x) / view.zoom,
+      y: (board.clientHeight / 2 - view.y) / view.zoom,
+    }
+  }
   return (
     <div className="relative min-h-0 flex-1">
       <div
@@ -237,63 +308,62 @@ export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
-        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-surface-sunken outline-none active:cursor-grabbing"
+        onDoubleClick={editor === null ? undefined : onDoubleClick}
+        className={cn(
+          'absolute inset-0 cursor-grab touch-none overflow-hidden bg-surface-sunken outline-none active:cursor-grabbing',
+          editing.dragging && 'select-none',
+        )}
       >
         {view !== null && bounds !== null ? (
           <div
             className="absolute left-0 top-0 origin-top-left"
             style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
           >
-            {nodes.map((node) => (
-              <CanvasCard key={node.id} node={node} zoom={view.zoom} actions={actions} />
-            ))}
-            <svg
-              aria-hidden
-              className="pointer-events-none absolute overflow-visible"
-              style={{ left: 0, top: 0, width: 1, height: 1 }}
-            >
-              {edges.map((layout) => {
-                const color = canvasColor(layout.edge.color) ?? 'var(--color-text-muted)'
-                return (
-                  <g key={layout.edge.id} data-testid="canvas-edge">
-                    <path d={layout.path} fill="none" stroke={color} strokeWidth={2} />
-                    {layout.arrows.map((points) => (
-                      <polygon key={points} points={points} fill={color} />
-                    ))}
-                  </g>
-                )
-              })}
-            </svg>
-            {edges.map((layout) =>
-              layout.edge.label === null ? null : (
-                <span
-                  key={layout.edge.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-sm bg-surface-sunken px-1.5 py-0.5 text-xs text-text-secondary"
-                  style={{ left: layout.labelAt.x, top: layout.labelAt.y }}
-                >
-                  {layout.edge.label}
-                </span>
-              ),
-            )}
+            <CanvasLayer
+              canvas={canvas}
+              zoom={view.zoom}
+              actions={actions}
+              editable={editor !== null}
+              editingId={editing.editingId}
+              selectedId={editing.selectedId}
+              pendingEdge={editing.pendingEdge}
+              onCommitText={editing.commitText}
+              onColor={editing.colorSelected}
+              onShape={editing.shapeSelected}
+              onRemove={editing.removeSelected}
+            />
           </div>
         ) : null}
       </div>
-      <div className="absolute bottom-3 right-3 flex items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 shadow-sm">
-        <ZoomButton label="Zoom out" onClick={() => zoomBy(1 / 1.2)}>
+      {editor === null ? null : (
+        <CanvasAddTools
+          onAddNote={(path) => {
+            editing.add({ type: 'file', file: path }, boardCenter())
+          }}
+          onAddText={() => {
+            editing.add({ type: 'text' }, boardCenter())
+          }}
+          onAddGroup={() => {
+            editing.add({ type: 'group' }, boardCenter())
+          }}
+        />
+      )}
+      <CanvasToolBox className="right-3">
+        <CanvasToolButton label="Zoom out" onClick={() => zoomBy(1 / 1.2)}>
           <span aria-hidden className="text-base leading-none">
             −
           </span>
-        </ZoomButton>
+        </CanvasToolButton>
         <span className="w-11 text-center text-xs tabular-nums text-text-muted">
           {view === null ? '' : `${Math.round(view.zoom * 100)}%`}
         </span>
-        <ZoomButton label="Zoom in" onClick={() => zoomBy(1.2)}>
+        <CanvasToolButton label="Zoom in" onClick={() => zoomBy(1.2)}>
           <Plus aria-hidden className="size-3.5" />
-        </ZoomButton>
-        <ZoomButton label="Fit canvas" onClick={fit}>
+        </CanvasToolButton>
+        <CanvasToolButton label="Fit canvas" onClick={fit}>
           <Locate aria-hidden className="size-3.5" />
-        </ZoomButton>
-      </div>
+        </CanvasToolButton>
+      </CanvasToolBox>
     </div>
   )
 }
@@ -324,27 +394,5 @@ function useCardActions(): CanvasCardActions {
       resolveImageUrl,
     }),
     [navigate, navigateNoteLink, openAsset, openWikiLink, resolveImageUrl],
-  )
-}
-
-function ZoomButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  children: ReactElement
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-    >
-      {children}
-    </button>
   )
 }

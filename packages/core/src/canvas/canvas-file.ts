@@ -3,7 +3,8 @@ import { z } from 'zod'
 /**
  * The `.canvas` file format (JSON Canvas 1.0, https://jsoncanvas.org), as
  * Obsidian writes it: a `nodes` array in z-order and an `edges` array.
- * Kore reads it as is and never writes it, so the file stays Obsidian's.
+ * Kore draws it from this parsed view and edits the file's own JSON
+ * (see `applyCanvasEdits`), so the file stays Obsidian's.
  *
  * Parsing is lenient: unknown keys are ignored, and a node or edge that
  * lacks what it needs to be drawn (an id, a position, a size, a known type;
@@ -11,6 +12,14 @@ import { z } from 'zod'
  */
 
 export type CanvasSide = 'top' | 'right' | 'bottom' | 'left'
+
+/**
+ * A text card's flowchart shape, as the Advanced Canvas plugin stores it
+ * (`styleAttributes.shape`); plain Obsidian draws every one as a rectangle.
+ */
+export type CanvasShape = 'pill' | 'diamond' | 'circle' | 'parallelogram'
+
+export const CANVAS_SHAPES: readonly CanvasShape[] = ['pill', 'diamond', 'circle', 'parallelogram']
 
 interface CanvasNodeBase {
   readonly id: string
@@ -23,7 +32,12 @@ interface CanvasNodeBase {
 }
 
 export type CanvasNode =
-  | (CanvasNodeBase & { readonly type: 'text'; readonly text: string })
+  | (CanvasNodeBase & {
+      readonly type: 'text'
+      readonly text: string
+      /** Null for the default rounded rectangle (and any shape Kore doesn't draw). */
+      readonly shape: CanvasShape | null
+    })
   | (CanvasNodeBase & {
       readonly type: 'file'
       /** Vault-relative path of the note or attachment. */
@@ -72,6 +86,12 @@ function side(value: unknown): CanvasSide | null {
     : null
 }
 
+function shape(value: unknown): CanvasShape | null {
+  const record = looseRecord.safeParse(value)
+  const raw = record.success ? record.data.shape : undefined
+  return CANVAS_SHAPES.find((candidate) => candidate === raw) ?? null
+}
+
 function parseNode(node: unknown): CanvasNode | null {
   const record = looseRecord.safeParse(node)
   if (!record.success) {
@@ -92,7 +112,12 @@ function parseNode(node: unknown): CanvasNode | null {
   const base = { id, x, y, width, height, color: text(data.color) }
   switch (data.type) {
     case 'text':
-      return { ...base, type: 'text', text: typeof data.text === 'string' ? data.text : '' }
+      return {
+        ...base,
+        type: 'text',
+        text: typeof data.text === 'string' ? data.text : '',
+        shape: shape(data.styleAttributes),
+      }
     case 'file': {
       const file = text(data.file)
       if (file === null) {

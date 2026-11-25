@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { HostToolRunner } from './chat/host-tools'
-import type { NoteToolCall } from './chat/tools-activity'
+import { fakeHostTools as fakeTools } from './chat/host-tools.fixtures'
 import { claudeKoreArgs, createClaudeKoreSession, KORE_MCP_SERVER } from './claude-kore'
 
 const readNote = { toolCallId: '', name: 'read_note', input: {} }
-
-function fakeTools(run: HostToolRunner['run']): HostToolRunner {
-  return {
-    specs: [{ name: 'read_note', description: 'Read a note', parameters: { type: 'object' } }],
-    describe: async (request) =>
-      ({ id: request.toolCallId, kind: 'read' }) as unknown as NoteToolCall,
-    run,
-  }
-}
 
 function controlLine(requestId: string, message: Record<string, unknown>): string {
   return JSON.stringify({

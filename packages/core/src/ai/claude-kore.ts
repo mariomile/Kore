@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { ModelMessage } from 'ai'
 import type { ChatStreamEvent, ChatSteering } from './chat/stream-chat'
-import type { HostToolRunner } from './chat/host-tools'
+import { answerHostTool, type HostToolRunner } from './chat/host-tools'
 import { agentCliInput } from './agent-cli-input'
 import { streamAgentCliTurn, type AgentCliChunk } from './agent-cli'
 import {
@@ -106,35 +106,25 @@ export function createClaudeKoreSession(
   const baseParse = createClaudeCliLineParser('')
 
   const callTool = async (message: McpMessage, id: string | number): Promise<McpReply> => {
-    const meta = message.params?._meta ?? {}
-    const toolUseId = meta['claudecode/toolUseId']
-    const request = {
-      toolCallId: typeof toolUseId === 'string' ? toolUseId : `kore-${String(id)}`,
-      name: message.params?.name ?? '',
-      input: message.params?.arguments ?? {},
+    const toolUseId = message.params?._meta?.['claudecode/toolUseId']
+    const answer = await answerHostTool(
+      tools,
+      {
+        toolCallId: typeof toolUseId === 'string' ? toolUseId : `kore-${String(id)}`,
+        name: message.params?.name ?? '',
+        input: message.params?.arguments ?? {},
+      },
+      signal,
+    )
+    pending.push(...answer.events.map((event): AgentCliChunk => ({ type: 'event', event })))
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [{ type: 'text', text: answer.text }],
+        ...(answer.isError ? { isError: true } : {}),
+      },
     }
-    const call = await tools.describe(request)
-    if (call !== null) {
-      pending.push({ type: 'event', event: { type: 'tool-call', call } })
-    }
-    const outcome = await tools.run(request, signal)
-    if (!outcome.ok) {
-      pending.push({
-        type: 'event',
-        event: { type: 'tool-error', toolCallId: request.toolCallId, message: outcome.error },
-      })
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: { content: [{ type: 'text', text: outcome.error }], isError: true },
-      }
-    }
-    if (outcome.result !== null) {
-      pending.push({ type: 'event', event: { type: 'tool-result', result: outcome.result } })
-    }
-    const text =
-      typeof outcome.output === 'string' ? outcome.output : JSON.stringify(outcome.output ?? null)
-    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } }
   }
 
   const answer = async (message: McpMessage): Promise<McpReply> => {

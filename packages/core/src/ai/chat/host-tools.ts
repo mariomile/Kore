@@ -1,4 +1,5 @@
 import type { ToolExecutionOptions, TypedToolCall, TypedToolResult } from 'ai'
+import type { ChatStreamEvent } from './stream-chat'
 import { errorMessage } from '../../errors'
 import { loadAiSdk } from '../load-sdk'
 import type { NoteTools } from './tools'
@@ -137,4 +138,41 @@ export async function createHostToolRunner(
       }
     },
   }
+}
+
+/** A hosted call's answer for the harness and its events for the transcript. */
+export interface HostToolAnswer {
+  /** The model-facing output as text (JSON for structured outputs). */
+  text: string
+  isError: boolean
+  /** The call, then its result or error, in the chat engine's vocabulary. */
+  events: Extract<ChatStreamEvent, { type: 'tool-call' | 'tool-result' | 'tool-error' }>[]
+}
+
+/**
+ * Describe, run and report one call the way every harness needs it: the
+ * transcript events (a proposal card, a tool chip, an error) and the text
+ * the model gets back.
+ */
+export async function answerHostTool(
+  runner: HostToolRunner,
+  request: HostToolRequest,
+  signal?: AbortSignal,
+): Promise<HostToolAnswer> {
+  const events: HostToolAnswer['events'] = []
+  const call = await runner.describe(request)
+  if (call !== null) {
+    events.push({ type: 'tool-call', call })
+  }
+  const outcome = await runner.run(request, signal)
+  if (!outcome.ok) {
+    events.push({ type: 'tool-error', toolCallId: request.toolCallId, message: outcome.error })
+    return { text: outcome.error, isError: true, events }
+  }
+  if (outcome.result !== null) {
+    events.push({ type: 'tool-result', result: outcome.result })
+  }
+  const text =
+    typeof outcome.output === 'string' ? outcome.output : JSON.stringify(outcome.output ?? null)
+  return { text, isError: false, events }
 }

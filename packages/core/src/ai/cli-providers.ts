@@ -21,12 +21,13 @@ export function isCliAgentProvider(id: AiProviderId): id is CliAgentProviderId {
 
 /**
  * Whether the CLI engine's chat runs Kore's own tools instead of its file
- * tools: Claude Code mounts the chat tool catalog as an MCP server, so its
- * chat turn is the chat engine's (`streamChat`) with the same privacy gate
- * and proposal cards. Agent routines still use its file tools.
+ * tools: Claude Code mounts the chat tool catalog as an MCP server, Codex
+ * as dynamic tools, so their chat turn is the chat engine's (`streamChat`)
+ * with the same privacy gate and proposal cards. Agent routines still use
+ * their file tools.
  */
 export function cliChatRunsKoreTools(id: AiProviderId): boolean {
-  return id === 'claude-cli'
+  return id === 'claude-cli' || id === 'codex-cli'
 }
 
 /**

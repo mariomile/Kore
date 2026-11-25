@@ -3,6 +3,7 @@ import { errorMessage } from '../../errors'
 import { languageModel } from '../language-model'
 import { loadAiSdk } from '../load-sdk'
 import { streamClaudeKoreChat } from '../claude-kore'
+import { streamCodexKoreChat } from '../codex-kore'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
@@ -77,7 +78,7 @@ export interface StreamChatOptions {
   steering?: ChatSteering | undefined
   /**
    * The user's MCP servers for this turn (the Tools toggle or Full Access).
-   * Only an engine that can mount them uses them (Claude Code); the API-key
+   * Only an engine that can mount them uses them (Claude Code, Codex); the API-key
    * loop has no MCP client.
    */
   mcpServers?: ResolvedMcpServer[] | undefined
@@ -146,11 +147,14 @@ export async function* streamChat(options: StreamChatOptions): AsyncGenerator<Ch
     signal: options.signal,
     steering: options.steering,
   }
-  if (options.config.provider === 'claude-cli') {
-    // Claude Code runs the loop on the user's subscription; the tools,
-    // prompt and proposal cards are this engine's own (see `../claude-kore`).
+  if (options.config.provider === 'claude-cli' || options.config.provider === 'codex-cli') {
+    // A subscription CLI runs the loop on the user's own account; the
+    // tools, prompt and proposal cards are this engine's own (see
+    // `../claude-kore`, `../codex-kore`).
     const setup = chatTurnSetup(turn)
-    yield* streamClaudeKoreChat({
+    const run =
+      options.config.provider === 'claude-cli' ? streamClaudeKoreChat : streamCodexKoreChat
+    yield* run({
       model: options.config.model,
       instructions: setup.instructions,
       messages,

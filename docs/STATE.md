@@ -1,5 +1,11 @@
 # Kore working state
 
+## Agents draw canvas boards, 2026-11-25 (0.149.0)
+
+- [x] `kore canvas <folder>` and MCP `draw_canvas` turn a folder into a JSON
+  Canvas board (notes as cards, subfolders as groups, wiki links as arrows);
+  new kore-canvas agent skill for mind maps and moodboards. CLI only (#672).
+
 ## Edge-to-edge covers and tabs in the sidebar, 2026-11-24 (0.148.0)
 
 - [x] Cover flush to the top of the page with the folder path in a frosted

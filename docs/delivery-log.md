@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- CLI: `kore canvas` draws a folder as a canvas board, kore-canvas skill (#672).
 - Note page: edge-to-edge cover with folder pill, Tabs in sidebar setting,
   rail fade-in (#669).
 - Folders: manage folders from iPhone and move notes to a folder (#665).

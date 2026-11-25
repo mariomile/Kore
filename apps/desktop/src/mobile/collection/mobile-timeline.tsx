@@ -12,7 +12,7 @@ import { daysBetween, type TimelineFields } from '@/lib/tags/timeline-layout'
 import { useTimelineLayout } from '@/lib/tags/use-timeline-layout'
 import { ChevronLeft, ChevronRight } from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 const ROW_HEIGHT = 44
 const GROUP_HEIGHT = 40
@@ -93,12 +93,11 @@ export function MobileTimeline({
   }, [hasItems])
 
   const scrollToBar = (left: number): void => {
-    hapticImpactLight()
     scrollRef.current?.scrollTo({ left: Math.max(0, left - GUTTER * 2), behavior: 'smooth' })
   }
 
   const pickZoom = (next: TimelineZoom): void => {
-    hapticImpactLight()
+    haptic('selection')
     onZoomChange(next)
   }
 
@@ -136,7 +135,6 @@ export function MobileTimeline({
           <button
             type="button"
             onClick={() => {
-              hapticImpactLight()
               scrollRef.current?.scrollTo({ left: todayScrollLeft(), behavior: 'smooth' })
             }}
             className="h-8 rounded-full bg-surface-hover px-3.5 text-[13px] font-medium text-text active:opacity-60"
@@ -307,7 +305,6 @@ function MobileTimelineRow({
         type="button"
         aria-label={label}
         onClick={() => {
-          hapticImpactLight()
           onOpen()
         }}
         style={{ left }}

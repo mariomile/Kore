@@ -103,8 +103,8 @@ vi.mock('@/lib/operations', () => ({
   }),
 }))
 
-vi.mock('@/mobile/haptics', () => ({
-  hapticImpactLight: vi.fn(),
+vi.mock('@/lib/haptics', () => ({
+  haptic: vi.fn(),
 }))
 
 vi.mock('@/mobile/use-native-audio-recorder', () => ({

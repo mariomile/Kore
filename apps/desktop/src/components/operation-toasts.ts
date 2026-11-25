@@ -61,7 +61,7 @@ function showOperationToast(operation: Operation): void {
     case 'failed':
       toast.add({ ...options, type: 'error' })
       // Background failures deserve a physical knock, not just a red toast.
-      haptic('generic')
+      haptic('error')
       break
     case 'warning':
       toast.add({ ...options, type: 'warning' })

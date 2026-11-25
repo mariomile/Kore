@@ -23,6 +23,7 @@ import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { SidebarDisclosure } from './sidebar-disclosure'
 import { SidebarIconSlot } from './sidebar-icon-slot'
 import { SIDEBAR_TREE_ITEM_CLASS, sidebarRowState, sidebarTreePadding } from './sidebar-row-style'
+import { DragHaptics } from '@/components/drag-haptics'
 
 interface SidebarTabsProps {
   /** Runs "New tab" (a new note), the same command as the strip's "+". */
@@ -56,6 +57,7 @@ export function SidebarTabs({ context }: SidebarTabsProps): ReactElement {
   return (
     <SidebarDisclosure storageKey="tabs" title="Tabs" label="Tabs">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DragHaptics />
         <SortableContext
           items={items.map((item) => tabKey(item.tab))}
           strategy={verticalListSortingStrategy}

@@ -14,7 +14,7 @@ import { isNativeShell } from '@/lib/platform'
 import { useRouter } from '@/routing/router'
 import { useSettings } from '@/providers/settings-provider'
 import type { AudioMemoPhase } from '@/providers/audio-memo-provider'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import {
   deleteStagedRecording,
   isMicDeniedError,
@@ -193,7 +193,7 @@ export function MobileAudioMemoProvider({
     }
     try {
       await startRecorder()
-      hapticImpactLight()
+      haptic('lift')
     } catch (cause) {
       pipeline.reportError(isMicDeniedError(cause) ? MIC_DENIED_REASON : errorMessage(cause))
     }
@@ -220,7 +220,7 @@ export function MobileAudioMemoProvider({
           stagedPath: recording.stagedPath,
         })
       }
-      hapticImpactLight()
+      haptic('success')
     } catch (cause) {
       // A native stop (interruption, backgrounding) won the race — its
       // `recordingStopped` event delivers the memo instead.

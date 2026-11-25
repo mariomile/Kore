@@ -34,7 +34,7 @@ export {
   type StagedRecordingFile,
   type StartRecordingOptions,
 } from '../ipc/recording-plugin'
-export { impactLight } from '../ipc/keyboard-plugin'
+export { iosHaptic, type IosHapticStyle } from '../ipc/keyboard-plugin'
 export {
   getAppVersion,
   getAppPlatform,

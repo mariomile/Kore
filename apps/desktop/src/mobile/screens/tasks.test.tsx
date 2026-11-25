@@ -23,7 +23,7 @@ import { MobileTasks } from './tasks'
 const getOpenTasks = vi.hoisted(() => vi.fn())
 const getCompletedTasks = vi.hoisted(() => vi.fn())
 const resolveOrCreateNoteWithTitle = vi.hoisted(() => vi.fn())
-const hapticImpactLight = vi.hoisted(() => vi.fn())
+const haptic = vi.hoisted(() => vi.fn())
 vi.mock('@kore/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kore/core')>()),
   hasBridge: () => true,
@@ -111,8 +111,8 @@ vi.mock('@/editor/use-editor-autocomplete', () => ({
     onTagSearch: async () => [],
   }),
 }))
-vi.mock('@/mobile/haptics', () => ({
-  hapticImpactLight,
+vi.mock('@/lib/haptics', () => ({
+  haptic,
 }))
 
 const editorProbe = vi.hoisted(() => ({ focusCalls: 0 }))
@@ -313,7 +313,7 @@ beforeEach(async () => {
     kind: 'resolved',
     path: 'notes/other.md',
   })
-  hapticImpactLight.mockClear()
+  haptic.mockClear()
   editorProbe.focusCalls = 0
   resetRecentlyCompleted()
 })
@@ -384,32 +384,31 @@ describe('MobileTasks', () => {
 
     await user.click(await view.findByRole('button', { name: 'Complete: buy milk' }))
 
-    expect(hapticImpactLight).toHaveBeenCalledTimes(1)
+    expect(haptic.mock.calls).toEqual([['toggle']])
     expect(toggleTask).toHaveBeenCalledTimes(1)
     // V1's middle state: the completed row stays visible, struck, reopenable.
     await view.findByRole('button', { name: 'Reopen: buy milk' })
 
     // Archive hides this session's completed rows.
     await user.click(view.getByRole('button', { name: 'Archive 1 completed' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(haptic.mock.calls).toEqual([['toggle'], ['success']])
     await waitFor(() => expect(view.queryByText('buy milk')).toBeNull())
     await view.unmount()
   })
 
-  it('fires light haptics for task list controls', async () => {
+  it('keeps task list navigation silent and ticks filter toggles', async () => {
     getOpenTasks.mockResolvedValue([task({ text: 'buy milk' })])
     const user = userEvent
     const view = await renderScreen()
 
+    // Opening the edit sheet and the filters drawer is navigation.
     await user.click(await view.findByRole('button', { name: 'Edit: buy milk' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(1)
-
     await user.click(view.getByRole('button', { name: 'dismiss-drawer' }))
     await user.click(view.getByRole('button', { name: 'Task filters' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(haptic).not.toHaveBeenCalled()
 
     await user.click(view.getByRole('checkbox', { name: 'Current' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(3)
+    expect(haptic.mock.calls).toEqual([['toggle']])
 
     await user.click(view.getByRole('button', { name: 'dismiss-drawer' }))
     await view.unmount()
@@ -477,25 +476,25 @@ describe('MobileTasks', () => {
     await view.unmount()
   })
 
-  it('fires light haptics for task sheet scheduling and actions', async () => {
+  it('ticks task sheet scheduling and actions, not the date picker opening', async () => {
     getOpenTasks.mockResolvedValue([task({ text: 'buy milk' })])
     const user = userEvent
     const view = await renderScreen()
 
     await user.click(await view.findByRole('button', { name: 'Edit: buy milk' }))
-    hapticImpactLight.mockClear()
+    haptic.mockClear()
 
     await user.click(view.getByRole('button', { name: 'Pick date' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(1)
+    expect(haptic).not.toHaveBeenCalled()
 
     await user.click(view.getByRole('button', { name: 'Tomorrow' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(2)
+    expect(haptic.mock.calls).toEqual([['selection']])
 
     await user.click(view.getByRole('button', { name: 'Clear' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(3)
+    expect(haptic.mock.calls).toEqual([['selection'], ['selection']])
 
     await user.click(view.getByRole('button', { name: 'Convert to bullet' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(4)
+    expect(haptic.mock.calls).toEqual([['selection'], ['selection'], ['action']])
     await waitFor(() => expect(convertTaskToBullet).toHaveBeenCalledTimes(1))
     await view.unmount()
   })

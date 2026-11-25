@@ -1,10 +1,10 @@
 ## Default Permission
 
-Fire light impact haptics
+Play native haptics
 
 #### This default permission set includes the following:
 
-- `allow-impact-light`
+- `allow-haptic`
 
 ## Permission Table
 
@@ -18,12 +18,12 @@ Fire light impact haptics
 <tr>
 <td>
 
-`keyboard:allow-impact-light`
+`keyboard:allow-haptic`
 
 </td>
 <td>
 
-Enables the impact_light command without any pre-configured scope.
+Enables the haptic command without any pre-configured scope.
 
 </td>
 </tr>
@@ -31,12 +31,12 @@ Enables the impact_light command without any pre-configured scope.
 <tr>
 <td>
 
-`keyboard:deny-impact-light`
+`keyboard:deny-haptic`
 
 </td>
 <td>
 
-Denies the impact_light command without any pre-configured scope.
+Denies the haptic command without any pre-configured scope.
 
 </td>
 </tr>

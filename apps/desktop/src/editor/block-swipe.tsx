@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'r
 import type { EditorExtension } from '@meowdown/core'
 import { useEditor, useExtension } from '@meowdown/react'
 import { definePlugin } from '@prosekit/core'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { startBlockDrag, type BlockDrag } from './block-drag'
 import {
   createBlockSelectionCommands,
@@ -244,7 +244,7 @@ export function BlockSwipeGestures({
             return
           }
         }
-        hapticImpactLight()
+        haptic('selection')
       }
 
       const onTouchStart = (event: TouchEvent): void => {
@@ -342,8 +342,8 @@ export function BlockSwipeGestures({
           // A held block that moves is being dragged to another place.
           if (event.cancelable) event.preventDefault()
           if (drag === null && Math.hypot(deltaX, deltaY) > DRAG_SLOP_PX) {
-            drag = startBlockDrag(view, startY, hapticImpactLight)
-            if (drag !== null) hapticImpactLight()
+            drag = startBlockDrag(view, startY, () => haptic('snap'))
+            if (drag !== null) haptic('lift')
           }
           drag?.move(touch.clientX, touch.clientY)
           return

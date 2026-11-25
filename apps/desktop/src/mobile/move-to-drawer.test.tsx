@@ -19,7 +19,7 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
   DrawerBody: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 
 function folder(path: string, folders: FolderTreeFolder[] = []): FolderTreeFolder {
   return { path, name: path.split('/').at(-1) ?? '', folders, notes: [], noteCount: 0 }

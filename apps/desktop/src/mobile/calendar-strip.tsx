@@ -6,7 +6,7 @@ import { addDaysIso } from '@/lib/dates'
 import { monthOf } from '@/lib/month-grid'
 import { cn } from '@/lib/utils'
 import { monthPickTarget, weekAtIndex, weekStartOf } from '@/mobile/calendar'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { MonthPickerDrawer } from '@/mobile/month-picker-drawer'
 import { MonthTitle } from '@/mobile/month-title'
 import { useDailyNoteDates } from '@/hooks/use-daily-note-dates'
@@ -72,7 +72,7 @@ export function CalendarStrip({
   const showToday = date !== today
 
   const jumpToToday = (): void => {
-    hapticImpactLight()
+    haptic('selection')
     onSelect(today)
     // Selecting today only moves the strip when `date` changes — re-center
     // explicitly so a browse-away strip snaps back even when already on today.
@@ -81,18 +81,15 @@ export function CalendarStrip({
 
   const visibleWeek = isoWeekOfCalendarRow(displayedWeekStart, weekStartDow(settings.weekStartDay))
   const openWeek = (): void => {
-    hapticImpactLight()
     navigate(weeklyRoute(visibleWeek))
   }
 
   const openSettings = (): void => {
-    hapticImpactLight()
     navigate({ kind: 'settings' })
   }
 
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const openMonthPicker = (): void => {
-    hapticImpactLight()
     setMonthPickerOpen(true)
   }
   const pickMonth = (picked: string): void => {

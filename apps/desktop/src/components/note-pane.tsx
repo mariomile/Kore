@@ -49,6 +49,7 @@ import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
 import { AutocompleteBlurDismiss } from '@/editor/autocomplete-blur-dismiss'
+import { BlockDragHaptics } from '@/editor/block-drag-haptics'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { PageBlocks } from '@/editor/page-blocks'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
@@ -672,6 +673,8 @@ export function NotePaneComponent({
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}
         {isTouchEditorSurface() ? <BlockSwipeGestures onAskAi={aiMenu.openMenu} /> : null}
+        {/* Pointer only: the grip drag knocks the trackpad as it snaps. */}
+        {isTouchEditorSurface() ? null : <BlockDragHaptics />}
         {/* Every surface: a sub page reads as a card, a tap zooms into it. */}
         <PageBlocks
           {...(openPageOnItsScreen !== undefined ? { onOpenPage: openPageOnItsScreen } : {})}

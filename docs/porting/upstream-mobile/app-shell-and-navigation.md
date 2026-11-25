@@ -90,7 +90,7 @@ not already present:
   variable set by `plugins/tauri-plugin-keyboard`).
 - Double-tap-tab → scroll-to-top (+ re-center Daily on today).
 - ~~Light haptics on tab presses and date selection~~ — done: the keyboard
-  plugin's `impact_light` command (`UIImpactFeedbackGenerator`), fired from
+  plugin's `haptic` command (`UIFeedbackGenerator`), fired from
   `src/mobile/haptics.ts` in the tab bar and the calendar strip.
 - Wake-to-today on foreground date change.
 - ~~Back-swipe and stack transitions on the note detail screen~~ — done:

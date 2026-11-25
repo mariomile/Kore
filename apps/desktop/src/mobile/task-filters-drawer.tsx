@@ -3,7 +3,7 @@ import { Check } from '@/components/icons'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import type { TaskFilters } from '@/lib/tasks/task-filters'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 interface TaskFiltersDrawerProps {
   open: boolean
@@ -82,7 +82,7 @@ function FilterRow({
       role="checkbox"
       aria-checked={checked}
       onClick={() => {
-        hapticImpactLight()
+        haptic('toggle')
         onToggle()
       }}
       className="flex h-12 items-center gap-3 text-left text-base"

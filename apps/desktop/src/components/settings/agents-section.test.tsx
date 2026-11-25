@@ -27,6 +27,7 @@ const SKILL_NAMES = [
   'kore-markdown',
   'kore-collections',
   'kore-agent-memory',
+  'kore-canvas',
 ]
 
 let installStates: Record<string, InstallState>

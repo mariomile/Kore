@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, type ReactElement, type Ref, type RefObject } from 'react'
 import { Search } from '@/components/icons'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 /** How far (px) a pull must travel before letting go opens search. */
 export const PULL_TO_SEARCH_THRESHOLD = 72
@@ -129,7 +129,7 @@ export function usePullToSearch({
       const progress = Math.min(1, Math.max(0, dy) / PULL_TO_SEARCH_THRESHOLD)
       const nextArmed = progress >= 1
       if (nextArmed && !armed) {
-        hapticImpactLight()
+        haptic('snap')
       }
       armed = nextArmed
       paint(progress, armed)

@@ -14,7 +14,7 @@ import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 import { folderOf } from '@/lib/notes/use-note-bulk-actions'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { FolderActionsDrawer } from '@/mobile/folder-actions-drawer'
 import { FolderRows } from '@/mobile/folder-rows'
 import { LayoutToggle } from '@/mobile/layout-toggle'
@@ -130,7 +130,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           <LayoutToggle
             view={settings.allNotesView === 'grid' ? 'grid' : 'list'}
             onChange={(view) => {
-              hapticImpactLight()
+              haptic('selection')
               updateSettings({ allNotesView: view })
             }}
           />
@@ -141,7 +141,6 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
             aria-label="Folder actions"
             aria-haspopup="dialog"
             onClick={() => {
-              hapticImpactLight()
               setActionsOpen(true)
             }}
           >

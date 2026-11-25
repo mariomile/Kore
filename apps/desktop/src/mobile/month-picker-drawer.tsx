@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { monthLabel, monthShortLabel } from '@/lib/month-grid'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 interface MonthPickerDrawerProps {
   open: boolean
@@ -90,7 +90,7 @@ export function MonthPickerDrawer({
                 aria-pressed={isSelected}
                 aria-current={isThisMonth ? 'date' : undefined}
                 onClick={() => {
-                  hapticImpactLight()
+                  haptic('selection')
                   onPick(candidate)
                 }}
                 className={cn(

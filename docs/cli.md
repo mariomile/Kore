@@ -811,6 +811,24 @@ on both sides of every check.
 }
 ```
 
+### `kore canvas <folder> [--out PATH] [--force] [--limit N] [--json]`
+
+Draws a folder as a canvas board: a `.canvas` file in JSON Canvas 1.0
+(https://jsoncanvas.org), the format Obsidian writes and Kore opens on the
+Mac and iPhone. The folder's own notes come first as a grid of note cards;
+each direct subfolder follows as a labelled group holding its notes
+(recursively); a wiki link between two notes on the board becomes an arrow.
+The layout and the node ids are deterministic (path order), so a
+regenerated board lands the same.
+
+The board is written atomically to `<folder>/<folder name>.canvas`, or to
+`--out`. An existing file is never replaced without `--force` (exit 2): a
+board someone arranged by hand is theirs. Requires the index for link
+resolution (exit 4). Private notes are neither drawn nor linked. At most
+`--limit` notes (default 120) are drawn, and the rest are reported.
+
+`--json` prints `{ path, notes, groups, edges, omitted? }`.
+
 ### `kore grep <text> [-i] [--limit N] [--json]`
 
 Every line, in every note on disk, that contains the text literally, with
@@ -989,8 +1007,9 @@ Settings → Agents installs the bundled agent skills under
 | `kore-markdown` | The note format: layout, titles, wiki links, tags, tasks, frontmatter, templates. |
 | `kore-collections` | Supertags and their schemas, property types and their YAML values, the ` ```collection ` fence, reusable collections. |
 | `kore-agent-memory` | The `agents/` folder: user profile, shared facts and log, souls, working memory, pending proposals, vault skills. |
+| `kore-canvas` | `.canvas` boards (JSON Canvas): `kore canvas <folder>`, the node and edge format Kore draws, layout rules. |
 
-The shared three are installed once, verbatim; the graph skill points at
+The shared four are installed once, verbatim; the graph skill points at
 them for formats. Every file carries a `reflect-managed` sha256 marker so
 the app can refresh its own installs without ever overwriting a hand-edited
 one (`apps/desktop/src-tauri/src/skill.rs`).
@@ -1030,6 +1049,7 @@ fails (not found, private, no index) comes back as a tool result with
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
 | `note_neighborhood`, `check_coverage` | `neighborhood`, `coverage` |
 | `graph_lint` | `lint` |
+| `draw_canvas` | `canvas` |
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 | `remember` | `capture` (to today's daily, or `--to <note>`) |

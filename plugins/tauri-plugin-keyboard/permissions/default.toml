@@ -1,3 +1,3 @@
 [default]
-description = "Fire light impact haptics"
-permissions = ["allow-impact-light"]
+description = "Play native haptics"
+permissions = ["allow-haptic"]

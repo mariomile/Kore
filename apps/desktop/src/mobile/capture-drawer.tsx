@@ -8,7 +8,7 @@ import {
   foldQuickCaptureText,
 } from '@/lib/quick-capture'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { requestCaptureDrain } from '@/providers/capture-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { refreshFieldCaret } from '@/mobile/use-keyboard'
@@ -79,7 +79,7 @@ export function MobileCaptureDrawer({
 
   /** A line landed where it was sent: confirm, clear, and close. */
   function sent(): void {
-    hapticImpactLight()
+    haptic('success')
     setText('')
     close()
   }
@@ -189,7 +189,6 @@ export function MobileCaptureDrawer({
               disabled={!recordingAvailable}
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => {
-                hapticImpactLight()
                 close()
                 onRecord()
               }}
@@ -232,7 +231,7 @@ function DestinationChip({
       aria-pressed={active}
       onPointerDown={(event) => event.preventDefault()}
       onClick={() => {
-        hapticImpactLight()
+        haptic('selection')
         onPress()
       }}
       className={cn(

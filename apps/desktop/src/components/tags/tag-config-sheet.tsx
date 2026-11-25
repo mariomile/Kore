@@ -22,6 +22,7 @@ import { TagTemplateField } from './tag-template-field'
 import { TagViewsList } from './tag-views-list'
 import { useTagConfigDraft, type TagConfigDraft } from './use-tag-config-draft'
 import { useTypeTagBinding } from './use-type-tag-binding'
+import { DragHaptics } from '@/components/drag-haptics'
 
 interface TagConfigSheetProps {
   /** The tag being configured (display casing). */
@@ -287,6 +288,7 @@ function TypePage({
               }
             }}
           >
+            <DragHaptics />
             <SortableContext
               items={drafts.map((draft) => draft.rowId)}
               strategy={verticalListSortingStrategy}

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { FilePart, ModelMessage } from 'ai'
 import { setBridge } from '../ipc/bridge'
+import { CLAUDE_MISSING_MESSAGE } from './claude-auth'
 import { agentCliInput, agentCliPrompt } from './agent-cli-input'
 import {
   CLAUDE_CLI_CHANNELS,
@@ -722,7 +723,7 @@ describe('streamClaudeCliChat', () => {
     })
   })
 
-  it('yields an error when the CLI cannot start', async () => {
+  it('yields install guidance when the CLI cannot be found', async () => {
     setBridge({
       invoke: async (command) => {
         if (command === 'agent_cli_run') {
@@ -736,7 +737,7 @@ describe('streamClaudeCliChat', () => {
     const terminal = await stream.next()
     expect(terminal.value).toMatchObject({
       type: 'error',
-      message: expect.stringContaining('not found'),
+      message: CLAUDE_MISSING_MESSAGE,
     })
   })
 })

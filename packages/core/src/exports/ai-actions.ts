@@ -240,7 +240,12 @@ export {
   type ResolvedMcpServer,
 } from '../ai/mcp'
 export { agentCliPrompt } from '../ai/agent-cli-input'
-export { checkAgentCli, type AgentCliBinary, type AgentCliChunk } from '../ai/agent-cli'
+export {
+  checkAgentCli,
+  type AgentCliAuthStatus,
+  type AgentCliBinary,
+  type AgentCliChunk,
+} from '../ai/agent-cli'
 export { agentCliFailureMessage, isAgentCliRuntimeFailure } from '../ai/agent-cli-failure'
 export {
   claudeCliArgs,
@@ -252,10 +257,18 @@ export {
   type StreamCliChatOptions,
 } from '../ai/claude-cli'
 export {
+  claudeLoginStatus,
+  runClaudeLogin,
+  claudeLogout,
+  claudeCliErrorMessage,
+  CLAUDE_INSTALL_COMMAND,
+  CLAUDE_MISSING_MESSAGE,
+  CLAUDE_SIGNED_OUT_MESSAGE,
+} from '../ai/claude-auth'
+export {
   codexLoginStatus,
   runCodexLogin,
   codexLogout,
-  type CodexAuthStatus,
   type CodexCliParseState,
   codexAppServerHandshakePrompt,
   codexCliArgs,

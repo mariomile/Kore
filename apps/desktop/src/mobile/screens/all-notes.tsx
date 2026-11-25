@@ -28,7 +28,6 @@ import { rowForHit, useNoteSearchFeed } from '@/mobile/note-search-feed'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { AllNotesSortDrawer, allNotesSortSummary } from '@/mobile/all-notes-sort-drawer'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
-import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -68,7 +67,6 @@ export function MobileAllNotes({
   filters,
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
-  const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
   const { settings, updateSettings } = useSettings()
   const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
@@ -129,18 +127,14 @@ export function MobileAllNotes({
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      {/* Notes and Tasks are root tabs the bottom bar already names: the
+          title stays for VoiceOver only, so the search sits at the top. */}
+      <h1 className="sr-only">Notes</h1>
       <header
         ref={barRef}
         className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
-        <h1
-          className={`overflow-hidden text-[28px] font-semibold tracking-tight transition-[height,opacity] duration-200 motion-reduce:transition-none ${
-            searchHeaderFocus.isFocused ? 'h-0 opacity-0' : 'h-9 opacity-100'
-          }`}
-        >
-          Notes
-        </h1>
         <div className="flex items-center gap-1">
           <SearchInput
             ref={searchInputRef}
@@ -148,8 +142,6 @@ export function MobileAllNotes({
             aria-label="Search notes"
             value={query}
             onValueChange={onQueryChange}
-            onFocus={searchHeaderFocus.onFocus}
-            onBlur={searchHeaderFocus.onBlur}
           />
           <SortButton
             sort={sort}

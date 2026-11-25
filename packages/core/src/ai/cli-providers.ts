@@ -20,6 +20,26 @@ export function isCliAgentProvider(id: AiProviderId): id is CliAgentProviderId {
 }
 
 /**
+ * Whether the CLI engine's chat runs Kore's own tools instead of its file
+ * tools: Claude Code mounts the chat tool catalog as an MCP server, Codex
+ * as dynamic tools, so their chat turn is the chat engine's (`streamChat`)
+ * with the same privacy gate and proposal cards. Agent routines still use
+ * their file tools.
+ */
+export function cliChatRunsKoreTools(id: AiProviderId): boolean {
+  return id === 'claude-cli' || id === 'codex-cli'
+}
+
+/**
+ * Whether chat on this provider reads (and may write) the vault with the
+ * CLI's own file tools: it then needs the private-note deny list, edit mode
+ * grants and the post-run Changes ledger instead of Kore's tools.
+ */
+export function isFileChatProvider(id: AiProviderId): id is CliAgentProviderId {
+  return isCliAgentProvider(id) && !cliChatRunsKoreTools(id)
+}
+
+/**
  * Whether the engine's write path is verified enough to join edit mode and
  * automations. Cursor stays read-only until its write grants are proven
  * against the real CLI — chat and grounding work, the vault stays untouched.

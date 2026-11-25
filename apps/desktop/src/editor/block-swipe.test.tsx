@@ -139,13 +139,81 @@ describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
     const secondY = second.top + second.height / 2
     editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
     editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 30, y + 2))
-    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 40, secondY))
-    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 40, secondY))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 50, y + 2))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 50, secondY))
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 50, secondY))
 
     await vi.waitFor(() => {
       expect(currentBlockSelection()?.state.count).toBe(2)
     })
     expect(onChange).not.toHaveBeenCalled()
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('shows the block selected as the swipe commits, and lets go if it comes back', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    vi.mocked(haptic).mockClear()
+    const first = view.getByText('first').element().getBoundingClientRect()
+    const x = editable.getBoundingClientRect().right - 20
+    const y = first.top + first.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 20, y))
+    expect(currentBlockSelection()).toBeNull()
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - (SWIPE_COMMIT_PX + 6), y))
+    // Selected while the finger is still down; the action bar gives the tick.
+    expect(currentBlockSelection()?.state.count).toBe(1)
+    expect(haptic).not.toHaveBeenCalled()
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 10, y))
+    expect(currentBlockSelection()).toBeNull()
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 10, y))
+    expect(currentBlockSelection()).toBeNull()
+  })
+
+  it('keeps a drifting swipe to its own block', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    const first = view.getByText('first').element().getBoundingClientRect()
+    const x = editable.getBoundingClientRect().right - 20
+    const y = first.top + first.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 20, y + 4))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 60, y + 20))
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 60, y + 20))
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(1)
+    })
+    expect(document.querySelector('.kore-block-selected')?.textContent).toBe('first')
+    currentBlockSelection()?.commands.clear()
+  })
+
+  it('leaves a drag the page is already scrolling', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    const first = view.getByText('first').element().getBoundingClientRect()
+    const x = editable.getBoundingClientRect().right - 20
+    const y = first.top + first.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    const touch = new Touch({ identifier: 1, target: editable, clientX: x - 60, clientY: y })
+    // iOS stops letting a touchmove cancel once its own scroll has begun.
+    const scrolling = new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: false,
+      touches: [touch],
+      changedTouches: [touch],
+    })
+    editable.dispatchEvent(scrolling)
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 60, y))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(currentBlockSelection()).toBeNull()
+  })
+
+  it('never lets the browser start its own drag of selected blocks', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('first').element())
+    await vi.waitFor(() => {
+      expect(currentBlockSelection()?.state.count).toBe(1)
+    })
+    const dragStart = new DragEvent('dragstart', { bubbles: true, cancelable: true })
+    view.getByText('first').element().dispatchEvent(dragStart)
+    expect(dragStart.defaultPrevented).toBe(true)
     currentBlockSelection()?.commands.clear()
   })
 

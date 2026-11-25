@@ -35,14 +35,22 @@ function stringField(value: Record<string, unknown>, key: string): string | null
  * `turn/start` waits for the thread id on stdout — it cannot ride here.
  */
 export function codexAppServerHandshakePrompt(options: {
-  graphRoot: string
+  /** The thread's working directory (omitted: the app-server's own). */
+  graphRoot?: string | undefined
   /** Omit for the CLI's configured default model. */
   model?: string | undefined
+  /**
+   * Extra `thread/start` params (`baseInstructions`, `dynamicTools`). Their
+   * presence opts the session into the app-server's experimental API, which
+   * `dynamicTools` needs.
+   */
+  threadParams?: Record<string, unknown> | undefined
 }): string {
   const threadParams: Record<string, unknown> = {
-    cwd: options.graphRoot,
+    ...(options.graphRoot !== undefined ? { cwd: options.graphRoot } : {}),
     approvalPolicy: 'never',
     ephemeral: true,
+    ...options.threadParams,
   }
   if (options.model !== undefined) {
     threadParams.model = options.model
@@ -53,7 +61,10 @@ export function codexAppServerHandshakePrompt(options: {
       id: CODEX_INITIALIZE_ID,
       // `version` is required by the app-server's `initialize` schema; it
       // only feeds the user-agent string, so a stable constant is enough.
-      params: { clientInfo: { name: 'kore', title: 'Kore', version: '1.0.0' } },
+      params: {
+        clientInfo: { name: 'kore', title: 'Kore', version: '1.0.0' },
+        ...(options.threadParams !== undefined ? { capabilities: { experimentalApi: true } } : {}),
+      },
     }),
     jsonRpcLine({ method: 'initialized', params: {} }),
     jsonRpcLine({

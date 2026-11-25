@@ -1,6 +1,6 @@
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
-import { agentCliInput, type AgentCliChannel } from './agent-cli-input'
+import { agentCliInput, type AgentCliAttachment, type AgentCliChannel } from './agent-cli-input'
 import {
   runAgentCliCommand,
   runAgentCliLogin,
@@ -11,6 +11,7 @@ import {
   chunkList,
   vaultLayoutLine,
   type AgentCliAuthStatus,
+  type AgentCliChunk,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { codexMcpConfigArgs, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
@@ -21,6 +22,7 @@ import {
   codexTurnStartLine,
   codexTurnSteerLine,
   isJsonRecord,
+  jsonRpcLine,
   parseCodexCliLine,
   threadIdFromAppServerLine,
   turnIdFromAppServerLine,
@@ -271,8 +273,70 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
   // Codex app-server takes images as `image` input items; PDFs have no
   // channel there, so they are named in the prompt as unreadable.
   const input = agentCliInput(options.messages, CODEX_CLI_CHANNELS)
-  const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${input.text}`
   const parseState: CodexCliParseState = { sawAgentMessageDelta: false }
+  return streamCodexAppServerTurn({
+    args: codexCliArgs({
+      model: options.model,
+      graphRoot: options.graphRoot,
+      privateNotePaths: options.privateNotePaths,
+      allowEdits: options.allowEdits,
+      mcpServers: options.mcpServers,
+    }),
+    handshake: codexAppServerHandshakePrompt({
+      graphRoot: options.graphRoot,
+      model: codexHandshakeModel(options.model),
+    }),
+    cwd: options.graphRoot,
+    mcpServers: options.mcpServers ?? [],
+    userPrompt: `<instructions>\n${preamble}\n</instructions>\n\n${input.text}`,
+    attachments: input.attachments,
+    parseLine: (line) => chunkList(parseCodexCliLine(line, parseState)),
+    signal: options.signal,
+    steering: options.steering,
+  })
+}
+
+/** The handshake's model: none for the CLI's configured default. */
+export function codexHandshakeModel(model: string): string | undefined {
+  return model === CODEX_CLI_DEFAULT_MODEL ? undefined : model
+}
+
+/** A JSON-RPC request the app-server sends the app (it carries an id). */
+export interface CodexServerRequest {
+  id: string | number
+  method: string
+  params: Record<string, unknown> | null
+}
+
+export interface CodexAppServerTurnOptions {
+  args: string[]
+  /** The stdin handshake ({@link codexAppServerHandshakePrompt}). */
+  handshake: string
+  cwd: string | null
+  mcpServers: readonly ResolvedMcpServer[]
+  /** The text of `turn/start`, sent once the thread exists. */
+  userPrompt: string
+  attachments: readonly AgentCliAttachment[]
+  parseLine: (line: string) => AgentCliChunk[]
+  /**
+   * Answer a request the app-server sends the app with its JSON-RPC
+   * result; null (or no handler) refuses it, so the server never waits.
+   */
+  onServerRequest?:
+    | ((request: CodexServerRequest) => Promise<{ result: unknown } | null>)
+    | undefined
+  signal?: AbortSignal | undefined
+  steering?: StreamCliChatOptions['steering']
+}
+
+/**
+ * One app-server session: the handshake, `turn/start` once the thread id is
+ * known, `turn/steer` into the live turn, and replies to the server's own
+ * requests. Each engine variant supplies its arguments and parser.
+ */
+export function streamCodexAppServerTurn(
+  options: CodexAppServerTurnOptions,
+): AsyncGenerator<ChatStreamEvent> {
   let threadId: string | undefined
   let turnId: string | undefined
   let sentTurnStart = false
@@ -293,35 +357,38 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     options.steering?.onSteerReady(queuedSteerReady)
   }
 
-  const steering = options.steering
-  const handshakeModel = options.model === CODEX_CLI_DEFAULT_MODEL ? undefined : options.model
+  const answerServerRequest = async (
+    request: CodexServerRequest,
+    sendLine: (line: string) => Promise<void>,
+  ): Promise<void> => {
+    const answer = (await options.onServerRequest?.(request)) ?? null
+    await sendLine(
+      jsonRpcLine(
+        answer === null
+          ? { id: request.id, error: { code: -32601, message: 'Not supported' } }
+          : { id: request.id, result: answer.result },
+      ),
+    )
+  }
 
+  const steering = options.steering
   return streamAgentCliTurn({
     binary: 'codex',
-    args: codexCliArgs({
-      model: options.model,
-      graphRoot: options.graphRoot,
-      privateNotePaths: options.privateNotePaths,
-      allowEdits: options.allowEdits,
-      mcpServers: options.mcpServers,
-    }),
-    prompt: `${codexAppServerHandshakePrompt({
-      graphRoot: options.graphRoot,
-      model: handshakeModel,
-    })}\n`,
-    cwd: options.graphRoot,
-    env: mcpSpawnEnv(options.mcpServers ?? []),
+    args: options.args,
+    prompt: `${options.handshake}\n`,
+    cwd: options.cwd,
+    env: mcpSpawnEnv([...options.mcpServers]),
     isolatedCodexHome: true,
     keepStdinOpen: true,
-    parseLine: (line) => chunkList(parseCodexCliLine(line, parseState)),
+    parseLine: options.parseLine,
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,
     onRawLine: async (line, sendLine) => {
-      // The handshake lives in the stream's first couple of lines; once the
-      // thread and turn ids are known there is nothing left to look for, and
-      // parsing every delta line a second time would shadow `parseLine`'s
-      // work for the rest of the turn.
-      if (sentTurnStart && turnId !== undefined) {
+      // Past the handshake only server requests matter, and they name a
+      // method with an id; a cheap substring check spares every delta line
+      // a second parse.
+      const handshakeDone = sentTurnStart && turnId !== undefined
+      if (handshakeDone && !line.includes('"method"')) {
         return
       }
       let parsed: unknown
@@ -333,11 +400,22 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       if (!isJsonRecord(parsed)) {
         return
       }
+      const id = parsed.id
+      if (typeof parsed.method === 'string' && (typeof id === 'string' || typeof id === 'number')) {
+        await answerServerRequest(
+          { id, method: parsed.method, params: isJsonRecord(parsed.params) ? parsed.params : null },
+          sendLine,
+        )
+        return
+      }
+      if (handshakeDone) {
+        return
+      }
       const startedThread = threadIdFromAppServerLine(parsed)
       if (startedThread !== null && !sentTurnStart) {
         sentTurnStart = true
         threadId = startedThread
-        await sendLine(codexTurnStartLine(threadId, userPrompt, input.attachments))
+        await sendLine(codexTurnStartLine(threadId, options.userPrompt, options.attachments))
       }
       const startedTurn = turnIdFromAppServerLine(parsed)
       if (startedTurn !== null) {

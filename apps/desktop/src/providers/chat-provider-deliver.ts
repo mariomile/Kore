@@ -1,7 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   aiApiKeyForConfig,
-  attachMemoryTools,
   memoryWriteForChat,
   appendEvent,
   buildHistory,
@@ -9,26 +8,19 @@ import {
   hasBridge,
   listPrivateNotePaths,
   loadAgentContext,
-  gitAgentSnapshot,
-  gitChangedSince,
-  withAgentRunLock,
   loadChatGraphContext,
   persistChatAttachmentFile,
   readChatAttachmentDataUrl,
   resolveMcpServers,
   mentionContextBlock,
-  readNote,
   recallContextBlock,
   recallForMessage,
   resolveNoteMentions,
   saveChatMessage,
-  scanChangedMemoryPaths,
   chatProviderCanSteer,
-  cliProviderSteerMode,
-  cliProviderSupportsEdits,
-  cliProviderSupportsMcp,
   chatModeAllowsEdits,
-  isCliAgentProvider,
+  isFileChatProvider,
+  cliChatRunsKoreTools,
   streamChat,
   streamCliAgentChat,
   userMessage,
@@ -314,286 +306,186 @@ export async function deliverChatTurn(
   setLiveCanSteer(canSteer)
   lastSendSessionRef.current = activeSend.session
 
-  // The activity ledger's baseline: before an edit-mode agent run,
-  // commit whatever is pending so the run's touches diff cleanly against
-  // a restorable version. Best-effort — no snapshot, no ledger, but the
-  // turn itself still runs.
-  const editRun =
-    isCliAgentProvider(config.provider) &&
-    cliProviderSupportsEdits(config.provider) &&
-    chatModeAllowsEdits(chatMode)
-      ? { generation: graph.generation }
-      : null
   const run = async (): Promise<void> => {
     controller.signal.throwIfAborted()
-    const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
-    try {
-      // Replace the initial inline attachment with a file-backed snapshot: the
-      // next persisted row carries only the file path (the store strips the
-      // dataUrl), while this in-memory copy keeps its dataUrl for the session's
-      // rendering and provider payload. Best-effort per file — a failed write
-      // keeps that attachment on the legacy inline persistence.
-      const attachedWithFiles = await withPersistedAttachmentFiles(
-        sendConversationId,
-        attached,
-        generation,
-      )
-      // Restored turns hold path-only attachments; every engine needs the
-      // bytes back — BYOK as file parts, the CLIs as image/document blocks
-      // (stateless runs resend earlier files for follow-up questions).
-      const historyTurns = await withHydratedAttachmentHistory(history, generation)
-      const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
-      updateTurn((turn) => ({ ...turn, attachments: attachedWithFiles }))
-      if (attached.length > 0) {
-        persistTurn(conversationMeta(), localTurn, turnCreatedMs)
+    // Replace the initial inline attachment with a file-backed snapshot: the
+    // next persisted row carries only the file path (the store strips the
+    // dataUrl), while this in-memory copy keeps its dataUrl for the session's
+    // rendering and provider payload. Best-effort per file — a failed write
+    // keeps that attachment on the legacy inline persistence.
+    const attachedWithFiles = await withPersistedAttachmentFiles(
+      sendConversationId,
+      attached,
+      generation,
+    )
+    // Restored turns hold path-only attachments; every engine needs the
+    // bytes back — BYOK as file parts, the CLIs as image/document blocks
+    // (stateless runs resend earlier files for follow-up questions).
+    const historyTurns = await withHydratedAttachmentHistory(history, generation)
+    const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
+    updateTurn((turn) => ({ ...turn, attachments: attachedWithFiles }))
+    if (attached.length > 0) {
+      persistTurn(conversationMeta(), localTurn, turnCreatedMs)
+    }
+    controller.signal.throwIfAborted()
+    // [[Mentions]] resolve to the notes' current content at send time,
+    // so the model grounds on what each note says *now*. Private notes
+    // contribute their refusal only, and a failed resolution degrades
+    // to a structured miss — the send always goes out. The block rides
+    // the model-bound message alone: the bubble and the persisted turn
+    // keep the text as typed.
+    const mentions = await resolveNoteMentions(trimmed)
+    const mentionBlock = mentionContextBlock(mentions)
+    // Beside the explicit mentions, the vault's own memory: one ranked FTS
+    // pass over the index surfaces the top passages touching this message,
+    // with provenance. Mentioned notes are excluded (their full content
+    // already rides the turn) and any failure degrades to no recall.
+    const recalled = await recallForMessage(
+      trimmed,
+      mentions.map((mention) => mention.path),
+    )
+    const recallBlock = recallContextBlock(recalled)
+    const contextBlock = [mentionBlock, recallBlock].filter((block) => block !== '').join('\n\n')
+    if (contextBlock !== '') {
+      const notes = [
+        ...mentions.flatMap((mention) =>
+          mention.path !== null && mention.content !== null
+            ? [
+                {
+                  path: mention.path,
+                  title: mention.title ?? mention.path,
+                  excerpt: mention.content.slice(0, 280),
+                  source: 'mention' as const,
+                },
+              ]
+            : [],
+        ),
+        ...recalled.map((hit) => ({
+          path: hit.path,
+          title: hit.title,
+          excerpt: (hit.snippet ?? hit.preview).slice(0, 280),
+          source: 'recall' as const,
+        })),
+      ]
+      if (notes.length > 0) {
+        updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'context', notes }] }))
       }
-      controller.signal.throwIfAborted()
-      // [[Mentions]] resolve to the notes' current content at send time,
-      // so the model grounds on what each note says *now*. Private notes
-      // contribute their refusal only, and a failed resolution degrades
-      // to a structured miss — the send always goes out. The block rides
-      // the model-bound message alone: the bubble and the persisted turn
-      // keep the text as typed.
-      const mentions = await resolveNoteMentions(trimmed)
-      const mentionBlock = mentionContextBlock(mentions)
-      // Beside the explicit mentions, the vault's own memory: one ranked FTS
-      // pass over the index surfaces the top passages touching this message,
-      // with provenance. Mentioned notes are excluded (their full content
-      // already rides the turn) and any failure degrades to no recall.
-      const recalled = await recallForMessage(
-        trimmed,
-        mentions.map((mention) => mention.path),
+      messages[messages.length - 1] = userMessage(
+        `${trimmed}\n\n${contextBlock}`,
+        attachedWithFiles,
       )
-      const recallBlock = recallContextBlock(recalled)
-      const contextBlock = [mentionBlock, recallBlock].filter((block) => block !== '').join('\n\n')
-      if (contextBlock !== '') {
-        const notes = [
-          ...mentions.flatMap((mention) =>
-            mention.path !== null && mention.content !== null
-              ? [
-                  {
-                    path: mention.path,
-                    title: mention.title ?? mention.path,
-                    excerpt: mention.content.slice(0, 280),
-                    source: 'mention' as const,
-                  },
-                ]
-              : [],
-          ),
-          ...recalled.map((hit) => ({
-            path: hit.path,
-            title: hit.title,
-            excerpt: (hit.snippet ?? hit.preview).slice(0, 280),
-            source: 'recall' as const,
-          })),
-        ]
-        if (notes.length > 0) {
-          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'context', notes }] }))
-        }
-        messages[messages.length - 1] = userMessage(
-          `${trimmed}\n\n${contextBlock}`,
-          attachedWithFiles,
-        )
-      }
-      // The active agent's soul + memories ride into every provider's
-      // prompt; a failed read degrades to "nothing", never a blocked turn.
-      const agentContext = await loadAgentContext(agentProfile).catch(() => null)
-      controller.signal.throwIfAborted()
-      const events = await (async () => {
-        if (isCliAgentProvider(config.provider)) {
-          // The subscription engines: the CLI reads the graph itself, so
-          // they need the private-note deny list, not an API key. Refusing
-          // is deliberate for both null answers — a failed read and an index
-          // that cannot answer yet are the same fact here, and running
-          // without a complete deny list would drop the privacy hard block.
-          const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
-            console.error('private-note list failed:', errorMessage(cause))
-            return null
-          })
-          if (privateNotePaths === null) {
-            return null
-          }
-          // MCP tools ride runs the user opted into through the conversation's
-          // Tools toggle or Full Access mode. Secrets resolve from the keychain
-          // here, per run — never stored anywhere else.
-          // Cursor never joins edit mode (its write path is unverified) and
-          // its per-run config denies MCP, so both switches silently mean
-          // plain read-only there.
-          const allowEdits =
-            chatModeAllowsEdits(chatMode) && cliProviderSupportsEdits(config.provider)
-          const mcpAllowed =
-            cliProviderSupportsMcp(config.provider) && (chatMode === 'full-access' || chatTools)
-          const userMcpServers = mcpAllowed
-            ? await resolveMcpServers(mcpServerSettings).catch(() => [])
-            : []
-          // A cyber-brain vault's memory tools ride every run that may
-          // write: they are Kore's own local server, not an external tool.
-          const memory = await attachMemoryTools({
-            context: agentContext,
-            canWrite: allowEdits && cliProviderSupportsMcp(config.provider),
-            graphRoot: graph.root,
-            servers: userMcpServers,
-          })
-          const mcpServers = memory.servers
-          controller.signal.throwIfAborted()
-          return streamCliAgentChat(config.provider, {
-            model: config.model,
-            messages,
-            today: todayIso(),
-            customSystemPrompt,
-            graphRoot: graph.root,
-            graphName: graph.name,
-            privateNotePaths,
-            allowEdits,
-            mcpServers,
-            agentContext: memory.context,
-            memoryWriteApproval: memoryWriteApproval,
-            signal: controller.signal,
-            // Inject-capable engines expose mid-turn steering: the steer
-            // lands in the live session AND in the transcript as its own
-            // part, right where the reply text splits around it. (The CLI
-            // transports emit no `steer` event, so the part is added here.)
-            steering:
-              cliProviderSteerMode(config.provider) === 'inject'
-                ? {
-                    onSteerReady: (inject) => {
-                      steerRelay.arm(inject, (steerText) => {
-                        updateTurn((turn) => ({
-                          ...turn,
-                          parts: [...turn.parts, { kind: 'steer', text: steerText }],
-                        }))
-                      })
-                    },
-                  }
-                : undefined,
-          })
-        }
-        // The graph overview degrades to null (prompt without the block)
-        // rather than blocking the turn — a cold index shouldn't kill chat.
-        const [apiKey, context, memoryWriteFn] = await Promise.all([
-          aiApiKeyForConfig(config),
-          loadChatGraphContext(graph.name).catch((cause: unknown) => {
-            console.error('chat graph context failed:', errorMessage(cause))
-            return null
-          }),
-          // A cyber-brain vault's memory tools write through its own kit.
-          memoryWriteForChat(agentContext, generation),
-        ])
-        if (apiKey === null) {
-          applyEvent({
-            type: 'error',
-            message: 'No API key found for this provider — re-add it in Settings → AI providers.',
-            messages: [],
-          })
+    }
+    // The active agent's soul + memories ride into every provider's
+    // prompt; a failed read degrades to "nothing", never a blocked turn.
+    const agentContext = await loadAgentContext(agentProfile).catch(() => null)
+    controller.signal.throwIfAborted()
+    const events = await (async () => {
+      if (isFileChatProvider(config.provider)) {
+        // The file-tools engine (Cursor, read-only, no MCP): the CLI reads
+        // the graph itself, so it needs the private-note deny list, not an
+        // API key. Its steers queue, so the run gets no steering. Refusing
+        // is deliberate for both null answers — a failed read and an index
+        // that cannot answer yet are the same fact here, and running
+        // without a complete deny list would drop the privacy hard block.
+        const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
+          console.error('private-note list failed:', errorMessage(cause))
+          return null
+        })
+        if (privateNotePaths === null) {
           return null
         }
-        controller.signal.throwIfAborted()
-        return streamChat({
-          config,
-          apiKey,
-          fetchFn: providerFetch,
+        return streamCliAgentChat(config.provider, {
+          model: config.model,
           messages,
           today: todayIso(),
-          semanticSearchEnabled: semanticSearchEnabled,
           customSystemPrompt,
-          context,
+          graphRoot: graph.root,
+          graphName: graph.name,
+          privateNotePaths,
           agentContext,
-          // The write tool routes through the session-safe frontmatter
-          // channel, pinned to the graph generation of this turn.
-          allowEdits: chatModeAllowsEdits(chatMode),
-          toolDeps: {
-            // The embedded browser is a desktop capability: the typed
-            // answer here is what makes the browse tools refuse honestly
-            // on mobile and in the web harness.
-            browsingAvailable: isNativeShell() && !isMobileSurface(),
-            memoryWriteFn,
-          },
+          memoryWriteApproval,
           signal: controller.signal,
-          // The engine cuts the leg in flight, keeps its partial output,
-          // and continues on the combined history; it yields the `steer`
-          // event itself, exactly where the reply split.
-          steering: { onSteerReady: (inject) => steerRelay.arm(inject) },
         })
-      })()
-      if (events === null) {
-        if (isCliAgentProvider(config.provider)) {
-          applyEvent({
-            type: 'error',
-            message:
-              'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
-            messages: [],
-          })
-        }
-        return
       }
-      for await (const event of events) {
-        // Every terminal event carries the turn's messages — for a stopped or
-        // failed turn that's the completed steps plus partial text, so the
-        // derived history matches what stayed on screen.
-        if (event.type === 'complete' || event.type === 'aborted' || event.type === 'error') {
-          updateTurn((turn) => ({ ...turn, responseMessages: event.messages }))
-        }
-        // `complete` is folded too: appendEvent backstops a reply-less turn
-        // with a notice, so the chips never settle into silence.
-        applyEvent(event)
+      // The graph overview degrades to null (prompt without the block)
+      // rather than blocking the turn — a cold index shouldn't kill chat.
+      // Claude Code and Codex mount the user's MCP servers next to Kore's tools when
+      // the conversation opted in (Tools toggle or Full Access).
+      const mcpAllowed =
+        cliChatRunsKoreTools(config.provider) && (chatMode === 'full-access' || chatTools)
+      const [apiKey, context, memoryWriteFn, mcpServers] = await Promise.all([
+        aiApiKeyForConfig(config),
+        loadChatGraphContext(graph.name).catch((cause: unknown) => {
+          console.error('chat graph context failed:', errorMessage(cause))
+          return null
+        }),
+        // A cyber-brain vault's memory tools write through its own kit.
+        memoryWriteForChat(agentContext, generation),
+        mcpAllowed ? resolveMcpServers(mcpServerSettings).catch(() => []) : [],
+      ])
+      if (apiKey === null) {
+        applyEvent({
+          type: 'error',
+          message: 'No API key found for this provider — re-add it in Settings → AI providers.',
+          messages: [],
+        })
+        return null
       }
-    } finally {
-      // Close the ledger: whatever differs from the pre-run snapshot is
-      // what this run touched. Shown in the turn and persisted with it.
-      if (editRun && snapshot !== null) {
-        const changed = await gitChangedSince(snapshot, editRun.generation).catch(() => [])
-        const paths = changed.filter((path) => path.toLowerCase().endsWith('.md'))
-        if (paths.length > 0) {
-          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
-        }
-        // The memory-write scanner: prompts forbid storing instructions
-        // and secrets in memory, this checks what actually landed there.
-        // A finding is a review pointer for the user, never a rollback.
-        const warnings = await scanChangedMemoryPaths(paths, readNote).catch(() => [])
-        if (warnings.length > 0) {
-          updateTurn((turn) => ({
-            ...turn,
-            parts: [
-              ...turn.parts,
-              {
-                kind: 'notice',
-                tone: 'error',
-                text: `Memory write check — review these lines:\n${warnings.join('\n')}`,
-              },
-            ],
-          }))
-        }
+      controller.signal.throwIfAborted()
+      return streamChat({
+        config,
+        apiKey,
+        fetchFn: providerFetch,
+        messages,
+        today: todayIso(),
+        semanticSearchEnabled: semanticSearchEnabled,
+        customSystemPrompt,
+        context,
+        agentContext,
+        // The write tool routes through the session-safe frontmatter
+        // channel, pinned to the graph generation of this turn.
+        allowEdits: chatModeAllowsEdits(chatMode),
+        toolDeps: {
+          // The embedded browser is a desktop capability: the typed
+          // answer here is what makes the browse tools refuse honestly
+          // on mobile and in the web harness.
+          browsingAvailable: isNativeShell() && !isMobileSurface(),
+          memoryWriteFn,
+        },
+        signal: controller.signal,
+        // The engine cuts the leg in flight, keeps its partial output,
+        // and continues on the combined history; it yields the `steer`
+        // event itself, exactly where the reply split.
+        steering: { onSteerReady: (inject) => steerRelay.arm(inject) },
+        mcpServers,
+      })
+    })()
+    if (events === null) {
+      if (isFileChatProvider(config.provider)) {
+        applyEvent({
+          type: 'error',
+          message:
+            'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
+          messages: [],
+        })
       }
+      return
+    }
+    for await (const event of events) {
+      // Every terminal event carries the turn's messages — for a stopped or
+      // failed turn that's the completed steps plus partial text, so the
+      // derived history matches what stayed on screen.
+      if (event.type === 'complete' || event.type === 'aborted' || event.type === 'error') {
+        updateTurn((turn) => ({ ...turn, responseMessages: event.messages }))
+      }
+      // `complete` is folded too: appendEvent backstops a reply-less turn
+      // with a notice, so the chips never settle into silence.
+      applyEvent(event)
     }
   }
 
   try {
-    if (editRun) {
-      // Stop must work while the turn is still queued behind another agent
-      // run (an automation, a turn in another window): the signal cancels
-      // the wait, and the notice says why nothing is streaming yet.
-      await withAgentRunLock(run, {
-        signal: controller.signal,
-        onWaiting: () => {
-          const notice = {
-            kind: 'notice' as const,
-            tone: 'info' as const,
-            text: 'Waiting for another agent run to finish…',
-          }
-          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, notice] }))
-          return () => {
-            updateTurn((turn) => ({
-              ...turn,
-              parts: turn.parts.filter(
-                (part) => !(part.kind === 'notice' && part.text === notice.text),
-              ),
-            }))
-          }
-        },
-      })
-    } else {
-      await run()
-    }
+    await run()
   } catch (cause) {
     applyEvent(
       controller.signal.aborted

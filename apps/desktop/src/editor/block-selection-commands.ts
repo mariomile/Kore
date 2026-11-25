@@ -14,6 +14,7 @@ import {
 } from './page-block-commands'
 import { allowCaretInPage, pageBlockOf } from './page-block-plugin'
 import {
+  blockRangeAt,
   isListNode,
   selectedBlocks,
   withBlockSelection,
@@ -221,4 +222,28 @@ export function createBlockSelectionCommands(
     },
     clear: () => view.dispatch(withBlockSelection(view.state.tr, { type: 'clear' })),
   }
+}
+
+/**
+ * A block swiped the quick-action way: a task completes (or reopens), any
+ * other block steps in one level, under the block above it.
+ */
+export function runSwipeAction(editor: Editor<EditorExtension>, position: number): void {
+  const view = editor.view
+  const range = blockRangeAt(view.state.doc, position)
+  if (range !== null && isListNode(range.node)) {
+    const attrs = range.node.attrs as { kind?: string; checked?: boolean | null }
+    if (attrs.kind === 'task') {
+      view.dispatch(
+        view.state.tr.setNodeMarkup(range.from, undefined, {
+          ...range.node.attrs,
+          checked: attrs.checked !== true,
+        }),
+      )
+      return
+    }
+  }
+  const bounded = Math.min(Math.max(position, 0), view.state.doc.content.size)
+  view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(bounded))))
+  editor.commands.indentList()
 }

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
@@ -101,7 +102,9 @@ async function mount() {
     },
     {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        </QueryClientProvider>
       ),
     },
   )

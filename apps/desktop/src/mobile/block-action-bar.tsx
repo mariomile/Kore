@@ -45,9 +45,12 @@ type Sheet = 'turn' | 'date' | null
 
 /**
  * The bar that takes the tab bar's place while blocks are selected (swipe a
- * block right). Its verbs are Kore's own rather than Craft's: turn the block
- * into another kind, give it a date (it becomes a task that shows up in
- * Tasks), move it to another note, zoom into it, ask the AI about it, delete.
+ * block left): one row with the tab bar's measures, the verbs in its wide
+ * capsule and Done where the "+" sits. Moving up and down lives in the
+ * Turn into sheet, next to indenting; the hold-and-drag moves blocks too.
+ * Its verbs are Kore's own rather than Craft's: turn the block into another
+ * kind, give it a date (it becomes a task that shows up in Tasks), move it to
+ * another note, zoom into it, ask the AI about it, delete.
  */
 export function MobileBlockActionBar({ selection }: { selection: BlockSelection }): ReactElement {
   const { settings } = useSettings()
@@ -97,74 +100,69 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
         className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 animate-in duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] fade-in-0 slide-in-from-bottom-6 motion-reduce:animate-none"
         style={{
           paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
-          paddingLeft: 'max(env(safe-area-inset-left), 0.75rem)',
-          paddingRight: 'max(env(safe-area-inset-right), 0.75rem)',
+          paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
+          paddingRight: 'max(env(safe-area-inset-right), 1rem)',
         }}
       >
-        <div className="flex w-full max-w-md items-center justify-between">
+        <div className="flex w-full max-w-md items-center gap-3">
           <div
-            role="group"
-            aria-label="Move"
-            className="mobile-nav-capsule flex h-11 items-center gap-0.5 px-1"
+            role="toolbar"
+            aria-label="Block actions"
+            className="mobile-nav-capsule flex min-w-0 flex-1 p-1"
           >
-            <NudgeButton
-              label="Move up"
-              icon={<ArrowUp />}
-              disabled={!state.canMoveUp}
-              onPress={() => act(commands.moveUp)}
+            <BarButton label="Turn into" icon={<Replace />} onPress={() => setSheet('turn')} />
+            <BarButton
+              label="Date"
+              icon={<CalendarClock />}
+              // A dated block is a to-do; a page stays a page.
+              disabled={state.hasPage}
+              onPress={() => setSheet('date')}
             />
-            <NudgeButton
-              label="Move down"
-              icon={<ArrowDown />}
-              disabled={!state.canMoveDown}
-              onPress={() => act(commands.moveDown)}
+            <BarButton
+              label="Move"
+              icon={<FolderMove />}
+              disabled={!single}
+              onPress={() => act(commands.moveToNote)}
+            />
+            <BarButton
+              // A page opens; any other block zooms (the Mac menu says the same).
+              label={state.isPage ? 'Open' : 'Zoom'}
+              icon={state.isPage ? <Note /> : <Locate />}
+              disabled={!single}
+              onPress={() => act(commands.zoom)}
+            />
+            <BarButton label="Ask AI" icon={<Sparkles />} onPress={() => act(commands.askAi)} />
+            <BarButton
+              label="Delete"
+              icon={<Trash />}
+              tone="danger"
+              onPress={() => act(commands.remove)}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => act(commands.clear)}
-            aria-label="Done selecting"
-            className="mobile-nav-capsule flex h-11 items-center gap-2 pr-2 pl-4 text-[15px] font-medium tabular-nums transition-transform active:scale-95"
-          >
-            {state.count === 1 ? '1 block' : `${state.count} blocks`}
-            <span className="flex size-7 items-center justify-center rounded-full bg-accent text-white [&>svg]:size-4">
-              <Check aria-hidden strokeWidth={2.4} />
-            </span>
-          </button>
-        </div>
-        <div
-          role="toolbar"
-          aria-label="Block actions"
-          className="mobile-nav-capsule flex w-full max-w-md items-stretch justify-between px-1 py-1"
-        >
-          <BarButton label="Turn into" icon={<Replace />} onPress={() => setSheet('turn')} />
-          <BarButton
-            label="Date"
-            icon={<CalendarClock />}
-            // A dated block is a to-do; a page stays a page.
-            disabled={state.hasPage}
-            onPress={() => setSheet('date')}
-          />
-          <BarButton
-            label="Move"
-            icon={<FolderMove />}
-            disabled={!single}
-            onPress={() => act(commands.moveToNote)}
-          />
-          <BarButton
-            // A page opens; any other block zooms (the Mac menu says the same).
-            label={state.isPage ? 'Open' : 'Zoom'}
-            icon={state.isPage ? <Note /> : <Locate />}
-            disabled={!single}
-            onPress={() => act(commands.zoom)}
-          />
-          <BarButton label="Ask AI" icon={<Sparkles />} onPress={() => act(commands.askAi)} />
-          <BarButton
-            label="Delete"
-            icon={<Trash />}
-            tone="danger"
-            onPress={() => act(commands.remove)}
-          />
+          <div className="mobile-nav-capsule flex shrink-0 p-1">
+            <button
+              type="button"
+              onClick={() => act(commands.clear)}
+              aria-label={
+                state.count === 1
+                  ? 'Done, 1 block selected'
+                  : `Done, ${state.count} blocks selected`
+              }
+              className="relative flex size-12 items-center justify-center rounded-full transition-transform duration-150 active:scale-90 motion-reduce:transition-none"
+            >
+              <span className="flex size-8 items-center justify-center rounded-full bg-accent text-white [&>svg]:size-[18px]">
+                <Check aria-hidden strokeWidth={2.4} />
+              </span>
+              {state.count > 1 ? (
+                <span
+                  aria-hidden
+                  className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background tabular-nums"
+                >
+                  {state.count}
+                </span>
+              ) : null}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -203,8 +201,8 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 }}
               />
             </div>
-            <div role="group" aria-label="List and position" className="grid grid-cols-4 gap-2">
-              <IconTile
+            <div role="group" aria-label="List" className="grid grid-cols-2 gap-2">
+              <WideTile
                 label="To-do"
                 icon={<Circle />}
                 pressed={!state.isPage && state.kind === 'task'}
@@ -213,7 +211,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                   setSheet(null)
                 }}
               />
-              <IconTile
+              <WideTile
                 label="Bulleted list"
                 icon={<List />}
                 pressed={!state.isPage && state.kind === 'bullet'}
@@ -221,6 +219,21 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                   act(() => commands.setKind('bullet'))
                   setSheet(null)
                 }}
+              />
+            </div>
+            {/* Position steps keep the sheet open: a block often moves more than one place. */}
+            <div role="group" aria-label="Position" className="grid grid-cols-4 gap-2">
+              <IconTile
+                label="Move up"
+                icon={<ArrowUp />}
+                disabled={!state.canMoveUp}
+                onPress={() => act(commands.moveUp)}
+              />
+              <IconTile
+                label="Move down"
+                icon={<ArrowDown />}
+                disabled={!state.canMoveDown}
+                onPress={() => act(commands.moveDown)}
               />
               <IconTile
                 label="Outdent"
@@ -349,40 +362,24 @@ function BarButton({
   return (
     <button
       type="button"
-      disabled={disabled}
-      onClick={onPress}
-      className={cn(
-        'flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-1.5 text-[11px] font-medium transition-[transform,background-color] active:scale-90 active:bg-foreground/5 disabled:opacity-30',
-        tone === 'danger' ? 'text-destructive' : 'text-text',
-      )}
-    >
-      <span className="flex h-6 items-center [&>svg]:size-[23px]">{icon}</span>
-      {label}
-    </button>
-  )
-}
-
-/** One arrow of the move capsule over the bar: a block steps a place per tap. */
-function NudgeButton({
-  label,
-  icon,
-  disabled,
-  onPress,
-}: {
-  label: string
-  icon: ReactElement
-  disabled: boolean
-  onPress: () => void
-}): ReactElement {
-  return (
-    <button
-      type="button"
       aria-label={label}
       disabled={disabled}
       onClick={onPress}
-      className="flex size-9 items-center justify-center rounded-full text-text transition-[transform,background-color] active:scale-90 active:bg-foreground/5 disabled:opacity-30 [&>svg]:size-[22px]"
+      className={cn(
+        'flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full transition-[transform,background-color] duration-150 active:scale-90 active:bg-foreground/5 disabled:opacity-30 motion-reduce:transition-none',
+        tone === 'danger' ? 'text-destructive' : 'text-foreground',
+      )}
     >
-      {icon}
+      <span className="flex items-center [&>svg]:size-5">{icon}</span>
+      <span
+        aria-hidden
+        className={cn(
+          'max-w-full truncate text-[10px] leading-3 font-medium',
+          tone === 'danger' ? 'text-destructive/80' : 'text-foreground/55',
+        )}
+      >
+        {label}
+      </span>
     </button>
   )
 }
@@ -455,17 +452,23 @@ function IconTile({
 function WideTile({
   label,
   icon,
+  pressed,
   onPress,
 }: {
   label: string
   icon: ReactElement
+  pressed?: boolean
   onPress: () => void
 }): ReactElement {
   return (
     <button
       type="button"
+      aria-pressed={pressed}
       onClick={onPress}
-      className="flex h-12 items-center justify-center gap-2 rounded-xl bg-surface-hover text-[15px] font-medium transition-transform active:scale-95 [&_svg]:size-5"
+      className={cn(
+        'flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-medium transition-transform active:scale-95 [&_svg]:size-5',
+        pressed === true ? 'bg-accent/15 text-accent' : 'bg-surface-hover text-text',
+      )}
     >
       {icon}
       {label}

@@ -32,6 +32,7 @@ import { useSettings } from '@/providers/settings-provider'
 import { isWeeklyNoteRoute, type Route } from '@/routing/route'
 import { SidebarItem } from './sidebar-item'
 import { useMemoryKitActive } from '@/hooks/use-memory-kit'
+import { DragHaptics } from '@/components/drag-haptics'
 
 /** What one navigation row needs to render: everything but its position. */
 export interface NavRowSpec {
@@ -216,6 +217,7 @@ export function SidebarNav({ context, route, hasActivePinnedNote }: SidebarNavPr
   return (
     <nav aria-label="Primary" className="mt-4 flex-none space-y-1 px-2">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DragHaptics />
         <SortableContext items={visible} strategy={verticalListSortingStrategy}>
           {visible.map((id, index) => (
             <SortableNavRow

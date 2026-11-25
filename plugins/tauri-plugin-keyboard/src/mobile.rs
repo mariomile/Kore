@@ -1,4 +1,6 @@
 use serde::de::DeserializeOwned;
+
+use crate::models::HapticRequest;
 use tauri::{
     plugin::{PluginApi, PluginHandle},
     AppHandle, Runtime,
@@ -25,10 +27,10 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct Keyboard<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> Keyboard<R> {
-    /// Fire a light impact haptic (`UIImpactFeedbackGenerator` on iOS).
-    pub fn impact_light(&self) -> crate::Result<()> {
+    /// Play one native haptic style (`UIFeedbackGenerator` on iOS).
+    pub fn haptic(&self, request: HapticRequest) -> crate::Result<()> {
         self.0
-            .run_mobile_plugin("impactLight", ())
+            .run_mobile_plugin("haptic", request)
             .map_err(Into::into)
     }
 }

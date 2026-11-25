@@ -3,12 +3,14 @@ import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-fa
 import { agentCliInput, type AgentCliChannel } from './agent-cli-input'
 import {
   runAgentCliCommand,
+  runAgentCliLogin,
   streamAgentCliTurn,
   noteCardAndMentionRules,
   noteContentSafetyRules,
   vaultEditRules,
   chunkList,
   vaultLayoutLine,
+  type AgentCliAuthStatus,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { codexMcpConfigArgs, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
@@ -59,14 +61,8 @@ export const CODEX_CLI_DEFAULT_MODEL = 'default'
 /** The custom permission profile name the run selects. */
 const PROFILE = 'reflect_chat'
 
-export interface CodexAuthStatus {
-  loggedIn: boolean
-  /** The CLI's own last status line ("Logged in using ChatGPT", …). */
-  detail: string
-}
-
 /** Whether the Codex CLI holds ChatGPT credentials (`codex login status`). */
-export async function codexLoginStatus(): Promise<CodexAuthStatus> {
+export async function codexLoginStatus(): Promise<AgentCliAuthStatus> {
   const result = await runAgentCliCommand({ binary: 'codex', args: ['login', 'status'] })
   if (result.code === null || isAgentCliRuntimeFailure(result)) {
     throw new Error(agentCliFailureMessage(result) ?? 'could not run the Codex CLI')
@@ -88,27 +84,12 @@ export async function runCodexLogin(options: {
   onAuthUrl: (url: string) => void
   signal?: AbortSignal | undefined
 }): Promise<{ success: boolean; message: string | null }> {
-  let urlSeen = false
-  const result = await runAgentCliCommand({
+  return await runAgentCliLogin({
     binary: 'codex',
     args: ['login'],
-    signal: options.signal,
-    onLine: (line) => {
-      if (urlSeen) {
-        return
-      }
-      const url = CODEX_AUTH_URL_RE.exec(line)?.[0]
-      if (url !== undefined) {
-        urlSeen = true
-        options.onAuthUrl(url)
-      }
-    },
+    authUrlPattern: CODEX_AUTH_URL_RE,
+    ...options,
   })
-  const success = result.code === 0
-  return {
-    success,
-    message: success ? null : agentCliFailureMessage(result),
-  }
 }
 
 /** Drop the CLI's stored ChatGPT credentials (`codex logout`). */

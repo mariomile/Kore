@@ -1,6 +1,8 @@
 import { memo, useEffect, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  htmlDisplayName,
+  htmlPageUrl,
   looseFiles,
   looseFilesAffectedBy,
   subscribeIndexApplied,
@@ -9,6 +11,7 @@ import {
 } from '@kore/core'
 import {
   Archive,
+  Globe,
   Image,
   Microphone,
   Note,
@@ -17,23 +20,15 @@ import {
   TableView,
   type Icon,
 } from '@/components/icons'
+import { HtmlPagePreview } from '@/components/html-file/html-page-preview'
 import { previewThumbnailUrl } from '@/editor/preview-image-url'
+import { useHtmlTitle } from '@/hooks/use-html-title'
 import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatBytes } from '@/lib/format-bytes'
 import { cn } from '@/lib/utils'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { CARD_SECTION_CLASS, GRID_CARD_BUTTON_CLASS, GRID_CARD_CLASS } from './grid-card-classes'
-
-interface FolderFilesProps {
-  /** The folder page's folder. */
-  folder: string
-  includeSubfolders: boolean
-  /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
-  onOpen: (path: string) => void
-  /** The section's grid; the Mac page's columns unless the phone passes its own. */
-  className?: string
-}
 
 const NO_FILES: readonly LooseFile[] = []
 
@@ -48,6 +43,7 @@ function looseFilesQueryKey(
 const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   image: Image,
   pdf: Note,
+  html: Globe,
   document: Note,
   sheet: TableView,
   audio: Microphone,
@@ -57,84 +53,110 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
 }
 
 /**
- * A folder page's loose files (images, PDFs, documents no note references)
- * as cards beside its subfolders, in the same columns: a picture shows
- * itself, any other file its icon (its type is in the line under the name). A card opens the
- * file in the in-app viewer, or the app the OS picks for it.
+ * A folder's loose files (images, PDFs, pages, documents no note
+ * references), newest first, kept fresh as files come and go.
  */
-export function FolderFiles({
-  folder,
-  includeSubfolders,
-  onOpen,
-  className = CARD_SECTION_CLASS,
-}: FolderFilesProps): ReactElement | null {
+export function useFolderLooseFiles(
+  folder: string | null,
+  includeSubfolders: boolean,
+): readonly LooseFile[] {
   const { graph } = useGraph()
-  const resolve = usePassiveImageResolver()
   const generation = graph?.generation
   const root = graph?.root
   const { data: files = NO_FILES } = useQuery({
-    queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
-    queryFn: () => looseFiles(folder, includeSubfolders, generation),
-    enabled: generation !== undefined,
+    queryKey: looseFilesQueryKey(root, folder ?? '', includeSubfolders),
+    queryFn: () => looseFiles(folder ?? '', includeSubfolders, generation),
+    enabled: generation !== undefined && folder !== null,
   })
   // The index queries refresh when notes change; a file added, changed or
-  // removed here changes no note, so the cards listen for it themselves.
+  // removed here changes no note, so the files listen for it themselves.
   const queryClient = useQueryClient()
-  useEffect(
-    () =>
-      subscribeIndexApplied((changes, appliedGeneration) => {
-        if (
-          appliedGeneration === generation &&
-          looseFilesAffectedBy(changes, folder, includeSubfolders)
-        ) {
-          void queryClient.invalidateQueries({
-            queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
-            exact: true,
-          })
-        }
-      }),
-    [queryClient, root, generation, folder, includeSubfolders],
-  )
+  useEffect(() => {
+    if (folder === null) {
+      return
+    }
+    return subscribeIndexApplied((changes, appliedGeneration) => {
+      if (
+        appliedGeneration === generation &&
+        looseFilesAffectedBy(changes, folder, includeSubfolders)
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: looseFilesQueryKey(root, folder, includeSubfolders),
+          exact: true,
+        })
+      }
+    })
+  }, [queryClient, root, generation, folder, includeSubfolders])
+  return folder === null ? NO_FILES : files
+}
+
+interface FolderFilesProps {
+  files: readonly LooseFile[]
+  /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
+  onOpen: (path: string) => void
+  /** The section's grid; the Mac page's columns unless the phone passes its own. */
+  className?: string
+}
+
+/**
+ * A folder page's loose files as a row of cards above a list view. The grid
+ * view deals them among the notes instead (all-notes-grid.tsx).
+ */
+export function FolderFiles({
+  files,
+  onOpen,
+  className = CARD_SECTION_CLASS,
+}: FolderFilesProps): ReactElement | null {
   if (files.length === 0) {
     return null
   }
   return (
     <ul aria-label="Files" className={className}>
-      {files.map((file) => {
-        const url = file.kind === 'image' ? resolve(file.path) : null
-        return (
-          <li key={file.path} className="min-w-0">
-            <FileCard
-              file={file}
-              picture={url === null ? undefined : previewThumbnailUrl(url)}
-              onOpen={onOpen}
-            />
-          </li>
-        )
-      })}
+      {files.map((file) => (
+        <li key={file.path} className="min-w-0">
+          <FileCard file={file} onOpen={onOpen} />
+        </li>
+      ))}
     </ul>
   )
 }
 
 interface FileCardProps {
   file: LooseFile
-  picture: string | undefined
   onOpen: (path: string) => void
 }
 
-const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps): ReactElement {
+/**
+ * One loose file as a card: a picture shows itself, an HTML page its own
+ * title, any other file its icon (its type is in the line under the name).
+ * A card opens the file in Kore's own viewer, or the app the OS picks for it.
+ */
+export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps): ReactElement {
+  const { graph } = useGraph()
+  const generation = graph?.generation
+  const resolve = usePassiveImageResolver()
+  // A picture shows itself; a PDF its first page, drawn by the asset protocol.
+  const url = file.kind === 'image' || file.kind === 'pdf' ? resolve(file.path) : null
+  const picture = url === null ? undefined : previewThumbnailUrl(url)
+  const pageUrl =
+    file.kind === 'html' && generation !== undefined ? htmlPageUrl(generation, file.path) : null
   // A picture that fails (a format the card can't draw, a file gone since
   // the catalog listed it) falls back to the file's icon.
   const [failed, setFailed] = useState<string | null>(null)
+  const pageTitle = useHtmlTitle(pageUrl, file.modifiedMs)
+  // A page leads with the title its reader sees; its file name moves under
+  // it. Any other file is its name, with its type under it.
+  const page = file.kind === 'html'
+  const name = page ? (pageTitle ?? htmlDisplayName(file.path)) : file.name
   const type = file.extension === '' ? 'File' : file.extension.toUpperCase()
-  const meta = `${type} · ${formatBytes(file.size)}`
+  const meta = `${page ? file.name : type} · ${formatBytes(file.size)}`
   const KindIcon = KIND_ICON[file.kind]
   const showPicture = picture !== undefined && failed !== picture
   return (
     <div className={GRID_CARD_CLASS}>
       <button
         type="button"
-        aria-label={`${file.name}, ${meta}`}
+        aria-label={`${name}, ${meta}`}
         onClick={() => onOpen(file.path)}
         className={GRID_CARD_BUTTON_CLASS}
       />
@@ -144,7 +166,7 @@ const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps
         className={cn(
           'flex aspect-[16/10] w-full items-center justify-center overflow-hidden',
           // A picture fills the cover; a file without one is its icon on the card itself.
-          showPicture && 'bg-surface-hover',
+          (showPicture || pageUrl !== null) && 'bg-surface-hover',
         )}
       >
         {showPicture ? (
@@ -155,15 +177,21 @@ const FileCard = memo(function FileCard({ file, picture, onOpen }: FileCardProps
             decoding="async"
             draggable={false}
             onError={() => setFailed(picture)}
-            className="size-full object-cover"
+            // A page reads from its top: a PDF shows its heading, not its middle.
+            className={cn('size-full object-cover', file.kind === 'pdf' && 'object-top')}
+          />
+        ) : pageUrl !== null ? (
+          <HtmlPagePreview
+            url={pageUrl}
+            fallback={<KindIcon className="size-10 text-text-muted" />}
           />
         ) : (
           <KindIcon className="size-10 text-text-muted" />
         )}
       </div>
       <div className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
-        <span className="truncate text-sm font-semibold text-text" title={file.name}>
-          {file.name}
+        <span className="truncate text-sm font-semibold text-text" title={name}>
+          {name}
         </span>
         <span className="text-2xs tabular-nums text-text-secondary">{meta}</span>
       </div>

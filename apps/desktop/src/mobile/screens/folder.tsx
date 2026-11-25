@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { findFolder, folderDisplayName, parseSearchQuery, sortNoteList } from '@kore/core'
 import { ChevronLeft, Folder, MoreHorizontal } from '@/components/icons'
-import { FolderFiles } from '@/components/all-notes/folder-files'
+import { FolderFiles, useFolderLooseFiles } from '@/components/all-notes/folder-files'
 import { FolderSubfolders } from '@/components/all-notes/folder-subfolders'
 import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { useFolderIncludesSubfolders } from '@/components/all-notes/use-folder-includes-subfolders'
@@ -14,7 +14,7 @@ import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 import { folderOf } from '@/lib/notes/use-note-bulk-actions'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { FolderActionsDrawer } from '@/mobile/folder-actions-drawer'
 import { FolderRows } from '@/mobile/folder-rows'
 import { LayoutToggle } from '@/mobile/layout-toggle'
@@ -83,6 +83,10 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
   })
 
   const grid = settings.allNotesView === 'grid'
+  const files = useFolderLooseFiles(atTop ? null : folder, includeSubfolders)
+  // The grid deals a folder's files among its notes; the list (and a folder
+  // with no notes yet) keeps them as a row of cards above.
+  const filesAmongNotes = grid && rows !== undefined && rows.length > 0
   const name = atTop ? 'Folders' : folderDisplayName(folder)
   const openNote = (path: string): void => navigate(routeForPath(path))
 
@@ -93,10 +97,9 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
       ) : (
         <FolderRows folder={node} />
       )}
-      {atTop ? null : (
+      {filesAmongNotes ? null : (
         <FolderFiles
-          folder={folder}
-          includeSubfolders={includeSubfolders}
+          files={files}
           onOpen={(path) => void openFile(path)}
           className={MOBILE_CARD_SECTION_CLASS}
         />
@@ -130,7 +133,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           <LayoutToggle
             view={settings.allNotesView === 'grid' ? 'grid' : 'list'}
             onChange={(view) => {
-              hapticImpactLight()
+              haptic('selection')
               updateSettings({ allNotesView: view })
             }}
           />
@@ -141,7 +144,6 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
             aria-label="Folder actions"
             aria-haspopup="dialog"
             onClick={() => {
-              hapticImpactLight()
               setActionsOpen(true)
             }}
           >
@@ -191,7 +193,13 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           ) : null}
         </div>
       ) : grid ? (
-        <NoteCardGrid rows={rows} onOpen={openNote} leading={leading} />
+        <NoteCardGrid
+          rows={rows}
+          onOpen={openNote}
+          leading={leading}
+          files={files}
+          onOpenFile={(path) => void openFile(path)}
+        />
       ) : (
         <NoteRowList rows={rows} onOpen={openNote} onDeleted={removeDeletedRow} leading={leading} />
       )}

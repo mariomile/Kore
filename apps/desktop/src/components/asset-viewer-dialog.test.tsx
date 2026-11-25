@@ -8,8 +8,7 @@ describe('viewableAssetKind', () => {
   it('routes viewable kinds to the viewer, everything else externally', () => {
     expect(viewableAssetKind('assets/report.pdf')).toBe('pdf')
     expect(viewableAssetKind('assets/Report.PDF')).toBe('pdf')
-    expect(viewableAssetKind('assets/page.html')).toBe('html')
-    expect(viewableAssetKind('assets/page.htm')).toBe('html')
+    expect(viewableAssetKind('assets/page.html')).toBeNull()
     expect(viewableAssetKind('assets/data.csv')).toBe('csv')
     expect(viewableAssetKind('assets/data.tsv')).toBe('csv')
     expect(viewableAssetKind('assets/memo.docx')).toBe('docx')
@@ -114,21 +113,6 @@ describe('AssetViewerDialog', () => {
     expect(frame.getAttribute('src')).toContain('quarterly-report.pdf')
     // The webview's PDF plugin does not run inside a sandboxed frame.
     expect(frame.hasAttribute('sandbox')).toBe(false)
-    await view.unmount()
-  })
-
-  it('sandboxes HTML attachments completely', async () => {
-    const view = await render(
-      <AssetViewerDialog
-        assetPath="assets/clipped-page.html"
-        url="kore-asset://localhost/1/assets/clipped-page.html"
-        onClose={() => {}}
-        onOpenExternally={() => {}}
-      />,
-    )
-    const frame = view.getByTitle('clipped-page.html').element()
-    // The empty sandbox blocks scripts, same-origin access, forms, popups.
-    expect(frame.getAttribute('sandbox')).toBe('')
     await view.unmount()
   })
 

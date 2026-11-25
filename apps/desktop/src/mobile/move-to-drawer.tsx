@@ -5,7 +5,7 @@ import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/
 import type { MoveTarget } from '@/lib/folders/use-folder-operations'
 import { useFolderPicker } from '@/lib/folders/use-folder-picker'
 import { FolderRow } from '@/mobile/folder-row'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SearchInput } from '@/mobile/search-input'
 
 interface MoveToDrawerProps {
@@ -23,7 +23,7 @@ interface MoveToDrawerProps {
 export function MoveToDrawer({ target, onClose }: MoveToDrawerProps): ReactElement {
   const picker = useFolderPicker(target)
   const finish = (destination: string): void => {
-    hapticImpactLight()
+    haptic('success')
     onClose()
     picker.choose(destination)
   }

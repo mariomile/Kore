@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
-import type { NoteListEntry } from '@kore/core'
+import type { LooseFile, NoteListEntry } from '@kore/core'
 import { AllNotesGrid } from './all-notes-grid'
 
 const pictures = new Map<string, string>()
@@ -11,8 +11,11 @@ vi.mock('@/hooks/use-note-card-images', () => ({
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
-    settings: { dateFormat: 'mdy', timeFormat: '12h' },
+    settings: { dateFormat: 'mdy', timeFormat: '12h', allNotesSort: 'updated-desc' },
   }),
+}))
+vi.mock('./folder-files', () => ({
+  FileCard: ({ file }: { file: LooseFile }) => <div data-testid="file-card">{file.name}</div>,
 }))
 vi.mock('./note-card-preview', () => ({
   NoteCardPreview: () => (
@@ -80,6 +83,39 @@ describe('AllNotesGrid card clipping', () => {
     expect(slotBox.top).toBeGreaterThanOrEqual(pictureBox.bottom - 1)
     expect(slotBox.bottom).toBeLessThanOrEqual(footerBox.top + 1)
     pictures.clear()
+    await view.unmount()
+  })
+})
+
+describe("AllNotesGrid with a folder's files", () => {
+  it('deals files among the notes in one order', async () => {
+    const newer: NoteListEntry = {
+      ...note,
+      path: 'notes/new.md',
+      title: 'New',
+      mtime: note.mtime + 2,
+    }
+    const file: LooseFile = {
+      path: 'notes/deck.pdf',
+      name: 'deck.pdf',
+      extension: 'pdf',
+      kind: 'pdf',
+      size: 1,
+      modifiedMs: note.mtime + 1,
+    }
+    const view = await render(
+      <div style={{ width: '60rem' }}>
+        <AllNotesGrid notes={[newer, note]} files={[file]} tag={null} onOpen={vi.fn()} />
+      </div>,
+    )
+
+    await expect.element(view.getByTestId('file-card')).toBeInTheDocument()
+    const grid = view.getByTestId('all-notes-grid').element()
+    const columns = [...grid.children].map((column) => column.textContent ?? '')
+    // Newest first, row by row: New, then the file, then Log.
+    expect(columns[0]).toContain('New')
+    expect(columns[1]).toContain('deck.pdf')
+    expect(columns[2]).toContain('Log')
     await view.unmount()
   })
 })

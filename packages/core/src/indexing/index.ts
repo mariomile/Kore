@@ -344,6 +344,7 @@ export {
 } from './filtered-search'
 export { firstImageAssets } from './asset-refs'
 export { looseFiles, looseFilesAffectedBy, type LooseFile, type LooseFileKind } from './loose-files'
+export { filterLooseFiles, looseFileTitle, mergeFolderItems, type FolderItem } from './folder-items'
 export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,

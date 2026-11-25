@@ -27,7 +27,7 @@ import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { usePrefersReducedMotion } from '@/mobile/use-reduced-motion'
 import { MobileCellEditorDrawer, type MobileCellTarget } from './mobile-cell-editor-drawer'
 import { mobileColumnWidth } from './mobile-type-view'
@@ -406,7 +406,7 @@ export function MobileCollectionTable({
     if (onSortChange === undefined) {
       return
     }
-    hapticImpactLight()
+    haptic('selection')
     if (primary === null || primary.key !== key || sorts.length > 1) {
       onSortChange([{ key, direction: 'asc' }])
     } else if (primary.direction === 'asc') {
@@ -455,7 +455,7 @@ export function MobileCollectionTable({
             aria-checked={checked}
             aria-label={property.name}
             onClick={() => {
-              hapticImpactLight()
+              haptic('toggle')
               commitProperty(entry.path, property.key, !checked)
             }}
             className="flex h-full w-full min-w-0 items-center justify-center px-2.5 active:bg-surface-hover focus-visible:outline-none"
@@ -467,7 +467,6 @@ export function MobileCollectionTable({
             type="button"
             aria-label={`Edit ${property.name}`}
             onClick={() => {
-              hapticImpactLight()
               setEditingCell({
                 entryPath: entry.path,
                 entryTitle: entry.title,

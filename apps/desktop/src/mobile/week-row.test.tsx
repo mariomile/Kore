@@ -4,13 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import '@/test-utils/locator'
 import { WeekRow } from './week-row'
 
-const hapticImpactLight = vi.hoisted(() => vi.fn())
+const haptic = vi.hoisted(() => vi.fn())
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight }))
+vi.mock('@/lib/haptics', () => ({ haptic }))
 
 afterEach(async () => {
   await cleanup()
-  hapticImpactLight.mockReset()
+  haptic.mockReset()
 })
 
 describe('WeekRow', () => {
@@ -35,7 +35,7 @@ describe('WeekRow', () => {
     await expect.element(page.getByTestId('note-dot-2026-07-14')).not.toBeInTheDocument()
 
     await userEvent.click(selected)
-    expect(hapticImpactLight).toHaveBeenCalledOnce()
+    expect(haptic).toHaveBeenCalledOnce()
     expect(onSelect).toHaveBeenCalledWith('2026-07-16')
   })
 

@@ -20,22 +20,62 @@
 //! served only when byte sniffing identifies PNG, JPEG, GIF, or WebP content,
 //! so an SVG renamed with a raster extension cannot load subresources there.
 //! A note card's picture also adds `kore-thumb`, and gets a small cached JPEG
-//! instead of the original (see `thumbnails.rs`).
+//! instead of the original (see `thumbnails.rs`); a PDF's card asks the same
+//! way and gets a picture of its first page, never the PDF itself.
+//!
+//! Every response except a PDF carries [`DOCUMENT_POLICY`]: a file opened as
+//! a document (an HTML page, an SVG, XML) runs sandboxed in an opaque origin,
+//! with scripts but no requests of its own, wherever it is framed or opened. PDFs
+//! are exempt because the webview's PDF plugin does not render sandboxed.
+//!
+//! The app reads some files as text too (an HTML page's title and source,
+//! a file handed to the share sheet). Its own origin is not the scheme's,
+//! so a response names that origin in `Access-Control-Allow-Origin`, and
+//! only that one: a sandboxed page (origin `null`) and a site open in the
+//! in-app browser never get to read a response.
 
 use std::borrow::Cow;
 
-use tauri::http::{header, Request, Response, StatusCode};
+use tauri::http::{header, HeaderValue, Request, Response, StatusCode};
 use tauri::utils::mime_type::MimeType;
 use tauri::{AppHandle, Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 use super::GraphState;
 
 /// The scheme name, shared with the `lib.rs` registration. The frontend and
-/// the CSP `img-src` / `frame-src` grants in `tauri.conf.json` (images and
-/// the in-app PDF/HTML attachment viewer) spell it out literally.
+/// the CSP `img-src` / `frame-src` / `connect-src` grants in
+/// `tauri.conf.json` (images, the in-app PDF/HTML viewers, and the files the
+/// app reads as text) spell it out literally.
 pub(crate) const SCHEME: &str = "kore-asset";
 const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
 const THUMBNAIL_QUERY: &str = "kore-thumb";
+
+/// The origins the app's own pages load from, per platform: custom scheme
+/// on Apple and Linux, `tauri.localhost` on Windows and Android.
+const APP_ORIGINS: [&str; 3] = [
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+];
+
+/// The Content-Security-Policy of every served document. `sandbox` without
+/// `allow-same-origin` gives the page an opaque origin: no cookies, storage,
+/// or Tauri IPC (the IPC bridge and its key are injected into the app's main
+/// frame only, and IPC from any other origin is refused). Scripts, styles,
+/// fonts and media may come from the vault or any HTTPS host, so pages made
+/// by AI tools that load a chart or CSS library from a CDN render as their
+/// author saw them. `connect-src 'none'` and `form-action 'none'` block the
+/// page's own requests (fetch, XHR, WebSocket, beacons, form posts); a
+/// resource load can still carry data in its URL, so all a page can ever
+/// leak is itself: it cannot read the vault, a note, or another origin.
+const DOCUMENT_POLICY: &str = "sandbox allow-scripts; \
+default-src 'none'; \
+script-src 'unsafe-inline' 'unsafe-eval' kore-asset: http://kore-asset.localhost https: data: blob:; \
+style-src 'unsafe-inline' kore-asset: http://kore-asset.localhost https: data:; \
+img-src kore-asset: http://kore-asset.localhost https: data: blob:; \
+font-src kore-asset: http://kore-asset.localhost https: data:; \
+media-src kore-asset: http://kore-asset.localhost https: data: blob:; \
+connect-src 'none'; form-action 'none'; base-uri 'none'";
 
 /// Protocol entry point (`register_asynchronous_uri_scheme_protocol`). Runs
 /// on the webview's calling thread — on WebKit, the app's main thread — so it
@@ -55,17 +95,24 @@ pub(crate) fn handle<R: Runtime>(
     // raster-only rule would refuse.
     let thumbnail = preview_raster_only && has_query_flag(request.uri().query(), THUMBNAIL_QUERY);
     let method_allowed = request.method() == tauri::http::Method::GET;
+    let allow_origin = request
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|origin| origin.to_str().ok())
+        .filter(|origin| is_app_origin(origin, dev_origin(&app).as_deref()))
+        .and_then(|origin| HeaderValue::from_str(origin).ok());
     tauri::async_runtime::spawn_blocking(move || {
         if !method_allowed {
             responder.respond(status_response(StatusCode::METHOD_NOT_ALLOWED));
             return;
         }
-        responder.respond(response_for(
-            &app,
-            &request_path,
-            preview_raster_only,
-            thumbnail,
-        ));
+        let mut response = response_for(&app, &request_path, preview_raster_only, thumbnail);
+        let headers = response.headers_mut();
+        headers.insert(header::VARY, HeaderValue::from_static("Origin"));
+        if let Some(origin) = allow_origin {
+            headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
+        }
+        responder.respond(response);
     });
 }
 
@@ -77,7 +124,7 @@ fn response_for<R: Runtime>(
 ) -> Response<Cow<'static, [u8]>> {
     let served = locate(app, request_path).and_then(|path| {
         // A cached thumbnail answers without touching the original: it was
-        // only ever written from a file that passed the raster check.
+        // only ever written from a file that passed the check below.
         let cache_file = thumbnail
             .then(|| thumbnail_cache_file(app, &path))
             .flatten();
@@ -88,30 +135,58 @@ fn response_for<R: Runtime>(
             return Ok(("image/jpeg".to_owned(), bytes));
         }
         let (mime, bytes) = read(&path)?;
-        if preview_raster_only && !is_preview_safe_raster_mime(&mime) {
+        // A PDF reaches a passive preview only as the picture of its first
+        // page, never as itself.
+        let pdf_thumbnail = thumbnail && mime == "application/pdf";
+        if preview_raster_only && !pdf_thumbnail && !is_preview_safe_raster_mime(&mime) {
             return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
         }
-        Ok(
-            match cache_file
-                .as_deref()
-                .and_then(|file| super::thumbnails::thumbnail(file, &bytes))
-            {
-                Some(jpeg) => ("image/jpeg".to_owned(), jpeg),
-                None => (mime, bytes),
-            },
-        )
+        match cache_file
+            .as_deref()
+            .and_then(|file| super::thumbnails::thumbnail(file, &mime, &bytes))
+        {
+            Some(jpeg) => Ok(("image/jpeg".to_owned(), jpeg)),
+            None if pdf_thumbnail => Err(StatusCode::UNSUPPORTED_MEDIA_TYPE),
+            None => Ok((mime, bytes)),
+        }
     });
     match served {
-        Ok((mime, bytes)) => Response::builder()
-            .header(header::CONTENT_TYPE, mime)
-            .header(header::CONTENT_LENGTH, bytes.len())
-            .body(Cow::Owned(bytes))
-            .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR)),
+        Ok((mime, bytes)) => {
+            let builder = Response::builder().header(header::CONTENT_LENGTH, bytes.len());
+            let builder = match document_policy(&mime) {
+                Some(policy) => builder.header(header::CONTENT_SECURITY_POLICY, policy),
+                None => builder,
+            };
+            builder
+                .header(header::CONTENT_TYPE, mime)
+                .body(Cow::Owned(bytes))
+                .unwrap_or_else(|_| status_response(StatusCode::INTERNAL_SERVER_ERROR))
+        }
         Err(status) => {
             tracing::warn!(path = request_path, %status, "asset protocol refused a request");
             status_response(status)
         }
     }
+}
+
+/// The sandbox policy a response of type `mime` carries: every type but PDF.
+fn document_policy(mime: &str) -> Option<&'static str> {
+    (mime != "application/pdf").then_some(DOCUMENT_POLICY)
+}
+
+/// Whether `origin` is one of the app's own pages: its bundled origin, or
+/// the dev server it loads from in a debug build.
+fn is_app_origin(origin: &str, dev_origin: Option<&str>) -> bool {
+    APP_ORIGINS.contains(&origin) || dev_origin == Some(origin)
+}
+
+/// The dev server's origin in a debug build, None in a release one.
+fn dev_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+    let url = app.config().build.dev_url.as_ref()?;
+    Some(url.origin().ascii_serialization())
 }
 
 fn has_query_flag(query: Option<&str>, flag: &str) -> bool {
@@ -297,5 +372,37 @@ mod tests {
         let png_mime = MimeType::parse(png_signature, "assets/image.bin");
         assert_eq!(png_mime, "image/png");
         assert!(is_preview_safe_raster_mime(&png_mime));
+    }
+
+    #[test]
+    fn only_the_apps_own_origins_may_read_a_response() {
+        let dev = Some("http://localhost:1420");
+        assert!(is_app_origin("tauri://localhost", None));
+        assert!(is_app_origin("http://tauri.localhost", None));
+        assert!(is_app_origin("http://localhost:1420", dev));
+        assert!(!is_app_origin("http://localhost:1420", None));
+        // A sandboxed page, a site in the in-app browser.
+        assert!(!is_app_origin("null", dev));
+        assert!(!is_app_origin("https://example.com", dev));
+        assert!(!is_app_origin("tauri://localhost.example.com", dev));
+    }
+
+    #[test]
+    fn documents_are_sandboxed_without_network_and_pdfs_are_not() {
+        let html_mime = MimeType::parse(b"<!doctype html><script></script>", "Reports/q4.html");
+        let policy = document_policy(&html_mime).expect("an HTML page is sandboxed");
+        assert!(policy.starts_with("sandbox allow-scripts;"));
+        assert!(!policy.contains("allow-same-origin"));
+        assert!(policy.contains("connect-src 'none'"));
+        assert!(policy.contains("form-action 'none'"));
+
+        let svg_mime = MimeType::parse(
+            br#"<svg xmlns="http://www.w3.org/2000/svg"></svg>"#,
+            "a.svg",
+        );
+        assert!(document_policy(&svg_mime).is_some());
+
+        let pdf_mime = MimeType::parse(b"%PDF-1.7", "Reports/q4.pdf");
+        assert_eq!(document_policy(&pdf_mime), None);
     }
 }

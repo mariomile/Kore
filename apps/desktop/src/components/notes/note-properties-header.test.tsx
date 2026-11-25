@@ -52,7 +52,7 @@ vi.mock('@/lib/tags/schema-edits', () => ({
   renameTagProperty,
   setTagPropertyType,
 }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 
 function Subject({ path = 'notes/dispossessed.md' }: { path?: string }): ReactElement {
   return (

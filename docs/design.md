@@ -240,6 +240,28 @@ motion on hover except the color change itself.
 (`index.css`); do not gate individual animations by hand, and do not use
 `motion-reduce:` utilities to reintroduce motion.
 
+## Haptics
+
+A haptic confirms something the finger did; it is never decoration. Every
+call goes through `haptic(kind)` in `apps/desktop/src/lib/haptics.ts`, which
+picks the hardware per platform, so a call site names what happened, not
+how it should feel:
+
+| Kind | When | iPhone | Mac trackpad |
+| --- | --- | --- | --- |
+| `selection` | a value changed: picker, segment, tab, date | selection tick | none |
+| `toggle` | a state flipped: checkbox, switch, task done | light | none |
+| `action` | a button committed: send, add, apply, clear | light | none |
+| `lift` | a press took hold: long-press select, drag pick-up | medium | none |
+| `snap` | a drag reached a new place, a pull crossed its threshold | selection tick | alignment |
+| `drop` | a drag landed | light | alignment |
+| `success` / `warning` / `error` | saved or moved / a delete / a failure | notification | error only |
+
+Plain navigation (opening a note, a sheet, a menu, a screen) stays silent.
+The Mac never knocks on a click: a Force Touch click already is a haptic,
+so a second one reads as a double click. A new `DndContext` gets
+`<DragHaptics />` inside it; the settings switch silences everything.
+
 ## Do / Don't
 
 **Do**

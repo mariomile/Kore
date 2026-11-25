@@ -18,7 +18,7 @@ const searchWithFilters = vi.hoisted(() => vi.fn())
 const listNoteTags = vi.hoisted(() => vi.fn())
 const firstImageAssets = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn())
-const hapticImpactLight = vi.hoisted(() => vi.fn())
+const haptic = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
 // Lets a test re-render the screen after mutating `settingsState`, the way
 // the real provider does after `updateSettings`.
@@ -42,7 +42,7 @@ vi.mock('@kore/core', async (importOriginal) => ({
   readNote,
   assetUrl: (_generation: number, path: string) => `kore-asset://localhost/${path}`,
 }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight }))
+vi.mock('@/lib/haptics', () => ({ haptic }))
 vi.mock('@/components/ui/drawer', () => ({
   Drawer: ({ children, open }: { children?: ReactNode; open?: boolean }) =>
     open ? <>{children}</> : null,
@@ -138,7 +138,7 @@ beforeEach(() => {
   settingsState.allNotesView = 'list'
   settingsState.allNotesSort = 'updated-desc'
   updateSettings.mockReset()
-  hapticImpactLight.mockReset()
+  haptic.mockReset()
   listNoteTags.mockResolvedValue([])
   firstImageAssets.mockResolvedValue(new Map())
   // No note body unless a test provides one: the card keeps its snippet.
@@ -178,7 +178,7 @@ describe('MobileAllNotes grid view', () => {
 
     await page.getByRole('button', { name: 'Grid view' }).click()
     expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'grid' })
-    expect(hapticImpactLight).toHaveBeenCalledOnce()
+    expect(haptic).toHaveBeenCalledOnce()
   })
 
   it('renders cards with previews and opens a note on tap', async () => {

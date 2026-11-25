@@ -14,7 +14,7 @@ vi.mock('@/lib/tags/use-create-collection-note', () => ({
   useCreateCollectionNote: () => createNote,
 }))
 vi.mock('@/hooks/use-open-task-counts', () => ({ useOpenTaskCounts: () => ({}) }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/providers/settings-provider')>()),
   useSettings: () => ({

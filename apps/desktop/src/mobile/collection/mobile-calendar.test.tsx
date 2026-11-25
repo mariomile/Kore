@@ -8,7 +8,7 @@ const createNote = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
 vi.mock('@/lib/tags/use-create-collection-note', () => ({
   useCreateCollectionNote: () => createNote,
 }))
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: () => {} }))
+vi.mock('@/lib/haptics', () => ({ haptic: () => {} }))
 vi.mock('@/lib/dates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/dates')>()),
   todayIso: () => '2027-01-13',

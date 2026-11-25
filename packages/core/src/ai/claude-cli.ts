@@ -13,6 +13,7 @@ import {
 } from './agent-cli'
 import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
 import { describeClaudeToolCall, summarizeClaudeToolResult } from './chat/agent-steps'
+import { claudeCliErrorMessage } from './claude-auth'
 
 /**
  * The Claude Code CLI provider ("subscription" AI): chat runs through the
@@ -375,10 +376,21 @@ export function claudeStreamJsonUserLine(
   })
 }
 
-/** Run one chat turn through the Claude Code CLI (see `./agent-cli`). */
-export function streamClaudeCliChat(
+/**
+ * Run one chat turn through the Claude Code CLI (see `./agent-cli`). The
+ * CLI's auth errors become the app's sign-in pointer (`./claude-auth`).
+ */
+export async function* streamClaudeCliChat(
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
+  for await (const event of streamClaudeCliTurn(options)) {
+    yield event.type === 'error'
+      ? { ...event, message: claudeCliErrorMessage(event.message) }
+      : event
+  }
+}
+
+function streamClaudeCliTurn(options: StreamCliChatOptions): AsyncGenerator<ChatStreamEvent> {
   const steering = options.steering
   const input = agentCliInput(options.messages, CLAUDE_CLI_CHANNELS)
   // Attachments need the stream-json input channel (content blocks); so does

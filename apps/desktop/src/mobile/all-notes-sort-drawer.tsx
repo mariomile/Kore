@@ -8,7 +8,7 @@ import {
   type AllNotesSortField,
 } from '@kore/core'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SettingsGroup, SettingsSegmentedRow, SettingsSelectRow } from '@/mobile/settings-list'
 
 const FIELDS: readonly { field: AllNotesSortField; label: string }[] = [
@@ -64,7 +64,7 @@ export function AllNotesSortDrawer({
     if (next === field) {
       return
     }
-    hapticImpactLight()
+    haptic('selection')
     onSortChange(allNotesSortFrom(next, ALL_NOTES_SORT_DEFAULT_DIRECTION[next]))
   }
   return (
@@ -92,7 +92,7 @@ export function AllNotesSortDrawer({
               value={direction}
               options={DIRECTIONS[field]}
               onChange={(next) => {
-                hapticImpactLight()
+                haptic('selection')
                 onSortChange(allNotesSortFrom(field, next))
               }}
             />

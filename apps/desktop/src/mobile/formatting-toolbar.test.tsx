@@ -12,7 +12,7 @@ import { fireEvent } from '@/test-utils/fire-event'
 import { MobileFormattingToolbar } from './formatting-toolbar'
 import { act } from '@/test-utils/act'
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 vi.mock('@/lib/pick-files', () => ({ pickFiles: vi.fn(async () => []) }))
 
 function makeToolbar(

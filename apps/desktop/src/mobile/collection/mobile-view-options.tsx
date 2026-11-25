@@ -12,7 +12,7 @@ import { ArrowDown, ArrowUp, Check, ChevronLeft, Close, Plus } from '@/component
 import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import {
   SettingsActionRow,
   SettingsGroup,
@@ -96,7 +96,6 @@ export function MobileViewOptions(props: MobileViewOptionsProps): ReactElement {
   const { open, onOpenChange } = props
   const [page, setPage] = useState<Page>(ROOT)
   const go = (next: Page): void => {
-    hapticImpactLight()
     setPage(next)
   }
   return (
@@ -297,7 +296,7 @@ function FreezePage({
           label={option.label}
           selected={effective === option.count}
           onPress={() => {
-            hapticImpactLight()
+            haptic('selection')
             onFrozenColumnsChange?.(option.count)
           }}
         />
@@ -360,7 +359,7 @@ function FilterPage({
             label="Clear filters"
             tone="destructive"
             onPress={() => {
-              hapticImpactLight()
+              haptic('warning')
               onFiltersChange([])
             }}
           />
@@ -399,7 +398,7 @@ function FilterFieldPage({
   const values =
     property.type === 'checkbox' ? [] : filterValueInventory(property, entries, MAX_FILTER_VALUES)
   const toggle = (operator: CollectionFilterOperator, text: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     onFiltersChange(toggleFilter(filters, { key: property.key, operator, text }))
   }
   const coloredOptions =
@@ -484,7 +483,7 @@ function ConditionRow({
     if (text === '') {
       return
     }
-    hapticImpactLight()
+    haptic('action')
     onSubmit(text)
     setDraft('')
   }
@@ -543,7 +542,7 @@ function SortPage({ type, sorts, onSortsChange }: MobileViewOptionsProps): React
                   type="button"
                   aria-label={`${name}: ${ascending ? 'ascending' : 'descending'}`}
                   onClick={() => {
-                    hapticImpactLight()
+                    haptic('selection')
                     onSortsChange(flipSort(sorts, sort.key))
                   }}
                   className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-surface-hover px-3 text-[13px] font-medium text-text active:opacity-60"
@@ -571,7 +570,7 @@ function SortPage({ type, sorts, onSortsChange }: MobileViewOptionsProps): React
               label={field.name}
               icon={Plus}
               onPress={() => {
-                hapticImpactLight()
+                haptic('selection')
                 onSortsChange(addSort(sorts, field.key))
               }}
             />
@@ -587,7 +586,7 @@ function GroupPage({ grouping }: MobileViewOptionsProps): ReactElement | null {
     return null
   }
   const pick = (key: string | null): void => {
-    hapticImpactLight()
+    haptic('selection')
     grouping.onChange(key)
   }
   return (
@@ -623,7 +622,7 @@ function FieldsPage({ type, hiddenFields, onToggleField }: MobileViewOptionsProp
           label={property.name}
           checked={!hiddenFields.has(property.key)}
           onCheckedChange={() => {
-            hapticImpactLight()
+            haptic('toggle')
             onToggleField(property.key)
           }}
         />
@@ -652,7 +651,7 @@ function RemovableRow({
         type="button"
         aria-label={removeLabel}
         onClick={() => {
-          hapticImpactLight()
+          haptic('action')
           onRemove()
         }}
         className={cn(

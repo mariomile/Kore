@@ -244,7 +244,7 @@ export function ContextSidebar({
   /** Picking a tab, or a panel in the "+" menu, shows it — opening it first if needed. */
   const showPanel = (id: ContextPanel): void => {
     if (id !== active.id) {
-      haptic('alignment')
+      haptic('snap')
     }
     openContextPanel(id)
   }
@@ -255,7 +255,7 @@ export function ContextSidebar({
    * way the stored choice becomes the panel you see afterwards.
    */
   const closePanel = (id: ContextPanel): void => {
-    haptic('alignment')
+    haptic('snap')
     const next =
       active.id === id ? (segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL) : active.id
     closeContextPanel(id, next)

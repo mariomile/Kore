@@ -6,7 +6,6 @@ import { selectOptionBadgeClass, selectOptionDotClass } from '@/components/tags/
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { NoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
-import { hapticImpactLight } from '@/mobile/haptics'
 import { useSettings } from '@/providers/settings-provider'
 
 /** Last segment of a nested tag (`Domain/ai` → `ai`): the phone row is narrow. */
@@ -78,7 +77,6 @@ export function NoteFieldSummary({ fields, children }: NoteFieldSummaryProps): R
         type="button"
         aria-expanded={open}
         onClick={() => {
-          hapticImpactLight()
           setOpen((value) => {
             const next = !value
             if (next) {

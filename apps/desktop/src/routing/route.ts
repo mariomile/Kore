@@ -69,6 +69,8 @@ export type Route =
   // One note's local graph as a page of its own: the Details panel's Local
   // graph section opened into the workspace (a tab, or a pane beside the note).
   | { kind: 'localGraph'; path: string }
+  // An HTML file from the vault, rendered as a page in a sandboxed frame.
+  | { kind: 'html'; path: string }
   // A markdown file from the Library (a coding agent's home folder such as
   // `~/.claude`), read-only. `root` is the folder's id.
   | { kind: 'library'; root: string; path: string }
@@ -169,6 +171,8 @@ export function routesEqual(a: Route, b: Route): boolean {
       return a.path === (b as Extract<Route, { kind: 'canvas' }>).path
     case 'localGraph':
       return a.path === (b as Extract<Route, { kind: 'localGraph' }>).path
+    case 'html':
+      return a.path === (b as Extract<Route, { kind: 'html' }>).path
     case 'library': {
       const other = b as Extract<Route, { kind: 'library' }>
       return a.root === other.root && a.path === other.path

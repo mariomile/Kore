@@ -1,10 +1,10 @@
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useTaskCheckboxHaptics } from './use-task-haptics'
 
-vi.mock('@/mobile/haptics', () => ({
-  hapticImpactLight: vi.fn(),
+vi.mock('@/lib/haptics', () => ({
+  haptic: vi.fn(),
 }))
 
 /** The DOM shape meowdown/prosemirror-flat-list renders for list markers. */
@@ -30,7 +30,7 @@ function press(element: Element): void {
 }
 
 beforeEach(() => {
-  vi.mocked(hapticImpactLight).mockClear()
+  vi.mocked(haptic).mockClear()
 })
 
 afterEach(() => {
@@ -42,7 +42,7 @@ describe('useTaskCheckboxHaptics', () => {
     const checkbox = installList('task')
     const view = await renderHook(() => useTaskCheckboxHaptics())
     press(checkbox)
-    expect(hapticImpactLight).toHaveBeenCalledOnce()
+    expect(haptic).toHaveBeenCalledOnce()
     await view.unmount()
   })
 
@@ -50,7 +50,7 @@ describe('useTaskCheckboxHaptics', () => {
     const checkbox = installList('toggle')
     const view = await renderHook(() => useTaskCheckboxHaptics())
     press(checkbox)
-    expect(hapticImpactLight).not.toHaveBeenCalled()
+    expect(haptic).not.toHaveBeenCalled()
     await view.unmount()
   })
 
@@ -58,14 +58,14 @@ describe('useTaskCheckboxHaptics', () => {
     const checkbox = installList('task', false)
     const view = await renderHook(() => useTaskCheckboxHaptics())
     press(checkbox)
-    expect(hapticImpactLight).not.toHaveBeenCalled()
+    expect(haptic).not.toHaveBeenCalled()
     await view.unmount()
   })
 
   it('stays silent for presses outside any list marker', async () => {
     const view = await renderHook(() => useTaskCheckboxHaptics())
     press(document.body)
-    expect(hapticImpactLight).not.toHaveBeenCalled()
+    expect(haptic).not.toHaveBeenCalled()
     await view.unmount()
   })
 
@@ -74,6 +74,6 @@ describe('useTaskCheckboxHaptics', () => {
     const view = await renderHook(() => useTaskCheckboxHaptics())
     await view.unmount()
     press(checkbox)
-    expect(hapticImpactLight).not.toHaveBeenCalled()
+    expect(haptic).not.toHaveBeenCalled()
   })
 })

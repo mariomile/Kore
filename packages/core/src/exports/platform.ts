@@ -1,6 +1,7 @@
 export * from '../bases'
 export * from '../vault-compat'
 export * from '../canvas'
+export * from '../html/html-file'
 export * from '../obsidian-import'
 export {
   setBridge,
@@ -34,7 +35,7 @@ export {
   type StagedRecordingFile,
   type StartRecordingOptions,
 } from '../ipc/recording-plugin'
-export { impactLight } from '../ipc/keyboard-plugin'
+export { iosHaptic, type IosHapticStyle } from '../ipc/keyboard-plugin'
 export {
   getAppVersion,
   getAppPlatform,

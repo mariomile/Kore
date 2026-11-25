@@ -102,6 +102,16 @@ export interface OpenLocalGraphTab {
 }
 
 /**
+ * An HTML file from the vault, rendered as a page of its own (sandboxed by
+ * the `kore-asset` protocol). Keyed by its path, like a canvas.
+ */
+export interface OpenHtmlTab {
+  kind: 'html'
+  path: string
+  pinned: boolean
+}
+
+/**
  * A markdown file from the Library (a coding agent's home folder such as
  * `~/.claude`), shown read-only. `root` is the folder's id, `path` the file
  * relative to it.
@@ -120,6 +130,7 @@ export type OpenTab =
   | OpenBaseTab
   | OpenCanvasTab
   | OpenLocalGraphTab
+  | OpenHtmlTab
   | OpenLibraryTab
 
 /** One workspace pane's persisted tab strip and the tab it last showed. */
@@ -167,6 +178,12 @@ const openLocalGraphTabStoredSchema = z.object({
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenLocalGraphTab>
 
+const openHtmlTabStoredSchema = z.object({
+  kind: z.literal('html'),
+  path: z.string(),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenHtmlTab>
+
 const openLibraryTabStoredSchema = z.object({
   kind: z.literal('library'),
   root: z.string(),
@@ -213,6 +230,7 @@ const openTabSchema: z.ZodType<OpenTab> = z.union([
   openBaseTabStoredSchema,
   openCanvasTabStoredSchema,
   openLocalGraphTabStoredSchema,
+  openHtmlTabStoredSchema,
   openLibraryTabStoredSchema,
   openDailyTabStoredSchema,
   openAllNotesTabStoredSchema,

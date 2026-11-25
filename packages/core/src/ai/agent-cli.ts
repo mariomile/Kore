@@ -6,6 +6,7 @@ import type { ChatStreamEvent } from './chat/stream-chat'
 import type { AgentStep, AgentStepOutcome } from './chat/agent-steps'
 import { dailyPathPattern } from '../graph/paths'
 import { weeklyPathPattern } from '../graph/weekly'
+import { agentCliFailureMessage } from './agent-cli-failure'
 
 /**
  * Shared plumbing for the "subscription" AI providers — chat engines that
@@ -113,6 +114,13 @@ const cliEventSchema = z.discriminatedUnion('kind', [
 
 const CLI_EVENT = 'agent-cli:event'
 
+/** Whether a subscription CLI holds the user's own login. */
+export interface AgentCliAuthStatus {
+  loggedIn: boolean
+  /** One human status line ("Signed in as …", the CLI's own line, …). */
+  detail: string
+}
+
 export interface AgentCliCommandResult {
   /** The process exit code, or null when it died without one (or never ran). */
   code: number | null
@@ -191,6 +199,37 @@ export async function runAgentCliCommand(options: {
     unlisten()
     options.signal?.removeEventListener('abort', onAbort)
   }
+}
+
+/**
+ * Run a CLI's own OAuth sign-in command to completion: the CLI starts its
+ * localhost callback server and prints the sign-in URL, relayed once
+ * through `onAuthUrl`, then blocks until the browser finishes the flow (or
+ * the signal cancels it). Credentials stay wherever the CLI keeps them.
+ */
+export async function runAgentCliLogin(options: {
+  binary: AgentCliBinary
+  args: string[]
+  /** Matches the sign-in URL in the CLI's output. */
+  authUrlPattern: RegExp
+  onAuthUrl: (url: string) => void
+  signal?: AbortSignal | undefined
+}): Promise<{ success: boolean; message: string | null }> {
+  let urlSeen = false
+  const result = await runAgentCliCommand({
+    binary: options.binary,
+    args: options.args,
+    signal: options.signal,
+    onLine: (line) => {
+      const url = urlSeen ? undefined : options.authUrlPattern.exec(line)?.[0]
+      if (url !== undefined) {
+        urlSeen = true
+        options.onAuthUrl(url)
+      }
+    },
+  })
+  const success = result.code === 0
+  return { success, message: success ? null : agentCliFailureMessage(result) }
 }
 
 export interface AgentCliTurnOptions {

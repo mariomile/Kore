@@ -15,7 +15,7 @@ import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { laneMove } from './board-move'
 
 interface MobileBoardProps {
@@ -131,13 +131,13 @@ export function MobileBoard({
     if (move === 'unchanged') {
       return
     }
-    hapticImpactLight()
+    haptic('drop')
     record(card.entry.path, move.value)
     commitProperties(card.entry.path, { [property.key]: move.value ?? undefined })
   }
 
   const createInLane = async (column: BoardColumn): Promise<void> => {
-    hapticImpactLight()
+    haptic('action')
     const laneValue =
       property.type === 'multiselect' && typeof column.commit === 'string'
         ? [column.commit]
@@ -161,7 +161,6 @@ export function MobileBoard({
           <button
             type="button"
             onClick={() => {
-              hapticImpactLight()
               setChoosingGroup(true)
             }}
             className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-surface-hover px-3 text-[13px] font-medium text-text-secondary active:bg-surface-active"

@@ -34,6 +34,7 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'browser':
     case 'base':
     case 'canvas':
+    case 'html':
     case 'library':
       return null
   }

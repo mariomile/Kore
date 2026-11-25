@@ -24,6 +24,7 @@ import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { DetailsSectionArrangementContext } from './sidebar-section'
+import { DragHaptics } from '@/components/drag-haptics'
 
 /** One section a route's Details panel can show. */
 export interface DetailsSectionEntry {
@@ -113,6 +114,7 @@ export function DetailsSections({ sections }: DetailsSectionsProps): ReactElemen
   return (
     <div className="flex flex-col gap-4">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DragHaptics />
         <SortableContext items={visible} strategy={verticalListSortingStrategy}>
           {visible.map((id, index) => (
             <SortableDetailsSection

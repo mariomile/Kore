@@ -314,7 +314,7 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
         if (next !== drag.startWidth) {
           commitWidth(next)
           // The drag landed somewhere new — confirm it physically.
-          haptic('alignment')
+          haptic('snap')
         }
         setDragWidth(null)
       }
@@ -325,7 +325,7 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
   const onDoubleClick = useCallback((): void => {
     applyWidth(range.fallback)
     commitWidth(range.fallback)
-    haptic('alignment')
+    haptic('snap')
   }, [applyWidth, commitWidth, range])
 
   const onKeyDown = useCallback(
@@ -362,7 +362,7 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
       // nothing moves, so nothing commits and the saved preference survives.
       if (next === base) {
         // Pressed into the wall: the rubber-band knock, nothing commits.
-        haptic('alignment')
+        haptic('snap')
         return
       }
       applyWidth(next)

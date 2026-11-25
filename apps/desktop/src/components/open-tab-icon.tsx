@@ -53,6 +53,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   if (tab.kind === 'localGraph') {
     return <Graph aria-hidden className={className} />
   }
+  if (tab.kind === 'html') {
+    return <Globe aria-hidden className={className} />
+  }
   if (tab.kind === 'library') {
     return <Book aria-hidden className={className} />
   }

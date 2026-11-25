@@ -157,6 +157,23 @@ objc2-link-presentation = { version = "0.3.2", default-features = false, feature
   "block2",
 ] }
 block2 = "0.6.2"
+# A PDF card's first page (`fs/pdf_page.rs`), drawn by Core Graphics.
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CFCGTypes",
+  "CFData",
+] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CGAffineTransform",
+  "CGBitmapContext",
+  "CGColorSpace",
+  "CGContext",
+  "CGDataProvider",
+  "CGImage",
+  "CGPDFDocument",
+  "CGPDFPage",
+] }
 
 # Finite-length execution assertions around iOS persistence. UIKit's begin/end
 # methods keep file and SQLite locks from surviving process suspension.

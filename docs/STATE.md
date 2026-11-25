@@ -1,5 +1,21 @@
 # Kore working state
 
+## HTML files as sandboxed pages, 2026-11-25 (0.150.0)
+
+- [x] HTML files as first-class pages: live-preview cards, a sandboxed page
+  screen with Page/Code, Open in browser on Mac and Share on iPhone; PDF
+  cards show their first page; folder pages use one grid for files and notes
+  (#668).
+
+## Agents draw canvas boards, 2026-11-25 (0.149.0)
+
+- [x] `kore canvas <folder>` and MCP `draw_canvas` turn a folder into a JSON
+  Canvas board (notes as cards, subfolders as groups, wiki links as arrows);
+  new kore-canvas agent skill for mind maps and moodboards. CLI only (#672).
+- [x] One haptic vocabulary on Mac and iPhone: block select, block add,
+  picks, toggles, saves, deletes; no haptics on navigation; Mac trackpad
+  feedback when dragging tabs, sidebar rows and blocks (#674).
+
 ## Edge-to-edge covers and tabs in the sidebar, 2026-11-24 (0.148.0)
 
 - [x] Cover flush to the top of the page with the folder path in a frosted

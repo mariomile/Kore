@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { findFolder, folderDisplayName, parseSearchQuery, sortNoteList } from '@kore/core'
 import { ChevronLeft, Folder, MoreHorizontal } from '@/components/icons'
-import { FolderFiles } from '@/components/all-notes/folder-files'
+import { FolderFiles, useFolderLooseFiles } from '@/components/all-notes/folder-files'
 import { FolderSubfolders } from '@/components/all-notes/folder-subfolders'
 import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { useFolderIncludesSubfolders } from '@/components/all-notes/use-folder-includes-subfolders'
@@ -83,6 +83,10 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
   })
 
   const grid = settings.allNotesView === 'grid'
+  const files = useFolderLooseFiles(atTop ? null : folder, includeSubfolders)
+  // The grid deals a folder's files among its notes; the list (and a folder
+  // with no notes yet) keeps them as a row of cards above.
+  const filesAmongNotes = grid && rows !== undefined && rows.length > 0
   const name = atTop ? 'Folders' : folderDisplayName(folder)
   const openNote = (path: string): void => navigate(routeForPath(path))
 
@@ -93,10 +97,9 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
       ) : (
         <FolderRows folder={node} />
       )}
-      {atTop ? null : (
+      {filesAmongNotes ? null : (
         <FolderFiles
-          folder={folder}
-          includeSubfolders={includeSubfolders}
+          files={files}
           onOpen={(path) => void openFile(path)}
           className={MOBILE_CARD_SECTION_CLASS}
         />
@@ -190,7 +193,13 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           ) : null}
         </div>
       ) : grid ? (
-        <NoteCardGrid rows={rows} onOpen={openNote} leading={leading} />
+        <NoteCardGrid
+          rows={rows}
+          onOpen={openNote}
+          leading={leading}
+          files={files}
+          onOpenFile={(path) => void openFile(path)}
+        />
       ) : (
         <NoteRowList rows={rows} onOpen={openNote} onDeleted={removeDeletedRow} leading={leading} />
       )}

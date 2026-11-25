@@ -1,8 +1,6 @@
 import { useCallback } from 'react'
 import {
   errorMessage,
-  isBasePath,
-  isCanvasPath,
   noteLinkFragment,
   normalizeWikiTarget,
   resolveAttachmentSource,
@@ -17,6 +15,7 @@ import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { startOperation } from '@/lib/operations'
 import { useLinkIntentGuard } from '@/lib/windows/use-link-intent-guard'
+import { fileScreenRoute } from '@/routing/file-screen-route'
 import { routeForPath, type NoteRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -86,21 +85,15 @@ export function useWikiLinkNavigation(
           revealNoteHeading(path, fragment)
         }
       }
-      // `[[Projects.base]]` opens the base; it must never create a note
-      // named after the file.
-      if (isBasePath(target)) {
-        const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
-        if (path !== null) {
-          const view = target.includes('#') ? target.slice(target.indexOf('#') + 1).trim() : ''
-          navigate({ kind: 'base', path, view: view === '' ? null : view })
-        }
-        return
-      }
-      // `[[Map.canvas]]` opens the canvas, never a note named after it.
-      if (isCanvasPath(target)) {
-        const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
-        if (path !== null) {
-          navigate({ kind: 'canvas', path })
+      // `[[Projects.base#Table]]`, `[[Map.canvas]]`, `[[report.html]]` open
+      // their own screen; they must never create a note named after the file.
+      if (fileScreenRoute(target) !== null) {
+        const hash = target.indexOf('#')
+        const path = resolveAttachmentSource((hash === -1 ? target : target.slice(0, hash)).trim())
+        const view = hash === -1 ? '' : target.slice(hash + 1).trim()
+        const route = path === null ? null : fileScreenRoute(path, view === '' ? null : view)
+        if (route !== null) {
+          navigate(route)
         }
         return
       }

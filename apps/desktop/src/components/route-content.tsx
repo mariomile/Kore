@@ -32,6 +32,11 @@ const CanvasScreen = lazy(() =>
     default: module.CanvasScreen,
   })),
 )
+const HtmlFileScreen = lazy(() =>
+  import('@/components/html-file/html-file-screen').then((module) => ({
+    default: module.HtmlFileScreen,
+  })),
+)
 const BrowserPane = lazy(() =>
   import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
 )
@@ -185,6 +190,9 @@ function RouteView(): ReactElement {
     case 'localGraph':
       // Owns its surface, like the full graph map.
       return <LocalGraphScreen key={route.path} path={route.path} />
+    case 'html':
+      // Owns its surface: the page scrolls inside its own frame.
+      return <HtmlFileScreen key={route.path} path={route.path} />
     case 'library':
       // Owns its scroll container, like a base.
       return <LibraryFileScreen root={route.root} path={route.path} />

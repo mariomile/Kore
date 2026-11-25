@@ -8,6 +8,7 @@ import { db } from './db'
 export type LooseFileKind =
   | 'image'
   | 'pdf'
+  | 'html'
   | 'document'
   | 'sheet'
   | 'audio'
@@ -40,6 +41,8 @@ const KIND_BY_EXTENSION: Readonly<Record<string, LooseFileKind>> = {
   svg: 'image',
   webp: 'image',
   pdf: 'pdf',
+  htm: 'html',
+  html: 'html',
   doc: 'document',
   docx: 'document',
   epub: 'document',

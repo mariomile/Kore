@@ -34,7 +34,8 @@ const RESERVED_NOTE_TREES = new Set([ASSETS_DIR, AUDIO_MEMOS_DIR])
 /**
  * Local attachment formats Kore can render or open: Obsidian-compatible
  * media plus common document, text, data, and archive formats. Never
- * executable or script formats. Must stay identical to the Rust list in
+ * executable formats; HTML is listed because the `kore-asset` protocol serves
+ * it under a CSP sandbox, so its scripts run with no access to the app. Must stay identical to the Rust list in
  * `crates/graph-paths/src/lib.rs` and the fixture generator in
  * `fixtures/gen-path-classification.mjs`.
  */
@@ -53,6 +54,8 @@ const ATTACHMENT_EXTENSIONS = new Set([
   'gif',
   'gz',
   'heic',
+  'htm',
+  'html',
   'ics',
   'jpeg',
   'jpg',

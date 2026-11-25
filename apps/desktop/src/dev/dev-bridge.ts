@@ -591,6 +591,7 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   gif: 'image/gif',
   webp: 'image/webp',
   svg: 'image/svg+xml',
+  html: 'text/html',
 }
 
 function imageMimeType(path: string): string {

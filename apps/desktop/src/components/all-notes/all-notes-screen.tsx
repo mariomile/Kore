@@ -8,6 +8,7 @@ import {
   isDaily,
   listNotes,
   listNoteTags,
+  filterLooseFiles,
   sortNoteList,
   type NoteListFilter,
   type TimelineZoom,
@@ -38,7 +39,7 @@ import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
-import { FolderFiles } from './folder-files'
+import { FolderFiles, useFolderLooseFiles } from './folder-files'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -325,6 +326,20 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     const allowed = new Set(filteredCollection.map((entry) => entry.path))
     return notes.filter((note) => allowed.has(note.path))
   }, [notes, collectionFilters, filteredCollection])
+
+  // A folder's loose files share its title filter; a property filter asks
+  // about notes, which a file never matches.
+  const looseFilesHere = useFolderLooseFiles(folderPath, includeSubfolders)
+  const folderFiles = useMemo(
+    () => (collectionFilters.length > 0 ? [] : filterLooseFiles(looseFilesHere, titleNeedle)),
+    [looseFilesHere, collectionFilters, titleNeedle],
+  )
+  const openLooseFile = useCallback(
+    (path: string) => {
+      void openFile(path)
+    },
+    [openFile],
+  )
 
   // The table's row shelves (Plan 29 V1b), computed here — not in the table
   // — so the selection's flat order below reads off the same grouping.
@@ -705,17 +720,13 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 scroller, a folder of many folders left the notes no room. */}
             <div ref={setSubfoldersElement}>
               <FolderSubfolders folder={folderNode} />
-              {folderPath !== null ? (
-                <FolderFiles
-                  folder={folderPath}
-                  includeSubfolders={includeSubfolders}
-                  onOpen={(path) => void openFile(path)}
-                />
-              ) : null}
+              {view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />}
             </div>
             {inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
-            ) : folderPath !== null && notes?.length === 0 ? (
+            ) : folderPath !== null &&
+              notes?.length === 0 &&
+              (view !== 'grid' || folderFiles.length === 0) ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
                 {titleNeedle !== ''
                   ? 'No notes match the filter.'
@@ -726,6 +737,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}
+                files={folderFiles}
+                onOpenFile={openLooseFile}
                 tag={listTag}
                 type={collectionAvailable ? tagType : null}
                 entries={collectionAvailable ? filteredCollection : undefined}

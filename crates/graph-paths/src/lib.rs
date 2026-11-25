@@ -25,16 +25,17 @@ pub use walk::{
 pub const RESERVED_NOTE_TREES: [&str; 2] = ["assets", "audio-memos"];
 
 /// Local attachment formats supported by Kore: Obsidian-compatible media
-/// plus common document, text, data, and archive formats. Never executable or
-/// script formats. Must stay identical to the TypeScript list in
+/// plus common document, text, data, and archive formats. Never executable
+/// formats; HTML is listed because the `kore-asset` protocol serves it under a
+/// CSP sandbox, so its scripts run with no access to the app. Must stay identical to the TypeScript list in
 /// `packages/core/src/graph/paths.ts` and the fixture generator in
 /// `fixtures/gen-path-classification.mjs`.
-pub const ATTACHMENT_EXTENSIONS: [&str; 52] = [
+pub const ATTACHMENT_EXTENSIONS: [&str; 54] = [
     "3gp", "7z", "avif", "base", "bmp", "canvas", "csv", "doc", "docx", "epub", "flac", "gif",
-    "gz", "heic", "ics", "jpeg", "jpg", "json", "key", "log", "m4a", "mkv", "mov", "mp3", "mp4",
-    "numbers", "odp", "ods", "odt", "ogg", "ogv", "pages", "pdf", "png", "ppt", "pptx", "rtf",
-    "svg", "tar", "tif", "tiff", "tsv", "txt", "wav", "webm", "webp", "xls", "xlsx", "xml", "yaml",
-    "yml", "zip",
+    "gz", "heic", "htm", "html", "ics", "jpeg", "jpg", "json", "key", "log", "m4a", "mkv", "mov",
+    "mp3", "mp4", "numbers", "odp", "ods", "odt", "ogg", "ogv", "pages", "pdf", "png", "ppt",
+    "pptx", "rtf", "svg", "tar", "tif", "tiff", "tsv", "txt", "wav", "webm", "webp", "xls", "xlsx",
+    "xml", "yaml", "yml", "zip",
 ];
 
 /// The kind of graph content represented by a safe relative wire path.

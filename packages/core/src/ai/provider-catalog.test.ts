@@ -23,17 +23,17 @@ describe('AI_PROVIDERS', () => {
 
   it('offers the current Claude lineup in capability order', () => {
     expect(aiProvider('anthropic').models.slice(0, 3)).toEqual([
-      { id: 'claude-fable-5', label: 'Claude Fable 5', contextWindow: 1_000_000 },
-      { id: 'claude-opus-5', label: 'Claude Opus 5', contextWindow: 1_000_000 },
-      { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', contextWindow: 1_000_000 },
+      { id: 'claude-fable-5-2', label: 'Claude Fable 5.2', contextWindow: 1_000_000 },
+      { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', contextWindow: 1_000_000 },
+      { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', contextWindow: 1_000_000 },
     ])
   })
 
-  it('offers the GPT-5.6 family in capability order', () => {
+  it('offers the GPT-6 family in capability order', () => {
     expect(aiProvider('openai').models.slice(0, 3)).toEqual([
-      { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', contextWindow: 1_000_000 },
-      { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', contextWindow: 1_000_000 },
-      { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', contextWindow: 1_000_000 },
+      { id: 'gpt-6.2-astra', label: 'GPT-6.2 Astra', contextWindow: 1_000_000 },
+      { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol', contextWindow: 1_000_000 },
+      { id: 'gpt-6.1-terra', label: 'GPT-6.1 Terra', contextWindow: 1_000_000 },
     ])
   })
 
@@ -67,7 +67,7 @@ describe('modelContextWindow', () => {
   })
 
   it('resolves a curated model and falls back for unknown ids', () => {
-    expect(modelContextWindow('anthropic', 'claude-haiku-4-5')).toBe(200_000)
+    expect(modelContextWindow('anthropic', 'claude-opus-5-5')).toBe(1_000_000)
     expect(modelContextWindow('openrouter', 'openrouter/auto')).toBe(2_000_000)
     // Settings may carry ids added by a newer app version.
     expect(modelContextWindow('anthropic', 'claude-fable-6')).toBe(DEFAULT_CONTEXT_WINDOW)

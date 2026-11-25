@@ -19,7 +19,12 @@ import { OPENROUTER_BASE_URL } from './openrouter'
  */
 export type ApiKeyValidation = 'valid' | 'invalid' | 'unreachable'
 
-interface KeyProbe {
+/**
+ * One authenticated request against the provider. For every provider but
+ * OpenRouter (whose probe is `/key`) it is the model-listing endpoint, which
+ * `hosted-models` also reads.
+ */
+export interface KeyProbe {
   url: string
   headers: (key: string) => Record<string, string>
   /** Statuses that mean "the provider rejected this key" (vs. can't tell). */
@@ -72,7 +77,8 @@ function openAiCompatibleProbe(input: ApiKeyValidationInput): KeyProbe | null {
   }
 }
 
-function keyProbe(input: ApiKeyValidationInput): KeyProbe | null {
+/** The probe for `input`, or null when there is nothing to call (a CLI, a bad base URL). */
+export function keyProbe(input: ApiKeyValidationInput): KeyProbe | null {
   if (input.provider === 'openai-compatible') {
     return openAiCompatibleProbe(input)
   }

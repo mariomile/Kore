@@ -77,7 +77,7 @@ function entry(overrides: Partial<HostedAiProviderConfig>): HostedAiProviderConf
   return {
     id: 'id',
     provider: 'anthropic',
-    model: 'claude-opus-4-8',
+    model: 'claude-opus-5',
     keyHint: 'wxyz1',
     ...overrides,
   }
@@ -88,7 +88,7 @@ function twoStoredModels(): Record<string, unknown> {
   return {
     aiProviders: [
       entry({ id: 'a' }),
-      entry({ id: 'b', provider: 'openai', model: 'gpt-5.5', keyHint: 'abcd2' }),
+      entry({ id: 'b', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'abcd2' }),
     ],
     defaultAiProviderId: 'a',
   }
@@ -124,10 +124,10 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText('OpenAI', { exact: true })).toBeInTheDocument()
     await expect
       .element(page.getByRole('combobox', { name: 'Default model for Anthropic' }))
-      .toHaveTextContent(/Claude Opus 4\.8/)
+      .toHaveTextContent(/Claude Opus 5/)
     await expect
       .element(page.getByRole('combobox', { name: 'Default model for OpenAI' }))
-      .toHaveTextContent(/GPT-5\.5/)
+      .toHaveTextContent(/GPT-5\.6 Sol/)
     await expect.element(page.getByText(/wxyz1/)).toBeInTheDocument()
     await expect.element(page.getByText(/abcd2/)).toBeInTheDocument()
     await expect.element(page.getByText('Default', { exact: true })).toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('AiProvidersSection', () => {
     const [added] = doc.aiProviders
     expect(added).toMatchObject({
       provider: 'anthropic',
-      model: 'claude-fable-5',
+      model: 'claude-fable-5-2',
       keyHint: 'wxyz1',
     })
     // The first entry becomes the default automatically.
@@ -311,11 +311,13 @@ describe('AiProvidersSection', () => {
     await renderSection()
     await expect.element(page.getByText('Claude', { exact: true })).toBeInTheDocument()
 
-    await page.getByRole('button', { name: 'Remove Anthropic — Claude Opus 4.8' }).click()
+    await page.getByRole('button', { name: 'Remove Anthropic — Claude Opus 5' }).click()
 
     await vi.waitFor(() =>
       expect(lastSavedDoc()).toMatchObject({
-        aiProviders: [entry({ id: 'b', provider: 'openai', model: 'gpt-5.5', keyHint: 'abcd2' })],
+        aiProviders: [
+          entry({ id: 'b', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'abcd2' }),
+        ],
         defaultAiProviderId: 'b',
       }),
     )
@@ -335,11 +337,11 @@ describe('AiProvidersSection', () => {
     // its key already gone from the keychain.
     ;(
       page
-        .getByRole('button', { name: 'Remove Anthropic — Claude Opus 4.8' })
+        .getByRole('button', { name: 'Remove Anthropic — Claude Opus 5' })
         .element() as HTMLElement
     ).click()
     ;(
-      page.getByRole('button', { name: 'Remove OpenAI — GPT-5.5' }).element() as HTMLElement
+      page.getByRole('button', { name: 'Remove OpenAI — GPT-5.6 Sol' }).element() as HTMLElement
     ).click()
 
     await vi.waitFor(() =>
@@ -365,11 +367,11 @@ describe('AiProvidersSection', () => {
     await renderSection()
 
     await page.getByRole('combobox', { name: 'Default model for OpenAI' }).click()
-    await page.getByRole('option', { name: /GPT-5\.4 mini/ }).click()
+    await page.getByRole('option', { name: /GPT-5\.6 Luna/ }).click()
 
     await vi.waitFor(() => {
       expect(lastSavedDoc().aiProviders).toContainEqual(
-        entry({ id: 'b', provider: 'openai', model: 'gpt-5.4-mini', keyHint: 'abcd2' }),
+        entry({ id: 'b', provider: 'openai', model: 'gpt-5.6-luna', keyHint: 'abcd2' }),
       )
     })
     expect(secrets.get('ai-api-key:b')).toBe('sk-openai-secret')

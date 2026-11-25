@@ -56,6 +56,7 @@ import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LineAuthorShading } from '@/editor/line-author-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { VaultMedia } from '@/editor/vault-media'
 import { NoteTitleIcon } from '@/editor/note-title-icon'
 import { BlockIds } from '@/editor/block-ids'
 import { BlockZoom } from '@/editor/block-zoom'
@@ -656,6 +657,7 @@ export function NotePaneComponent({
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}
         <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
+        <VaultMedia resolveUrl={resolveImageUrl} />
         <LinkLayoutMenu />
         <NoteTitleIcon
           header={document.header}

@@ -7,6 +7,7 @@ import {
   type PageLinkPreview,
   type PostLinkPreview,
 } from '@kore/core'
+import { claimPlayback, releasePlayback } from './playback'
 
 /**
  * The DOM of one link preview card. Built by hand because it renders as a
@@ -279,20 +280,12 @@ function closeGlyph(): SVGSVGElement {
   return strokeGlyph(['M6 6l12 12', 'M18 6L6 18'])
 }
 
-interface Playing {
-  readonly card: HTMLElement
-  readonly stop: () => void
-}
-
-/**
- * The one card playing right now. A second Play stops the first, so a note
- * full of videos never runs two players (or their network and CPU) at once.
- */
-let playing: Playing | null = null
+/** The stop of the card playing right now, if one is. */
+let playingStop: (() => void) | null = null
 
 /** Stop whatever card is playing, putting its card back. */
 export function stopLinkCardPlayer(): void {
-  playing?.stop()
+  playingStop?.()
 }
 
 /**
@@ -303,7 +296,6 @@ export function stopLinkCardPlayer(): void {
  * playing, or loading, off screen.
  */
 function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): void {
-  stopLinkCardPlayer()
   const saved = [...card.childNodes]
   const stage = element('div', 'kore-link-card-player')
   const close = footerButton('Close player', closeGlyph())
@@ -319,8 +311,9 @@ function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): voi
     observer = null
     card.replaceChildren(...saved)
     delete card.dataset.playing
-    if (playing?.card === card) {
-      playing = null
+    releasePlayback(stop)
+    if (playingStop === stop) {
+      playingStop = null
     }
   }
   close.addEventListener('click', (event) => {
@@ -337,7 +330,8 @@ function startPlayer(card: HTMLElement, player: EmbedPlayer, title: string): voi
     })
     observer.observe(card)
   }
-  playing = { card, stop }
+  claimPlayback(stop)
+  playingStop = stop
 }
 
 /**

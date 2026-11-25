@@ -195,6 +195,8 @@ export {
   LINK_KINDS,
   embedPlayer,
   type EmbedPlayer,
+  vaultMediaKind,
+  type VaultMediaKind,
   type EmbedBlock,
   type HtmlEmbed,
   type UrlEmbed,

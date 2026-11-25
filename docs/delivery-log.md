@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- 0.155.0 (2026-11-25): #693 Play on link cards, inline vault video and audio.
 - 0.154.0 (2026-11-25): #692 live model lists per API key; #689 link cards in bullets and retry after a failed fetch.
 - 0.153.0 (2026-11-25): #677 canvas editing and whiteboard tools on the Mac; iPhone view-only.
 - 0.152.0 (2026-11-25): #682 subscription chat on Kore tools; #673 iPhone block swipe and one-row action bar; #684 no large title on iPhone Notes and Tasks; #685 filter Notes by file type.

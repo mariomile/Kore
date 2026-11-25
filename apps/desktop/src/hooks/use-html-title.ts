@@ -32,6 +32,18 @@ async function fetchHtmlTitle(url: string): Promise<string | null> {
 }
 
 /**
+ * The query that reads an HTML file's title, shared by every place that
+ * names the page (its screen, its card, its tab) so one read serves them all.
+ */
+export function htmlTitleQuery(url: string, version: number | null = null) {
+  return {
+    queryKey: ['html-title', url, version],
+    queryFn: () => fetchHtmlTitle(url),
+    staleTime: Infinity,
+  } as const
+}
+
+/**
  * The title an HTML file shows its reader (`<title>`, else its first
  * heading), read off its asset URL. Only the page's head is read, once per
  * `version` (pass the file's modified time so an edit refreshes it).
@@ -42,10 +54,8 @@ export function useHtmlTitle(
   version: number | null = null,
 ): string | null | undefined {
   const { data } = useQuery({
-    queryKey: ['html-title', url, version],
-    queryFn: () => (url === null ? null : fetchHtmlTitle(url)),
+    ...htmlTitleQuery(url ?? '', version),
     enabled: url !== null,
-    staleTime: Infinity,
   })
   return url === null ? null : data
 }

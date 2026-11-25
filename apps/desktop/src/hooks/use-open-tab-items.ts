@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import {
   baseDisplayName,
   canvasDisplayName,
@@ -7,6 +7,7 @@ import {
   folderDisplayName,
   getNote,
   htmlDisplayName,
+  htmlPageUrl,
   isUntitledNotePath,
   libraryFileTitle,
   listChatConversations,
@@ -17,6 +18,7 @@ import {
 } from '@kore/core'
 import { useDraftTitles } from '@/editor/draft-titles'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { htmlTitleQuery } from '@/hooks/use-html-title'
 import { CHAT_QUERY_SCOPE, INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { SURFACE_TAB_LABEL } from '@/providers/open-tab'
 import { useGraph } from '@/providers/graph-provider'
@@ -48,6 +50,25 @@ export function useOpenTabItems(): OpenTabItem[] {
     [tabs],
   )
   const hasChatTabs = tabs.some((tab) => tab.kind === 'chat')
+  const htmlPaths = useMemo(
+    () => tabs.flatMap((tab) => (tab.kind === 'html' ? [tab.path] : [])),
+    [tabs],
+  )
+  const generation = graph?.generation ?? null
+  // Read with the page screen's own query, so an open page names its tab
+  // without a second read.
+  const combineHtmlTitles = useCallback(
+    (results: { data?: string | null | undefined }[]) =>
+      new Map(htmlPaths.map((path, index) => [path, results[index]?.data])),
+    [htmlPaths],
+  )
+  const htmlTitles = useQueries({
+    queries: htmlPaths.map((path) => {
+      const url = generation === null ? null : htmlPageUrl(generation, path)
+      return { ...htmlTitleQuery(url ?? ''), enabled: bridgeReady && url !== null }
+    }),
+    combine: combineHtmlTitles,
+  })
 
   const { data: noteRows, isSuccess: notesResolved } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'open-tab-notes', titlePaths],
@@ -116,7 +137,7 @@ export function useOpenTabItems(): OpenTabItem[] {
             title: `Graph · ${displayNoteTitle(openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)))}`,
           }
         case 'html':
-          return { tab, title: htmlDisplayName(tab.path) }
+          return { tab, title: htmlTitles.get(tab.path) ?? htmlDisplayName(tab.path) }
         case 'library':
           return { tab, title: libraryFileTitle(tab.path) }
         case 'surface':
@@ -135,5 +156,5 @@ export function useOpenTabItems(): OpenTabItem[] {
           }
       }
     })
-  }, [tabs, noteRows, conversations, drafts])
+  }, [tabs, noteRows, conversations, drafts, htmlTitles])
 }

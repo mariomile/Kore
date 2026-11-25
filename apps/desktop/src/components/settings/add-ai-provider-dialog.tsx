@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { InlineAlert } from '@/components/inline-alert'
-import { CodexSignIn } from '@/components/settings/codex-sign-in'
+import { CliSignIn } from '@/components/settings/cli-sign-in'
+import { cliSignInFlow } from '@/components/settings/cli-sign-in-flows'
 import { useAddAiProviderSubmit } from '@/hooks/use-add-ai-provider-submit'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
 import { cn } from '@/lib/utils'
@@ -59,7 +60,7 @@ function seedForMode(mode: ProviderConnectionMode): { model: string; baseUrl: st
 
 /** Per-engine copy for the no-key connection block. */
 const CLI_BINARIES: Record<string, { binary: string; hint: string }> = {
-  'claude-cli': { binary: 'claude', hint: ' with your Claude account in a terminal' },
+  'claude-cli': { binary: 'claude', hint: '' },
   'codex-cli': { binary: 'codex', hint: '' },
   'cursor-cli': { binary: 'cursor-agent', hint: ' with `cursor-agent login` in a terminal' },
 }
@@ -112,6 +113,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
   const mode = brand.modes.find((candidate) => candidate.provider === providerId) ?? brand.modes[0]!
   const isOpenAICompatible = provider.id === 'openai-compatible'
   const isCliProvider = isCliAgentProvider(provider.id)
+  const signInFlow = cliSignInFlow(provider.id)
   const apiKeyRequired = aiProviderRequiresApiKey(provider.id)
 
   const selectMode = (nextMode: ProviderConnectionMode): void => {
@@ -266,7 +268,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                 <code>{CLI_BINARIES[provider.id]?.binary ?? provider.id}</code> CLI and sign in once
                 {CLI_BINARIES[provider.id]?.hint ?? ''}. The model is picked in the chat.
               </p>
-              {provider.id === 'codex-cli' ? <CodexSignIn /> : null}
+              {signInFlow !== null ? <CliSignIn flow={signInFlow} /> : null}
             </div>
           ) : (
             <label className="flex flex-col gap-1">

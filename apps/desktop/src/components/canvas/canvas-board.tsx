@@ -10,14 +10,7 @@ import {
   type PointerEvent,
   type ReactElement,
 } from 'react'
-import {
-  canvasBounds,
-  isBasePath,
-  isCanvasPath,
-  layoutCanvasEdges,
-  type CanvasDocument,
-  type CanvasNode,
-} from '@kore/core'
+import { canvasBounds, isBasePath, isCanvasPath, type CanvasDocument } from '@kore/core'
 import { Locate, Plus } from '@/components/icons'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
@@ -26,9 +19,8 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { cn } from '@/lib/utils'
-import { canvasColor } from './canvas-colors'
-import { CanvasCard, type CanvasCardActions } from './canvas-card'
-import { CanvasSelection } from './canvas-selection'
+import type { CanvasCardActions } from './canvas-card'
+import { CanvasLayer } from './canvas-layer'
 import { CanvasAddTools, CanvasToolBox, CanvasToolButton } from './canvas-toolbar'
 import type { CanvasEditor } from './use-canvas'
 import { useCanvasEditing } from './use-canvas-editing'
@@ -110,16 +102,6 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
   const [view, setView] = useState<Viewport | null>(null)
   const editing = useCanvasEditing(file, editor)
   const { canvas } = editing
-  const edges = useMemo(() => layoutCanvasEdges(canvas), [canvas])
-  // Groups first so they stay behind the cards they hold; file order
-  // (JSON Canvas's z-order) is kept within each layer.
-  const nodes = useMemo(
-    (): CanvasNode[] => [
-      ...canvas.nodes.filter((node) => node.type === 'group'),
-      ...canvas.nodes.filter((node) => node.type !== 'group'),
-    ],
-    [canvas],
-  )
   const bounds = useMemo(() => canvasBounds(canvas.nodes), [canvas])
   const actions = useCardActions()
 
@@ -290,11 +272,6 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
       y: (board.clientHeight / 2 - view.y) / view.zoom,
     }
   }
-  const selected =
-    editing.selectedId === null
-      ? undefined
-      : canvas.nodes.find((node) => node.id === editing.selectedId)
-
   return (
     <div className="relative min-h-0 flex-1">
       <div
@@ -320,48 +297,15 @@ export function CanvasBoard({ canvas: file, label, editor }: CanvasBoardProps): 
             className="absolute left-0 top-0 origin-top-left"
             style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
           >
-            {nodes.map((node) => (
-              <CanvasCard
-                key={node.id}
-                node={node}
-                zoom={view.zoom}
-                actions={actions}
-                editable={editor !== null}
-                editingText={node.id === editing.editingId}
-                onCommitText={editing.commitText}
-              />
-            ))}
-            <svg
-              aria-hidden
-              className="pointer-events-none absolute overflow-visible"
-              style={{ left: 0, top: 0, width: 1, height: 1 }}
-            >
-              {edges.map((layout) => {
-                const color = canvasColor(layout.edge.color) ?? 'var(--color-text-muted)'
-                return (
-                  <g key={layout.edge.id} data-testid="canvas-edge">
-                    <path d={layout.path} fill="none" stroke={color} strokeWidth={2} />
-                    {layout.arrows.map((points) => (
-                      <polygon key={points} points={points} fill={color} />
-                    ))}
-                  </g>
-                )
-              })}
-            </svg>
-            {edges.map((layout) =>
-              layout.edge.label === null ? null : (
-                <span
-                  key={layout.edge.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-sm bg-surface-sunken px-1.5 py-0.5 text-xs text-text-secondary"
-                  style={{ left: layout.labelAt.x, top: layout.labelAt.y }}
-                >
-                  {layout.edge.label}
-                </span>
-              ),
-            )}
-            {selected === undefined ? null : (
-              <CanvasSelection id={selected.id} rect={selected} zoom={view.zoom} />
-            )}
+            <CanvasLayer
+              canvas={canvas}
+              zoom={view.zoom}
+              actions={actions}
+              editable={editor !== null}
+              editingId={editing.editingId}
+              selectedId={editing.selectedId}
+              onCommitText={editing.commitText}
+            />
           </div>
         ) : null}
       </div>

@@ -208,6 +208,28 @@ const STUDIO_MAP = JSON.stringify(
   '\t',
 )
 
+/**
+ * A 160-card board (note cards with live previews, chained by arrows), the
+ * canvas screen's perf case: drag one card on it with the CPU throttled.
+ */
+function bigBoard(notes: readonly string[]): string {
+  const nodes = Array.from({ length: 160 }, (_, index) => ({
+    id: `big${index.toString(16).padStart(13, '0')}`,
+    type: 'file',
+    file: notes[index % notes.length],
+    x: (index % 16) * 440,
+    y: Math.floor(index / 16) * 320,
+    width: 400,
+    height: 280,
+  }))
+  const edges = nodes.slice(1).map((node, index) => ({
+    id: `edge${index.toString(16).padStart(12, '0')}`,
+    fromNode: nodes[index]!.id,
+    toNode: node.id,
+  }))
+  return JSON.stringify({ nodes, edges })
+}
+
 /** Build the vault; needs a DOM (it paints its images on a canvas). */
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
@@ -315,5 +337,6 @@ export function seedVisualVault(): VisualVaultSeed {
       ),
     ].join('\n'),
   }
+  assets.set('Maps/Big board.canvas', btoa(bigBoard(Object.keys(files))))
   return { files, assets }
 }

@@ -32,7 +32,7 @@ export interface CanvasCardActions {
 }
 
 /** Below this zoom a note card shows only its title: the preview is unreadable there. */
-const PREVIEW_MIN_ZOOM = 0.25
+export const PREVIEW_MIN_ZOOM = 0.25
 
 function placement(node: CanvasNode): CSSProperties {
   return { left: node.x, top: node.y, width: node.width, height: node.height }
@@ -54,7 +54,12 @@ function fileName(path: string): string {
 
 interface CanvasCardProps {
   node: CanvasNode
-  zoom: number
+  /**
+   * Whether note cards show their preview (the zoom is past
+   * {@link PREVIEW_MIN_ZOOM}). A flag, not the zoom: zooming then redraws
+   * no card until it crosses the line.
+   */
+  preview: boolean
   actions: CanvasCardActions
   /** Whether the node can be pressed to select, drag and resize it (the Mac). */
   editable: boolean
@@ -71,7 +76,7 @@ interface CanvasCardProps {
  */
 export const CanvasCard = memo(function CanvasCard({
   node,
-  zoom,
+  preview,
   actions,
   editable,
   editingText,
@@ -142,7 +147,7 @@ export const CanvasCard = memo(function CanvasCard({
       ) : node.type === 'link' ? (
         <LinkCard url={node.url} />
       ) : (
-        <FileCard file={node.file} subpath={node.subpath} zoom={zoom} actions={actions} />
+        <FileCard file={node.file} subpath={node.subpath} preview={preview} actions={actions} />
       )}
     </div>
   )
@@ -177,12 +182,12 @@ function LinkCard({ url }: { url: string }): ReactElement {
 function FileCard({
   file,
   subpath,
-  zoom,
+  preview,
   actions,
 }: {
   file: string
   subpath: string | null
-  zoom: number
+  preview: boolean
   actions: CanvasCardActions
 }): ReactElement {
   const kind = wikiEmbedKind(file)
@@ -214,9 +219,7 @@ function FileCard({
       </button>
     )
   }
-  return (
-    <NoteCard path={file} subpath={subpath} preview={zoom >= PREVIEW_MIN_ZOOM} actions={actions} />
-  )
+  return <NoteCard path={file} subpath={subpath} preview={preview} actions={actions} />
 }
 
 function NoteCard({

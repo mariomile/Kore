@@ -22,7 +22,7 @@ import {
 import { TagIcon } from '@/components/tags/tag-icon'
 import { formatShortDate, todayIso } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useFirstImages } from '@/hooks/use-note-card-images'
 import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useSettings } from '@/providers/settings-provider'
@@ -127,7 +127,7 @@ export function MobileCollectionEmbed({
   const more = rows.length - preview.length
 
   const setView = (next: CollectionEmbedView): void => {
-    hapticImpactLight()
+    haptic('selection')
     onChange?.({
       ...embed,
       view: next,
@@ -189,7 +189,6 @@ export function MobileCollectionEmbed({
             }
             aria-haspopup="dialog"
             onClick={() => {
-              hapticImpactLight()
               setAdjusting(true)
             }}
             className={cn(
@@ -261,7 +260,6 @@ export function MobileCollectionEmbed({
         <button
           type="button"
           onClick={() => {
-            hapticImpactLight()
             if (onOpenAll === undefined) {
               setExpanded(true)
             } else {

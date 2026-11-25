@@ -14,7 +14,7 @@ import {
 } from '@/components/icons'
 import { activeMobileTagPicker, useFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { pickFiles } from '@/lib/pick-files'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 /**
  * The webview-drawn formatting toolbar (Plan 19, decision 8 — V1's native
@@ -147,7 +147,7 @@ function ToolbarButton({
       onPointerDown={(event) => event.preventDefault()}
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
-        hapticImpactLight()
+        haptic('action')
         onPress()
       }}
       className="flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted disabled:opacity-40"

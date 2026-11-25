@@ -7,7 +7,7 @@ import { todayIso } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { useSettings } from '@/providers/settings-provider'
 
 /** A day shows up to this many dots; more read as the same "busy" day. */
@@ -64,18 +64,18 @@ export function MobileCalendar({
   const undated = entries.length - datedCount
 
   const shift = (delta: number): void => {
-    hapticImpactLight()
+    haptic('selection')
     setMonth((current) => addMonths(current, delta))
   }
   const pick = (iso: string): void => {
-    hapticImpactLight()
+    haptic('selection')
     setSelected(iso)
     if (monthOf(iso) !== month) {
       setMonth(monthOf(iso))
     }
   }
   const create = async (): Promise<void> => {
-    hapticImpactLight()
+    haptic('action')
     const path = await createNote({ [property.key]: selected })
     if (path !== null) {
       onOpen(path)

@@ -3,9 +3,10 @@
 First-party Tauri 2 plugin for the small native keyboard/haptics surface the
 webview cannot reach on its own.
 
-Today it exposes a single command, `impact_light`: a light impact haptic (the
-app's one haptic strength, used for date selection, task controls, and tab
-presses). WKWebView has no `navigator.vibrate`, so the iOS side
+Today it exposes a single command, `haptic`, which plays one of iOS's native
+feedback styles: `selection`, `light`, `medium`, `success`, `warning`,
+`error`. Which interaction plays which style is decided in the frontend
+(`apps/desktop/src/lib/haptics.ts`). WKWebView has no `navigator.vibrate`, so the iOS side
 (`ios/Sources/KeyboardPlugin.swift`) fires the haptic natively; on desktop and
 on devices without a haptic engine the command is a no-op.
 

@@ -295,22 +295,22 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the impact_light command without any pre-configured scope.",
+          "description": "Enables the haptic command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-impact-light",
-          "markdownDescription": "Enables the impact_light command without any pre-configured scope."
+          "const": "allow-haptic",
+          "markdownDescription": "Enables the haptic command without any pre-configured scope."
         },
         {
-          "description": "Denies the impact_light command without any pre-configured scope.",
+          "description": "Denies the haptic command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-impact-light",
-          "markdownDescription": "Denies the impact_light command without any pre-configured scope."
+          "const": "deny-haptic",
+          "markdownDescription": "Denies the haptic command without any pre-configured scope."
         },
         {
-          "description": "Fire light impact haptics\n#### This default permission set includes:\n\n- `allow-impact-light`",
+          "description": "Play native haptics\n#### This default permission set includes:\n\n- `allow-haptic`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Fire light impact haptics\n#### This default permission set includes:\n\n- `allow-impact-light`"
+          "markdownDescription": "Play native haptics\n#### This default permission set includes:\n\n- `allow-haptic`"
         }
       ]
     }

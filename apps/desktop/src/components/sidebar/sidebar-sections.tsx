@@ -40,6 +40,7 @@ import {
   type SidebarShelfArrangement,
 } from './sidebar-sortable-section'
 import { SidebarTags } from './sidebar-tags'
+import { DragHaptics } from '@/components/drag-haptics'
 
 /** Each shelf's component, keyed by the id the stored order is written in. */
 const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
@@ -187,6 +188,7 @@ export function SidebarSections(): ReactElement {
     <div className="animate-in fade-in-0 duration-200 ease-swift motion-reduce:animate-none">
       <SidebarShelfArrangementContext value={arrangement}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DragHaptics />
           <SortableContext items={settings.sidebarSections} strategy={verticalListSortingStrategy}>
             {settings.sidebarSections
               .filter((id) => !hidden.includes(id))

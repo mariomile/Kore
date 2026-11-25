@@ -22,7 +22,7 @@ import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { addDaysIso, formatDayLabel } from '@/lib/dates'
 import type { TaskActions } from '@/lib/tasks/use-task-actions'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import {
   draftDueDate,
   draftPriority,
@@ -143,7 +143,7 @@ export function MobileTaskEditSheet({
   const finishEdit = useCallback(() => finishRef.current(), [])
 
   const complete = (): void => {
-    hapticImpactLight()
+    haptic('toggle')
     const result = resolve()
     if (result.type === 'commit') {
       actions.editAndToggle(task, result.content)
@@ -158,7 +158,7 @@ export function MobileTaskEditSheet({
   }
 
   const convertToBullet = (): void => {
-    hapticImpactLight()
+    haptic('action')
     const result = resolve()
     if (result.type === 'commit') {
       actions.editAndConvertToBullet(task, result.content)
@@ -173,7 +173,6 @@ export function MobileTaskEditSheet({
   }
 
   const openNote = (): void => {
-    hapticImpactLight()
     closeNavigate()
     onOpenNote(task.notePath)
   }
@@ -191,13 +190,13 @@ export function MobileTaskEditSheet({
   }
 
   const remove = (): void => {
-    hapticImpactLight()
+    haptic('warning')
     actions.remove([task])
     closeHandled()
   }
 
   const schedule = (isoDate: string | null): void => {
-    hapticImpactLight()
+    haptic('selection')
     // Base the rewrite on the freshest draft, then keep every mirror in step
     // by hand: setMarkdown is silent (no onChange echo), so neither the live
     // mirror nor the state (chip highlights) updates on its own.
@@ -209,12 +208,11 @@ export function MobileTaskEditSheet({
   }
 
   const toggleCalendar = (): void => {
-    hapticImpactLight()
     setShowCalendar((showing) => !showing)
   }
 
   const setPriority = (next: TaskPriority | null): void => {
-    hapticImpactLight()
+    haptic('selection')
     // Same draft rewrite as schedule(): setMarkdown is silent, so both
     // mirrors are kept in step by hand.
     const rewritten = withDraftPriority(readLiveDraft() ?? draft, next)

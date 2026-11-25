@@ -1,4 +1,6 @@
 use serde::de::DeserializeOwned;
+
+use crate::models::HapticRequest;
 use tauri::{plugin::PluginApi, AppHandle, Runtime};
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
@@ -13,7 +15,7 @@ pub struct Keyboard<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> Keyboard<R> {
     /// Desktop stand-in: no haptic engine, so a successful no-op.
-    pub fn impact_light(&self) -> crate::Result<()> {
+    pub fn haptic(&self, _request: HapticRequest) -> crate::Result<()> {
         Ok(())
     }
 }

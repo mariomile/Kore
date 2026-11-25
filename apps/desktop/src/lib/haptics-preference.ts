@@ -1,7 +1,7 @@
 /**
- * The `hapticFeedback` setting, as the two haptic entry points see it:
- * desktop's trackpad knocks (`@/lib/haptics`) and iOS's light impacts
- * (`@/mobile/haptics`).
+ * The `hapticFeedback` setting, as the haptic entry point (`@/lib/haptics`)
+ * sees it on both surfaces: the Mac's trackpad knocks and the iPhone's
+ * feedback styles.
  *
  * A module-level latch rather than context, because haptics fire from call
  * sites with no React scope — a delegated `mousedown` listener, the

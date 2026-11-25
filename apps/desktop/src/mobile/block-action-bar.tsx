@@ -32,7 +32,7 @@ import type { FormattingBlockKind } from '@/editor/formatting-toolbar-store'
 import { formatWeekdayShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 /** The top row: what the block reads as. Page folds it, with its children, into a card. */
 const STYLES: ReadonlyArray<{ kind: FormattingBlockKind; label: string; className: string }> = [
@@ -62,7 +62,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   // a row in iOS edit mode.
   const lastCount = useRef(0)
   useEffect(() => {
-    if (state.count > lastCount.current) hapticImpactLight()
+    if (state.count > lastCount.current) haptic(lastCount.current === 0 ? 'lift' : 'selection')
     lastCount.current = state.count
   }, [state.count])
 
@@ -86,7 +86,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   }, [])
 
   const act = (run: () => void): void => {
-    hapticImpactLight()
+    haptic('action')
     run()
   }
 
@@ -248,7 +248,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
                 label="Copy"
                 icon={<Copy />}
                 onPress={() => {
-                  hapticImpactLight()
+                  haptic('action')
                   void commands.copy()
                   setSheet(null)
                 }}

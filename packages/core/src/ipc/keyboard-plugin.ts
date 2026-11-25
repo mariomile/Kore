@@ -7,13 +7,19 @@ import { definePluginCommand, ignoredResult } from './plugin'
  * webview tuning with no IPC.
  */
 
-const impactLightCommand = definePluginCommand<Record<string, never>, unknown>(
+/**
+ * The native iOS feedback styles: a selection tick, two impact weights, and
+ * the three notification outcomes. Mirrors the plugin's `HapticStyle`.
+ */
+export type IosHapticStyle = 'selection' | 'light' | 'medium' | 'success' | 'warning' | 'error'
+
+const hapticCommand = definePluginCommand<{ request: { style: IosHapticStyle } }, unknown>(
   'keyboard',
-  'impact_light',
+  'haptic',
   ignoredResult,
 )
 
-/** Fire a light impact haptic (a no-op wherever there is no haptic engine). */
-export async function impactLight(): Promise<void> {
-  await impactLightCommand({})
+/** Play one iOS haptic style (a no-op wherever there is no haptic engine). */
+export async function iosHaptic(style: IosHapticStyle): Promise<void> {
+  await hapticCommand({ request: { style } })
 }

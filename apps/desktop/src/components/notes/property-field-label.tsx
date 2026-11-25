@@ -25,7 +25,6 @@ import { isMobileSurface } from '@/lib/platform-surface'
 import { removeTagProperty, renameTagProperty, setTagPropertyType } from '@/lib/tags/schema-edits'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
-import { hapticImpactLight } from '@/mobile/haptics'
 import { useGraph } from '@/providers/graph-provider'
 import { PropertyLabelSheet } from './property-label-sheet'
 
@@ -133,7 +132,6 @@ export function PropertyFieldLabel({
           type="button"
           aria-label={`${property.name} (${typeLabel})`}
           onClick={() => {
-            hapticImpactLight()
             setSheetOpen(true)
           }}
           className={triggerClass}

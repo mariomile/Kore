@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { PROPERTY_TYPE_ICONS } from './property-type-icons'
 import type { PropertyDraft } from './tag-config-drafts'
 import type { TagConfigDraft } from './use-tag-config-draft'
+import { DragHaptics } from '@/components/drag-haptics'
 
 /**
  * The left pane of the Mac type settings: a row for the type itself and the
@@ -64,6 +65,7 @@ export function PropertyNavList({
         }
       }}
     >
+      <DragHaptics />
       <SortableContext
         items={config.drafts.map((draft) => draft.rowId)}
         strategy={verticalListSortingStrategy}

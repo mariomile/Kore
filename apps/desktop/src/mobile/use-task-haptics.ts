@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 
 /**
  * A light haptic tick when a task checkbox is toggled in the editor (V1 mobile
@@ -22,7 +22,7 @@ export function useTaskCheckboxHaptics(): void {
       if (marker === null || marker.closest('[contenteditable="true"]') === null) {
         return
       }
-      hapticImpactLight()
+      haptic('toggle')
     }
     document.addEventListener('mousedown', onMouseDown, { capture: true })
     return () => document.removeEventListener('mousedown', onMouseDown, true)

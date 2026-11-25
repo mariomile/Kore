@@ -24,7 +24,7 @@ import { useTaskView } from '@/lib/tasks/use-task-view'
 import { cn } from '@/lib/utils'
 import { useTaskActions } from '@/lib/tasks/use-task-actions'
 import { useToday } from '@/lib/use-today'
-import { hapticImpactLight } from '@/mobile/haptics'
+import { haptic } from '@/lib/haptics'
 import { SearchInput } from '@/mobile/search-input'
 import { MobileTaskEditSheet } from '@/mobile/task-edit-sheet'
 import { TaskFiltersDrawer } from '@/mobile/task-filters-drawer'
@@ -155,10 +155,7 @@ export function MobileTasks({
     return groups.flatMap((group) => group.tasks).find((row) => taskKey(row) === key) ?? editingTask
   }, [groups, editingTask])
 
-  const editTask = (task: OpenTask, options?: { autoFocus?: boolean; haptic?: boolean }): void => {
-    if (options?.haptic !== false) {
-      hapticImpactLight()
-    }
+  const editTask = (task: OpenTask, options?: { autoFocus?: boolean }): void => {
     setAutoFocusEditor(options?.autoFocus === true)
     setEditingTask(task)
     setSheetOpen(true)
@@ -167,11 +164,11 @@ export function MobileTasks({
   // New-task capture clears any search filter so the optimistic row stays
   // visible, then opens its quick-edit sheet with the editor focused.
   const onAdd = (target: InsertTaskTarget): void => {
-    hapticImpactLight()
+    haptic('action')
     setQuery('')
     void actions.insert(target).then((created) => {
       if (created !== null) {
-        editTask(created, { autoFocus: true, haptic: false })
+        editTask(created, { autoFocus: true })
       }
     })
   }
@@ -186,17 +183,17 @@ export function MobileTasks({
     }
     taskRequestConsumed.current = true
     onNewTaskConsumed()
-    hapticImpactLight()
+    haptic('action')
     void actions.insert(todaysDailyTarget(today)).then((created) => {
       setQuery('')
       if (created !== null) {
-        editTask(created, { autoFocus: true, haptic: false })
+        editTask(created, { autoFocus: true })
       }
     })
   }, [actions, newTaskRequested, onNewTaskConsumed, today])
 
   const archiveCompleted = (): void => {
-    hapticImpactLight()
+    haptic('success')
     actions.archive()
   }
 
@@ -241,7 +238,6 @@ export function MobileTasks({
             className="size-11 shrink-0"
             aria-label="Task filters"
             onClick={() => {
-              hapticImpactLight()
               setFiltersOpen(true)
             }}
           >
@@ -263,7 +259,7 @@ export function MobileTasks({
               role="tab"
               aria-selected={entry === view}
               onClick={() => {
-                hapticImpactLight()
+                haptic('selection')
                 setView(entry)
               }}
               className={cn(

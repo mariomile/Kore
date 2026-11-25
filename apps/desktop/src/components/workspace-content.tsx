@@ -32,6 +32,7 @@ import { usePanes } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
 import { useRouter } from '@/routing/router'
+import { DragHaptics } from '@/components/drag-haptics'
 
 interface WorkspaceContentProps {
   graph: GraphInfo
@@ -256,6 +257,7 @@ const WorkspaceFrame = memo(function WorkspaceFrame({
         onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
       >
+        <DragHaptics />
         <PaneDragContext value={dragState}>
           {columns.map((column, columnIndex) => (
             <Fragment key={column.id}>

@@ -20,7 +20,7 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
 }))
 
-vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+vi.mock('@/lib/haptics', () => ({ haptic: vi.fn() }))
 
 afterEach(cleanup)
 

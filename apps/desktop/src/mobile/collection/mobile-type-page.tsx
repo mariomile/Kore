@@ -39,7 +39,6 @@ import { useTemplateValues } from '@/hooks/use-template-values'
 import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
 import { cn } from '@/lib/utils'
 import { MobileBoard } from '@/mobile/collection/mobile-board'
-import { hapticImpactLight } from '@/mobile/haptics'
 import { SearchInput } from '@/mobile/search-input'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useGraph } from '@/providers/graph-provider'
@@ -309,7 +308,6 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           <button
             type="button"
             onClick={() => {
-              hapticImpactLight()
               setChoosingView(true)
             }}
             aria-label={`View: ${activeTab?.name ?? MOBILE_VIEW_LABEL[view]}`}
@@ -324,7 +322,6 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
           <button
             type="button"
             onClick={() => {
-              hapticImpactLight()
               setAdjustingView(true)
             }}
             aria-label={

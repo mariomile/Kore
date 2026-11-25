@@ -31,7 +31,6 @@ import { TaskFiltersDrawer } from '@/mobile/task-filters-drawer'
 import { MobileTaskGroup } from '@/mobile/task-group'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
-import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -65,7 +64,6 @@ export function MobileTasks({
   const { filters, toggle } = useTaskFilters()
   const { view, setView } = useTaskView()
   const [query, setQuery] = useState('')
-  const searchHeaderFocus = useSearchHeaderFocus()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const taskRequestConsumed = useRef(false)
@@ -199,18 +197,14 @@ export function MobileTasks({
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      {/* Notes and Tasks are root tabs the bottom bar already names: the
+          title stays for VoiceOver only, so the search sits at the top. */}
+      <h1 className="sr-only">Tasks</h1>
       <header
         ref={barRef}
         className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
-        <h1
-          className={`overflow-hidden text-[28px] font-semibold tracking-tight transition-[height,opacity] duration-200 motion-reduce:transition-none ${
-            searchHeaderFocus.isFocused ? 'h-0 opacity-0' : 'h-9 opacity-100'
-          }`}
-        >
-          Tasks
-        </h1>
         <div className="flex items-center gap-1">
           <SearchInput
             ref={searchInputRef}
@@ -218,8 +212,6 @@ export function MobileTasks({
             aria-label="Search tasks"
             value={query}
             onValueChange={setQuery}
-            onFocus={searchHeaderFocus.onFocus}
-            onBlur={searchHeaderFocus.onBlur}
           />
           {recentlyCompleted.length > 0 ? (
             <Button

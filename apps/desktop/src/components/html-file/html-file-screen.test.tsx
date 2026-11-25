@@ -15,6 +15,16 @@ vi.mock('@/editor/use-asset-persistence', () => ({
   useAssetPersistence: () => ({ openAsset: vi.fn() }),
 }))
 
+const mobile = vi.hoisted(() => ({ value: false }))
+vi.mock('@/lib/platform-surface', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/platform-surface')>()),
+  isMobileSurface: () => mobile.value,
+}))
+const back = vi.fn()
+vi.mock('@/routing/router', () => ({
+  useRouter: () => ({ navigate: vi.fn(), back, canBack: true }),
+}))
+
 const { HtmlFileScreen } = await import('./html-file-screen')
 
 describe('HtmlFileScreen', () => {
@@ -28,6 +38,21 @@ describe('HtmlFileScreen', () => {
     const frame = view.getByTitle('Q4 retention').element()
     // Scripts run; same-origin never: the page gets an opaque origin.
     expect(frame.getAttribute('sandbox')).toBe('allow-scripts')
+    await view.unmount()
+  })
+
+  it('is a pushed screen on iPhone: back, title, share, the page full width', async () => {
+    mobile.value = true
+    const view = await render(
+      <QueryClientProvider client={new QueryClient()}>
+        <HtmlFileScreen path="Reports/retention-q4.html" />
+      </QueryClientProvider>,
+    )
+    await expect.element(view.getByRole('heading', { name: 'Q4 retention' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Share' })).toBeVisible()
+    await view.getByRole('button', { name: 'Back' }).click()
+    expect(back).toHaveBeenCalledOnce()
+    mobile.value = false
     await view.unmount()
   })
 })

@@ -16,7 +16,6 @@ import type {
 } from '@meowdown/react'
 import {
   aiApiKeyForConfig,
-  chatModelOptions,
   cloudSafeSelection,
   filterAiPrompts,
   isPrivateNoteError,
@@ -32,6 +31,7 @@ import { AiPreviewActions } from '@/editor/ai-menu/ai-preview-actions'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
 import { useAiProviders } from '@/hooks/use-ai-providers'
+import { useChatModelOptions } from '@/hooks/use-chat-model-options'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { providerFetch } from '@/lib/provider-fetch'
 import { useRouter } from '@/routing/router'
@@ -109,6 +109,7 @@ export function useEditorAiMenu({
     noteRow?.isPrivate ??
     (resolvedPrivacy?.epoch === sessionEpoch ? resolvedPrivacy.isPrivate : true)
   const { providers, defaultProvider } = useAiProviders()
+  const modelOptions = useChatModelOptions(providers)
   const { prompts } = useAiPrompts()
   const { navigate } = useRouter()
 
@@ -294,12 +295,12 @@ export function useEditorAiMenu({
     () => (
       <AiPreviewActions
         mode={runMode}
-        modelOptions={chatModelOptions(providers)}
+        modelOptions={modelOptions}
         onRetry={retry}
         onAcceptAs={acceptAs}
       />
     ),
-    [runMode, providers, retry, acceptAs],
+    [runMode, modelOptions, retry, acceptAs],
   )
 
   const onPendingReplacementResolve = useCallback<PendingReplacementResolveHandler>(() => {

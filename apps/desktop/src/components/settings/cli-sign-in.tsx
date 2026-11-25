@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorMessage } from '@kore/core'
 import { CheckCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { CLI_MODELS_QUERY_SCOPE } from '@/hooks/use-chat-model-options'
 import { openUrlSync } from '@/lib/open-url'
 import type { CliSignInFlow } from './cli-sign-in-flows'
 
@@ -42,6 +43,8 @@ export function CliSignIn({ flow }: CliSignInProps): ReactElement {
 
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: flow.queryKey })
+    // Another account can mean another plan, so other models.
+    void queryClient.invalidateQueries({ queryKey: [CLI_MODELS_QUERY_SCOPE] })
   }
 
   const signIn = (): void => {

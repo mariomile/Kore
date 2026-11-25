@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
@@ -114,6 +115,7 @@ const GRAPH: GraphInfo = { root: '/g', name: 'test-graph', generation: 1 }
 
 function renderProvider() {
   session = null
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return renderHook(
     () => {
       session = useChatSession()
@@ -121,7 +123,9 @@ function renderProvider() {
     },
     {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        <QueryClientProvider client={queryClient}>
+          <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+        </QueryClientProvider>
       ),
     },
   )

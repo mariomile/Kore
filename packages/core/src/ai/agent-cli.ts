@@ -153,6 +153,12 @@ export interface AgentCliCommandResult {
 export async function runAgentCliCommand(options: {
   binary: AgentCliBinary
   args: string[]
+  /** Written to stdin (a JSON-RPC request, say); empty by default. */
+  input?: string | undefined
+  /** Hold stdin open past `input`: app-server exits on EOF before answering. */
+  keepStdinOpen?: boolean | undefined
+  /** Run Codex on the app-managed CODEX_HOME (see {@link AgentCliTurnOptions}). */
+  isolatedCodexHome?: boolean | undefined
   signal?: AbortSignal | undefined
   onLine?: ((line: string) => void) | undefined
 }): Promise<AgentCliCommandResult> {
@@ -190,9 +196,11 @@ export async function runAgentCliCommand(options: {
       requestId,
       binary: options.binary,
       args: options.args,
-      prompt: '',
+      prompt: options.input ?? '',
       cwd: null,
       streamStderr: true,
+      isolatedCodexHome: options.isolatedCodexHome === true,
+      keepStdinOpen: options.keepStdinOpen === true,
     })
     // The native stop needs the child: deliver a cancel that came mid-spawn.
     started = true
@@ -242,6 +250,51 @@ export async function runAgentCliLogin(options: {
   })
   const success = result.code === 0
   return { success, message: success ? null : agentCliFailureMessage(result) }
+}
+
+/**
+ * Ask a CLI one question over stdin and stop it at the first output line
+ * `answer` accepts: a protocol query (Claude Code's `initialize`, Codex's
+ * `model/list`) on a process that would otherwise stay up. Null when the CLI
+ * exits, fails or misses the deadline without an answer.
+ */
+export async function queryAgentCli<Answer>(options: {
+  binary: AgentCliBinary
+  args: string[]
+  input: string
+  isolatedCodexHome?: boolean | undefined
+  /** The answer in one output line, or null to keep reading. */
+  answer: (line: string) => Answer | null
+  timeoutMs: number
+  signal?: AbortSignal | undefined
+}): Promise<Answer | null> {
+  const stop = new AbortController()
+  const timer = setTimeout(() => stop.abort(), options.timeoutMs)
+  const onAbort = (): void => stop.abort()
+  options.signal?.addEventListener('abort', onAbort, { once: true })
+  let found: Answer | null = null
+  try {
+    await runAgentCliCommand({
+      binary: options.binary,
+      args: options.args,
+      input: options.input,
+      keepStdinOpen: true,
+      isolatedCodexHome: options.isolatedCodexHome,
+      signal: stop.signal,
+      onLine: (line) => {
+        if (found === null) {
+          found = options.answer(line)
+          if (found !== null) {
+            stop.abort()
+          }
+        }
+      },
+    })
+    return found
+  } finally {
+    clearTimeout(timer)
+    options.signal?.removeEventListener('abort', onAbort)
+  }
 }
 
 export interface AgentCliTurnOptions {

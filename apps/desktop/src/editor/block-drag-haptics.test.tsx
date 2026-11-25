@@ -43,13 +43,14 @@ function handlers(): {
   drop: (view: EditorView) => void
   dragend: (view: EditorView) => void
 } {
-  const events = createBlockDragHapticsPlugin().props.handleDOMEvents
+  const plugin = createBlockDragHapticsPlugin()
+  const events = plugin.props.handleDOMEvents
   if (events === undefined) throw new Error('plugin has no DOM handlers')
   return {
     dragover: (view, y) =>
-      events.dragover?.(view, new DragEvent('dragover', { clientX: 10, clientY: y })),
-    drop: (view) => events.drop?.(view, new DragEvent('drop')),
-    dragend: (view) => events.dragend?.(view, new DragEvent('dragend')),
+      events.dragover?.call(plugin, view, new DragEvent('dragover', { clientX: 10, clientY: y })),
+    drop: (view) => events.drop?.call(plugin, view, new DragEvent('drop')),
+    dragend: (view) => events.dragend?.call(plugin, view, new DragEvent('dragend')),
   }
 }
 

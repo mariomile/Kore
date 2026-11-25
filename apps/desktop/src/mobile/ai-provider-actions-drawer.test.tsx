@@ -67,9 +67,9 @@ describe('AiProviderActionsDrawer', () => {
   it('changes the provider default model and closes', async () => {
     await renderSheet()
 
-    await page.getByRole('button', { name: 'GPT-5.4 mini' }).click()
+    await page.getByRole('button', { name: 'GPT-6.2 Sol' }).click()
 
-    expect(onSetDefaultModel).toHaveBeenCalledWith('p1', 'gpt-5.4-mini')
+    expect(onSetDefaultModel).toHaveBeenCalledWith('p1', 'gpt-6.2-sol')
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 

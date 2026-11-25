@@ -7,7 +7,7 @@ function config(overrides: Partial<HostedAiProviderConfig>): HostedAiProviderCon
   return {
     id: 'id',
     provider: 'anthropic',
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-5-5',
     keyHint: 'hint1',
     ...overrides,
   }
@@ -66,6 +66,20 @@ describe('chatModelOptions', () => {
     const firstOpenAi = options.findIndex((option) => option.configId === 'b')
     expect(options.slice(0, firstOpenAi).every((option) => option.configId === 'a')).toBe(true)
     expect(options.slice(firstOpenAi).every((option) => option.configId === 'b')).toBe(true)
+  })
+
+  it('offers an entry its live list, leaving other entries of that provider on the catalog', () => {
+    const live = [{ id: 'claude-next', label: 'Claude Next', contextWindow: 1_000_000 }]
+    const options = chatModelOptions(
+      [config({ id: 'a', model: 'claude-next' }), config({ id: 'b' })],
+      { a: live },
+    )
+    expect(options.filter((option) => option.configId === 'a').map((o) => o.modelId)).toEqual([
+      'claude-next',
+    ])
+    expect(options.filter((option) => option.configId === 'b')).toHaveLength(
+      aiProvider('anthropic').models.length,
+    )
   })
 
   it('returns nothing when no provider is configured', () => {

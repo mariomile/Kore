@@ -55,35 +55,36 @@ type AnthropicModelId = KnownId<Parameters<AnthropicProvider>[0]>
 type GoogleModelId = KnownId<Parameters<GoogleProvider>[0]>
 type OpenAIModelId = KnownId<Parameters<OpenAIProvider>[0]>
 
-// https://github.com/vercel/ai/blob/ai@7.0.66/packages/openai/src/responses/openai-responses-language-model-options.ts#L88
+// Model ids are checked against each SDK's model-id union (the type below
+// rejects a typo). Newer models than these still reach the pickers: the live
+// `/models` merge (`hosted-models.ts`) adds what a key can call.
 const OPENAI_MODELS: NonEmptyArray<AiModelOption<OpenAIModelId>> = [
+  { id: 'gpt-6.2-astra', label: 'GPT-6.2 Astra', contextWindow: 1_000_000 },
+  { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol', contextWindow: 1_000_000 },
+  { id: 'gpt-6.1-terra', label: 'GPT-6.1 Terra', contextWindow: 1_000_000 },
+  { id: 'gpt-6-luna', label: 'GPT-6 Luna', contextWindow: 1_000_000 },
   { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', contextWindow: 1_000_000 },
   { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', contextWindow: 1_000_000 },
   { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', contextWindow: 1_000_000 },
-  { id: 'gpt-5.5', label: 'GPT-5.5', contextWindow: 1_000_000 },
-  { id: 'gpt-5.4', label: 'GPT-5.4', contextWindow: 1_000_000 },
-  { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', contextWindow: 400_000 },
-  { id: 'gpt-5.4-nano', label: 'GPT-5.4 nano', contextWindow: 400_000 },
 ]
 
-// https://github.com/vercel/ai/blob/ai@7.0.66/packages/anthropic/src/anthropic-language-model-options.ts#L4
 const ANTHROPIC_MODELS: NonEmptyArray<AiModelOption<AnthropicModelId>> = [
+  { id: 'claude-fable-5-2', label: 'Claude Fable 5.2', contextWindow: 1_000_000 },
+  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', contextWindow: 1_000_000 },
+  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', contextWindow: 1_000_000 },
+  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', contextWindow: 1_000_000 },
   { id: 'claude-fable-5', label: 'Claude Fable 5', contextWindow: 1_000_000 },
   { id: 'claude-opus-5', label: 'Claude Opus 5', contextWindow: 1_000_000 },
-  { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', contextWindow: 1_000_000 },
   { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', contextWindow: 1_000_000 },
-  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', contextWindow: 1_000_000 },
-  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', contextWindow: 200_000 },
 ]
 
-// https://github.com/vercel/ai/blob/ai@7.0.66/packages/google/src/google-language-model-options.ts#L8
 const GOOGLE_MODELS: NonEmptyArray<AiModelOption<GoogleModelId>> = [
-  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', contextWindow: 1_000_000 },
-  { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', contextWindow: 1_000_000 },
-  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', contextWindow: 1_000_000 },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', contextWindow: 1_000_000 },
+  { id: 'gemini-4-carbon', label: 'Gemini 4 Carbon', contextWindow: 1_000_000 },
+  { id: 'gemini-4-argon', label: 'Gemini 4 Argon', contextWindow: 1_000_000 },
+  { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen', contextWindow: 1_000_000 },
+  { id: 'gemini-4-neon', label: 'Gemini 4 Neon', contextWindow: 1_000_000 },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', contextWindow: 1_000_000 },
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite', contextWindow: 1_000_000 },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', contextWindow: 1_000_000 },
 ]
 
 export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
@@ -161,10 +162,10 @@ export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
     desktopOnly: true,
     models: [
       { id: 'default', label: 'CLI default', contextWindow: 200_000 },
+      { id: 'gpt-6.2-astra', label: 'GPT-6.2 Astra', contextWindow: 200_000 },
+      { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol', contextWindow: 200_000 },
+      { id: 'gpt-6.1-terra', label: 'GPT-6.1 Terra', contextWindow: 200_000 },
       { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', contextWindow: 200_000 },
-      { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', contextWindow: 200_000 },
-      { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', contextWindow: 200_000 },
-      { id: 'gpt-5.5', label: 'GPT-5.5', contextWindow: 200_000 },
     ],
   },
   {

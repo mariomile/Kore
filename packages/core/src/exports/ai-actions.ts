@@ -40,6 +40,7 @@ export {
   type LiveModelLists,
 } from '../ai/chat/model-options'
 export { listCliModels } from '../ai/cli-models'
+export { listConfiguredModels, listHostedModels } from '../ai/hosted-models'
 export {
   validateApiKey,
   type ApiKeyValidation,

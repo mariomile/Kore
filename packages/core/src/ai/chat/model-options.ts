@@ -23,12 +23,17 @@ export interface ChatModelOption {
 
 export type { ChatModelSelection }
 
-/** Model lists read at runtime (a subscription CLI's own), per provider. */
-export type LiveModelLists = Partial<Record<AiProviderId, readonly AiModelOption[]>>
+/**
+ * Model lists read at runtime, per configured entry (`AiProviderConfig.id`):
+ * a subscription CLI's own (`listCliModels`), or what an API key can call
+ * (`listConfiguredModels`). Keyed by entry because two entries of one
+ * provider can reach different models (another key, another base URL).
+ */
+export type LiveModelLists = Partial<Record<string, readonly AiModelOption[]>>
 
 /**
  * Every model the chat picker offers, grouped consecutively per configured
- * entry: the provider's live list when one was read (`listCliModels`), else
+ * entry: the entry's live list when one was read, else
  * its curated catalog, plus the entry's configured default model when it's a
  * custom id outside that list.
  */
@@ -37,7 +42,7 @@ export function chatModelOptions(
   liveModels: LiveModelLists = {},
 ): ChatModelOption[] {
   return providers.flatMap((entry) => {
-    const catalog = liveModels[entry.provider] ?? aiProvider(entry.provider).models
+    const catalog = liveModels[entry.id] ?? aiProvider(entry.provider).models
     const models = catalog.some((model) => model.id === entry.model)
       ? catalog
       : [...catalog, { id: entry.model, label: entry.model }]

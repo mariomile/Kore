@@ -3,10 +3,10 @@
 //! the open graph, read it through the bundled `kore` CLI, and know the
 //! formats Kore renders.
 //!
-//! Four skills ship in `../skills/`: one **per graph** (`kore-graph-<slug>`,
+//! Five skills ship in `../skills/`: one **per graph** (`kore-graph-<slug>`,
 //! rendered with the graph root and the CLI's on-disk path baked in) and
-//! three **shared** format skills (`kore-markdown`, `kore-collections`,
-//! `kore-agent-memory`) installed verbatim once, whichever graph is open. A
+//! four **shared** format skills (`kore-markdown`, `kore-collections`,
+//! `kore-agent-memory`, `kore-canvas`) installed verbatim once, whichever graph is open. A
 //! managed marker — an HTML comment carrying the sha256 of the rendered
 //! content — makes updates safe: a file without the marker (or with the
 //! right marker but edited content) was not written by us and is never
@@ -28,7 +28,7 @@ use crate::fs::{current_root, root_for_generation, GraphState};
 const GRAPH_SKILL_TEMPLATE: &str = include_str!("../skills/graph/SKILL.md");
 
 /// The shared format skills, installed as-is under their own names.
-const SHARED_SKILLS: [(&str, &str); 3] = [
+const SHARED_SKILLS: [(&str, &str); 4] = [
     (
         "kore-markdown",
         include_str!("../skills/kore-markdown/SKILL.md"),
@@ -40,6 +40,10 @@ const SHARED_SKILLS: [(&str, &str); 3] = [
     (
         "kore-agent-memory",
         include_str!("../skills/kore-agent-memory/SKILL.md"),
+    ),
+    (
+        "kore-canvas",
+        include_str!("../skills/kore-canvas/SKILL.md"),
     ),
 ];
 
@@ -510,7 +514,8 @@ mod tests {
                 "kore-graph-personal",
                 "kore-markdown",
                 "kore-collections",
-                "kore-agent-memory"
+                "kore-agent-memory",
+                "kore-canvas"
             ]
         );
         for (context, (name, template)) in set.contexts[1..].iter().zip(SHARED_SKILLS) {

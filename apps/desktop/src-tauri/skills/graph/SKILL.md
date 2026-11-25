@@ -1,6 +1,6 @@
 ---
 name: {{SKILL_NAME}}
-description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `kore` CLI. Use when the user asks about their notes, daily notes, journal, tasks, collections, or anything they may have written down in Kore. The kore-markdown, kore-collections, and kore-agent-memory skills carry the formats.
+description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `kore` CLI. Use when the user asks about their notes, daily notes, journal, tasks, collections, or anything they may have written down in Kore. The kore-markdown, kore-collections, kore-agent-memory, and kore-canvas skills carry the formats.
 ---
 
 # Kore graph: {{GRAPH_NAME}}
@@ -132,7 +132,8 @@ The formats are their own skills, installed beside this one by Kore:
 templates), `kore-collections` (supertags, property types, the
 ` ```collection ` fence, reusable collections), and `kore-agent-memory`
 (the `agents/` folder: user profile, shared facts, session log, souls,
-vault skills). Read the one a task touches before writing by hand.
+vault skills), and `kore-canvas` (`.canvas` boards: `kore canvas <folder>`
+or JSON Canvas by hand). Read the one a task touches before writing by hand.
 
 ## Git history
 

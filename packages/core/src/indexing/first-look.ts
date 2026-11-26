@@ -1,4 +1,5 @@
 import { inferFieldFromValues, type StoredFieldValue } from '../bases/convert-fields'
+import { fileNameOf, folderOf } from '../bases/values'
 import { DESCRIPTION_SUFFIX, TAGS_DIR } from '../graph/paths'
 import { foldTag, isTagName } from '../markdown'
 import { isPropertyKey, type TagProperty } from '../tags/tag-type'
@@ -187,18 +188,8 @@ export async function loadFirstLookRecentNotes(limit: number): Promise<NoteListE
   }))
 }
 
-/** The note's folder, `''` at the vault root. */
-function folderOf(path: string): string {
-  const slash = path.lastIndexOf('/')
-  return slash === -1 ? '' : path.slice(0, slash)
-}
-
-function lastSegment(value: string): string {
-  return value.slice(value.lastIndexOf('/') + 1)
-}
-
 function humanLabel(value: string): string {
-  const words = lastSegment(value).replaceAll(/[-_]+/g, ' ').trim()
+  const words = fileNameOf(value).replaceAll(/[-_]+/g, ' ').trim()
   return words === '' ? value : words.charAt(0).toUpperCase() + words.slice(1)
 }
 
@@ -352,7 +343,7 @@ function typeSuggestions(
     if (paths.length < MIN_TYPE_NOTES || typeFolders.has(folder)) {
       continue
     }
-    const tag = foldTag(lastSegment(folder).replaceAll(/\s+/g, '-'))
+    const tag = foldTag(fileNameOf(folder).replaceAll(/\s+/g, '-'))
     if (!isTagName(tag) || typed.has(tag) || tags.has(tag)) {
       continue
     }

@@ -88,6 +88,9 @@ export function GraphProvider({
   // so overlapping opens (double-click, StrictMode remount) can't finish out of
   // order and leave us on a graph the user didn't pick last.
   const openSeq = useRef(0)
+  // When this open's index first went live: the seeds that decide on a first
+  // look can resolve after it, and must still say how long the open took.
+  const liveAt = useRef<number | null>(null)
   // Serializes backend opens (see `openRecent`).
   const openChain = useRef<Promise<unknown>>(Promise.resolve())
   // The active graph's index lifecycle (open → reconcile → subscribe → watch), so
@@ -101,10 +104,9 @@ export function GraphProvider({
           setIndexReady(true)
           // The first time this open's index goes live is when the vault
           // came alive; a later pass going live again changes nothing.
+          const readyAt = (liveAt.current ??= performance.now())
           setFirstLook((current) =>
-            current === null || current.readyAt !== null
-              ? current
-              : { ...current, readyAt: performance.now() },
+            current === null || current.readyAt !== null ? current : { ...current, readyAt },
           )
         }
         if (progress !== 'reconciling') {
@@ -210,6 +212,7 @@ export function GraphProvider({
       setStatus('opening')
       setError(null)
       setFirstLook(null)
+      liveAt.current = null
       // Resolves true only when this open actually reached 'ready' — callers
       // (mobile onboarding) gate side effects like persisting the onboarded
       // flag on a confirmed open, never on a clone that failed to open.
@@ -279,7 +282,7 @@ export function GraphProvider({
                 // Someone's notes, opening in Kore for the first time: the
                 // first look shows them coming alive while the index fills.
                 if (outcome === 'existing' && seq === openSeq.current) {
-                  setFirstLook({ root, startedAt, readyAt: null })
+                  setFirstLook({ root, startedAt, readyAt: liveAt.current })
                 }
               })
               .catch((err) => {

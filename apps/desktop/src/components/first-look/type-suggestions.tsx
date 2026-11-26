@@ -129,7 +129,7 @@ function TypeSuggestionRow({
   }
 
   const where =
-    suggestion.folder === ''
+    suggestion.folder === null || suggestion.folder === ''
       ? `${suggestion.count.toLocaleString()} notes`
       : `${suggestion.count.toLocaleString()} notes in ${suggestion.folder}`
 

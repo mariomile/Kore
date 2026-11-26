@@ -1,7 +1,7 @@
 import { useSyncExternalStore, type ReactElement } from 'react'
 import { getIndexProgress, subscribeIndexProgress } from '@/lib/index-progress'
 import { useKeyboardVisible } from '@/mobile/use-keyboard'
-import { useRouter } from '@/routing/router'
+import { useOptionalRouter } from '@/routing/router'
 
 /**
  * Below this listing size the pass finishes before a pill is worth showing —
@@ -34,7 +34,7 @@ export function IndexProgressPill(): ReactElement | null {
   const keyboardVisible = useKeyboardVisible()
   // Insights shows the same pass as the vault's first look; a second
   // counter under it would only repeat the number.
-  const onInsights = useRouter().route.kind === 'insights'
+  const onInsights = useOptionalRouter()?.route.kind === 'insights'
 
   if (
     progress === null ||

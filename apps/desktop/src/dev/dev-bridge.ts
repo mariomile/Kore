@@ -475,6 +475,9 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'git_clone':
         return null
 
+      case 'agent_activity_since':
+        // No `kore mcp` beside the dev bridge; `?agentDemo` scripts presence.
+        return { text: '', offset: 0 }
       case 'git_status':
         return {
           initialized: false,

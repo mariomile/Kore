@@ -107,7 +107,7 @@ fn write_as_agent(graph: &Graph, proposal: &Proposal) -> Result<crate::mcp::RunO
         exe: std::env::current_exe()?,
         graph: graph.root.clone(),
     };
-    let output = runner.run_as(&args, stdin.as_deref(), &proposal.agent);
+    let output = runner.run_as(&args, stdin.as_deref(), &proposal.agent, None);
     if !output.success {
         return Err(CliError::Runtime(format!(
             "proposal {id} was not written: {}",

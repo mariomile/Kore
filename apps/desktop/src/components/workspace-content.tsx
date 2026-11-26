@@ -4,6 +4,7 @@ import { subscribeBrowserNavigated, type GraphInfo } from '@kore/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextCollapsedRail } from '@/components/context-sidebar/context-collapsed-rail'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
+import { AgentActivityFeed } from '@/components/agent-presence/agent-activity-feed'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { RemoteAccessRunner } from '@/components/remote-access-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
@@ -119,6 +120,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       <TemplateCreateDialog context={commandContext} />
       <EmbeddingsSync />
       <AgentRoutinesRunner />
+      <AgentActivityFeed generation={graph.generation} />
       <TaskRemindersRunner />
       <RemoteAccessRunner />
       <VaultCompatNotice graph={graph} />

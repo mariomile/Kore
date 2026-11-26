@@ -440,3 +440,46 @@ fn a_write_for_an_agent_is_journaled_and_a_plain_write_is_not() {
     assert_eq!(line["path"], "daily/2026-06-11.md");
     assert!(line["at"].as_u64().unwrap() > 0);
 }
+
+#[test]
+fn an_agent_tool_call_logs_what_it_read_and_the_lines_it_changed() {
+    let fixture = graph();
+    fixture.write_note("notes/dune.md", "# Dune\n\n- first\n");
+    let log = fixture.root().join(".kore/agent-activity.jsonl");
+    let as_agent = |args: &[&str]| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_kore"))
+            .args(args)
+            .current_dir(fixture.root())
+            .env_remove("KORE_GRAPH")
+            .env("KORE_AGENT", "MCP")
+            .env("KORE_AGENT_EMAIL", "mcp@agents.kore")
+            .env("KORE_AGENT_GRAPH", fixture.root())
+            .env("KORE_AGENT_CLIENT", "claude-code")
+            .output()
+            .unwrap()
+    };
+
+    assert_eq!(kore(&fixture, &["show", "Dune"]).status.code(), Some(0));
+    assert!(!log.exists(), "the owner's own reads are not logged");
+
+    assert_eq!(as_agent(&["show", "Dune"]).status.code(), Some(0));
+    assert_eq!(
+        as_agent(&["append", "Dune", "second"]).status.code(),
+        Some(0)
+    );
+    let events: Vec<serde_json::Value> = fs::read_to_string(&log)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["kind"], "read");
+    assert_eq!(events[0]["path"], "notes/dune.md");
+    assert_eq!(events[0]["client"], "claude-code");
+    assert_eq!(events[1]["kind"], "write");
+    assert_eq!(events[1]["agent"], "MCP");
+    assert_eq!(events[1]["created"], false);
+    assert_eq!(events[1]["removed"], "");
+    assert!(events[1]["added"].as_str().unwrap().contains("second"));
+    assert_eq!(events[1]["contextBefore"], "- first\n");
+}

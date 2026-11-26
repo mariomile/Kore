@@ -14,6 +14,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
     let rel_path = resolve_existing(&graph.root, note_arg, index.as_ref().map(|open| &open.conn))?;
     let rel_path = rel_path.as_str();
     let note = read_note(&graph.root, rel_path)?;
+    crate::agent_activity::record_read(&graph.root.join(rel_path));
     if json {
         return print_json(&NoteJson {
             date: date_from_daily_path(rel_path).as_deref(),

@@ -530,3 +530,9 @@ export {
   type AgentStatus,
   type AgentWrite,
 } from '../ai/agent-presence'
+export {
+  agentActivitySince,
+  agentDisplayName,
+  parseAgentActivity,
+  type AgentActivityChunk,
+} from '../ai/agent-activity'

@@ -53,6 +53,7 @@ impl<R: Runner> Server<R> {
             &["proposals".to_string(), "add".to_string()],
             Some(&json),
             agent,
+            None,
         );
         if !output.success {
             return tool_text(output.text, true);

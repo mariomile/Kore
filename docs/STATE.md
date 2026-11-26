@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-26 — 0.156.2
+
+- Shipped #705: date properties on iPhone open only Kore's calendar, no iOS date picker on top.
+
 ## 2026-11-26 — 0.156.1
 
 - Shipped #701: iPhone selected blocks as one card each (tables too), swipe check that fills on select with firmer haptics, block swipe on the daily no longer turns the day. Haptics need a real iPhone check on TestFlight.

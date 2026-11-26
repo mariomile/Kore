@@ -61,11 +61,22 @@ function statusLine(agent: AgentPresence): string {
  */
 export function AgentPresencePills({ className }: { className?: string }): ReactElement | null {
   const agents = useAgentPresence()
+  // Nothing (not even the undo channel, which needs an open vault) mounts
+  // until an agent shows up.
+  return agents.length === 0 ? null : (
+    <Pills agents={agents} {...(className !== undefined ? { className } : {})} />
+  )
+}
+
+function Pills({
+  agents,
+  className,
+}: {
+  agents: readonly AgentPresence[]
+  className?: string
+}): ReactElement {
   const undoWrites = useUndoAgentWrites()
   const mobile = isMobileSurface()
-  if (agents.length === 0) {
-    return null
-  }
   return (
     <div
       className={cn('pointer-events-none flex flex-col items-center gap-2', className)}

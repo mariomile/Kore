@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, type ReactElement } from 'react'
+import type { AgentPresence } from '@kore/core'
 import { definePlugin } from '@prosekit/core'
 import { useEditor, useExtension } from '@meowdown/react'
 import { useUndoAgentWrites } from '@/hooks/use-undo-agent-write'
@@ -12,10 +13,17 @@ import { whenEditorMounted } from './when-editor-mounted'
  * Mounts its plugin always (a no-op without marks) so a write arriving
  * mid-session needs no remount.
  */
-export function AgentLiveShading({ path }: { path: string }): null {
-  const editor = useEditor()
+export function AgentLiveShading({ path }: { path: string }): ReactElement | null {
   useExtension(useMemo(() => definePlugin(createAgentLivePlugin()), []))
   const agents = useAgentPresence()
+  const wrote = agents.some((agent) => agent.writes.some((write) => write.path === path))
+  // The marks (and the undo channel they need) mount only once an agent
+  // wrote here; until then the plugin holds no marks and costs nothing.
+  return wrote ? <Marks path={path} agents={agents} /> : null
+}
+
+function Marks({ path, agents }: { path: string; agents: readonly AgentPresence[] }): null {
+  const editor = useEditor()
   const undoWrites = useUndoAgentWrites()
 
   const marks = useMemo((): readonly AgentLiveMark[] => {
@@ -37,9 +45,14 @@ export function AgentLiveShading({ path }: { path: string }): null {
     return out
   }, [agents, path, undoWrites])
 
-  useEffect(
-    () => whenEditorMounted(editor, () => setAgentLiveMarks(editor.view, marks)),
-    [editor, marks],
-  )
+  useEffect(() => {
+    const cancel = whenEditorMounted(editor, () => setAgentLiveMarks(editor.view, marks))
+    return () => {
+      cancel()
+      if (editor.mounted) {
+        setAgentLiveMarks(editor.view, [])
+      }
+    }
+  }, [editor, marks])
   return null
 }

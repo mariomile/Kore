@@ -6,6 +6,9 @@ import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 
+/** The most weeks any month spans in a grid. */
+const MAX_WEEKS = 6
+
 interface DateGridProps {
   /** Today's live ISO date — anchors the opening month and marks "today". */
   today: string
@@ -33,12 +36,12 @@ export function DateGrid({ today, selected, onPick }: DateGridProps): ReactEleme
     <div aria-label="Pick a date">
       <header className="flex items-center justify-between px-1 pb-1">
         <div className="text-sm font-semibold text-text">{monthLabel(month)}</div>
-        <nav className="flex items-center gap-1 text-text-muted">
+        <nav className="-mr-2 flex items-center text-text-muted">
           <button
             type="button"
             aria-label="Previous month"
             onClick={() => setMonth(addMonths(month, -1))}
-            className="rounded-md p-2"
+            className="flex size-11 items-center justify-center rounded-full active:bg-surface-hover"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -46,7 +49,7 @@ export function DateGrid({ today, selected, onPick }: DateGridProps): ReactEleme
             type="button"
             aria-label="Next month"
             onClick={() => setMonth(addMonths(month, 1))}
-            className="rounded-md p-2"
+            className="flex size-11 items-center justify-center rounded-full active:bg-surface-hover"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -62,11 +65,13 @@ export function DateGrid({ today, selected, onPick }: DateGridProps): ReactEleme
       {grid.weeks.map((week, weekIndex) => (
         // buildMonthGrid always fills weeks with 7 cells; the index fallback
         // only documents that invariant without asserting past the types.
-        <div key={week[0]?.date ?? weekIndex} className="grid grid-cols-7 text-center">
+        <div key={week[0]?.date ?? weekIndex} className="grid grid-cols-7">
           {week.map((cell) => {
             const isToday = cell.date === today
             const isSelected = cell.date === selected
             return (
+              // The whole 44pt cell is the touch target; the circle inside is
+              // the daily week strip's selection shape.
               <button
                 key={cell.date}
                 type="button"
@@ -74,18 +79,28 @@ export function DateGrid({ today, selected, onPick }: DateGridProps): ReactEleme
                 aria-current={isToday ? 'date' : undefined}
                 aria-pressed={isSelected}
                 onClick={() => onPick(cell.date)}
-                className={cn(
-                  'mx-auto my-0.5 size-9 rounded-md text-sm tabular-nums',
-                  !cell.inMonth && !isToday && !isSelected && 'text-text-muted/40',
-                  isToday && 'font-bold text-accent',
-                  isSelected && 'bg-accent-soft ring-1 ring-inset ring-accent/30',
-                )}
+                className="group flex h-11 items-center justify-center"
               >
-                {Number(cell.date.slice(8, 10))}
+                <span
+                  className={cn(
+                    'flex size-9 items-center justify-center rounded-full text-sm tabular-nums transition-colors duration-150 motion-reduce:transition-none',
+                    isSelected
+                      ? 'bg-primary font-semibold text-primary-foreground'
+                      : 'group-active:bg-surface-hover',
+                    !isSelected && isToday && 'font-semibold text-primary',
+                    !isSelected && !isToday && (cell.inMonth ? 'text-text' : 'text-text-muted/40'),
+                  )}
+                >
+                  {Number(cell.date.slice(8, 10))}
+                </span>
               </button>
             )
           })}
         </div>
+      ))}
+      {/* Pad 5-week months to six rows so the sheet keeps its height while paging. */}
+      {Array.from({ length: MAX_WEEKS - grid.weeks.length }, (_, index) => (
+        <div key={`pad-${index}`} aria-hidden className="h-11" />
       ))}
     </div>
   )

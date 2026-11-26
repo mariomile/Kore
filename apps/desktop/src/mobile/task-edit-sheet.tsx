@@ -29,7 +29,7 @@ import {
   withDraftDueDate,
   withDraftPriority,
 } from '@/mobile/task-draft'
-import { TaskScheduleGrid } from '@/mobile/task-schedule-grid'
+import { DateGrid } from '@/mobile/date-grid'
 import { useTaskSheetFinalizer } from '@/mobile/use-task-sheet-finalizer'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -294,9 +294,7 @@ export function MobileTaskEditSheet({
               />
             ) : null}
           </div>
-          {showCalendar ? (
-            <TaskScheduleGrid today={today} selected={dueDate} onPick={schedule} />
-          ) : null}
+          {showCalendar ? <DateGrid today={today} selected={dueDate} onPick={schedule} /> : null}
           <div className="flex flex-wrap items-center gap-1.5" aria-label="Priority">
             <ScheduleChip
               label="! Medium"

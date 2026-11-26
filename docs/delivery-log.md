@@ -7,6 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- 0.156.2 (2026-11-26): #705 Kore calendar only for date properties on iPhone.
 - 0.156.1 (2026-11-26): #701 one card per selected block and a swipe that commits with a check on iPhone.
 - 0.156.0 (2026-11-25): #696 pasted iframes as sandboxed cards, link previews kept across launches.
 - 0.155.0 (2026-11-25): #693 Play on link cards, inline vault video and audio.

@@ -307,19 +307,34 @@ function MobileRatingBody({
         })}
       </div>
       {current !== null ? (
-        <button
-          type="button"
-          onClick={() => {
-            haptic('action')
-            onCommit(undefined)
-            onClose()
-          }}
-          className="flex h-11 items-center justify-center rounded-xl text-[15px] text-text-muted active:bg-surface-hover"
-        >
-          Clear rating
-        </button>
+        <ClearValueButton label="Clear rating" onCommit={onCommit} onClose={onClose} />
       ) : null}
     </div>
+  )
+}
+
+/** The quiet full-width row under a picker body that removes the value and closes. */
+function ClearValueButton({
+  label,
+  onCommit,
+  onClose,
+}: {
+  label: string
+  onCommit: (value: unknown) => void
+  onClose: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic('action')
+        onCommit(undefined)
+        onClose()
+      }}
+      className="flex h-11 items-center justify-center rounded-xl text-[15px] text-text-muted active:bg-surface-hover"
+    >
+      {label}
+    </button>
   )
 }
 
@@ -360,17 +375,7 @@ function MobileDateBody({
     <div className="flex flex-col gap-3">
       <DateGrid today={today} selected={selected} onPick={pick} />
       {value !== undefined ? (
-        <button
-          type="button"
-          onClick={() => {
-            haptic('action')
-            onCommit(undefined)
-            onClose()
-          }}
-          className="flex h-11 items-center justify-center rounded-xl text-[15px] text-text-muted active:bg-surface-hover"
-        >
-          Clear date
-        </button>
+        <ClearValueButton label="Clear date" onCommit={onCommit} onClose={onClose} />
       ) : null}
     </div>
   )

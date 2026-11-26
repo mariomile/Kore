@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-26 — 0.156.1
+
+- Shipped #701: iPhone selected blocks as one card each (tables too), swipe check that fills on select with firmer haptics, block swipe on the daily no longer turns the day. Haptics need a real iPhone check on TestFlight.
+
 ## 2026-11-25 — 0.156.0
 
 - Shipped #696: pasted iframes become sandboxed cards that load on Show; link previews cached on device for a week.

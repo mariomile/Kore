@@ -9,6 +9,7 @@ import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
 import { GlobalSearchSheet } from '@/mobile/global-search-sheet'
 import { MobileStack } from '@/mobile/mobile-stack'
 import { MobileTabBar, tabRootFor, type MobileTab } from '@/mobile/mobile-tab-bar'
+import { AgentPresenceLayer } from '@/components/agent-presence/agent-presence-layer'
 import { EMPTY_ALL_NOTES_FILTERS, type AllNotesFilters } from '@/mobile/search-filters/filter-state'
 import { useKeyboardVisible } from '@/mobile/use-keyboard'
 import { PullToSearchIndicator, usePullToSearch } from '@/mobile/pull-to-search'
@@ -150,6 +151,9 @@ export function MobileShell(): ReactElement {
           newTaskRequested={newTaskRequested}
           onNewTaskConsumed={() => setNewTaskRequested(false)}
         />
+        {keyboardVisible ? null : (
+          <AgentPresenceLayer className="absolute inset-x-4 bottom-[calc(var(--mobile-tab-bar-height,5rem)+0.75rem)] z-30" />
+        )}
         {/* The tab bar floats over the stack as a translucent glass bar —
             screens pad their scrollers past `--mobile-tab-bar-height`, so
             content scrolls under it rather than stopping above. */}

@@ -1,0 +1,146 @@
+/* Agents at work, live (AgentLiveShading / agent-live-plugin and the
+   presence pill): what an outside agent just wrote takes the accent wash
+   with a bar on its left, and its last line carries the agent's flag, a
+   caret while it writes, then its name and Undo. One accent: the agent is
+   told apart by its logo in the pill, never by a colour of its own. */
+
+.kore-editor .kore-agent-live {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: color-mix(in oklab, var(--accent) 5%, transparent);
+  border-radius: 4px;
+  padding-inline-start: 0.5em;
+  margin-inline-start: -0.5em;
+  animation: kore-agent-arrive var(--duration-slow) var(--ease-swift);
+}
+
+@keyframes kore-agent-arrive {
+  from {
+    background: color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+}
+
+.kore-agent-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: 6px;
+  vertical-align: 0.1em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* While writing: a caret in the accent with the name riding on it, the way
+   a collaborator's cursor looks in a shared document. */
+.kore-agent-flag[data-writing='true']::before {
+  content: '';
+  width: 2px;
+  height: 1.15em;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: kore-agent-caret 1s steps(1) infinite;
+}
+
+.kore-agent-flag-name {
+  border-radius: 9999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.kore-agent-flag[data-writing='true'] .kore-agent-flag-name {
+  background: var(--accent);
+  color: var(--text-on-brand);
+}
+
+.kore-agent-flag[data-writing='false'] .kore-agent-flag-name {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.kore-agent-flag-undo {
+  border-radius: 9999px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  background: var(--surface-hover);
+  color: var(--text);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.kore-agent-flag-undo:hover,
+.kore-agent-flag-undo:active {
+  background: var(--surface-active);
+}
+
+@keyframes kore-agent-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* A note an agent is reading, in the sidebar: the same live dot, smaller. */
+.kore-agent-row-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--accent);
+}
+
+.kore-agent-row-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: kore-agent-ping 1.6s var(--ease-swift) infinite;
+}
+
+/* The live dot on an agent's logo in the pill. */
+.kore-agent-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.kore-agent-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: kore-agent-ping 1.6s var(--ease-swift) infinite;
+}
+
+@keyframes kore-agent-ping {
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.kore-agent-pill {
+  animation: kore-agent-pill-in var(--duration-slow) var(--ease-swift);
+}
+
+@keyframes kore-agent-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kore-agent-live-dot::after,
+  .kore-agent-row-dot::after,
+  .kore-agent-flag[data-writing='true']::before {
+    animation: none;
+  }
+}

@@ -55,6 +55,7 @@ import { PageBlocks } from '@/editor/page-blocks'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LineAuthorShading } from '@/editor/line-author-shading'
+import { AgentLiveShading } from '@/editor/agent-live-shading'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { VaultMedia } from '@/editor/vault-media'
 import { IframeCards } from '@/editor/iframe-cards'
@@ -673,6 +674,7 @@ export function NotePaneComponent({
           generation={generation}
           header={document.header}
         />
+        <AgentLiveShading path={path} />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}

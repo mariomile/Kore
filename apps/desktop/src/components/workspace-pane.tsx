@@ -1,5 +1,6 @@
 import { memo, useCallback, type ReactElement } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { AgentPresenceLayer } from '@/components/agent-presence/agent-presence-layer'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
 import { PaneDropZones } from '@/components/pane-drop-zones'
@@ -84,6 +85,10 @@ export const WorkspacePane = memo(function WorkspacePane({
                           </div>
 
                           <NoteFindBar />
+                          {/* One pane speaks for the window: the focused one. */}
+                          {active ? (
+                            <AgentPresenceLayer className="absolute inset-x-4 bottom-5 z-20" />
+                          ) : null}
                           {/* Only mounted while a tab is in flight, so nothing
                           sits between the pointer and the editor otherwise. */}
                           <PaneDropZones paneId={pane.id} />

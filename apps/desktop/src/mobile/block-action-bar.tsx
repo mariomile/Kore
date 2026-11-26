@@ -65,7 +65,7 @@ export function MobileBlockActionBar({ selection }: { selection: BlockSelection 
   // a row in iOS edit mode.
   const lastCount = useRef(0)
   useEffect(() => {
-    if (state.count > lastCount.current) haptic(lastCount.current === 0 ? 'lift' : 'selection')
+    if (state.count > lastCount.current) haptic(lastCount.current === 0 ? 'lift' : 'toggle')
     lastCount.current = state.count
   }, [state.count])
 

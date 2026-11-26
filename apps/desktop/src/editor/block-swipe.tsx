@@ -27,10 +27,13 @@ import {
   followOffset,
   isCommitted,
   isHorizontalDrag,
+  SELECT_DIRECTION,
+  selectTravel,
   swipeIntent,
   SWEEP_START_PX,
   type BlockSwipe,
 } from './block-swipe-gestures'
+import { createSwipeMark, type SwipeMark } from './block-swipe-mark'
 import { slideBack } from './block-drag-motion'
 import { whenEditorMounted } from './when-editor-mounted'
 
@@ -135,6 +138,8 @@ export function BlockSwipeGestures({
       let follow: Animation | null = null
       let followed: HTMLElement | null = null
       let offset = 0
+      // The ring a selecting swipe uncovers beside its block.
+      let mark: SwipeMark | null = null
       // The start block's box, which a sweep has to leave before it takes
       // another block.
       let startBox: DOMRect | null = null
@@ -180,6 +185,8 @@ export function BlockSwipeGestures({
       const releaseFollow = (): void => {
         follow?.cancel()
         if (followed !== null) slideBack(followed, offset)
+        mark?.remove()
+        mark = null
         follow = null
         followed = null
         offset = 0
@@ -228,6 +235,9 @@ export function BlockSwipeGestures({
        */
       const setCommitted = (next: BlockSwipe | null): void => {
         if (next === committed) return
+        // Coming back under the commit point lets go: a lighter tick than
+        // the one that took hold.
+        if (next === null) haptic('selection')
         if (committed === 'select' && selectShown && !wasSelected && startPosition !== null) {
           view.dispatch(
             withBlockSelection(view.state.tr, { type: 'toggle', anchor: startPosition }),
@@ -293,6 +303,7 @@ export function BlockSwipeGestures({
         followed = startPosition === null ? null : blockElement(startPosition)
         startBox = followed?.getBoundingClientRect() ?? null
         wasSelected = startPosition !== null && isSelectedAt(startPosition)
+        if (startBox !== null) mark = createSwipeMark(startBox, SELECT_DIRECTION)
         if (followed !== null && typeof followed.animate === 'function') {
           follow = followed.animate(
             [
@@ -367,6 +378,7 @@ export function BlockSwipeGestures({
           )
           offset = followOffset(deltaX)
           if (follow !== null) follow.currentTime = ((offset + FOLLOW_MAX_PX) / FOLLOW_MAX_PX) * 500
+          mark?.update(Math.max(0, selectTravel(offset)), committed === 'select')
         }
         if (committed === 'select') sweep(touch.clientX, touch.clientY, deltaY)
       }

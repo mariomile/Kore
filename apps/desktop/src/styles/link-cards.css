@@ -377,16 +377,6 @@
   padding: 0.9rem 1.05rem;
   border-radius: var(--radius-xl, 12px);
   background-color: var(--surface-hover);
-
-  /* A selected block lifts on a fill drawn behind it, which this card's own
-     fill would cover: the card itself takes the selected tone instead, so a
-     long-press or a swipe on a post shows it is held. */
-  &.kore-block-selected {
-    background-color: color-mix(in oklab, var(--text) 14%, var(--surface-app));
-  }
-  &.kore-block-selected::after {
-    display: none;
-  }
 }
 .kore-editor
   .prosemirror-flat-list[data-list-kind='bullet']:has(

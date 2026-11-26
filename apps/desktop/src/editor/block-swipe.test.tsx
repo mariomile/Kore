@@ -95,6 +95,30 @@ afterEach(() => {
 })
 
 describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
+  it('uncovers a ring beside the swiped block that fills at the commit point, and lets go of it on release', async () => {
+    const { view, editable } = await renderList(vi.fn())
+    const bounds = view.getByText('first').element().getBoundingClientRect()
+    const x = bounds.left + bounds.width / 2
+    const y = bounds.top + bounds.height / 2
+    editable.dispatchEvent(touchEventOn(editable, 'touchstart', x, y))
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 20, y))
+    const mark = document.querySelector('.kore-swipe-mark')
+    expect(mark).not.toBeNull()
+    expect(mark?.hasAttribute('data-committed')).toBe(false)
+
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - (SWIPE_COMMIT_PX + 10), y))
+    expect(mark?.hasAttribute('data-committed')).toBe(true)
+
+    // Back under the commit point: the ring empties with a lighter tick.
+    vi.mocked(haptic).mockClear()
+    editable.dispatchEvent(touchEventOn(editable, 'touchmove', x - 20, y))
+    expect(mark?.hasAttribute('data-committed')).toBe(false)
+    expect(haptic).toHaveBeenCalledWith('selection')
+
+    editable.dispatchEvent(touchEventOn(editable, 'touchend', x - 20, y))
+    expect(document.querySelector('.kore-swipe-mark')).toBeNull()
+  })
+
   it('selects the swiped block without editing, and a tap adds the next one', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange)

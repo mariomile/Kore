@@ -258,6 +258,9 @@ how it should feel:
 | `success` / `warning` / `error` | saved or moved / a delete / a failure | notification | error only |
 
 Plain navigation (opening a note, a sheet, a menu, a screen) stays silent.
+Selecting blocks: the first block taken (long-press or a swipe past its
+commit point) is a `lift`, each block added after it a `toggle`, and a swipe
+coming back under its commit point a `selection` tick.
 The Mac never knocks on a click: a Force Touch click already is a haptic,
 so a second one reads as a double click. A new `DndContext` gets
 `<DragHaptics />` inside it; the settings switch silences everything.

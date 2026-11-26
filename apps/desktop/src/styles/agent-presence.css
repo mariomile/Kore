@@ -182,6 +182,12 @@
   background: var(--surface-hover);
 }
 
+/* A tap or click opens the drawer by focusing the mark from code, which the
+   browser counts as visible focus: the ring stays a keyboard-only signal. */
+.kore-agent-mark[data-pointer-focus]:focus-visible {
+  outline: none;
+}
+
 .kore-agent-mark:hover .kore-agent-mark-drawer,
 .kore-agent-mark:focus-within .kore-agent-mark-drawer {
   grid-template-columns: 1fr;
@@ -222,10 +228,6 @@
 
 .kore-agent-mark-undo:active {
   transform: scale(0.96);
-}
-
-.kore-agent-mark:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* ── Capsule ──────────────────────────────────────────────────────────── */

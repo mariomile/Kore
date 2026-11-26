@@ -72,6 +72,16 @@ function markDom(mark: AgentLiveMark): HTMLElement {
   })
   inner.append(name, undo)
   drawer.append(inner)
+  // The editor would take the tap as a caret move; the mark keeps it, so a
+  // tap opens the drawer the way hover does (a second tap elsewhere closes it).
+  root.addEventListener('mousedown', (event) => {
+    if (event.target !== undo) {
+      event.preventDefault()
+      root.dataset['pointerFocus'] = ''
+      root.focus()
+    }
+  })
+  root.addEventListener('blur', () => delete root.dataset['pointerFocus'])
   root.append(avatar, drawer)
   return root
 }
@@ -102,6 +112,7 @@ export function agentLiveDecorations(
         Decoration.widget(pos + size - 1, () => markDom(mark), {
           side: 1,
           ignoreSelection: true,
+          stopEvent: () => true,
           key: `agent-mark-${mark.agent}-${mark.writing ? 'writing' : 'settled'}`,
         }),
       )

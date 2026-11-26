@@ -20,6 +20,8 @@ interface BaseViewContentProps {
   onOpenNote: (path: string) => void
   /** Embedded in a note: tighter padding, no stand-in notice. */
   compact?: boolean
+  /** The side padding, when the screen's own differs (the phone's). */
+  gutter?: string
   /** Edits note properties in place; without it the view is read-only. */
   onEdit?: BaseEditHandler
   /** Adds notes from the view ("+ New"); without it no note can be added. */
@@ -39,10 +41,10 @@ export function BaseViewContent({
   result,
   onOpenNote,
   compact = false,
+  gutter = compact ? 'px-0' : 'px-12',
   onEdit,
   onCreate,
 }: BaseViewContentProps): ReactElement {
-  const gutter = compact ? 'px-0' : 'px-12'
   const canCreate = onCreate !== undefined
   const createIn = (dropValue: BaseResultGroup['dropValue']) => (title: string) =>
     onCreate!(title, baseNewNotePrefillForGroup(result.newNote, result.groupEditKey, dropValue))

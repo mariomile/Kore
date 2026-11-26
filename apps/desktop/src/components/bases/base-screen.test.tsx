@@ -28,6 +28,11 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
 }))
 const toastAdd = vi.hoisted(() => vi.fn((_toast: { title?: string }) => 'toast-id'))
 vi.mock('@/components/ui/toast', () => ({ toast: { add: toastAdd, close: () => {} } }))
+const mobile = vi.hoisted(() => ({ on: false }))
+vi.mock('@/lib/platform-surface', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/platform-surface')>()),
+  isMobileSurface: () => mobile.on,
+}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -103,6 +108,7 @@ beforeEach(() => {
   commitProperty.mockReset()
   createBaseNote.mockClear()
   toastAdd.mockClear()
+  mobile.on = false
 })
 
 function drag(type: string, target: Element, data: DataTransfer): void {
@@ -122,6 +128,19 @@ async function renderScreen(initialRoute: Route) {
 }
 
 describe('BaseScreen', () => {
+  it('names the base in the bar on iPhone, whose back goes to every base on a cold entry', async () => {
+    mobile.on = true
+    const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: null })
+    await expect
+      .element(view.getByRole('heading', { name: 'Projects', level: 1 }))
+      .toBeInTheDocument()
+    await expect.element(view.getByText('ACTIVE')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Back' }).click()
+    await expect
+      .element(view.getByTestId('route'))
+      .toHaveTextContent('{"kind":"base","path":null,"view":null}')
+  })
+
   it('renders the first view with its formula column', async () => {
     const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: null })
     await expect.element(view.getByText('Stato')).toBeInTheDocument()

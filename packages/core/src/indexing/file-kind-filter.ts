@@ -6,7 +6,7 @@ import type { LooseFile, LooseFileKind } from './loose-files'
  * keeps each list's own mix: notes on the Notes page, notes and their
  * folder's files on a folder page.
  */
-export type FileKindFilter = 'notes' | 'pdf' | 'image' | 'html' | 'media' | 'other'
+export type FileKindFilter = 'notes' | 'pdf' | 'image' | 'html' | 'media' | 'views' | 'other'
 
 /** The choices in the order the menus list them, with their labels. */
 export const FILE_KIND_FILTERS: readonly {
@@ -18,6 +18,7 @@ export const FILE_KIND_FILTERS: readonly {
   { kind: 'image', label: 'Images' },
   { kind: 'html', label: 'HTML pages' },
   { kind: 'media', label: 'Audio and video' },
+  { kind: 'views', label: 'Bases and canvases' },
   { kind: 'other', label: 'Other files' },
 ]
 
@@ -32,6 +33,7 @@ const KINDS: Readonly<Record<Exclude<FileKindFilter, 'notes'>, readonly LooseFil
   image: ['image'],
   html: ['html'],
   media: ['audio', 'video'],
+  views: ['base', 'canvas'],
   other: ['document', 'sheet', 'archive', 'other'],
 }
 

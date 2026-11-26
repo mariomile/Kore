@@ -2,8 +2,10 @@ import type { ReactElement } from 'react'
 import { baseDisplayName } from '@kore/core'
 import { PageLoading } from '@/components/page-loading'
 import { PageHeader } from '@/components/ui/page-header'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
+import { MobilePushedFileFrame } from '@/mobile/pushed-file-frame'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { BaseViewContent } from './base-view-content'
@@ -36,11 +38,16 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
   const commitProperty = useCommitNoteProperty()
   const openNote = (target: string): void => navigate(routeForPath(target))
   const createNote = useCreateBaseNote(state.status === 'ready' ? state : null, openNote)
+  const name = baseDisplayName(path)
+  // The iPhone names the base in the stack's glass bar, with its back
+  // chevron, and runs the view at the phone's gutter.
+  const mobile = isMobileSurface()
+  const gutter = mobile ? 'px-4' : 'pr-7 pl-12'
 
-  return (
-    <div className="flex h-full flex-col overflow-auto">
-      <PageHeader title={baseDisplayName(path)} description={path} />
-      <div className="pr-7 pb-4 pl-12">
+  const body = (
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      {mobile ? null : <PageHeader title={name} description={path} />}
+      <div className={cn('pb-4', mobile && 'pt-3', gutter)}>
         <ConvertToTypes paths={[path]} label="Convert to type views" />
         {state.status === 'ready' && state.definition.views.length > 1 ? (
           <div role="tablist" aria-label="Views" className="mt-4 flex flex-wrap gap-1">
@@ -69,7 +76,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
       {state.status === 'loading' ? (
         <PageLoading label="Loading base" />
       ) : state.status === 'error' ? (
-        <p role="alert" className="px-12 py-6 text-sm text-text-muted">
+        <p role="alert" className={cn('py-6 text-sm text-text-muted', gutter)}>
           Couldn’t open this base: {state.message}
         </p>
       ) : (
@@ -78,8 +85,16 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
           onOpenNote={openNote}
           onEdit={commitProperty}
           onCreate={createNote}
+          {...(mobile ? { gutter: 'px-4' } : {})}
         />
       )}
     </div>
+  )
+  return mobile ? (
+    <MobilePushedFileFrame title={name} fallback={{ kind: 'base', path: null, view: null }}>
+      {body}
+    </MobilePushedFileFrame>
+  ) : (
+    <div className="flex h-full flex-col">{body}</div>
   )
 }

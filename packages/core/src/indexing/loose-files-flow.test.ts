@@ -49,6 +49,7 @@ describe('looseFiles', () => {
 
     const direct = await looseFiles('Studio', false)
     expect(direct.map((file) => [file.name, file.kind])).toEqual([
+      ['board.canvas', 'canvas'],
       ['deck.pdf', 'pdf'],
       ['budget.xlsx', 'sheet'],
       ['mood.jpg', 'image'],
@@ -56,10 +57,29 @@ describe('looseFiles', () => {
 
     const deep = await looseFiles('Studio', true)
     expect(deep.map((file) => file.path)).toEqual([
+      'Studio/board.canvas',
       'Studio/Sub/inner.mp3',
       'Studio/deck.pdf',
       'Studio/budget.xlsx',
       'Studio/mood.jpg',
+    ])
+  })
+
+  it('lists a base or canvas even when a note embeds or links it', async () => {
+    applyProjection(database, project('Home.md', '# Home\n', 1000))
+    const insert = database.prepare('INSERT INTO assets (note_path, asset_path) VALUES (?, ?)')
+    insert.run('Home.md', 'Jobs/Application board.base')
+    insert.run('Home.md', 'Map.canvas')
+    insert.run('Home.md', 'Jobs/cv.pdf')
+    catalog([
+      ['Jobs/Application board.base', 3000],
+      ['Jobs/Map.canvas', 2000],
+      ['Jobs/cv.pdf', 1000],
+    ])
+
+    expect((await looseFiles('Jobs', false)).map((file) => [file.name, file.kind])).toEqual([
+      ['Application board.base', 'base'],
+      ['Map.canvas', 'canvas'],
     ])
   })
 

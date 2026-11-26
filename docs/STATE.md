@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-26 — 0.156.3
+
+- Shipped #708: Kore date grid on iPhone with 44pt days, round selection, stable height across months.
+
 ## 2026-11-26 — 0.156.2
 
 - Shipped #705: date properties on iPhone open only Kore's calendar, no iOS date picker on top.

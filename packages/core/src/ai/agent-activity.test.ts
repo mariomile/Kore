@@ -75,8 +75,7 @@ describe('agent activity', () => {
 
   it('takes back an append exactly as kore mcp logged it', () => {
     // Recorded from a real stdio session (`append_to_note` on a daily).
-    const logged =
-      '{"added":"\\nSend Sarah the beta feedback summary before Friday\\n","agent":"MCP","at":1795732723248,"client":"claude-code","contextAfter":"","contextBefore":"- Morning review with [[Sarah Chen]]\\n","created":false,"kind":"write","path":"daily/2026-11-26.md","removed":""}'
+    const logged = String.raw`{"added":"\nSend Sarah the beta feedback summary before Friday\n","agent":"MCP","at":1795732723248,"client":"claude-code","contextAfter":"","contextBefore":"- Morning review with [[Sarah Chen]]\n","created":false,"kind":"write","path":"daily/2026-11-26.md","removed":""}`
     const before = '- Morning review with [[Sarah Chen]]\n'
     const after = `${before}\nSend Sarah the beta feedback summary before Friday\n`
     const [write] = parseAgentActivity(logged, 0)

@@ -7,8 +7,9 @@ import type {
   SavedCollectionViewFilter,
   TimelineZoom,
 } from '../tags/tag-views'
-import type { BaseDefinition, BaseFilter, BaseViewDefinition } from './base-file'
-import { parseBaseExpression, type BaseExpression } from './expression'
+import type { BaseDefinition, BaseViewDefinition } from './base-file'
+import { conjuncts, filterOf, parseFilterSource, plainPropertyOf } from './simple-filters'
+import type { BaseExpression } from './expression'
 
 /**
  * Turning an Obsidian base into a type's own views (organization point 3).
@@ -36,12 +37,6 @@ export type BaseConversion =
     }
   | { readonly kind: 'skipped'; readonly reason: string }
 
-/** A condition we could not read as a tag rule or a view filter. */
-interface Condition {
-  readonly source: string
-  readonly expression: BaseExpression | null
-}
-
 /** The tag a `file.hasTag("x")` / `file.tags.contains("x")` call names. */
 function tagOf(expression: BaseExpression | null): string | null {
   if (expression?.type !== 'call' || expression.callee.type !== 'member') {
@@ -67,112 +62,6 @@ function tagOf(expression: BaseExpression | null): string | null {
   return isTagName(name_) ? foldTag(name_) : null
 }
 
-/** A property reference (`status`, `note.status`), or null for anything else. */
-function propertyOf(expression: BaseExpression): string | null {
-  if (expression.type === 'identifier') {
-    return ['file', 'formula', 'this', 'note', 'today', 'now'].includes(expression.name)
-      ? null
-      : expression.name
-  }
-  if (
-    expression.type === 'member' &&
-    expression.object.type === 'identifier' &&
-    expression.object.name === 'note'
-  ) {
-    return expression.name
-  }
-  return null
-}
-
-function literalText(expression: BaseExpression): string | null {
-  if (expression.type !== 'literal' || expression.value === null) {
-    return null
-  }
-  return String(expression.value)
-}
-
-/** One Kore filter row for a simple comparison, or null when it isn't one. */
-function filterOf(expression: BaseExpression | null): SavedCollectionViewFilter | null {
-  if (expression === null) {
-    return null
-  }
-  if (expression.type === 'binary') {
-    const operator =
-      expression.operator === '=='
-        ? 'is'
-        : expression.operator === '>'
-          ? 'gt'
-          : expression.operator === '<'
-            ? 'lt'
-            : null
-    const key = propertyOf(expression.left)
-    const text = literalText(expression.right)
-    if (operator === null || key === null || text === null) {
-      return null
-    }
-    if (operator !== 'is' && typeof (expression.right as { value?: unknown }).value !== 'number') {
-      return null
-    }
-    return { key, operator, text }
-  }
-  if (expression.type === 'call' && expression.callee.type === 'member') {
-    const key = propertyOf(expression.callee.object)
-    if (key === null) {
-      return null
-    }
-    if (expression.callee.name === 'isEmpty' && expression.args.length === 0) {
-      return { key, operator: 'empty', text: '' }
-    }
-    const [arg] = expression.args
-    if (expression.callee.name === 'contains' && expression.args.length === 1 && arg) {
-      const text = literalText(arg)
-      return text === null ? null : { key, operator: 'contains', text }
-    }
-    return null
-  }
-  if (expression.type === 'unary' && expression.operator === '!') {
-    const inner = expression.operand
-    const key = propertyOf(inner)
-    if (key !== null) {
-      return { key, operator: 'empty', text: '' }
-    }
-    const nested = filterOf(inner)
-    return nested?.operator === 'empty' ? { ...nested, operator: 'notEmpty' } : null
-  }
-  const key = propertyOf(expression)
-  return key === null ? null : { key, operator: 'notEmpty', text: '' }
-}
-
-function parse(source: string): BaseExpression | null {
-  try {
-    return parseBaseExpression(source)
-  } catch {
-    return null
-  }
-}
-
-/** The conjuncts of a filter tree, or null when its top is not an `and`. */
-function conjuncts(filter: BaseFilter | null): Condition[] | null {
-  if (filter === null) {
-    return []
-  }
-  if (filter.kind === 'expression') {
-    return [{ source: filter.source, expression: parse(filter.source) }]
-  }
-  if (filter.kind !== 'and') {
-    return null
-  }
-  const items: Condition[] = []
-  for (const item of filter.items) {
-    const nested = conjuncts(item)
-    if (nested === null) {
-      return null
-    }
-    items.push(...nested)
-  }
-  return items
-}
-
 /** Rules every note Kore lists already satisfies (`file.ext == "md"`). */
 function isAlwaysTrue(expression: BaseExpression | null): boolean {
   return (
@@ -196,17 +85,6 @@ function sortKeyOf(property: string): string | null {
     return UPDATED_SORT_KEY
   }
   return plainPropertyOf(property)
-}
-
-/** `note.status` / `status` → `status`; formula and file ids → null. */
-function plainPropertyOf(property: string): string | null {
-  if (property.startsWith('note.')) {
-    return property.slice('note.'.length) || null
-  }
-  if (property.startsWith('formula.') || property.startsWith('file.') || property.includes('.')) {
-    return null
-  }
-  return property === 'tags' ? null : property
 }
 
 function layoutOf(view: BaseViewDefinition): CollectionPageView | null {
@@ -377,7 +255,7 @@ export function convertBaseToTypeViews(path: string, base: BaseDefinition): Base
     if (own === null) {
       const anyOf = view.filters?.kind === 'or' ? view.filters.items : null
       const parsed = anyOf?.map((item) =>
-        item.kind === 'expression' ? filterOf(parse(item.source)) : null,
+        item.kind === 'expression' ? filterOf(parseFilterSource(item.source)) : null,
       )
       if (shared.length === 0 && parsed !== undefined && parsed.every((item) => item !== null)) {
         filters.push(...(parsed as SavedCollectionViewFilter[]))

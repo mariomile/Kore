@@ -50,6 +50,8 @@ interface CollectionTableProps {
   /** `undefined` while the collection query settles. */
   entries: CollectionEntry[] | undefined
   tag: string
+  /** The empty table's line; defaults to naming the tag. */
+  emptyLabel?: string | undefined
   /** The tag's schema, hidden columns already filtered out. */
   type: TagType
   selection: ListSelection
@@ -121,6 +123,7 @@ const READ_ONLY_PROPERTY_TYPES: ReadonlySet<TagPropertyType> = new Set([
 export function CollectionTable({
   entries,
   tag,
+  emptyLabel,
   type,
   selection,
   sorts,
@@ -618,7 +621,7 @@ export function CollectionTable({
       {entries.length === 0 ? (
         <>
           <p className={cn('py-8 pr-7 text-sm text-text-muted', gutterClass)}>
-            No #{tag} notes yet.
+            {emptyLabel ?? `No #${tag} notes yet.`}
           </p>
           {newRow}
         </>

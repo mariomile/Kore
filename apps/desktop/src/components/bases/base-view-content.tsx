@@ -139,7 +139,7 @@ interface BaseBoardProps {
   onMove: ((path: string, value: BaseResultGroup['dropValue']) => void) | undefined
   /** The "+ New" handler for a lane's value; absent when notes can't be added. */
   onCreateIn:
-    | ((dropValue: BaseResultGroup['dropValue']) => (title: string) => Promise<boolean>)
+    | ((dropValue: BaseResultGroup['dropValue']) => (title: string) => Promise<string | null>)
     | undefined
 }
 

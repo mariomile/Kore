@@ -10,8 +10,11 @@ import { toast } from '@/components/ui/toast'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
 import { useGraph } from '@/providers/graph-provider'
 
-/** Create a note titled `title` with `prefill`; resolves true once the file is written. */
-export type BaseCreateHandler = (title: string, prefill: BaseNewNotePrefill) => Promise<boolean>
+/** Create a note titled `title` with `prefill`; resolves its path once written, else null. */
+export type BaseCreateHandler = (
+  title: string,
+  prefill: BaseNewNotePrefill,
+) => Promise<string | null>
 
 /** The view notes are created from. */
 export interface BaseCreateTarget {
@@ -23,7 +26,7 @@ export interface BaseCreateTarget {
  * A base's "+ New": writes the note through core and refreshes the view as
  * soon as its re-index lands, so the new row shows up in place. When the
  * view's other filters leave the new note out, a notice says so and offers
- * to open it. A failed write toasts and resolves false, so the typed title
+ * to open it. A failed write toasts and resolves null, so the typed title
  * stays.
  */
 export function useCreateBaseNote(
@@ -35,7 +38,7 @@ export function useCreateBaseNote(
   return useCallback(
     async (title: string, prefill: BaseNewNotePrefill) => {
       if (generation === null) {
-        return false
+        return null
       }
       let path: string
       try {
@@ -46,7 +49,7 @@ export function useCreateBaseNote(
           title: "Couldn't create the note",
           description: errorMessage(error),
         })
-        return false
+        return null
       }
       invalidateOnNextIndexApply()
       const note = { path, title, properties: prefill.properties, tags: prefill.tags }
@@ -67,7 +70,7 @@ export function useCreateBaseNote(
           },
         })
       }
-      return true
+      return path
     },
     [generation, target, onOpenNote],
   )

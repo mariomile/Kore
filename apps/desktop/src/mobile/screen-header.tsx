@@ -13,6 +13,8 @@ interface MobileScreenHeaderProps {
   onBack: () => void
   /** Optional trailing control (an add button, …). */
   trailing?: ReactNode
+  /** A row under the bar that floats with it (a collection's view controls). */
+  children?: ReactNode
   /** The measuring ref from {@link useBarHeightVar} on the screen root. */
   ref?: Ref<HTMLElement>
 }
@@ -30,6 +32,7 @@ export function MobileScreenHeader({
   accessibleTitle,
   onBack,
   trailing,
+  children,
   ref,
 }: MobileScreenHeaderProps): ReactElement {
   return (
@@ -59,6 +62,7 @@ export function MobileScreenHeader({
           {trailing}
         </div>
       </div>
+      {children === undefined ? null : <div className="px-4 pb-2">{children}</div>}
     </header>
   )
 }

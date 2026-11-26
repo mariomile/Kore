@@ -28,6 +28,8 @@ interface MobileBoardProps {
   /** Every property the board can group by, schema order. */
   groupProperties: readonly TagProperty[]
   onGroupChange: (key: string) => void
+  /** A host's own creation path (a base): gets the lane seed, returns the new path. */
+  onCreateRow?: ((properties: Record<string, unknown>) => Promise<string | null>) | undefined
   onOpen: (path: string) => void
 }
 
@@ -51,6 +53,7 @@ export function MobileBoard({
   property,
   groupProperties,
   onGroupChange,
+  onCreateRow,
   onOpen,
 }: MobileBoardProps): ReactElement {
   const commitProperties = useCommitNoteProperties()
@@ -142,7 +145,9 @@ export function MobileBoard({
       property.type === 'multiselect' && typeof column.commit === 'string'
         ? [column.commit]
         : column.commit
-    const path = await createNote(laneValue === null ? {} : { [property.key]: laneValue })
+    const path = await (onCreateRow ?? createNote)(
+      laneValue === null ? {} : { [property.key]: laneValue },
+    )
     if (path !== null) {
       onOpen(path)
     }

@@ -3,8 +3,8 @@ import { Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface BaseNewRowProps {
-  /** Creates the note and resolves whether it was written; the line stays busy until then. */
-  onCreate: (title: string) => Promise<boolean>
+  /** Creates the note and resolves its path (null when not written); the line stays busy until then. */
+  onCreate: (title: string) => Promise<string | null>
   /** Names the place the note lands in, for the accessible label (a lane). */
   label?: string | undefined
   className?: string
@@ -33,7 +33,7 @@ export function BaseNewRow({ onCreate, label, className }: BaseNewRowProps): Rea
     }
     setCreating(true)
     try {
-      if (await onCreate(title)) {
+      if ((await onCreate(title)) !== null) {
         setDraft(null)
       }
     } finally {

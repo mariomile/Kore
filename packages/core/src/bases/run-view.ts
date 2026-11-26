@@ -180,7 +180,8 @@ export function createBaseVault(rows: readonly BaseNoteRow[]): BaseVault {
   }
 }
 
-function matches(
+/** Does the row in `context` pass `filter`? A rule that fails to evaluate fails. */
+export function baseFilterMatches(
   filter: BaseFilter | null,
   context: BaseEvaluationContext,
   cache: Map<string, BaseValue>,
@@ -196,11 +197,11 @@ function matches(
         return false
       }
     case 'and':
-      return filter.items.every((item) => matches(item, context, cache))
+      return filter.items.every((item) => baseFilterMatches(item, context, cache))
     case 'or':
-      return filter.items.some((item) => matches(item, context, cache))
+      return filter.items.some((item) => baseFilterMatches(item, context, cache))
     case 'not':
-      return !filter.items.some((item) => matches(item, context, cache))
+      return !filter.items.some((item) => baseFilterMatches(item, context, cache))
   }
 }
 
@@ -295,7 +296,10 @@ export function runBaseView(
       resolve: vault.resolve,
     }
     const cache = new Map<string, BaseValue>()
-    if (!matches(definition.filters, context, cache) || !matches(view.filters, context, cache)) {
+    if (
+      !baseFilterMatches(definition.filters, context, cache) ||
+      !baseFilterMatches(view.filters, context, cache)
+    ) {
       continue
     }
     const values = new Map<string, BaseValue | Error>()

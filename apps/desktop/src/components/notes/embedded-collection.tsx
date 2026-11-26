@@ -9,8 +9,6 @@ import {
   textLinksToHostNote,
   type CollectionEmbed,
   type CollectionEmbedView,
-  type CollectionEntry,
-  type NoteListEntry,
   type TagType,
 } from '@kore/core'
 import { isModEvent } from '@meowdown/core'
@@ -24,7 +22,7 @@ import {
   TableView,
   Trash,
 } from '@/components/icons'
-import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
+import { AllNotesGrid, collectionGridNotes } from '@/components/all-notes/all-notes-grid'
 import {
   CollectionBoard,
   groupableProperties,
@@ -98,17 +96,6 @@ const VIEW_LABEL: Record<CollectionEmbedView, string> = {
 const VIEW_GLYPH = { table: TableView, grid: LayoutGrid, board: BoardView, calendar: Calendar }
 
 const VIEW_OPTIONS: readonly CollectionEmbedView[] = ['table', 'grid', 'board', 'calendar']
-
-function gridNotes(entries: readonly CollectionEntry[] | undefined): NoteListEntry[] | undefined {
-  return entries?.map((entry) => ({
-    path: entry.path,
-    title: entry.title,
-    snippet: '',
-    tags: [],
-    mtime: entry.mtime,
-    isPinned: entry.isPinned,
-  }))
-}
 
 /**
  * Live Collection widget for one ` ```collection ` fence in a note. The fence
@@ -397,7 +384,7 @@ function EmbeddedTagCollection({
           <p className="px-3 py-6 text-sm text-text-muted">Loading collection…</p>
         ) : view === 'grid' ? (
           <AllNotesGrid
-            notes={gridNotes(entries)}
+            notes={collectionGridNotes(entries)}
             tag={tag}
             type={visibleTagType}
             entries={entries}
@@ -740,7 +727,7 @@ function EmbeddedReusableCollection({
           </p>
         ) : view === 'grid' ? (
           <AllNotesGrid
-            notes={gridNotes(entries)}
+            notes={collectionGridNotes(entries)}
             tag={null}
             type={visibleType}
             entries={entries}

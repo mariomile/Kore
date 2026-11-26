@@ -34,6 +34,7 @@ import { closeSecondaryWindows } from '@/lib/windows/close-secondary-windows'
 import { isMainWindow, requireMainWindow } from '@/lib/windows/window-role'
 import {
   GraphContext,
+  type FirstLookStart,
   type GraphContextValue,
   type GraphStatus,
   type OpenGraphOptions,
@@ -46,7 +47,7 @@ import { useNoteWindowBoot } from './use-note-window-boot'
 import { useReconcileRequests } from './use-reconcile-requests'
 import { markLaunch } from '@/lib/launch-timing'
 
-export { useGraph, type GraphStatus } from './graph-context'
+export { useGraph, type FirstLookStart, type GraphStatus } from './graph-context'
 
 /**
  * Owns the active graph and the open/choose flow. On mount it auto-opens the
@@ -78,6 +79,7 @@ export function GraphProvider({
   const [indexReady, setIndexReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingLocalSyncOffer, setPendingLocalSyncOffer] = useState(false)
+  const [firstLook, setFirstLook] = useState<FirstLookStart | null>(null)
   // The latest graph root requested via `openRecent` — `pickAndOpen` only
   // raises the sync offer when this still matches the folder it picked, so a
   // later recents/create switch cannot inherit the prompt.
@@ -97,6 +99,13 @@ export function GraphProvider({
         setIndexing(progress === 'reconciling')
         if (progress === 'live') {
           setIndexReady(true)
+          // The first time this open's index goes live is when the vault
+          // came alive; a later pass going live again changes nothing.
+          setFirstLook((current) =>
+            current === null || current.readyAt !== null
+              ? current
+              : { ...current, readyAt: performance.now() },
+          )
         }
         if (progress !== 'reconciling') {
           setIndexProgress(null) // the pass finished (or went idle) — clear the pill
@@ -195,8 +204,12 @@ export function GraphProvider({
       // of them should keep a leftover "you just picked a local folder" offer.
       setPendingLocalSyncOffer(false)
       const seq = ++openSeq.current
+      // When the open started: the first look reports how long the vault
+      // took to come alive, from the user's click.
+      const startedAt = performance.now()
       setStatus('opening')
       setError(null)
+      setFirstLook(null)
       // Resolves true only when this open actually reached 'ready' — callers
       // (mobile onboarding) gate side effects like persisting the onboarded
       // flag on a confirmed open, never on a clone that failed to open.
@@ -257,13 +270,18 @@ export function GraphProvider({
           if (generation !== null) {
             // A vault opened from GitHub is the repository's content: it is
             // only marked, never seeded (the next sync would push the seeds).
+            const generations = { fileGeneration: info.generation, indexGeneration: generation }
             const seeds = seedFirstRun
-              ? ensureFirstRunSeeds({
-                  fileGeneration: info.generation,
-                  indexGeneration: generation,
-                })
-              : markFirstRunSeedsConsidered(generation)
+              ? ensureFirstRunSeeds(generations)
+              : markFirstRunSeedsConsidered(generations)
             seeds
+              .then((outcome) => {
+                // Someone's notes, opening in Kore for the first time: the
+                // first look shows them coming alive while the index fills.
+                if (outcome === 'existing' && seq === openSeq.current) {
+                  setFirstLook({ root, startedAt, readyAt: null })
+                }
+              })
               .catch((err) => {
                 console.error('first-run seed failed:', errorMessage(err))
               })
@@ -514,6 +532,7 @@ export function GraphProvider({
       error,
       pendingLocalSyncOffer,
       dismissLocalSyncOffer,
+      firstLook,
       pickAndOpen,
       chooseGraph,
       createAt,
@@ -540,6 +559,7 @@ export function GraphProvider({
       error,
       pendingLocalSyncOffer,
       dismissLocalSyncOffer,
+      firstLook,
       pickAndOpen,
       chooseGraph,
       createAt,

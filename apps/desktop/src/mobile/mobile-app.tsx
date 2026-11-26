@@ -20,6 +20,7 @@ import { ChatProvider } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { RouterProvider } from '@/routing/router'
+import { FirstLookEntry } from '@/components/first-look/first-look-entry'
 import { DailyWidgetSync } from '@/mobile/daily-widget-sync'
 import { AppBootScreen } from '@/components/app-boot-screen'
 
@@ -96,6 +97,7 @@ export function MobileApp(): ReactElement {
                     <MobileShell />
                     <MobileStatusLayer />
                     <DailyWidgetSync graph={graph} />
+                    <FirstLookEntry />
                     {/* Mounted beside the shell (not inside the daily screen)
                       so a live recording's sheet survives tab switches. */}
                     <RecordingDrawer />

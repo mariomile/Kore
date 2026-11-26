@@ -26,6 +26,7 @@ import { WorkspaceLayoutProvider } from '@/providers/workspace-layout-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { RouterProvider } from '@/routing/router'
+import { FirstLookEntry } from '@/components/first-look/first-look-entry'
 
 interface GraphWorkspaceProps {
   graph: GraphInfo
@@ -100,6 +101,7 @@ function WorkspaceProviders({
   return (
     <SyncProvider graph={graph}>
       {isMainWindow() ? <EnableLocalSyncDialog /> : null}
+      {isMainWindow() ? <FirstLookEntry /> : null}
       <PaletteProvider>
         <ShortcutsProvider>
           <VaultReplaceProvider>

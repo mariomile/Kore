@@ -175,6 +175,22 @@ export {
   type LocalGraphOptions,
 } from './local-graph'
 export {
+  CHECK_SAMPLE,
+  MIN_TYPE_NOTES,
+  inferSuggestionFields,
+  loadFirstLookRecentNotes,
+  loadVaultFirstLook,
+  loadVaultTally,
+  suggestionMemberPaths,
+  type BrokenLinkTarget,
+  type DuplicateTitle,
+  type FirstLookNote,
+  type TypeSuggestion,
+  type TypeSuggestionSource,
+  type VaultFirstLook,
+  type VaultTally,
+} from './first-look'
+export {
   loadGraphInsights,
   listPrivateNotePaths,
   type ActivityDay,

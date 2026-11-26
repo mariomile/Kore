@@ -10,6 +10,7 @@ import { MobileChat } from '@/mobile/screens/chat'
 import { MobileDaily } from '@/mobile/screens/daily'
 import { MobileFolder } from '@/mobile/screens/folder'
 import { MobileGraphs } from '@/mobile/screens/graphs'
+import { MobileInsights } from '@/mobile/screens/insights'
 import { MobileNote } from '@/mobile/screens/note'
 import { MobileSettings } from '@/mobile/screens/settings'
 import { MobileTasks } from '@/mobile/screens/tasks'
@@ -119,6 +120,8 @@ export function MobileScreen({
       return <MobileSettings key="settings" />
     case 'graphs':
       return <MobileGraphs key="graphs" />
+    case 'insights':
+      return <MobileInsights key="insights" />
     default:
       return <MobileDaily key="daily" date={today} />
   }

@@ -4,6 +4,7 @@ import {
   DEFAULT_OBJECTS_SEEDED_META_KEY,
   ensureFirstRunSeeds,
   markFirstRunSeedsConsidered,
+  FIRST_LOOK_MIN_NOTES,
   WELCOME_NOTE_PATH,
   WELCOME_SEEDED_META_KEY,
   welcomeNoteBody,
@@ -66,7 +67,7 @@ afterEach(() => {
 describe('ensureFirstRunSeeds', () => {
   it('seeds the welcome note and every default object into an empty unmarked graph', async () => {
     const graph = installFakeBridge({})
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(true)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('seeded')
 
     expect(graph.written.map((note) => note.path)).toEqual([WELCOME_NOTE_PATH, ...OBJECT_PATHS])
     expect(WELCOME_NOTE_PATH).toBe('notes/how-to-use-kore.md')
@@ -89,10 +90,16 @@ describe('ensureFirstRunSeeds', () => {
     { label: 'only skipped entries (unreadable content)', stats: { skipped: 1 } },
   ])('marks a vault with $label without writing into it', async ({ stats }) => {
     const graph = installFakeBridge({ stats })
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('known')
     expect(graph.written).toHaveLength(0)
     expect(graph.meta[WELCOME_SEEDED_META_KEY]).toBe('true')
     expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
+  })
+
+  it('reports a never-opened vault with notes as existing, for its first look', async () => {
+    const graph = installFakeBridge({ stats: { notes: FIRST_LOOK_MIN_NOTES } })
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('existing')
+    expect(graph.written).toHaveLength(0)
   })
 
   it('does nothing once both markers are set — an emptied graph is not re-seeded', async () => {
@@ -102,7 +109,7 @@ describe('ensureFirstRunSeeds', () => {
         [DEFAULT_OBJECTS_SEEDED_META_KEY]: 'true',
       },
     })
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('known')
     expect(graph.written).toHaveLength(0)
   })
 
@@ -113,7 +120,7 @@ describe('ensureFirstRunSeeds', () => {
       stats: { notes: 40 },
       meta: { [WELCOME_SEEDED_META_KEY]: 'true' },
     })
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('known')
     expect(graph.written).toHaveLength(0)
     expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
   })
@@ -122,7 +129,7 @@ describe('ensureFirstRunSeeds', () => {
     // The user deleted everything after onboarding: the graph is theirs, not
     // new — the objects mark without writing, same as the welcome would.
     const graph = installFakeBridge({ meta: { [WELCOME_SEEDED_META_KEY]: 'true' } })
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('known')
     expect(graph.written).toHaveLength(0)
     expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
   })
@@ -131,13 +138,13 @@ describe('ensureFirstRunSeeds', () => {
 describe('markFirstRunSeedsConsidered', () => {
   it('marks every seed without writing into a vault opened from GitHub, even an empty one', async () => {
     const graph = installFakeBridge({})
-    await markFirstRunSeedsConsidered(GENERATIONS.indexGeneration)
+    expect(await markFirstRunSeedsConsidered(GENERATIONS)).toBe('known')
 
     expect(graph.written).toEqual([])
     expect(graph.meta[WELCOME_SEEDED_META_KEY]).toBe('true')
     expect(graph.meta[DEFAULT_OBJECTS_SEEDED_META_KEY]).toBe('true')
     // A later open considers nothing: the marks stand.
-    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe(false)
+    expect(await ensureFirstRunSeeds(GENERATIONS)).toBe('known')
     expect(graph.written).toEqual([])
   })
 })

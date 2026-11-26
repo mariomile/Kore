@@ -15,6 +15,19 @@ export interface OpenGraphOptions {
 }
 
 /**
+ * A vault opening in Kore for the first time with someone's notes in it
+ * (`ensureFirstRunSeeds` → `existing`): the first look tours it.
+ */
+export interface FirstLookStart {
+  /** The graph root the first look belongs to. */
+  readonly root: string
+  /** `performance.now()` when the open began, to say how long it took. */
+  readonly startedAt: number
+  /** `performance.now()` when the first index went live, null until then. */
+  readonly readyAt: number | null
+}
+
+/**
  * The graph context surface. The mobile-only slice (`needsOnboarding`,
  * storage roots, `completeOnboarding`) is documented on
  * {@link MobileGraphBoot}, whose hook owns it.
@@ -53,6 +66,8 @@ export interface GraphContextValue extends MobileGraphBoot {
   pendingLocalSyncOffer: boolean
   /** Dismiss the post-open sync offer without enabling anything. */
   dismissLocalSyncOffer: () => void
+  /** The active vault's first look, or null when this open isn't its first. */
+  firstLook: FirstLookStart | null
   /** Show the OS folder picker, then open (and bootstrap) the chosen graph. */
   pickAndOpen: () => Promise<void>
   /** Close the active graph and show the desktop graph chooser. */

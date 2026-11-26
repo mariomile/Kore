@@ -5,7 +5,7 @@ import { agentPresenceStore } from '@/lib/agent-presence'
 /**
  * Dev harness only (`?agentDemo`): scripts what the live channel will say
  * when Claude Code works in the vault through `kore mcp`: it reads the
- * launch note and Sarah's, writes two lines into today's note, then stops.
+ * goals note and Sarah's, writes two lines into today's note, then stops.
  * The writes go through the real edit channel, so the open daily updates
  * in place exactly as an outside write would. `?agentDemo=writing` stops
  * mid-write, to look at the caret.
@@ -43,7 +43,7 @@ export function AgentPresenceDemo(): null {
       )
     }
     const script: [number, () => void][] = [
-      [1500, () => read('notes/reflect-v2.md', 'Kore V2')],
+      [1500, () => read('notes/quarterly-goals.md', 'Quarterly Goals')],
       [3200, () => read('notes/sarah-chen.md', 'Sarah Chen')],
       [4800, () => read(daily, 'Today')],
       [6200, () => write(lines[0]!)],

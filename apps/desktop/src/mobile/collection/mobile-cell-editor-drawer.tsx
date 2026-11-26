@@ -21,6 +21,8 @@ import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
+import { useToday } from '@/lib/use-today'
+import { DateGrid } from '@/mobile/date-grid'
 import { SearchInput } from '@/mobile/search-input'
 
 /** The tapped mobile table cell currently open in the editor sheet. */
@@ -111,6 +113,14 @@ export function MobileCellEditorDrawer({
               ) : target.property.type === 'rating' ? (
                 <MobileRatingBody
                   key={`${target.entryPath}:${target.property.key}`}
+                  value={target.value}
+                  onCommit={commit}
+                  onClose={onClose}
+                />
+              ) : target.property.type === 'date' ? (
+                <MobileDateBody
+                  key={`${target.entryPath}:${target.property.key}`}
+                  property={target.property}
                   value={target.value}
                   onCommit={commit}
                   onClose={onClose}
@@ -313,6 +323,59 @@ function MobileRatingBody({
   )
 }
 
+/** `YYYY-MM-DD` plus whatever follows it (a time), split so a pick keeps the time. */
+const ISO_DAY = /^(\d{4}-\d{2}-\d{2})(.*)$/
+
+/**
+ * Date property editor: Kore's own month grid, inline in the sheet. Never a
+ * native `<input type="date">`: on iPhone focusing one opens WebKit's calendar
+ * popover on top of the sheet, so the user saw two calendars at once.
+ * Tapping a day saves it and closes the sheet; a stored time is kept.
+ */
+function MobileDateBody({
+  property,
+  value,
+  onCommit,
+  onClose,
+}: {
+  property: TagProperty
+  value: CollectionValue | undefined
+  onCommit: (value: unknown) => void
+  onClose: () => void
+}): ReactElement {
+  const today = useToday()
+  const stored = ISO_DAY.exec(editorSeedText(value))
+  const selected = stored?.[1] ?? null
+  const timeSuffix = stored?.[2] ?? ''
+
+  const pick = (isoDate: string): void => {
+    haptic('action')
+    if (isoDate !== selected) {
+      onCommit(typedValueForText(property, isoDate + timeSuffix))
+    }
+    onClose()
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <DateGrid today={today} selected={selected} onPick={pick} />
+      {value !== undefined ? (
+        <button
+          type="button"
+          onClick={() => {
+            haptic('action')
+            onCommit(undefined)
+            onClose()
+          }}
+          className="flex h-11 items-center justify-center rounded-xl text-[15px] text-text-muted active:bg-surface-hover"
+        >
+          Clear date
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 function MobileInputBody({
   property,
   value,
@@ -339,15 +402,13 @@ function MobileInputBody({
   const inputType =
     property.type === 'number'
       ? 'number'
-      : property.type === 'date'
-        ? 'date'
-        : property.type === 'email'
-          ? 'email'
-          : property.type === 'phone'
-            ? 'tel'
-            : property.type === 'url'
-              ? 'url'
-              : 'text'
+      : property.type === 'email'
+        ? 'email'
+        : property.type === 'phone'
+          ? 'tel'
+          : property.type === 'url'
+            ? 'url'
+            : 'text'
 
   const inputMode =
     property.type === 'number'

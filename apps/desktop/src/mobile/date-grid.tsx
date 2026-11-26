@@ -6,27 +6,26 @@ import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 
-interface TaskScheduleGridProps {
+interface DateGridProps {
   /** Today's live ISO date — anchors the opening month and marks "today". */
   today: string
-  /** The task's current due date, shown selected in the grid. */
+  /** The current date, shown selected in the grid. */
   selected: string | null
-  /** Pick a day as the task's due date (an ISO `YYYY-MM-DD`). */
+  /** Pick a day (an ISO `YYYY-MM-DD`). */
   onPick: (isoDate: string) => void
 }
 
 /**
- * The quick-edit sheet's month grid (V1 mobile's scheduling picker, desktop's
- * {@link TaskScheduleCalendar} restated for touch): tapping a day schedules the
- * task for that date. Rendered inline inside the sheet rather than a popover —
- * a popover inside a bottom sheet is two stacked overlays on a phone screen.
- * Reuses {@link buildMonthGrid}, so it shares the daily calendar's math.
+ * Kore's touch month grid, rendered inline inside a bottom sheet (the task
+ * quick-edit sheet, the date property sheet): tapping a day picks it. Inline
+ * rather than a popover or a native `<input type="date">`, because either one
+ * stacks a second calendar over the sheet on a phone screen. Reuses
+ * {@link buildMonthGrid}, so it shares the daily calendar's math.
  */
-export function TaskScheduleGrid({ today, selected, onPick }: TaskScheduleGridProps): ReactElement {
+export function DateGrid({ today, selected, onPick }: DateGridProps): ReactElement {
   const { settings } = useSettings()
   const weekStartsOn = weekStartDow(settings.weekStartDay)
-  // Open on the due date's month when there is one — that's the date being
-  // rescheduled — else today's.
+  // Open on the selected date's month when there is one, else today's.
   const [month, setMonth] = useState(() => monthOf(selected ?? today))
   const grid = buildMonthGrid(month, weekStartsOn)
 

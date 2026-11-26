@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AgentAvatar } from '@/components/agent-presence/agent-avatar'
 import { cn } from '@/lib/utils'
 import { SIDEBAR_ROW_HEIGHT_CLASS, sidebarRowState } from './sidebar-row-style'
 
@@ -37,10 +38,9 @@ export function SidebarPinnedRowPreview({
         <span className="block truncate text-xs font-medium">{label}</span>
       </span>
       {agentReading !== null && !placeholder ? (
-        <span
-          title={`${agentReading} is reading this note`}
-          className="kore-agent-row-dot relative mr-3 flex-none"
-        />
+        <span title={`${agentReading} is reading this note`} className="mr-2 flex flex-none">
+          <AgentAvatar agent={agentReading} size="xs" working />
+        </span>
       ) : null}
     </span>
   )

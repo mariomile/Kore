@@ -152,7 +152,7 @@ export function MobileShell(): ReactElement {
           onNewTaskConsumed={() => setNewTaskRequested(false)}
         />
         {keyboardVisible ? null : (
-          <AgentPresenceLayer className="absolute inset-x-4 bottom-[calc(var(--mobile-tab-bar-height,5rem)+0.75rem)] z-30" />
+          <AgentPresenceLayer className="pointer-events-none absolute inset-x-4 bottom-[calc(var(--mobile-tab-bar-height,5rem)+0.75rem)] z-30 justify-center" />
         )}
         {/* The tab bar floats over the stack as a translucent glass bar —
             screens pad their scrollers past `--mobile-tab-bar-height`, so

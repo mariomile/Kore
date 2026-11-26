@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactElement } from 'react'
-import { AgentPresencePills } from './agent-presence-pill'
+import { AgentPresenceCapsules } from './agent-presence-capsule'
 
 // The scripted agent exists only in the dev harness; production never
 // loads the chunk.
@@ -12,11 +12,11 @@ const AgentPresenceDemo =
       )
     : null
 
-/** The agents-at-work overlay: the floating pills, plus the dev script when asked. */
+/** Agents at work: the capsules, plus the dev script when asked. */
 export function AgentPresenceLayer({ className }: { className?: string }): ReactElement {
   return (
     <>
-      <AgentPresencePills {...(className !== undefined ? { className } : {})} />
+      <AgentPresenceCapsules {...(className !== undefined ? { className } : {})} />
       {AgentPresenceDemo !== null ? (
         <Suspense fallback={null}>
           <AgentPresenceDemo />

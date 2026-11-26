@@ -1989,50 +1989,84 @@ html[data-sidebar-resizing] aside {
   display: none;
 }
 
-/* Whole-block selection on touch (swipe a block right): the block reads as
-   one tinted card, the way Craft lifts it, and the caret stays hidden. */
-/* A selected block is one flat card, Craft's way: an opaque fill behind the
-   block (a pseudo-element, so the text never moves), no ring, no outline.
-   Neighbours bridge the gap between them and square the corners they share,
-   so a run of selected blocks reads as a single card. Opaque, so where two
-   fills overlap nothing darkens. */
+/* Whole-block selection on touch: every selected block is its own card
+   (Mario, 2026-11-26: a heading and the table under it are two blocks and
+   must read as two). The card is a translucent ink veil laid OVER the block,
+   one ramp step like `surface-hover`, so it reads the same on text, tables,
+   code, images and embeds whatever fill they paint themselves; a fill behind
+   the block was covered by a table's header row and clipped by its
+   `overflow: hidden`. It hangs off the block, so it travels with it when the
+   block is swiped or dragged, and the caret stays hidden. */
 .kore-block-selected {
-  --block-selected-fill: color-mix(in oklab, var(--text) 8%, var(--surface-app));
   position: relative;
   isolation: isolate;
 }
 .kore-block-selected::after {
   content: '';
   position: absolute;
-  inset: -4px -10px;
-  z-index: -1;
-  border-radius: 0.625rem;
-  background: var(--block-selected-fill);
+  inset: -6px -10px;
+  z-index: 1;
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--text) 9%, transparent);
   pointer-events: none;
-  animation: kore-block-lift 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  animation: kore-block-select-in var(--duration-base) var(--ease-swift);
 }
-/* The bridge hangs off the upper block: a later sibling paints over an
-   earlier one, so reaching down slides under the next block's text, where
-   reaching up would cover the previous block's last line. */
+/* Two selected neighbours keep a 4px seam between their cards instead of
+   overlapping (blocks sit about 7px apart): each card stays its own. */
 .kore-block-selected + .kore-block-selected::after {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  top: -1.5px;
 }
 .kore-block-selected:has(+ .kore-block-selected)::after {
-  bottom: -14px;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  bottom: -1.5px;
 }
-@keyframes kore-block-lift {
+/* The editor's tables clip to their box, which would square the card off
+   at the table's edge. */
+.ProseMirror table.kore-block-selected {
+  overflow: visible;
+}
+@keyframes kore-block-select-in {
   from {
     opacity: 0;
-    transform: scale(0.97);
+    transform: scale(0.98);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .kore-block-selected::after {
     animation: none;
   }
+}
+/* The mark a selecting swipe uncovers beside the block (block-swipe-mark.ts):
+   an empty ring that fills with the accent and a check once the swipe
+   commits. Outside the editor, positioned by the gesture. */
+.kore-swipe-mark {
+  position: fixed;
+  z-index: 30;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: -0.75rem 0 0 -0.75rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-brand);
+  box-shadow: inset 0 0 0 2px var(--text-muted);
+  pointer-events: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-swift),
+    box-shadow var(--duration-fast) var(--ease-swift);
+}
+.kore-swipe-mark > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-swift);
+}
+.kore-swipe-mark[data-committed] {
+  background: var(--accent-fill);
+  box-shadow: none;
+}
+.kore-swipe-mark[data-committed] > svg {
+  opacity: 1;
 }
 /* Block selection is the only selection on screen: no node outline (the
    inner border that doubled the card), no caret, no text highlight. */

@@ -39,11 +39,17 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
     function clearPlacement(): void {
       clearMembershipParagraphCss(host)
       clearNoteTitleCss(host)
-      root?.classList.remove('kore-editor-has-properties', 'kore-editor-properties-top')
+      // Forced toggles, not `remove`: this runs per keystroke on a note
+      // without properties, and `remove` rewrites the class attribute even
+      // when the class is already absent.
+      root?.classList.toggle('kore-editor-has-properties', false)
+      root?.classList.toggle('kore-editor-properties-top', false)
       root?.style.removeProperty('--kore-note-properties-space')
-      host?.classList.remove('kore-note-properties-host')
+      host?.classList.toggle('kore-note-properties-host', false)
       slotElement.style.removeProperty('top')
-      delete slotElement.dataset.positioned
+      if (slotElement.dataset.positioned !== undefined) {
+        delete slotElement.dataset.positioned
+      }
     }
 
     function measure(): void {
@@ -77,22 +83,27 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
           (Number.parseFloat(getComputedStyle(title).marginBottom) || 0) - appliedSpace,
         )
         top = titleRect.bottom - hostRect.top + titleMargin
-        root.classList.remove('kore-editor-properties-top')
+        root.classList.toggle('kore-editor-properties-top', false)
         applyNoteTitleCss(host, root, title)
       } else {
         top = root.getBoundingClientRect().top - hostRect.top
-        root.classList.add('kore-editor-properties-top')
+        root.classList.toggle('kore-editor-properties-top', true)
         clearNoteTitleCss(host)
       }
 
-      host.classList.add('kore-note-properties-host')
-      root.classList.add('kore-editor-has-properties')
+      // `toggle` with a force leaves the attribute alone when the class is
+      // already right; `add` rewrites it and queues a mutation record for
+      // every observer of the editor. This runs on every keystroke.
+      host.classList.toggle('kore-note-properties-host', true)
+      root.classList.toggle('kore-editor-has-properties', true)
       applyMembershipParagraphCss(host, root, title)
       // Write only what moved: each inline-style write restyles the editor,
       // and this runs after every structural edit.
       setStyleIfChanged(root, '--kore-note-properties-space', `${space}px`)
       setStyleIfChanged(slotElement, 'top', `${top}px`)
-      slotElement.dataset.positioned = 'true'
+      if (slotElement.dataset.positioned !== 'true') {
+        slotElement.dataset.positioned = 'true'
+      }
     }
 
     // Edits mutate the document many times per frame (a keystroke, a paste,
@@ -116,18 +127,23 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
       resizeObserver = new ResizeObserver(measure)
       resizeObserver.observe(slotElement)
 
+      // Watch the title element for size changes, re-pointing the watch only
+      // when an edit replaced it: a fresh `observe` always reports once, so
+      // re-observing on every mutation measured twice per keystroke.
+      let observedTitle = findNoteTitle(root)
+      if (observedTitle !== null) resizeObserver.observe(observedTitle)
+
       mutationObserver = new MutationObserver(() => {
-        resizeObserver?.disconnect()
         const title = root === null ? null : findNoteTitle(root)
-        if (title !== null) resizeObserver?.observe(title)
-        resizeObserver?.observe(slotElement)
+        if (title !== observedTitle) {
+          if (observedTitle !== null) resizeObserver?.unobserve(observedTitle)
+          if (title !== null) resizeObserver?.observe(title)
+          observedTitle = title
+        }
         scheduleMeasure()
       })
       mutationObserver.observe(root, { childList: true, subtree: true })
       mutationObserver.observe(slotElement, { childList: true, subtree: true })
-
-      const title = findNoteTitle(root)
-      if (title !== null) resizeObserver.observe(title)
       measure()
     })
 

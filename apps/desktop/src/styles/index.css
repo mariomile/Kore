@@ -2451,3 +2451,14 @@ html[data-sidebar-resizing] aside {
   letter-spacing: 0;
   opacity: 0;
 }
+
+/* A note tab kept drawn while another tab shows (warm-note-views.tsx): out
+   of layout, paint and hit testing, with its rendering state (scroll,
+   selection) kept for when it shows again. */
+.kore-warm-note {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  content-visibility: hidden;
+  pointer-events: none;
+}

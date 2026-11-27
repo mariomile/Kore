@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B63E3BA904337F6625AA036 /* QuickNoteIntent.swift */; };
+		B7D2E4F10A1C3E5F7B9D0A02 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7D2E4F10A1C3E5F7B9D0A01 /* Assets.xcassets */; };
 		1C8847A7F1C163FBA53373F9 /* ExtensionClass.js in Resources */ = {isa = PBXBuildFile; fileRef = 536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */; };
 		266B3807E809464C8FC14146 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FDC9BB81FAB5AF8D65160799 /* Metal.framework */; };
 		319EDF8F46AB05DFBA9D674F /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80E05926405BFDA2A3BC70BC /* libz.tbd */; };
@@ -123,6 +124,7 @@
 		51006DE1482D28D9562253A1 /* ShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5249E1475DBD7CCB817F7D1B /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		5306360328A772EEE5EDDD87 /* versions.rs */ = {isa = PBXFileReference; path = versions.rs; sourceTree = "<group>"; };
+		B7D2E4F10A1C3E5F7B9D0A01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = ExtensionClass.js; sourceTree = "<group>"; };
 		560C7C23BE58D7EA845F1170 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
 		5C56D455FF36B2FFA8189246 /* repo.rs */ = {isa = PBXFileReference; path = repo.rs; sourceTree = "<group>"; };
@@ -215,6 +217,7 @@
 		064330CA0617C1F023B33371 /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
+				B7D2E4F10A1C3E5F7B9D0A01 /* Assets.xcassets */,
 				D357D2D54012FD394DF9423E /* CaptureInbox.swift */,
 				536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */,
 				A1C4E7F20B3D5E6F7A8B9C01 /* ShareChoices.swift */,
@@ -600,6 +603,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B7D2E4F10A1C3E5F7B9D0A02 /* Assets.xcassets in Resources */,
 				1C8847A7F1C163FBA53373F9 /* ExtensionClass.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

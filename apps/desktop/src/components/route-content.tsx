@@ -4,7 +4,7 @@ import { PageLoading } from '@/components/page-loading'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
 import { SearchRoute } from '@/components/search-route'
-import { SingleNoteView } from '@/components/single-note-view'
+import { WarmNoteViews } from '@/components/warm-note-views'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
@@ -93,16 +93,24 @@ const TerminalScreen = lazy(() =>
 export function RouteContent(): ReactElement {
   const { route } = useRouter()
   useEffect(() => prefetchKeystrokeRoutes(), [])
+  const notePath = route.kind === 'note' ? route.path : null
   return (
-    <PaneErrorBoundary
-      resetKey={JSON.stringify(route)}
-      surface={route.kind}
-      path={'path' in route ? route.path : null}
-    >
-      <Suspense fallback={<PageLoading className="h-full" />}>
-        <RouteView />
-      </Suspense>
-    </PaneErrorBoundary>
+    <div className="relative h-full">
+      {/* Note routes render through the pane's warm notes, so a tab shown
+          again is not rebuilt; every other route renders here. */}
+      <WarmNoteViews activePath={notePath} />
+      {notePath === null && (
+        <PaneErrorBoundary
+          resetKey={JSON.stringify(route)}
+          surface={route.kind}
+          path={'path' in route ? route.path : null}
+        >
+          <Suspense fallback={<PageLoading className="h-full" />}>
+            <RouteView />
+          </Suspense>
+        </PaneErrorBoundary>
+      )}
+    </div>
   )
 }
 
@@ -128,7 +136,7 @@ function prefetchKeystrokeRoutes(): () => void {
  * without one. `null` is the right fallback: these routes are opened
  * deliberately, and a spinner for one frame reads as jank rather than progress.
  */
-function RouteView(): ReactElement {
+function RouteView(): ReactElement | null {
   const { route } = useRouter()
   switch (route.kind) {
     case 'today':
@@ -138,7 +146,8 @@ function RouteView(): ReactElement {
       // is a real calendar day by the time it reaches a view.
       return <DailyStream target={{ kind: 'date', date: route.date }} />
     case 'note':
-      return <SingleNoteView path={route.path} />
+      // Drawn by WarmNoteViews, beside this switch.
+      return null
     case 'allNotes':
       // Owns its scroll container (virtualized table + fixed header), so no
       // ScrollRestored wrapper — same shape as the daily stream.

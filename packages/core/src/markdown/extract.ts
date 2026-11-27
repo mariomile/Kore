@@ -385,6 +385,51 @@ export function hasAuthoredTitle(note: Pick<ParsedNote, 'frontmatter' | 'heading
   return authoredTitle(note.frontmatter, note.headings) !== null
 }
 
+/**
+ * Every line that could open or underline an H1, anywhere in a container
+ * (blockquote, list item): an ATX `#` after any run of container markers, or a
+ * setext `===` underline. A deliberate superset of what the parser accepts —
+ * a miss here would hide a title, a false hit only costs one more parse.
+ */
+const H1_CANDIDATE_LINE = /^[ \t>*+\-\d.)]*#(?:[ \t\r]|$)|^[ \t>]*=+[ \t]*\r?$/gm
+
+/** Prefix parses to try before one full parse is cheaper than another prefix. */
+const MAX_PREFIX_PARSES = 3
+
+function authoredTitleOfPrefix(source: string): string | null {
+  const parsed = parseNote({ path: '', source })
+  return authoredTitle(parsed.frontmatter, parsed.headings)
+}
+
+/**
+ * The title `source` authors (frontmatter `title:` or its first non-empty H1),
+ * or `null` when it authors none — the same answer as {@link hasAuthoredTitle}
+ * on a full {@link parseNote}, without parsing the whole note. Markdown block
+ * structure is decided top-down, so the note cut right after an H1 candidate
+ * line parses its headings exactly like the full note does. A long note
+ * typically has its title near the top: the editor asks this on every save,
+ * and a full parse of a 300k-character note blocked the main thread for
+ * ~170 ms each time.
+ */
+export function authoredTitleOfSource(source: string): string | null {
+  const { body, bodyOffset } = splitFrontmatter(source)
+  let parses = 0
+  for (const candidate of body.matchAll(H1_CANDIDATE_LINE)) {
+    if (parses === MAX_PREFIX_PARSES) {
+      return authoredTitleOfPrefix(source)
+    }
+    parses += 1
+    const lineEnd = body.indexOf('\n', candidate.index)
+    const end = bodyOffset + (lineEnd === -1 ? body.length : lineEnd)
+    const title = authoredTitleOfPrefix(source.slice(0, end))
+    if (title !== null) {
+      return title
+    }
+  }
+  // No H1 anywhere: only the frontmatter can title the note.
+  return authoredTitleOfPrefix(source.slice(0, bodyOffset))
+}
+
 function deriveTitle(frontmatter: Frontmatter, headings: Heading[], path: string): string {
   const authored = authoredTitle(frontmatter, headings)
   if (authored !== null) {

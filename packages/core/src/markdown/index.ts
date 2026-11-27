@@ -119,6 +119,7 @@ export {
   isTagName,
   inlineTagNames,
   hasAuthoredTitle,
+  authoredTitleOfSource,
   frontmatterTagNames,
 } from './extract'
 export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'

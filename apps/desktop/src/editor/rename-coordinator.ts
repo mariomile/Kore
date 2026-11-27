@@ -1,4 +1,5 @@
 import {
+  authoredTitleOfSource,
   birthPathForTitle,
   errorMessage,
   getBacklinks,
@@ -21,7 +22,7 @@ import { moveNoteCarryingSession } from './move-note'
 import type { NoteContentOrigin } from './note-session'
 import { composeRenameFailure, type RenamePhaseFailures } from './rename-failure'
 import { startOperation } from '@/lib/operations'
-import { authoredTitleOf, createTitleRenameTracker } from './title-rename'
+import { createTitleRenameTracker } from './title-rename'
 import type { TitleRename } from './title-rename'
 
 /**
@@ -252,7 +253,6 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
   }
 
   const tracker = createTitleRenameTracker({
-    path: options.path,
     onRename: runRename,
     canFire,
   })
@@ -263,7 +263,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
       // A ⌘N note keeps its placeholder path until the birth rename settles;
       // publish the typed title so its tab names it right away.
       if (isUntitledNotePath(currentPath)) {
-        setDraftTitle(currentPath, authoredTitleOf(currentPath, content), draftOwner)
+        setDraftTitle(currentPath, authoredTitleOfSource(content), draftOwner)
       }
       if (origin === 'saved') {
         tracker.saved(content)

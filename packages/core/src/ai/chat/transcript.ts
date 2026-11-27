@@ -1,6 +1,7 @@
 import type { FilePart, ModelMessage, TextPart } from 'ai'
 import { attachedFileBlock, decodeDataUrlText, isTextMediaType } from './attachment-types'
 import type { AgentStep, AgentStepOutcome } from './agent-steps'
+import { redactSecrets } from '../redact-secrets'
 import type { ChatStreamEvent } from './stream-chat'
 import type { NoteEditDecision, NoteToolCall, NoteToolResult } from './tools'
 
@@ -152,18 +153,24 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
           ? { ...part, outcome: event.outcome }
           : part,
       )
-    case 'tool-error':
+    case 'tool-error': {
+      // Error text is persisted with the turn: never let a key echoed back
+      // by a provider land in chat history.
+      const message = redactSecrets(event.message)
       return [
-        ...settleTools(parts, event.message, event.toolCallId),
-        { kind: 'notice', tone: 'error', text: event.message },
+        ...settleTools(parts, message, event.toolCallId),
+        { kind: 'notice', tone: 'error', text: message },
       ]
-    case 'error':
+    }
+    case 'error': {
+      const message = redactSecrets(event.message)
       // A terminal event settles every still-pending tool call — a chip must
       // never keep spinning after its turn is over.
       return [
-        ...settleSteps(settleTools(parts, event.message), event.message),
-        { kind: 'notice', tone: 'error', text: event.message },
+        ...settleSteps(settleTools(parts, message), message),
+        { kind: 'notice', tone: 'error', text: message },
       ]
+    }
     case 'steer':
       // The steer cut the leg in flight: a tool call still pending there
       // was dropped from the history (never paired with a result), so its

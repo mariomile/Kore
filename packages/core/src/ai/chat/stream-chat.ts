@@ -5,6 +5,7 @@ import { loadAiSdk } from '../load-sdk'
 import { streamClaudeKoreChat } from '../claude-kore'
 import { streamCodexKoreChat } from '../codex-kore'
 import { modelContextWindow } from '../provider-catalog'
+import { redactSecrets } from '../redact-secrets'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
 import { withMemoryTools, type AgentPromptContext } from '../agent-profiles'
@@ -169,10 +170,20 @@ export async function* streamChat(options: StreamChatOptions): AsyncGenerator<Ch
   try {
     model = await languageModel(options.config, options.apiKey, options.fetchFn)
   } catch (cause) {
-    yield { type: 'error', message: errorMessage(cause), messages: [] }
+    yield {
+      type: 'error',
+      message: redactSecrets(errorMessage(cause), [options.apiKey]),
+      messages: [],
+    }
     return
   }
-  yield* streamChatTurn(model, turn)
+  // The exact key is known only here; the transcript scrubs key-shaped
+  // tokens for every engine, this also catches a key with no known prefix.
+  for await (const event of streamChatTurn(model, turn)) {
+    yield event.type === 'error' || event.type === 'tool-error'
+      ? { ...event, message: redactSecrets(event.message, [options.apiKey]) }
+      : event
+  }
 }
 
 /** {@link streamChatTurn}'s options: {@link StreamChatOptions} minus provider wiring. */

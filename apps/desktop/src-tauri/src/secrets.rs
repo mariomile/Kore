@@ -9,6 +9,9 @@ use keyring::Entry;
 
 use crate::error::{AppError, AppResult};
 
+#[cfg(target_os = "ios")]
+mod ios;
+
 /// The keychain service every Kore secret is filed under.
 const SERVICE: &str = "kore";
 
@@ -36,13 +39,14 @@ fn get_migrating(name: &str) -> AppResult<Option<String>> {
     }
     for service in LEGACY_SERVICES {
         if let Some(value) = get_from(&service_entry(service, name)?)? {
-            set_in(&entry(name)?, &value)?;
+            write_secret(name, &value)?;
             return Ok(Some(value));
         }
     }
     Ok(None)
 }
 
+#[cfg(any(not(target_os = "ios"), test))]
 fn set_in(entry: &Entry, value: &str) -> AppResult<()> {
     entry
         .set_password(value)
@@ -75,16 +79,43 @@ fn delete_from(entry: &Entry) -> AppResult<()> {
 async fn run_blocking<T: Send + 'static>(
     task: impl FnOnce() -> AppResult<T> + Send + 'static,
 ) -> AppResult<T> {
-    tauri::async_runtime::spawn_blocking(task)
-        .await
-        .map_err(|err| AppError::io(err.to_string()))?
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(target_os = "ios")]
+        pin_existing_secrets_once();
+        task()
+    })
+    .await
+    .map_err(|err| AppError::io(err.to_string()))?
+}
+
+/// Keys saved by builds before the device-only pinning carry the OS default
+/// accessibility, which lets them ride along in device backups. The first
+/// keychain call of each launch re-protects all of them, once; a failure is
+/// logged and retried on the next launch rather than blocking the read.
+#[cfg(target_os = "ios")]
+fn pin_existing_secrets_once() {
+    static PINNED: std::sync::Once = std::sync::Once::new();
+    PINNED.call_once(|| {
+        for service in std::iter::once(SERVICE).chain(LEGACY_SERVICES) {
+            if let Err(err) = ios::pin_service_to_device(service) {
+                tracing::warn!("keychain: could not pin {service} items to this device: {err:?}");
+            }
+        }
+    });
 }
 
 /// Write under the current service. A legacy copy may remain (see
 /// [`get_migrating`]); it is never read again once `"kore"` holds a value,
 /// and [`erase_secret`] clears every service so it cannot resurrect.
+#[cfg(not(target_os = "ios"))]
 fn write_secret(name: &str, value: &str) -> AppResult<()> {
     set_in(&entry(name)?, value)
+}
+
+/// On iOS the item is pinned to this device (see [`ios`]).
+#[cfg(target_os = "ios")]
+fn write_secret(name: &str, value: &str) -> AppResult<()> {
+    ios::set_device_only(SERVICE, name, value)
 }
 
 /// Delete under every service name so a cleared key cannot resurrect from a

@@ -1,4 +1,5 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { credentialTransportRefusal, KoreError } from '@kore/core'
 import { isNativeShell } from '@/lib/platform'
 
 /**
@@ -19,12 +20,25 @@ import { isNativeShell } from '@/lib/platform'
  * empty `Origin` tells the plugin to drop the header entirely (its
  * `unsafe-headers` feature, enabled in `src-tauri/Cargo.toml`, makes the
  * empty value an explicit removal).
+ *
+ * Every call passes the credential-transport rule first: a request carrying
+ * a key over plain http beyond the local network is refused before a byte
+ * leaves the device (`credentialTransportRefusal`).
  */
 export function providerFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers)
+  const url = input instanceof Request ? input.url : input
+  const refusal = credentialTransportRefusal(
+    url,
+    headers,
+    ...(input instanceof Request ? [input.headers] : []),
+  )
+  if (refusal !== null) {
+    return Promise.reject(new KoreError('network', refusal))
+  }
   if (!isNativeShell()) {
     return fetch(input, init)
   }
-  const headers = new Headers(init?.headers)
   if (!headers.has('Origin')) {
     headers.set('Origin', '')
   }

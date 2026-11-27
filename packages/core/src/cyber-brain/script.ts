@@ -66,6 +66,20 @@ export type BrainCommand =
       readonly options?: string
       readonly tradeoffs?: string
     }
+  | {
+      /** One working session, as a note: what was done, what was learned (SPEC 4.6). */
+      readonly kind: 'episode'
+      readonly title: string
+      readonly summary: string
+      /** `fact -> Note.md`, each written through `remember` by the kit. */
+      readonly facts?: readonly string[]
+      /** Notes the session read or changed. */
+      readonly touched?: readonly string[]
+      /** ISO start; the kit defaults to since the agent's last episode today. */
+      readonly started?: string
+    }
+  /** Revert what one episode wrote, by the episode's vault path. */
+  | { readonly kind: 'undo'; readonly episode: string }
   | { readonly kind: 'facts'; readonly query: string; readonly at?: string }
   | { readonly kind: 'check' }
 
@@ -178,6 +192,18 @@ export function brainArgv(command: BrainCommand, caller: BrainCaller): string[] 
         ...option('options', command.options),
         ...option('tradeoffs', command.tradeoffs),
       ]
+    case 'episode':
+      return [
+        'episode',
+        ...signed,
+        ...option('title', command.title),
+        ...option('summary', command.summary),
+        ...(command.facts ?? []).flatMap((fact) => option('fact', fact)),
+        ...(command.touched ?? []).flatMap((note) => option('touched', note)),
+        ...option('started', command.started),
+      ]
+    case 'undo':
+      return ['undo', ...signed, ...option('episode', command.episode)]
     case 'facts':
       // The query is positional; `--` would be read as a flag, so a query
       // that starts with dashes is searched without them.

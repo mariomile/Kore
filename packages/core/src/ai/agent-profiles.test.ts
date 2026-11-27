@@ -211,6 +211,7 @@ describe('agentContextPromptLines', () => {
       'remember, forget, open_loop, update_loop, close_loop, record_decision',
     )
     expect(withTools).toContain('YYYY-MM-DD')
+    expect(withTools).toContain('end it with one log_episode')
     expect(withTools).not.toContain('agents/memory/pending.md')
     expect(withTools).not.toContain('[certain|likely|speculative]')
 
@@ -218,6 +219,7 @@ describe('agentContextPromptLines', () => {
     const suggest = agentContextPromptLines(noTools, { canEdit: true }).join('\n')
     expect(suggest).toContain('this run cannot write it')
     expect(suggest).not.toContain('open_loop')
+    expect(suggest).not.toContain('log_episode')
   })
 
   it('puts the soul first and routes upkeep across all memory files', () => {

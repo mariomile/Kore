@@ -214,6 +214,7 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
     case 'update_loop':
     case 'close_loop':
     case 'record_decision':
+    case 'log_episode':
       return {
         tool: 'memory',
         toolCallId: part.toolCallId,
@@ -445,7 +446,8 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
     case 'open_loop':
     case 'update_loop':
     case 'close_loop':
-    case 'record_decision': {
+    case 'record_decision':
+    case 'log_episode': {
       const output = part.output
       return {
         tool: 'memory',

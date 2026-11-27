@@ -148,6 +148,38 @@ describe('brainArgv', () => {
     ])
     expect(brainArgv({ kind: 'check' }, caller)).toEqual(['check', '--json'])
   })
+
+  it('logs an episode with one option per fact and touched note, and undoes it', () => {
+    expect(
+      brainArgv(
+        {
+          kind: 'episode',
+          title: 'Pricing call',
+          summary: 'Read the notes.',
+          facts: ['Alice runs pricing -> People/Alice.md', '--now sneaky -> ?'],
+          touched: ['People/Alice.md'],
+        },
+        caller,
+      ),
+    ).toEqual([
+      'episode',
+      '--agent=kore',
+      '--by=user',
+      '--title=Pricing call',
+      '--summary=Read the notes.',
+      '--fact=Alice runs pricing -> People/Alice.md',
+      '--fact=--now sneaky -> ?',
+      '--touched=People/Alice.md',
+    ])
+    expect(
+      brainArgv({ kind: 'undo', episode: 'System/memory/episodes/2026/11/a.md' }, caller),
+    ).toEqual([
+      'undo',
+      '--agent=kore',
+      '--by=user',
+      '--episode=System/memory/episodes/2026/11/a.md',
+    ])
+  })
 })
 
 describe('brainResult', () => {

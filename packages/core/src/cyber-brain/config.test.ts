@@ -51,6 +51,7 @@ describe('parseCyberBrainConfig', () => {
       agents: ['exo', 'claude-code'],
       systemPath: 'System',
       inboxPath: '_inbox',
+      episodesPath: 'System/memory/episodes',
       content: { projects: 'Active/Projects', people: 'CRM/People' },
       scriptPath: 'System/scripts/brain.mjs',
     })
@@ -81,16 +82,18 @@ describe('parseCyberBrainConfig', () => {
       agents: [],
       systemPath: 'System',
       inboxPath: '_inbox',
+      episodesPath: 'System/memory/episodes',
       scriptPath: 'System/scripts/brain.mjs',
     })
   })
 
   it('never lets a path point outside the vault', () => {
     const config = parseCyberBrainConfig(
-      '---\ncyber_brain: "0.1"\npaths:\n  system: ../etc\n  inbox: /tmp\ncontent:\n  people: CRM/People\n---\n',
+      '---\ncyber_brain: "0.1"\npaths:\n  system: ../etc\n  inbox: /tmp\n  episodes: ../up\ncontent:\n  people: CRM/People\n---\n',
     )
     expect(config?.systemPath).toBe('System')
     expect(config?.inboxPath).toBe('_inbox')
+    expect(config?.episodesPath).toBe('System/memory/episodes')
     expect(config?.scriptPath).toBe('System/scripts/brain.mjs')
   })
 
@@ -99,6 +102,7 @@ describe('parseCyberBrainConfig', () => {
       '---\ncyber_brain: "0.1"\npaths:\n  system: brain/kit\n---\n',
     )
     expect(config?.scriptPath).toBe('brain/kit/scripts/brain.mjs')
+    expect(config?.episodesPath).toBe('brain/kit/memory/episodes')
   })
 })
 

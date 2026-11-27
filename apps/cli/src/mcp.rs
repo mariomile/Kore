@@ -1064,6 +1064,16 @@ mod tests {
             "forget",
             json!({ "text": "Acme Corp", "reason": "former client" }),
         );
+        call(
+            &server,
+            "log_episode",
+            json!({
+                "title": "Pricing call",
+                "summary": "Read the call notes.",
+                "facts": ["Alice runs pricing -> People/Alice.md"],
+                "touched": ["People/Alice.md"]
+            }),
+        );
         let missing = call(&server, "record_decision", json!({ "title": "x" }));
         let calls = recorder.calls.borrow();
         assert_eq!(
@@ -1100,7 +1110,18 @@ mod tests {
                 "--exclude-only"
             ]
         );
-        assert_eq!(calls.len(), 4, "a decision without its fields never runs");
+        assert_eq!(
+            calls[4].0,
+            [
+                "brain",
+                "episode",
+                "--title=Pricing call",
+                "--summary=Read the call notes.",
+                "--fact=Alice runs pricing -> People/Alice.md",
+                "--touched=People/Alice.md"
+            ]
+        );
+        assert_eq!(calls.len(), 5, "a decision without its fields never runs");
         assert_eq!(missing["result"]["isError"], true);
     }
 

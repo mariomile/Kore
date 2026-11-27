@@ -53,6 +53,7 @@ const configSchema = z.object({
     .object({
       system: folderSchema.catch(DEFAULT_SYSTEM_PATH).default(DEFAULT_SYSTEM_PATH),
       inbox: folderSchema.catch(DEFAULT_INBOX_PATH).default(DEFAULT_INBOX_PATH),
+      episodes: folderSchema.optional().catch(undefined),
     })
     .catch({ system: DEFAULT_SYSTEM_PATH, inbox: DEFAULT_INBOX_PATH })
     .default({ system: DEFAULT_SYSTEM_PATH, inbox: DEFAULT_INBOX_PATH }),
@@ -82,6 +83,8 @@ export interface CyberBrainConfig {
   readonly systemPath: string
   /** The capture folder (`_inbox/` by default). */
   readonly inboxPath: string
+  /** One note per working session (`<system>/memory/episodes` by default, kit 0.3). */
+  readonly episodesPath: string
   /** Destinations for triage and `remember` (`projects`, `people`, …). */
   readonly content: Readonly<Record<string, string>>
   /** The vault's own kit script, the one implementation of every memory write. */
@@ -114,6 +117,7 @@ export function parseCyberBrainConfig(source: string): CyberBrainConfig | null {
     agents: config.agents,
     systemPath: config.paths.system,
     inboxPath: config.paths.inbox,
+    episodesPath: config.paths.episodes ?? `${config.paths.system}/memory/episodes`,
     content: config.content,
     scriptPath: `${config.paths.system}/scripts/brain.mjs`,
   }

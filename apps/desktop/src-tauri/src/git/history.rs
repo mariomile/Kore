@@ -29,15 +29,15 @@ pub struct NoteVersion {
 }
 
 /// Ceiling on commits walked, so a decade-old graph can't stall the panel.
-const MAX_WALKED_COMMITS: usize = 20_000;
+pub(super) const MAX_WALKED_COMMITS: usize = 20_000;
 
 /// The trees along a note's folders in one commit: index 0 is the root tree,
 /// index `n` the folder `components[n - 1]`, `None` from the first missing
 /// folder down.
-type FolderChain<'repo> = Vec<Option<git2::Tree<'repo>>>;
+pub(super) type FolderChain<'repo> = Vec<Option<git2::Tree<'repo>>>;
 
 /// The note's blob id at the bottom of `chain`, or `None` when absent.
-fn blob_in_chain(chain: &FolderChain<'_>, components: &[&str]) -> Option<git2::Oid> {
+pub(super) fn blob_in_chain(chain: &FolderChain<'_>, components: &[&str]) -> Option<git2::Oid> {
     let folder = chain.last()?.as_ref()?;
     let entry = folder.get_name(components.last()?)?;
     (entry.kind() == Some(git2::ObjectType::Blob)).then(|| entry.id())
@@ -50,7 +50,7 @@ fn subfolder_id(tree: Option<&git2::Tree<'_>>, name: &str) -> Option<git2::Oid> 
 }
 
 /// `root`'s folder chain along `components`, resolved from scratch.
-fn folder_chain<'repo>(
+pub(super) fn folder_chain<'repo>(
     repo: &'repo git2::Repository,
     root: git2::Tree<'repo>,
     components: &[&str],
@@ -70,7 +70,7 @@ fn folder_chain<'repo>(
 /// commits touch other folders, so they cost one root tree and an entry
 /// lookup per level, never a reload of a large folder (which libgit2 does
 /// not cache) or a second full path resolution per commit.
-fn parent_chain<'repo>(
+pub(super) fn parent_chain<'repo>(
     repo: &'repo git2::Repository,
     chain: &FolderChain<'repo>,
     parent_root: git2::Tree<'repo>,

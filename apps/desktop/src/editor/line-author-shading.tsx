@@ -49,7 +49,10 @@ function Shading({
   useEffect(() => {
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    let request = 0
+    // One blame in flight at a time: a request made while one runs is folded
+    // into a single rerun once it lands, with the text as it is then.
+    let inFlight = false
+    let again = false
     let dom: HTMLElement | null = null
     const headerLines = header.split('\n').length - 1
 
@@ -57,20 +60,30 @@ function Shading({
       if (cancelled || !editor.mounted) {
         return
       }
+      if (inFlight) {
+        again = true
+        return
+      }
+      inFlight = true
       const view = editor.view
       const body = docToMarkdown(view.state.doc)
-      const asked = ++request
       void gitBlame(path, header + body, generation)
         .then((result) => {
-          if (cancelled || asked !== request) {
-            return
+          if (!cancelled && !again) {
+            const authors = lineAuthors(result, headerLines + body.split('\n').length)
+            setLineAuthors(view, { body, authors: authors.slice(headerLines) })
           }
-          const authors = lineAuthors(result, headerLines + body.split('\n').length)
-          setLineAuthors(view, { body, authors: authors.slice(headerLines) })
         })
         .catch(() => {
-          if (!cancelled && asked === request) {
+          if (!cancelled && !again) {
             setLineAuthors(view, null)
+          }
+        })
+        .finally(() => {
+          inFlight = false
+          if (again) {
+            again = false
+            blame()
           }
         })
     }

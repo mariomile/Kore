@@ -3,6 +3,7 @@ import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { NoteBlame } from '@kore/core'
 import '@/test-utils/locator'
+import { LINE_AUTHORS_READY } from './line-authors-plugin'
 import { LineAuthorShading } from './line-author-shading'
 import { NoteEditor } from './note-editor'
 
@@ -54,6 +55,29 @@ describe('LineAuthorShading', () => {
     await expect.element(agentLine).toHaveAttribute('data-line-author', 'agent')
     expect(document.querySelectorAll('.ProseMirror .kore-line-author')).toHaveLength(1)
     expect(gitBlame).toHaveBeenCalledWith('notes/plan.md', HEADER + BODY, 3)
+  })
+
+  it('keeps one blame in flight and folds requests made meanwhile into one rerun', async () => {
+    let finish: (blame: NoteBlame) => void = () => {}
+    gitBlame.mockImplementationOnce(
+      async () =>
+        await new Promise<NoteBlame>((resolve) => {
+          finish = resolve
+        }),
+    )
+    gitBlame.mockResolvedValue(BLAME)
+    await renderNote(true)
+    await vi.waitFor(() => expect(gitBlame).toHaveBeenCalledTimes(1))
+
+    const editor = document.querySelector('.ProseMirror')
+    editor?.dispatchEvent(new Event(LINE_AUTHORS_READY))
+    editor?.dispatchEvent(new Event(LINE_AUTHORS_READY))
+    expect(gitBlame).toHaveBeenCalledTimes(1)
+
+    finish(BLAME)
+    await vi.waitFor(() => expect(gitBlame).toHaveBeenCalledTimes(2))
+    await expect.element(page.locate('.ProseMirror p.kore-line-author')).toBeInTheDocument()
+    expect(gitBlame).toHaveBeenCalledTimes(2)
   })
 
   it('runs no blame while the setting is off', async () => {

@@ -35,7 +35,7 @@ pub enum ActivityFileKind {
 }
 
 /// A `Key: value` line from the message's final paragraph.
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Trailer {
     pub key: String,
     pub value: String,

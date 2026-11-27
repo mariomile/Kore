@@ -63,9 +63,7 @@ export async function loadAttachmentIndex(generation?: number): Promise<void> {
 
 /** Record an attachment Kore just wrote, so a bare-name reference to it resolves at once. */
 export function noteAttachmentAdded(path: string): void {
-  if (activeIndex !== null && !activeIndex.paths.has(path)) {
-    setAttachmentIndex([...activeIndex.paths, path])
-  }
+  applyAttachmentChanges([{ path, kind: 'upsert' }])
 }
 
 /**
@@ -75,25 +73,26 @@ export function noteAttachmentAdded(path: string): void {
  * to the attachment folder and 404ed). Non-attachment paths are ignored.
  */
 export function applyAttachmentChanges(changes: readonly FileChange[]): void {
-  if (activeIndex === null) {
+  const index = activeIndex
+  if (index === null) {
     return
   }
-  const paths = new Set(activeIndex.paths)
-  let changed = false
-  for (const change of changes) {
-    if (!isAttachmentPath(change.path)) {
+  // Every note save reaches here too: stay allocation-free until an
+  // attachment actually joins or leaves the catalog.
+  let paths: Set<string> | null = null
+  for (const { path, kind } of changes) {
+    const current = paths ?? index.paths
+    if (!isAttachmentPath(path) || current.has(path) === (kind === 'upsert')) {
       continue
     }
-    if (change.kind === 'upsert' ? !paths.has(change.path) : paths.has(change.path)) {
-      if (change.kind === 'upsert') {
-        paths.add(change.path)
-      } else {
-        paths.delete(change.path)
-      }
-      changed = true
+    paths ??= new Set(index.paths)
+    if (kind === 'upsert') {
+      paths.add(path)
+    } else {
+      paths.delete(path)
     }
   }
-  if (changed) {
+  if (paths !== null) {
     setAttachmentIndex([...paths])
   }
 }

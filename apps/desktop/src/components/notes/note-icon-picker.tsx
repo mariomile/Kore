@@ -13,8 +13,8 @@ interface NoteIconPickerProps {
   /** What the trigger shows: the current icon, or an "Add icon" label. */
   children: ReactNode
   className?: string | undefined
-  /** A tooltip naming the control, for an icon-only trigger. */
-  hint?: string | undefined
+  /** Show {@link label} as a tooltip too, for an icon-only trigger. */
+  hinted?: boolean
   /** Which edge of the trigger the panel lines up with. */
   align?: 'start' | 'end'
 }
@@ -30,7 +30,7 @@ export function NoteIconPicker({
   label,
   children,
   className,
-  hint,
+  hinted = false,
   align = 'start',
 }: NoteIconPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
@@ -42,7 +42,7 @@ export function NoteIconPicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <HintedTrigger hint={hint}>
+      <HintedTrigger hint={hinted ? label : undefined}>
         <PopoverTrigger
           aria-label={label}
           className={cn('rounded-lg transition-colors hover:bg-surface-hover', className)}

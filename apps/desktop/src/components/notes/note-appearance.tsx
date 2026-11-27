@@ -105,12 +105,13 @@ export function NoteAppearance({
   // note is hovered; focus reveals them for keyboard users, and an open
   // picker keeps them up. On a cover they sit in a frosted pill opposite the
   // breadcrumb's; with no breadcrumb they float in the page's top inset.
+  const actionClass = cn(ADD_ACTION_CLASS, coverUrl !== null && 'size-6')
   const addActions =
     addIcon || addCover ? (
       <div
         className={cn(
           'pointer-events-none absolute inset-x-0 flex justify-end',
-          coverUrl !== null ? 'top-3' : hasBreadcrumb ? '-top-1' : 'bottom-full mb-2',
+          coverUrl !== null ? 'top-3.5' : hasBreadcrumb ? '-top-1' : 'bottom-full mb-2',
           gutterClassName,
         )}
       >
@@ -125,9 +126,9 @@ export function NoteAppearance({
               value={null}
               onChange={onIconChange}
               label="Add icon"
-              hint="Add icon"
+              hinted
               align="end"
-              className={ADD_ACTION_CLASS}
+              className={actionClass}
             >
               <Smile aria-hidden className="size-4" />
             </NoteIconPicker>
@@ -137,9 +138,9 @@ export function NoteAppearance({
               onChange={coverEdit.onChange}
               upload={coverEdit.upload}
               label="Add cover"
-              hint="Add cover"
+              hinted
               align="end"
-              className={ADD_ACTION_CLASS}
+              className={actionClass}
             >
               <Image aria-hidden className="size-4" />
             </NoteCoverPicker>

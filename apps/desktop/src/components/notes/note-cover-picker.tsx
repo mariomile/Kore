@@ -46,50 +46,32 @@ export function dragHasFiles(event: DragEvent): boolean {
   return event.dataTransfer.types.includes('Files')
 }
 
-interface NoteCoverPickerProps {
-  onChange: (cover: string) => void
+interface NoteCoverPanelProps {
+  /** A picked, uploaded, or linked cover, as the `cover:` value. */
+  onPick: (cover: string) => void
   upload: CoverUpload
-  /** Accessible name of the trigger. */
-  label: string
-  /** What the trigger shows: an "Add cover" label or "Change". */
-  children: ReactNode
-  className?: string | undefined
-  /** A tooltip naming the control, for an icon-only trigger. */
-  hint?: string | undefined
-  /** Which edge of the trigger the panel lines up with. */
-  align?: 'start' | 'end'
+  /**
+   * Sized for a finger (44pt controls) and without the drop hint, since
+   * nothing can be dropped on a phone.
+   */
+  touch?: boolean
 }
 
 /**
- * The note header's cover control: `children` as the trigger, opening a
- * panel to upload an image (copied into the vault), paste an https link, or
- * drop an image. The choice lands through `onChange`, which writes the
- * note's `cover:` frontmatter.
+ * The body of the cover chooser, shared by the Mac's popover and the
+ * iPhone's sheet: upload an image (copied into the vault), paste an https
+ * link, or drop an image.
  */
-export function NoteCoverPicker({
-  onChange,
+export function NoteCoverPanel({
+  onPick,
   upload,
-  label,
-  children,
-  className,
-  hint,
-  align = 'start',
-}: NoteCoverPickerProps): ReactElement {
-  const [open, setOpen] = useState(false)
+  touch = false,
+}: NoteCoverPanelProps): ReactElement {
   const [link, setLink] = useState('')
   const [linkInvalid, setLinkInvalid] = useState(false)
   const [busy, setBusy] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
-
-  const changeOpen = (next: boolean): void => {
-    setOpen(next)
-    if (!next) {
-      setLink('')
-      setLinkInvalid(false)
-      setDragOver(false)
-    }
-  }
 
   const uploadFile = async (file: File | null): Promise<void> => {
     if (file === null || busy) {
@@ -99,8 +81,7 @@ export function NoteCoverPicker({
     try {
       const path = await upload(file)
       if (path !== null) {
-        onChange(path)
-        changeOpen(false)
+        onPick(path)
       }
     } finally {
       setBusy(false)
@@ -113,8 +94,7 @@ export function NoteCoverPicker({
       setLinkInvalid(true)
       return
     }
-    onChange(value)
-    changeOpen(false)
+    onPick(value)
   }
 
   const onDrop = (event: DragEvent): void => {
@@ -127,79 +107,129 @@ export function NoteCoverPicker({
   }
 
   return (
-    <Popover open={open} onOpenChange={changeOpen}>
-      <HintedTrigger hint={hint}>
+    <>
+      <div
+        data-testid="cover-drop-zone"
+        onDragOver={(event) => {
+          if (!touch && dragHasFiles(event)) {
+            event.preventDefault()
+            setDragOver(true)
+          }
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={touch ? undefined : onDrop}
+        className={cn(
+          'flex flex-col items-center gap-2 rounded-lg border border-dashed border-input px-3 py-4 text-center transition-colors',
+          dragOver && 'border-border-focus bg-surface-hover',
+        )}
+      >
+        <Button
+          variant="outline"
+          size={touch ? 'lg' : 'sm'}
+          className={cn(touch && 'h-11 px-4 text-base')}
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+        >
+          <CloudUpload aria-hidden />
+          {busy ? 'Uploading…' : 'Upload image'}
+        </Button>
+        {touch ? null : <span className="text-xs text-text-muted">or drop an image here</span>}
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          aria-label="Cover image file"
+          className="hidden"
+          onChange={(event) => {
+            const file = firstImageFile(event.currentTarget.files)
+            event.currentTarget.value = ''
+            void uploadFile(file)
+          }}
+        />
+      </div>
+      <form
+        className="flex flex-col gap-1"
+        onSubmit={(event) => {
+          event.preventDefault()
+          submitLink()
+        }}
+      >
+        <div className="flex gap-1.5">
+          <Input
+            aria-label="Cover image link"
+            placeholder="Paste an image link…"
+            value={link}
+            className={cn(touch && 'h-11 text-base')}
+            aria-invalid={linkInvalid || undefined}
+            onChange={(event) => {
+              setLink(event.target.value)
+              setLinkInvalid(false)
+            }}
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            className={cn(touch && 'h-11 px-4 text-base')}
+            disabled={link.trim() === ''}
+          >
+            Use link
+          </Button>
+        </div>
+        {linkInvalid ? (
+          <span role="alert" className="text-xs text-destructive">
+            Use an https link to an image.
+          </span>
+        ) : null}
+      </form>
+    </>
+  )
+}
+
+interface NoteCoverPickerProps {
+  onChange: (cover: string) => void
+  upload: CoverUpload
+  /** Accessible name of the trigger. */
+  label: string
+  /** What the trigger shows: an "Add cover" label or "Change". */
+  children: ReactNode
+  className?: string | undefined
+  /** Show {@link label} as a tooltip too, for an icon-only trigger. */
+  hinted?: boolean
+  /** Which edge of the trigger the panel lines up with. */
+  align?: 'start' | 'end'
+}
+
+/**
+ * The note header's cover control: `children` as the trigger, opening
+ * {@link NoteCoverPanel}. The choice lands through `onChange`, which writes
+ * the note's `cover:` frontmatter. The panel mounts per opening, so a closed
+ * picker forgets a half-typed link.
+ */
+export function NoteCoverPicker({
+  onChange,
+  upload,
+  label,
+  children,
+  className,
+  hinted = false,
+  align = 'start',
+}: NoteCoverPickerProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <HintedTrigger hint={hinted ? label : undefined}>
         <PopoverTrigger aria-label={label} className={className}>
           {children}
         </PopoverTrigger>
       </HintedTrigger>
       <PopoverContent align={align} className="w-80 gap-3">
-        <div
-          data-testid="cover-drop-zone"
-          onDragOver={(event) => {
-            if (dragHasFiles(event)) {
-              event.preventDefault()
-              setDragOver(true)
-            }
+        <NoteCoverPanel
+          upload={upload}
+          onPick={(cover) => {
+            onChange(cover)
+            setOpen(false)
           }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          className={cn(
-            'flex flex-col items-center gap-2 rounded-lg border border-dashed border-input px-3 py-4 text-center transition-colors',
-            dragOver && 'border-border-focus bg-surface-hover',
-          )}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            <CloudUpload aria-hidden />
-            {busy ? 'Uploading…' : 'Upload image'}
-          </Button>
-          <span className="text-xs text-text-muted">or drop an image here</span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            aria-label="Cover image file"
-            className="hidden"
-            onChange={(event) => {
-              const file = firstImageFile(event.currentTarget.files)
-              event.currentTarget.value = ''
-              void uploadFile(file)
-            }}
-          />
-        </div>
-        <form
-          className="flex flex-col gap-1"
-          onSubmit={(event) => {
-            event.preventDefault()
-            submitLink()
-          }}
-        >
-          <div className="flex gap-1.5">
-            <Input
-              aria-label="Cover image link"
-              placeholder="Paste an image link…"
-              value={link}
-              aria-invalid={linkInvalid || undefined}
-              onChange={(event) => {
-                setLink(event.target.value)
-                setLinkInvalid(false)
-              }}
-            />
-            <Button type="submit" variant="secondary" disabled={link.trim() === ''}>
-              Use link
-            </Button>
-          </div>
-          {linkInvalid ? (
-            <span role="alert" className="text-xs text-destructive">
-              Use an https link to an image.
-            </span>
-          ) : null}
-        </form>
+        />
       </PopoverContent>
     </Popover>
   )

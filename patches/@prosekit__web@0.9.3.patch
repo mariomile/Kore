@@ -1,0 +1,45 @@
+diff --git a/dist/index.js b/dist/index.js
+index 730a53508988f9a119f07cfbddcaa4168f5743b8..b49c419d737062edab2a144564d01801230ac6a7 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -4,17 +4,37 @@
+ *
+ * @internal
+ */
++/**
++* Kore patch: extensions queued in the same task are added together, through
++* one `editor.batch`, so an editor mounting many hook extensions reconfigures
++* (and redraws its node views) once instead of once per extension.
++*/
++const pendingAdds = /* @__PURE__ */ new WeakMap();
+ function queueExtension(editor, extension) {
+ 	let canceled = false;
+ 	let dispose;
+-	const timeout = setTimeout(() => {
++	const add = () => {
+ 		if (canceled) return;
+ 		dispose?.();
+ 		dispose = editor.use(extension);
+-	});
++	};
++	let queue = pendingAdds.get(editor);
++	if (!queue) {
++		const adds = [];
++		queue = adds;
++		pendingAdds.set(editor, adds);
++		setTimeout(() => {
++			pendingAdds.delete(editor);
++			const run = () => {
++				for (const queued of adds) queued();
++			};
++			if (editor.batch) editor.batch(run);
++			else run();
++		});
++	}
++	queue.push(add);
+ 	return () => {
+ 		canceled = true;
+-		clearTimeout(timeout);
+ 		setTimeout(() => {
+ 			dispose?.();
+ 			dispose = void 0;

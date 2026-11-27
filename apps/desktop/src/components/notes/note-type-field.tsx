@@ -46,11 +46,11 @@ export function NoteTypeField({
   const mobile = isMobileSurface()
 
   return (
-    <li className={cn('flex items-center gap-2', mobile ? 'min-h-10' : 'min-h-8')}>
+    <li className="flex items-start gap-2 py-0.5">
       <span
         className={cn(
           'flex shrink-0 items-center gap-2 truncate px-1.5 text-text-secondary',
-          mobile ? 'text-[14px]' : 'text-[13px]',
+          mobile ? 'min-h-9 text-[14px]' : 'min-h-7 text-[13px]',
           labelClassName,
         )}
       >
@@ -60,7 +60,12 @@ export function NoteTypeField({
         />
         <span className="truncate">Tags</span>
       </span>
-      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 px-1.5 py-0.5">
+      <ul
+        className={cn(
+          'flex min-w-0 flex-1 flex-wrap content-center items-center gap-1.5 px-1.5',
+          mobile ? 'min-h-9' : 'min-h-7',
+        )}
+      >
         {tags.map((entry) => (
           <li key={entry.tagKey}>
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">

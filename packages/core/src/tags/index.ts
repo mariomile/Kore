@@ -151,3 +151,4 @@ export {
   type DefaultVaultObject,
 } from './default-objects'
 export { typeHomeFolder, isFolderNoteHome, typedNoteFolder } from './type-folder'
+export { isPanelHiddenLooseKey } from './note-fields'

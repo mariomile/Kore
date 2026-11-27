@@ -38,12 +38,12 @@ function dateValue(value: string): CollectionValue {
   return { value, valueType: 'string', valueNumber: null }
 }
 
-async function mount(value: CollectionValue | undefined) {
+async function mount(value: CollectionValue | undefined, property: TagProperty = due) {
   const onCommit = vi.fn()
   const onClose = vi.fn()
   await render(
     <MobileCellEditorDrawer
-      target={{ entryPath: 'notes/prep.md', entryTitle: 'Prep', property: due, value }}
+      target={{ entryPath: 'notes/prep.md', entryTitle: 'Prep', property, value }}
       onClose={onClose}
       onCommit={onCommit}
       onOpenRelation={() => {}}
@@ -93,6 +93,28 @@ describe('MobileCellEditorDrawer date property', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Clear date' }))
     expect(onCommit).toHaveBeenCalledWith('notes/prep.md', 'due', undefined)
+    expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('MobileCellEditorDrawer text property', () => {
+  const tldr: TagProperty = { name: 'tldr', key: 'tldr', type: 'text' }
+  const long =
+    'Venerdì 27 nov, 14:30-15:30 ora di Roma, Google Meet. Walkthrough di 40-60 minuti, ' +
+    'senza slide. Storia principale e seconda storia, poi il ponte con il team.'
+
+  it('edits long text in a field that grows to show all of it', async () => {
+    const { onCommit, onClose } = await mount(dateValue(long), tldr)
+
+    const field = page.getByRole('textbox', { name: 'tldr' })
+    await expect.element(field).toHaveValue(long)
+    const element = field.element() as HTMLTextAreaElement
+    expect(element.tagName).toBe('TEXTAREA')
+    expect(element.scrollHeight).toBeLessThanOrEqual(element.clientHeight + 1)
+
+    await field.fill('Short\nnote')
+    await userEvent.keyboard('{Enter}')
+    expect(onCommit).toHaveBeenCalledWith('notes/prep.md', 'tldr', 'Short note')
     expect(onClose).toHaveBeenCalled()
   })
 })

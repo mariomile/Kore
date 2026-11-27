@@ -436,13 +436,14 @@ export function CollectionDefinitionDialog({
               {defaultType === null ? null : (
                 <ul className="mt-2 space-y-0.5">
                   {defaultType.properties.filter(isWritableDefault).map((property) => (
-                    <li key={property.key} className="flex min-h-7 items-center gap-2">
-                      <span className="w-28 shrink-0 truncate text-[13px] text-text-muted">
+                    <li key={property.key} className="flex min-h-7 items-start gap-2">
+                      <span className="w-28 shrink-0 truncate py-1 text-[13px] leading-5 text-text-muted">
                         {property.name}
                       </span>
                       <PropertyValueEditor
                         property={property}
                         value={defaultValue(defaultProperties[property.key])}
+                        variant="panel"
                         onCommit={(value) => changeDefault(property, value)}
                       >
                         <PropertyFieldValue

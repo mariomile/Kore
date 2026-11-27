@@ -1,6 +1,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { IconPickerPanel } from '@/components/icon-picker-panel'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { HintedTrigger } from './hinted-trigger'
 import { cn } from '@/lib/utils'
 
 interface NoteIconPickerProps {
@@ -12,6 +13,10 @@ interface NoteIconPickerProps {
   /** What the trigger shows: the current icon, or an "Add icon" label. */
   children: ReactNode
   className?: string | undefined
+  /** A tooltip naming the control, for an icon-only trigger. */
+  hint?: string | undefined
+  /** Which edge of the trigger the panel lines up with. */
+  align?: 'start' | 'end'
 }
 
 /**
@@ -25,6 +30,8 @@ export function NoteIconPicker({
   label,
   children,
   className,
+  hint,
+  align = 'start',
 }: NoteIconPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
 
@@ -35,13 +42,15 @@ export function NoteIconPicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        aria-label={label}
-        className={cn('rounded-lg transition-colors hover:bg-surface-hover', className)}
-      >
-        {children}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 gap-2">
+      <HintedTrigger hint={hint}>
+        <PopoverTrigger
+          aria-label={label}
+          className={cn('rounded-lg transition-colors hover:bg-surface-hover', className)}
+        >
+          {children}
+        </PopoverTrigger>
+      </HintedTrigger>
+      <PopoverContent align={align} className="w-72 gap-2">
         <IconPickerPanel value={value} onPick={pick} />
       </PopoverContent>
     </Popover>

@@ -4,6 +4,7 @@ import { CloudUpload } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { HintedTrigger } from './hinted-trigger'
 import { cn } from '@/lib/utils'
 
 /**
@@ -53,6 +54,10 @@ interface NoteCoverPickerProps {
   /** What the trigger shows: an "Add cover" label or "Change". */
   children: ReactNode
   className?: string | undefined
+  /** A tooltip naming the control, for an icon-only trigger. */
+  hint?: string | undefined
+  /** Which edge of the trigger the panel lines up with. */
+  align?: 'start' | 'end'
 }
 
 /**
@@ -67,6 +72,8 @@ export function NoteCoverPicker({
   label,
   children,
   className,
+  hint,
+  align = 'start',
 }: NoteCoverPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [link, setLink] = useState('')
@@ -121,10 +128,12 @@ export function NoteCoverPicker({
 
   return (
     <Popover open={open} onOpenChange={changeOpen}>
-      <PopoverTrigger aria-label={label} className={className}>
-        {children}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 gap-3">
+      <HintedTrigger hint={hint}>
+        <PopoverTrigger aria-label={label} className={className}>
+          {children}
+        </PopoverTrigger>
+      </HintedTrigger>
+      <PopoverContent align={align} className="w-80 gap-3">
         <div
           data-testid="cover-drop-zone"
           onDragOver={(event) => {

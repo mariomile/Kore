@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-27 — 0.157.1
+
+- Shipped #724: long notes no longer restyle the whole document on every keystroke.
+
 ## 2026-11-27 — 0.157.0
 
 - Shipped #704: Obsidian .base files as folder cards that open as databases with the type-page view bar on Mac and iPhone; view changes written back to the .base file. #713: icon and cover buttons at the end of the breadcrumb on Mac, icon and cover from the ⋯ menu on iPhone. #720: long text properties wrap and edit in place, empty fields fold behind "N empty", loose up: link hidden. #714: iPhone share sheet follows the monochrome design.

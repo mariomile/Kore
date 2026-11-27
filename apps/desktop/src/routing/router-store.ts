@@ -237,7 +237,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     return disconnect
   }
 
-  return {
+  const benchStore = {
     subscribe(listener) {
       listeners.add(listener)
       return () => {
@@ -267,4 +267,6 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     savedScroll: () => scrollById.get(current().id) ?? null,
     connect,
   }
+  ;((window as unknown as { __routers: unknown[] }).__routers ??= []).push(benchStore)
+  return benchStore
 }

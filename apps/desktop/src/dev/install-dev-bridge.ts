@@ -34,20 +34,43 @@ async function install(platform: AppPlatform): Promise<void> {
   const seed =
     visual !== null
       ? visual.files
+      : seedName === 'json'
+        ? ((await (await fetch('/vault.json')).json()) as Record<string, string>)
       : seedName === 'large'
         ? (await import('@/dev/seed-large-graph')).seedLargeGraphFiles()
         : seedName === 'obsidian'
-          ? (await import('@/dev/seed-obsidian-vault')).seedObsidianVaultFiles()
+          ? await (async () => {
+              const mod = await import('@/dev/seed-obsidian-vault')
+              const scale = Number(new URLSearchParams(window.location.search).get('scale') ?? '1')
+              const base = mod.OBSIDIAN_VAULT_DEFAULTS
+              return mod.seedObsidianVaultFiles(
+                Object.fromEntries(
+                  Object.entries(base).map(([key, value]) => [key, Math.round(value * scale)]),
+                ) as typeof base,
+              )
+            })()
           : seedGraphFiles()
   const files = createDevFileStore(seed)
-  setBridge(
-    createDevBridge({
-      platform,
-      files,
-      index,
-      ...(visual !== null ? { assets: visual.assets } : {}),
-    }),
-  )
+  const inner = createDevBridge({
+    platform,
+    files,
+    index,
+    ...(visual !== null ? { assets: visual.assets } : {}),
+  })
+  const ipcLog: unknown[] = []
+  Object.assign(window, { __ipc: ipcLog })
+  setBridge({
+    ...inner,
+    invoke: async (command, args) => {
+      const t0 = performance.now()
+      const result = await inner.invoke(command, args)
+      const ms = performance.now() - t0
+      const sql = command === 'db_query' ? String((args as { sql?: string }).sql ?? '').slice(0, 300) : ''
+      const rows = Array.isArray(result) ? result.length : -1
+      ipcLog.push({ t0, ms, command, sql, rows, stack: rows > 2000 || ms > 50 ? new Error().stack?.split('\n').slice(2, 14).join('|') : '' })
+      return result
+    },
+  })
   // No watcher exists in plain-browser dev (the Rust watcher is desktop's
   // change source), so let the write commands echo their own changes —
   // exactly the mobile arrangement — or edits never reindex until reload.

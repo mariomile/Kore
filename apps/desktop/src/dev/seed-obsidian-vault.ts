@@ -449,6 +449,7 @@ export function seedObsidianVaultFiles(
       ...body(1 + Math.floor(random() * 4), 0.35),
     ].join('\n')
   }
+  files['.obsidian/daily-notes.json'] = JSON.stringify({ format: 'DD-MM-YYYY', folder: 'Journal/Daily' })
   files['.obsidian/app.json'] = JSON.stringify({ attachmentFolderPath: 'Resources/_attachments' })
   // Plugin syntax the compatibility report lists (added last, so the random
   // stream above, and every byte it produced, is unchanged).

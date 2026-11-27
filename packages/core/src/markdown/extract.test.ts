@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { frontmatterKeyAt, hasAuthoredTitle, isTagName, parseNote } from './extract'
+import {
+  authoredTitleOfSource,
+  frontmatterKeyAt,
+  hasAuthoredTitle,
+  isTagName,
+  parseNote,
+} from './extract'
 
 function parse(source: string, path = 'notes/test.md') {
   return parseNote({ path, source })
@@ -537,5 +543,60 @@ describe('parseNote — meowdown grammar recovery & new inline nodes', () => {
   it('still extracts #tags next to the new inline nodes', () => {
     const note = parse('==hi== #alpha and google.com #beta')
     expect(note.tags).toEqual(['alpha', 'beta'])
+  })
+})
+
+describe('authoredTitleOfSource', () => {
+  /** What a full parse says, the answer the prefix parse must always match. */
+  function fullParseTitle(source: string): string | null {
+    const parsed = parseNote({ path: 'notes/test.md', source })
+    return hasAuthoredTitle(parsed) ? parsed.title : null
+  }
+
+  const long = Array.from({ length: 200 }, (_, i) => `Paragraph ${i} with #tag and [[link]].`).join(
+    '\n\n',
+  )
+  const cases: Record<string, string> = {
+    'empty note': '',
+    'body only': 'just text\n\nmore text',
+    'leading H1': `# Title\n\n${long}`,
+    'H1 after prose': `intro\n\n# Later title\n\n${long}`,
+    'H1 at the very end': `${long}\n\n# Last`,
+    'H2 only': `## Section\n\n${long}`,
+    'H2 before H1': `## Section\n\ntext\n\n# Title`,
+    'empty H1 then a real one': `#\n\n# Real`,
+    'frontmatter title wins': `---\ntitle: From yaml\n---\n# Heading\n`,
+    'blank frontmatter title falls to H1': `---\ntitle: "  "\n---\n# Heading\n`,
+    'frontmatter title, no headings': `---\ntitle: Only yaml\n---\n${long}`,
+    'frontmatter without title': `---\ntags: [a]\n---\n${long}`,
+    'unterminated frontmatter': `---\ntitle: x\n# Heading`,
+    'setext H1': `Setext title\n===\n\n${long}`,
+    'setext H2 is not a title': `Setext\n---\n\n${long}`,
+    'hash in a fenced code block': '```\n# not a heading\n```\n\n# Real title',
+    'hash in an unclosed fence': '```\n# not a heading\n\ntext',
+    'hash in an indented code block': '    # code\n\ntext',
+    'hash in an HTML comment': '<!--\n# hidden\n-->\n\n# Shown',
+    'H1 in a blockquote': '> # Quoted title\n\ntext',
+    'H1 in a list item': '- # Listed title\n- item',
+    'H1 in an ordered list item': '1) # Numbered title',
+    'tag line, not a heading': '#tag\n\n#another\n\ntext',
+    'many candidates before the title': `${'```\n# a\n```\n\n'.repeat(5)}# Finally`,
+    'CRLF line endings': '# Windows title\r\n\r\ntext\r\n',
+    'wiki link in the title': '# Meeting with [[Ada Lovelace|Ada]]\n\ntext',
+  }
+
+  for (const [name, source] of Object.entries(cases)) {
+    it(`matches a full parse: ${name}`, () => {
+      expect(authoredTitleOfSource(source)).toBe(fullParseTitle(source))
+    })
+  }
+
+  it('reads titles from the cases that author one', () => {
+    expect(authoredTitleOfSource(cases['leading H1']!)).toBe('Title')
+    expect(authoredTitleOfSource(cases['frontmatter title wins']!)).toBe('From yaml')
+    expect(authoredTitleOfSource(cases['setext H1']!)).toBe('Setext title')
+    expect(authoredTitleOfSource(cases['hash in a fenced code block']!)).toBe('Real title')
+    expect(authoredTitleOfSource(cases['many candidates before the title']!)).toBe('Finally')
+    expect(authoredTitleOfSource(cases['body only']!)).toBeNull()
   })
 })

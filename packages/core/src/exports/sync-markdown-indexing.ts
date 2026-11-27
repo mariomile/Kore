@@ -235,6 +235,7 @@ export {
   isTagName,
   inlineTagNames,
   hasAuthoredTitle,
+  authoredTitleOfSource,
   normalizeWikiTarget,
   slugForTitle,
   type ConflictResolution,

@@ -13,11 +13,12 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import {
-  buildPlainText,
   plainTextOfRange,
+  plainTextSpans,
   unescapeMarkdownText,
   WORD_BREAK,
   type Cut,
+  type PlainTextSpans,
 } from './plain-text'
 import { isPreviewNoiseNode, isPreviewWordBreak, previewSpans } from './preview-noise'
 import { buildPreviewText } from './preview-text'
@@ -70,20 +71,19 @@ export function isTagName(value: string): boolean {
  */
 function plainTextWithEmbeds(
   body: string,
-  cuts: readonly Cut[],
-  literalRanges: Span[],
+  spans: PlainTextSpans,
   embeds: readonly (Span & { text: string })[],
 ): string {
   if (embeds.length === 0) {
-    return buildPlainText(body, cuts, literalRanges)
+    return plainTextOfRange(body, 0, body.length, spans)
   }
   const parts: string[] = []
   let pos = 0
   for (const embed of embeds) {
-    parts.push(plainTextOfRange(body, pos, embed.from, cuts, literalRanges), embed.text)
+    parts.push(plainTextOfRange(body, pos, embed.from, spans), embed.text)
     pos = embed.to
   }
-  parts.push(plainTextOfRange(body, pos, body.length, cuts, literalRanges))
+  parts.push(plainTextOfRange(body, pos, body.length, spans))
   return parts
     .filter((part) => part !== '')
     .join(' ')
@@ -217,8 +217,7 @@ function readTask(
   body: string,
   taskNode: SyntaxNode,
   bodyOffset: number,
-  cuts: readonly Cut[],
-  literalRanges: Span[],
+  spans: PlainTextSpans,
   wikiLinks: WikiLink[],
   tagExcluded: Span[],
 ): Omit<ParsedTask, 'section'> | null {
@@ -244,8 +243,8 @@ function readTask(
   }
   return {
     tags,
-    text: plainTextOfRange(body, from, lineEnd, cuts, literalRanges),
-    breadcrumbs: taskBreadcrumbs(body, taskNode, cuts, literalRanges),
+    text: plainTextOfRange(body, from, lineEnd, spans),
+    breadcrumbs: taskBreadcrumbs(body, taskNode, spans),
     raw: body.slice(from, lineEnd),
     checked: marker.checked,
     markerOffset,
@@ -609,19 +608,12 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   // Obsidian `^id` anchors (Plan 33 C3) are addresses, not words: no task
   // title, search text or preview carries one.
   cuts.push(...blockIdSpans(body))
+  const plainSpans = plainTextSpans(cuts, literalPlainText)
 
   const tasks: ParsedTask[] = []
   const sections = headings.filter((heading) => heading.topLevel)
   for (const taskNode of taskNodes) {
-    const task = readTask(
-      body,
-      taskNode,
-      bodyOffset,
-      cuts,
-      literalPlainText,
-      wikiLinks,
-      tagExcluded,
-    )
+    const task = readTask(body, taskNode, bodyOffset, plainSpans, wikiLinks, tagExcluded)
     if (task) {
       tasks.push({ ...task, section: taskSection(sections, task.markerOffset) })
     }
@@ -640,7 +632,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     headings,
     assets,
     tasks,
-    text: plainTextWithEmbeds(body, cuts, literalPlainText, embedSnapshots),
+    text: plainTextWithEmbeds(body, plainSpans, embedSnapshots),
     previewText: buildPreviewText(body, {
       noise: [...cuts, ...previewNoise],
       headings: previewHeadings,

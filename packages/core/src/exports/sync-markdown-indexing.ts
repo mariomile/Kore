@@ -418,6 +418,7 @@ export {
   subscribeIcloudConflicts,
   subscribeIcloudWatchFailed,
   applyIndexChanges,
+  type IndexApplyResult,
   hashContent,
   buildIndexedNote,
   CLAIM_TIER,

@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-27 — 0.158.0
+
+- Shipped #724: long notes no longer restyle the whole document on every keystroke. #727: tag tree and lists reload on save only when tags changed; properties panel measures at most once per frame. #730: editor sets up in one pass, long notes open faster. #722: folder files in a compact Files section above notes. #723: Hide in notes per property, saved in the vault. #731: sync pauses before a merge or push that would delete 100+ files or a quarter of the vault, with "Delete files anyway" in Settings. #732: saving notes with large tables no longer freezes the app. #721: folder page title as a one-line clickable breadcrumb. #728: attachments added after the vault opens resolve without a restart. #734: Memory opens on Episodes (one note per agent session, changed lines, Undo on Mac; iPhone in Settings → Memory), needs cyber-brain kit 0.3. #733: switching back to a recent tab is instant and saving no longer re-parses the whole note.
+
 ## 2026-11-27 — 0.157.0
 
 - Shipped #704: Obsidian .base files as folder cards that open as databases with the type-page view bar on Mac and iPhone; view changes written back to the .base file. #713: icon and cover buttons at the end of the breadcrumb on Mac, icon and cover from the ⋯ menu on iPhone. #720: long text properties wrap and edit in place, empty fields fold behind "N empty", loose up: link hidden. #714: iPhone share sheet follows the monochrome design.

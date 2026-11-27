@@ -1,4 +1,5 @@
-import { listAttachments, listFiles, readAsset } from '../graph/commands'
+import { listAttachments, listFiles, readAsset, writeAsset } from '../graph/commands'
+import { bytesToBase64 } from '../lib/base64'
 import { db } from '../indexing/db'
 import { decodeStoredList } from '../tags'
 import { parseBaseDate } from './dates'
@@ -97,6 +98,31 @@ export async function readBaseFile(path: string, generation: number): Promise<st
   const base64 = await readAsset(path, generation)
   const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
   return new TextDecoder().decode(bytes)
+}
+
+/**
+ * Atomically replace a `.base` file with `text` (the view bar's edits,
+ * made by `base-file-edit.ts`, which keeps everything else in the file).
+ */
+export async function writeBaseFile(path: string, text: string, generation: number): Promise<void> {
+  await writeAsset(path, bytesToBase64(new TextEncoder().encode(text)), generation)
+}
+
+/**
+ * Read the `.base` at `path`, apply `change` to its text, and write the
+ * result when it differs. Returns the file's text after the change.
+ */
+export async function updateBaseFile(
+  path: string,
+  generation: number,
+  change: (text: string) => string,
+): Promise<string> {
+  const before = await readBaseFile(path, generation)
+  const after = change(before)
+  if (after !== before) {
+    await writeBaseFile(path, after, generation)
+  }
+  return after
 }
 
 /** Every `.base` file in the vault, by path. */

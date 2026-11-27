@@ -1,12 +1,11 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import { canvasDisplayName } from '@kore/core'
 import { LayoutTemplate } from '@/components/icons'
 import { PageLoading } from '@/components/page-loading'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/ui/page-header'
 import { isMobileSurface } from '@/lib/platform-surface'
-import { MobileScreenHeader } from '@/mobile/screen-header'
-import { useBarHeightVar } from '@/mobile/use-bar-height'
+import { MobilePushedFileFrame } from '@/mobile/pushed-file-frame'
 import { useRouter } from '@/routing/router'
 import { CanvasBoard } from './canvas-board'
 import { useCanvasDocument, useCanvasEditor, useCanvasFiles } from './use-canvas'
@@ -46,35 +45,11 @@ function CanvasFileScreen({ path }: { path: string }): ReactElement {
       <CanvasBoard canvas={state.canvas} label={name} editor={editor} />
     )
   return isMobileSurface() ? (
-    <MobileCanvasFrame title={name}>{body}</MobileCanvasFrame>
+    <MobilePushedFileFrame title={name} fallback={{ kind: 'canvas', path: null }}>
+      {body}
+    </MobilePushedFileFrame>
   ) : (
     <div className="flex h-full min-h-0 flex-col">{body}</div>
-  )
-}
-
-function MobileCanvasFrame({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}): ReactElement {
-  const { navigate, back, canBack } = useRouter()
-  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
-  return (
-    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
-      <MobileScreenHeader
-        ref={barRef}
-        title={title}
-        onBack={() => (canBack ? back() : navigate({ kind: 'canvas', path: null }))}
-      />
-      <main
-        className="relative flex min-h-0 flex-1 flex-col"
-        style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
-      >
-        {children}
-      </main>
-    </div>
   )
 }
 

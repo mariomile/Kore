@@ -1,6 +1,8 @@
 import { memo, useEffect, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  baseDisplayName,
+  canvasDisplayName,
   htmlDisplayName,
   htmlPageUrl,
   looseFiles,
@@ -13,6 +15,7 @@ import {
   Archive,
   Globe,
   Image,
+  LayoutTemplate,
   Microphone,
   Note,
   Paperclip,
@@ -49,7 +52,41 @@ const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   audio: Microphone,
   video: Play,
   archive: Archive,
+  base: TableView,
+  canvas: LayoutTemplate,
   other: Paperclip,
+}
+
+/**
+ * The name a card leads with: a page's own title, a base or canvas by its
+ * name alone (its kind is in the line under it), any other file by its full
+ * file name.
+ */
+function cardName(file: LooseFile, pageTitle: string | null | undefined): string {
+  switch (file.kind) {
+    case 'html':
+      return pageTitle ?? htmlDisplayName(file.path)
+    case 'base':
+      return baseDisplayName(file.path)
+    case 'canvas':
+      return canvasDisplayName(file.path)
+    default:
+      return file.name
+  }
+}
+
+/** The kind a card names under its title. */
+function cardType(file: LooseFile): string {
+  switch (file.kind) {
+    case 'html':
+      return file.name
+    case 'base':
+      return 'Base'
+    case 'canvas':
+      return 'Canvas'
+    default:
+      return file.extension === '' ? 'File' : file.extension.toUpperCase()
+  }
 }
 
 /**
@@ -156,12 +193,10 @@ export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps):
   // the catalog listed it) falls back to the file's icon.
   const [failed, setFailed] = useState<string | null>(null)
   const pageTitle = useHtmlTitle(pageUrl, file.modifiedMs)
-  // A page leads with the title its reader sees; its file name moves under
-  // it. Any other file is its name, with its type under it.
-  const page = file.kind === 'html'
-  const name = page ? (pageTitle ?? htmlDisplayName(file.path)) : file.name
-  const type = file.extension === '' ? 'File' : file.extension.toUpperCase()
-  const meta = `${page ? file.name : type} · ${formatBytes(file.size)}`
+  // A page leads with the title its reader sees and a base or canvas with
+  // its name; what the file is goes under it.
+  const name = cardName(file, pageTitle)
+  const meta = `${cardType(file)} · ${formatBytes(file.size)}`
   const KindIcon = KIND_ICON[file.kind]
   const showPicture = picture !== undefined && failed !== picture
   return (

@@ -1,4 +1,8 @@
 export * from './base-file'
+export * from './base-file-edit'
+export * from './base-fields'
+export * from './base-database'
+export { filterToExpression } from './simple-filters'
 export * from './edit'
 export * from './embeds'
 export * from './new-note'

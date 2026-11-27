@@ -52,8 +52,11 @@ interface MobileViewOptionsProps {
   onOpenChange: (open: boolean) => void
   /** The saved view the changes land in, for the footer. */
   viewName: string
-  /** Where the view lives, for the footers: a type's saved view, or a note's own fence. */
-  scope?: 'savedView' | 'note'
+  /**
+   * Where the view lives, for the footers: a type's saved view, a note's own
+   * fence, or a `.base` file (fields included).
+   */
+  scope?: 'savedView' | 'note' | 'base'
   layout: MobileTypeView
   /** The full schema (hidden fields included: they still filter and sort). */
   type: TagType
@@ -225,7 +228,9 @@ function RootPage({
         footer={
           scope === 'note'
             ? 'Saved in this note, so the Mac shows the same view.'
-            : `Filter, sort and group are saved in “${viewName}”, on your Mac too.`
+            : scope === 'base'
+              ? `Saved in “${viewName}” in the base file, so your Mac and Obsidian show it too.`
+              : `Filter, sort and group are saved in “${viewName}”, on your Mac too.`
         }
       >
         <SettingsNavRow
@@ -248,7 +253,9 @@ function RootPage({
         ) : null}
       </SettingsGroup>
       {showFields || showFreeze ? (
-        <SettingsGroup footer={scope === 'note' ? null : 'Column layout is kept on this iPhone.'}>
+        <SettingsGroup
+          footer={scope === 'savedView' ? 'Column layout is kept on this iPhone.' : null}
+        >
           {showFields ? (
             <SettingsNavRow
               label="Fields"

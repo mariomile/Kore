@@ -336,6 +336,16 @@ function bigBoard(notes: readonly string[]): string {
   return JSON.stringify({ nodes, edges })
 }
 
+/** A base beside the project notes, so a folder page shows it as a card. */
+const APPLICATION_BOARD = [
+  'views:',
+  '  - type: table',
+  '    name: Board',
+  '    filters:',
+  '      and:',
+  '        - file.hasTag("brand")',
+].join('\n')
+
 /** Build the vault; needs a DOM (it paints its images on a canvas). */
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
@@ -345,6 +355,7 @@ export function seedVisualVault(): VisualVaultSeed {
   }
   assets.set('Maps/Studio map.canvas', btoa(STUDIO_MAP))
   assets.set('Maps/Launch flow.canvas', btoa(LAUNCH_FLOW))
+  assets.set('Projects/Application board.base', btoa(APPLICATION_BOARD))
   const files: Record<string, string> = {
     'notes/Kore brand directions.md': [
       '---',

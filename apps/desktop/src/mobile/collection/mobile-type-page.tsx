@@ -26,7 +26,7 @@ import {
   useCollectionViewSettings,
 } from '@/components/all-notes/use-collection-view-settings'
 import { LIVE_COLLECTION_VIEW_ID } from '@/components/all-notes/collection-view-model'
-import { ChevronDown, ChevronLeft, Search, Settings, Sliders } from '@/components/icons'
+import { ChevronLeft, Search, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { timelineFieldsOf } from '@/lib/tags/timeline-layout'
 import { TagIcon } from '@/components/tags/tag-icon'
@@ -37,7 +37,6 @@ import { useCollection } from '@/hooks/use-collection'
 import { useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
-import { cn } from '@/lib/utils'
 import { MobileBoard } from '@/mobile/collection/mobile-board'
 import { SearchInput } from '@/mobile/search-input'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
@@ -48,6 +47,7 @@ import { MobileCalendar } from './mobile-calendar'
 import { MobileTimeline } from './mobile-timeline'
 import { MobileCollectionTable } from './mobile-collection-table'
 import { MobileGallery } from './mobile-gallery'
+import { MobileViewBar } from './mobile-view-bar'
 import { MobileViewOptions, type ViewGrouping } from './mobile-view-options'
 import { MOBILE_VIEW_GLYPH, MOBILE_VIEW_LABEL, MobileViewsSheet } from './mobile-views-sheet'
 import { availableTypeViews, mobileTypeView, rowsMatchingTitle } from './mobile-type-view'
@@ -304,48 +304,14 @@ export function MobileTypePage({ tag }: MobileTypePageProps): ReactElement {
             </span>
           ) : null}
         </div>
-        <div className="flex items-center gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setChoosingView(true)
-            }}
-            aria-label={`View: ${activeTab?.name ?? MOBILE_VIEW_LABEL[view]}`}
-            aria-haspopup="dialog"
-            className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full bg-surface-hover pr-2.5 pl-3 text-[14px] font-medium text-text before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] active:bg-surface-active"
-          >
-            <ActiveViewGlyph aria-hidden className="size-4 shrink-0 text-text-muted" />
-            <span className="truncate">{activeTab?.name ?? MOBILE_VIEW_LABEL[view]}</span>
-            <ChevronDown aria-hidden className="size-3.5 shrink-0 text-text-muted" />
-          </button>
-          <div className="flex-1" />
-          <button
-            type="button"
-            onClick={() => {
-              setAdjustingView(true)
-            }}
-            aria-label={
-              collectionFilters.length > 0
-                ? `View options, ${collectionFilters.length} ${collectionFilters.length === 1 ? 'filter' : 'filters'}`
-                : 'View options'
-            }
-            aria-haspopup="dialog"
-            className={cn(
-              "relative flex h-9 shrink-0 items-center gap-1 rounded-full before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] transition-colors",
-              collectionFilters.length > 0 ? 'pr-3 pl-2.5' : 'w-9 justify-center',
-              lensActive
-                ? 'bg-accent-soft text-accent-soft-text'
-                : 'bg-surface-hover text-text-muted active:bg-surface-active',
-            )}
-          >
-            <Sliders aria-hidden className="size-[18px]" />
-            {collectionFilters.length > 0 ? (
-              <span className="text-[13px] font-semibold tabular-nums">
-                {collectionFilters.length}
-              </span>
-            ) : null}
-          </button>
-        </div>
+        <MobileViewBar
+          viewName={activeTab?.name ?? MOBILE_VIEW_LABEL[view]}
+          glyph={ActiveViewGlyph}
+          filterCount={collectionFilters.length}
+          lensActive={lensActive}
+          onChooseView={() => setChoosingView(true)}
+          onAdjustView={() => setAdjustingView(true)}
+        />
       </header>
 
       {rows === undefined || tagType === undefined || visibleTagType === null ? (

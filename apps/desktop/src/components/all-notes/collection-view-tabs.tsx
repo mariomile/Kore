@@ -56,6 +56,8 @@ interface CollectionViewTabsProps {
   calendarAvailable: boolean
   onSelect: (view: SavedCollectionView) => void
   onAdd: (view: CollectionPageView) => void
+  /** The layouts `+` offers; every page layout unless the source can't hold some (a base). */
+  addableViews?: readonly CollectionPageView[]
   onDelete: (id: string) => void
   /** A dragged tab landed on `targetId`'s slot. */
   onMove: (id: string, targetId: string) => void
@@ -100,6 +102,7 @@ export function CollectionViewTabs({
   calendarAvailable,
   onSelect,
   onAdd,
+  addableViews = ADDABLE_VIEWS,
   onDelete,
   onMove,
   onShift,
@@ -152,7 +155,7 @@ export function CollectionViewTabs({
           }
         />
         <DropdownMenuContent align="start" sideOffset={6} className="min-w-44">
-          {ADDABLE_VIEWS.map((pageView) => {
+          {addableViews.map((pageView) => {
             const Glyph = VIEW_GLYPH[pageView]
             const available = viewAvailable(pageView, boardAvailable, calendarAvailable)
             return (

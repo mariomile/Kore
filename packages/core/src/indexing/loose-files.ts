@@ -14,6 +14,8 @@ export type LooseFileKind =
   | 'audio'
   | 'video'
   | 'archive'
+  | 'base'
+  | 'canvas'
   | 'other'
 
 /** A file that lives in a folder on its own: no note embeds or links it. */
@@ -76,11 +78,14 @@ const KIND_BY_EXTENSION: Readonly<Record<string, LooseFileKind>> = {
   rar: 'archive',
   tar: 'archive',
   zip: 'archive',
+  base: 'base',
+  canvas: 'canvas',
 }
 
 /**
- * Formats that are Kore's own views of the vault (a canvas, a base), never
- * loose files: they open as screens of their own.
+ * Formats that are Kore's own views of the vault (a base, a canvas): a
+ * folder lists them even when a note embeds or links them, since each is a
+ * page to open on its own, not an attachment of that note.
  */
 const VIEW_EXTENSIONS = new Set(['base', 'canvas'])
 
@@ -117,7 +122,8 @@ function referenceSpellings(path: string): [string, string] {
 
 /**
  * The loose files of a folder (and its subfolders, when asked), newest
- * first: attachments no note references, outside the attachment folders.
+ * first: attachments no note references, outside the attachment folders,
+ * plus every base and canvas there (see {@link VIEW_EXTENSIONS}).
  * A folder page shows them as cards beside its notes. One catalog read (the
  * host keeps the vault's file catalog) and one indexed query per batch.
  * A bare-name reference counts for every file with that name, so a file is
@@ -130,17 +136,15 @@ export async function looseFiles(
   generation?: number,
 ): Promise<LooseFile[]> {
   const excluded = attachmentFolders()
-  const candidates = (await listAttachments(generation)).filter((file) => {
-    const extension = extensionOf(file.path)
-    return (
-      !VIEW_EXTENSIONS.has(extension) &&
+  const candidates = (await listAttachments(generation)).filter(
+    (file) =>
       underFolder(file.path, folder, includeSubfolders) &&
-      !excluded.some((dir) => file.path.startsWith(`${dir}/`))
-    )
-  })
+      !excluded.some((dir) => file.path.startsWith(`${dir}/`)),
+  )
+  const attachments = candidates.filter((file) => !VIEW_EXTENSIONS.has(extensionOf(file.path)))
   const referenced = new Set<string>()
-  for (let start = 0; start < candidates.length; start += QUERY_CHUNK) {
-    const spellings = candidates
+  for (let start = 0; start < attachments.length; start += QUERY_CHUNK) {
+    const spellings = attachments
       .slice(start, start + QUERY_CHUNK)
       .flatMap((file) => referenceSpellings(file.path))
     const rows = await db
@@ -154,7 +158,11 @@ export async function looseFiles(
     }
   }
   return candidates
-    .filter((file) => !referenceSpellings(file.path).some((spelling) => referenced.has(spelling)))
+    .filter(
+      (file) =>
+        VIEW_EXTENSIONS.has(extensionOf(file.path)) ||
+        !referenceSpellings(file.path).some((spelling) => referenced.has(spelling)),
+    )
     .map((file): LooseFile => {
       const name = file.path.slice(file.path.lastIndexOf('/') + 1)
       const extension = extensionOf(name)

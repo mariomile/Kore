@@ -54,6 +54,20 @@ const NO_FILES: readonly LooseFile[] = []
 
 const noteTitle = (note: NoteListEntry): string => note.title
 
+/** Collection rows as the grid's note cards (a collection that isn't a tag page). */
+export function collectionGridNotes(
+  entries: readonly CollectionEntry[] | undefined,
+): NoteListEntry[] | undefined {
+  return entries?.map((entry) => ({
+    path: entry.path,
+    title: entry.title,
+    snippet: '',
+    tags: [],
+    mtime: entry.mtime,
+    isPinned: entry.isPinned,
+  }))
+}
+
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
 

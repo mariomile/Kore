@@ -1,4 +1,4 @@
-import { foldKey, hasAuthoredTitle, parseNote } from '@kore/core'
+import { authoredTitleOfSource, foldKey } from '@kore/core'
 
 /**
  * Settled-title detection for the auto-rename flow. A title change triggers a
@@ -37,8 +37,6 @@ export interface TitleRename {
 }
 
 export interface TitleRenameTrackerOptions {
-  /** Graph-relative path (feeds title derivation's path fallback). */
-  path: string
   onRename: (rename: TitleRename) => void
   /**
    * Gate checked at fire time (e.g. "no conflict is parked"). When false the
@@ -62,17 +60,8 @@ export interface TitleRenameTracker {
 
 const DEFAULT_QUIET_MS = 5000
 
-/**
- * The title `content` itself authors (frontmatter `title:` or an H1), or
- * `null` when the note is untitled — never the filename-stem fallback.
- */
-export function authoredTitleOf(path: string, content: string): string | null {
-  const parsed = parseNote({ path, source: content })
-  return hasAuthoredTitle(parsed) ? parsed.title : null
-}
-
 export function createTitleRenameTracker(options: TitleRenameTrackerOptions): TitleRenameTracker {
-  const { path, onRename, canFire } = options
+  const { onRename, canFire } = options
   const quietMs = options.quietMs ?? DEFAULT_QUIET_MS
 
   let baselineTitle: string | null = null
@@ -82,14 +71,14 @@ export function createTitleRenameTracker(options: TitleRenameTrackerOptions): Ti
   let disposed = false
 
   // A title only counts when the *content* declares one (frontmatter `title:`
-  // or an H1) — `hasAuthoredTitle`, the same predicate the title derivation
-  // and the 17c migration share, so "is this note titled?" can never drift
-  // between birth/rename detection and the rest of the app. parseNote falls
-  // back to the filename stem for untitled notes — baselining on that would
-  // make a fresh lazy note's first heading look like a rename from its ULID
-  // filename, spraying a junk alias (and potentially rewrites) on every new
-  // note. Untitled is `null` here.
-  const titleOf = (content: string): string | null => authoredTitleOf(path, content)
+  // or an H1) — `authoredTitleOfSource`, the same answer as the title
+  // derivation and the 17c migration's `hasAuthoredTitle`, so "is this note
+  // titled?" can never drift between birth/rename detection and the rest of
+  // the app. parseNote falls back to the filename stem for untitled notes —
+  // baselining on that would make a fresh lazy note's first heading look like
+  // a rename from its ULID filename, spraying a junk alias (and potentially
+  // rewrites) on every new note. Untitled is `null` here.
+  const titleOf = authoredTitleOfSource
 
   function cancelTimer(): void {
     if (timer !== null) {

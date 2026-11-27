@@ -11,7 +11,6 @@ afterEach(() => {
 function tracked(options?: { canFire?: () => boolean }) {
   const renames: TitleRename[] = []
   const tracker = createTitleRenameTracker({
-    path: 'notes/x.md',
     quietMs: 5000,
     onRename: (rename) => {
       renames.push(rename)

@@ -1,13 +1,12 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   checkMemoryHealth,
-  loadCyberBrainConfig,
-  loadMemoryOverview,
   type CyberBrainConfig,
   type MemoryHealth,
   type MemoryOverview,
 } from '@kore/core'
+import { EpisodeDetail, EpisodeList } from '@/components/memory/memory-episodes'
+import { useCyberBrainConfig, useMemoryOverview } from '@/components/memory/use-memory'
 import {
   MemoryPromptsDialog,
   type MemoryPromptTab,
@@ -18,27 +17,22 @@ import { Button } from '@/components/ui/button'
 import { PageLoading } from '@/components/page-loading'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageBody, PageHeader } from '@/components/ui/page-header'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { cn } from '@/lib/utils'
 
 /**
  * The Memory view (Plan 35, slice 3): what a cyber-brain vault remembers,
- * read from the kit's own files — NOW, the open loops, the decisions, and
- * the run records of every agent that wrote memory, Kore's chat included.
+ * read from the kit's own files. Episodes first (one note per agent working
+ * session, with the lines it changed and an Undo through the kit), then the
+ * overview: NOW, the open loops, the decisions, and the run records of every
+ * agent that wrote memory, Kore's chat included.
  * Every row opens the file it came from, so a wrong memory is fixed where
  * it lives. The health check runs the kit's own `check`.
  */
 export function MemoryScreen(): ReactElement {
-  const { graph } = useGraph()
-  const bridgeReady = useBridgeReady()
-  const { data: config, isPending } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'cyber-brain-config'],
-    queryFn: () => loadCyberBrainConfig(),
-    enabled: bridgeReady && graph !== null,
-  })
+  const { data: config, isPending } = useCyberBrainConfig()
   if (isPending) {
     return <PageLoading label="Loading memory" className="h-full" />
   }
@@ -61,16 +55,16 @@ export function MemoryScreen(): ReactElement {
 function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElement {
   const { graph } = useGraph()
   const { navigate } = useRouter()
-  const bridgeReady = useBridgeReady()
-  const [promptDialog, setPromptDialog] = useState<{ open: boolean; tab: MemoryPromptTab }>({
+  const [promptDialog, setPromptDialog] = useState<{
+    open: boolean
+    tab: MemoryPromptTab
+  }>({
     open: false,
     tab: 'import',
   })
-  const { data, isError } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'memory-overview'],
-    queryFn: () => loadMemoryOverview(config),
-    enabled: bridgeReady && graph !== null,
-  })
+  const [view, setView] = useState<MemoryView | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+  const { data, isError, refresh } = useMemoryOverview(config)
   const open = (path: string): void => navigate(routeForPath(path))
 
   if (isError) {
@@ -83,12 +77,15 @@ function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElem
   if (data === undefined) {
     return <PageLoading label="Loading memory" className="h-full" />
   }
+  const shown: MemoryView = view ?? (data.episodes.length > 0 ? 'episodes' : 'overview')
+  const episode = data.episodes.find((entry) => entry.path === selected) ?? data.episodes[0] ?? null
   return (
     <>
       <PageHeader
         title="Memory"
-        description={`cyber-brain ${config.version} · written by every agent through the vault’s own script`}
+        description={`What your agents did and learned, written as notes in this vault · cyber-brain ${config.version}`}
       >
+        <MemoryViewTabs view={shown} episodes={data.episodes.length} onSelect={setView} />
         <Button
           size="xs"
           variant="outline"
@@ -104,46 +101,129 @@ function MemoryOverviewView({ config }: { config: CyberBrainConfig }): ReactElem
           Agent instructions
         </Button>
       </PageHeader>
-      <PageBody>
-        {data.userPath !== null || data.soulPath !== null ? (
-          <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
-            {data.userPath !== null ? (
-              <button
-                type="button"
-                onClick={() => open(data.userPath!)}
-                className="underline-offset-2 hover:text-text hover:underline"
-              >
-                Open USER.md
-              </button>
-            ) : null}
-            {data.soulPath !== null ? (
-              <button
-                type="button"
-                onClick={() => open(data.soulPath!)}
-                className="underline-offset-2 hover:text-text hover:underline"
-              >
-                Open SOUL.md
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        <NowSection data={data} open={open} />
-        {data.transit.length > 0 ? <TransitSection data={data} open={open} /> : null}
-        <LoopsSection data={data} open={open} />
-        <DecisionsSection data={data} open={open} />
-        {data.exclusions.length > 0 ? <ExclusionsSection data={data} open={open} /> : null}
-        <RunsSection data={data} open={open} />
-        <HealthSection config={config} />
-        <MemoryPromptsDialog
-          open={promptDialog.open}
-          tab={promptDialog.tab}
-          onTabChange={(tab) => setPromptDialog((prev) => ({ ...prev, tab }))}
-          onOpenChange={(isOpen) => setPromptDialog((prev) => ({ ...prev, open: isOpen }))}
-          vaultName={graph?.name ?? 'Kore'}
-          systemPath={config.systemPath}
-        />
-      </PageBody>
+      {shown === 'episodes' ? (
+        <div className="grid max-w-6xl grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)] items-start gap-6 pr-7 pb-10 pl-9">
+          {data.episodes.length === 0 || episode === null ? (
+            <EmptyState
+              icon={Bot}
+              title="No episodes yet"
+              description={
+                Number.parseFloat(config.version) < 0.3
+                  ? 'Agents write one episode per working session from cyber-brain 0.3. Update the vault’s kit to start.'
+                  : 'Each agent writes one at the end of a working session: what it did, what it learned, and every line it changed.'
+              }
+              className="col-span-2 my-16"
+            />
+          ) : (
+            <>
+              <EpisodeList
+                episodes={data.episodes}
+                selected={episode.path}
+                onSelect={setSelected}
+              />
+              <div className="sticky top-4 min-w-0 pt-2 pl-4">
+                <EpisodeDetail
+                  key={episode.path}
+                  episode={episode}
+                  config={config}
+                  open={open}
+                  canUndo={episode.path.startsWith(`${config.systemPath}/`)}
+                  onUndone={() => {
+                    setSelected(null)
+                    refresh()
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <PageBody>
+          {data.userPath !== null || data.soulPath !== null ? (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+              {data.userPath !== null ? (
+                <button
+                  type="button"
+                  onClick={() => open(data.userPath!)}
+                  className="underline-offset-2 hover:text-text hover:underline"
+                >
+                  Open USER.md
+                </button>
+              ) : null}
+              {data.soulPath !== null ? (
+                <button
+                  type="button"
+                  onClick={() => open(data.soulPath!)}
+                  className="underline-offset-2 hover:text-text hover:underline"
+                >
+                  Open SOUL.md
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          <NowSection data={data} open={open} />
+          {data.transit.length > 0 ? <TransitSection data={data} open={open} /> : null}
+          <LoopsSection data={data} open={open} />
+          <DecisionsSection data={data} open={open} />
+          {data.exclusions.length > 0 ? <ExclusionsSection data={data} open={open} /> : null}
+          <RunsSection data={data} open={open} />
+          <HealthSection config={config} />
+          <MemoryPromptsDialog
+            open={promptDialog.open}
+            tab={promptDialog.tab}
+            onTabChange={(tab) => setPromptDialog((prev) => ({ ...prev, tab }))}
+            onOpenChange={(isOpen) => setPromptDialog((prev) => ({ ...prev, open: isOpen }))}
+            vaultName={graph?.name ?? 'Kore'}
+            systemPath={config.systemPath}
+          />
+        </PageBody>
+      )}
     </>
+  )
+}
+
+type MemoryView = 'episodes' | 'overview'
+
+/** Episodes / Overview, the same segmented pill as the Tasks views. */
+function MemoryViewTabs({
+  view,
+  episodes,
+  onSelect,
+}: {
+  view: MemoryView
+  episodes: number
+  onSelect: (view: MemoryView) => void
+}): ReactElement {
+  return (
+    <div
+      role="tablist"
+      aria-label="Memory views"
+      className="flex flex-none items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+    >
+      {(['episodes', 'overview'] as const).map((entry) => {
+        const selected = entry === view
+        return (
+          <button
+            key={entry}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onSelect(entry)}
+            className={cn(
+              'flex h-6 flex-none items-baseline gap-1.5 rounded-full px-2.5 text-[13px] leading-6 font-medium transition-colors duration-100',
+              selected
+                ? 'bg-surface text-text shadow-sm'
+                : 'text-text-muted hover:text-text-secondary',
+            )}
+          >
+            {entry === 'episodes' ? 'Episodes' : 'Overview'}
+            {entry === 'episodes' ? (
+              <span className="text-xs font-normal tabular-nums text-text-muted">{episodes}</span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

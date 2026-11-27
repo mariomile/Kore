@@ -62,6 +62,7 @@ const MEMORY_ACTION_DONE: Record<MemoryToolName, string> = {
   update_loop: 'Updated loop',
   close_loop: 'Closed loop',
   record_decision: 'Recorded decision',
+  log_episode: 'Logged episode',
 }
 
 function pageHost(url: string): string {

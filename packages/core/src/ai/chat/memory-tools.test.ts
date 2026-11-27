@@ -45,7 +45,7 @@ describe('buildMemoryTools', () => {
     })
   })
 
-  it('maps the loop and decision tools onto their kit commands', async () => {
+  it('maps the loop, decision and episode tools onto their kit commands', async () => {
     const memoryWriteFn = writer()
     const tools = buildMemoryTools({ memoryWriteFn, allowEdits: true })
 
@@ -56,12 +56,22 @@ describe('buildMemoryTools', () => {
       { title: 'Node', description: 'Kit runtime', decision: 'Require Node' },
       OPTIONS,
     )
+    await tools.log_episode.execute?.(
+      { title: 'Deck review', summary: 'Reviewed the deck.', facts: ['Ana owns it -> Ana.md'] },
+      OPTIONS,
+    )
 
     expect(memoryWriteFn.mock.calls.map(([command]) => command)).toEqual([
       { kind: 'loop-open', title: 'Send the deck', due: '2026-11-14' },
       { kind: 'loop-update', id: 'loop-1', status: 'waiting-user' },
       { kind: 'loop-close', id: 'loop-1', outcome: 'Sent' },
       { kind: 'decision', title: 'Node', description: 'Kit runtime', decision: 'Require Node' },
+      {
+        kind: 'episode',
+        title: 'Deck review',
+        summary: 'Reviewed the deck.',
+        facts: ['Ana owns it -> Ana.md'],
+      },
     ])
   })
 
@@ -99,5 +109,6 @@ describe('memoryToolLabel', () => {
     expect(memoryToolLabel('open_loop', { title: 'a loop' })).toBe('a loop')
     expect(memoryToolLabel('close_loop', { id: 'loop-2' })).toBe('loop-2')
     expect(memoryToolLabel('record_decision', { title: 7 })).toBe('')
+    expect(memoryToolLabel('log_episode', { title: 'Deck review' })).toBe('Deck review')
   })
 })

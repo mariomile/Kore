@@ -252,6 +252,7 @@ export function MobileSettings(): ReactElement {
                 value={storageLabel}
                 onPress={() => navigate({ kind: 'graphs' })}
               />
+              <SettingsNavRow label="Memory" onPress={() => navigate({ kind: 'memory' })} />
             </SettingsGroup>
           ) : null}
 

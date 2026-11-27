@@ -56,6 +56,8 @@ pub const KIT_COMMANDS: &[&[&str]] = &[
     &["loop", "update"],
     &["loop", "close"],
     &["decision", "new"],
+    &["episode"],
+    &["undo"],
     &["check"],
 ];
 
@@ -408,6 +410,11 @@ fn check_note_not_private(root: &Path, target: &str) -> Result<(), String> {
 /// scan is refused unless `--exclude-only` is passed (which only appends to
 /// `memory/exclusions.md` without reading any other note).
 pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), String> {
+    match args.first().map(String::as_str) {
+        Some("episode") => return check_episode_targets(root, args),
+        Some("undo") => return check_undo_target(kit, args),
+        _ => {}
+    }
     let is_forget = args.first().is_some_and(|word| word == "forget");
     if is_forget {
         let exclude_only = args.iter().any(|arg| arg == "--exclude-only");
@@ -433,6 +440,54 @@ pub fn check_kit_target(root: &Path, kit: &Kit, args: &[String]) -> Result<(), S
         return Ok(());
     };
     check_note_not_private(root, &target)
+}
+
+/// An episode writes each `--fact="<fact> -> <note>"` into its note, and
+/// links each `--touched=<note>`: the same privacy rule as `remember`'s
+/// `--target`, applied to every one. A fact with no note (or `-> ?`) goes
+/// to the kit's own inbox.
+fn check_episode_targets(root: &Path, args: &[String]) -> Result<(), String> {
+    for arg in args {
+        let note = if let Some(fact) = arg.strip_prefix("--fact=") {
+            // The kit splits at the first arrow (`text -> note`), so this must too.
+            match fact.split_once("->") {
+                Some((_, note)) => note.trim(),
+                None => continue,
+            }
+        } else if let Some(note) = arg.strip_prefix("--touched=") {
+            note.trim()
+        } else {
+            continue;
+        };
+        if note.is_empty() || note == "?" {
+            continue;
+        }
+        let note = if note.ends_with(".md") {
+            note.to_string()
+        } else {
+            format!("{note}.md")
+        };
+        check_note_not_private(root, &note)?;
+    }
+    Ok(())
+}
+
+/// Kore undoes whole episodes only, never a bare run, and only an episode
+/// inside the kit's own folder: the kit then reverts exactly the writes its
+/// run records name.
+fn check_undo_target(kit: &Kit, args: &[String]) -> Result<(), String> {
+    if args.iter().any(|arg| arg.starts_with("--run")) {
+        return Err("Kore undoes whole episodes: pass --episode=<path>".to_string());
+    }
+    let episode = args
+        .iter()
+        .find_map(|arg| arg.strip_prefix("--episode="))
+        .ok_or_else(|| "undo needs --episode=<path>".to_string())?;
+    let inside_kit = episode.starts_with(&format!("{}/", kit.system));
+    if !inside_kit || !episode.ends_with(".md") || !is_safe_vault_folder(episode) {
+        return Err(format!("`{episode}` is not an episode of this vault's kit"));
+    }
+    Ok(())
 }
 
 /// The digest the user last allowed on this machine, if any.
@@ -721,6 +776,39 @@ mod tests {
         assert!(check(&["remember", "--kind=block", "--text=x", "--target=NOW"]).is_ok());
         assert!(check(&["remember", "--text=x"]).is_ok());
         assert!(check(&["remember", "--text=x", "--target=C:/Users/x"]).is_err());
+
+        // An episode's facts and touched notes follow the same rule.
+        assert!(check(&[
+            "episode",
+            "--title=t",
+            "--summary=s",
+            "--fact=x -> CRM/Bob.md"
+        ])
+        .is_ok());
+        assert!(check(&["episode", "--title=t", "--summary=s", "--fact=x -> ?"]).is_ok());
+        assert!(check(&["episode", "--title=t", "--summary=s", "--fact=no home"]).is_ok());
+        assert!(check(&[
+            "episode",
+            "--title=t",
+            "--summary=s",
+            "--fact=x -> CRM/Alice"
+        ])
+        .is_err());
+        assert!(check(&[
+            "episode",
+            "--title=t",
+            "--summary=s",
+            "--touched=CRM/Alice.md"
+        ])
+        .is_err());
+        assert!(check(&["episode", "--title=t", "--summary=s", "--fact=x -> ../out"]).is_err());
+
+        // Undo takes an episode inside the kit's folder, never a bare run.
+        assert!(check(&["undo", "--episode=System/memory/episodes/2026/11/a.md"]).is_ok());
+        assert!(check(&["undo", "--episode=CRM/Bob.md"]).is_err());
+        assert!(check(&["undo", "--episode=System/../CRM/Bob.md"]).is_err());
+        assert!(check(&["undo", "--run=2026-11-27T10:00:00Z codex remember"]).is_err());
+        assert!(check(&["undo"]).is_err());
 
         // A folder link on the way to a new note cannot lead out of the vault.
         #[cfg(unix)]

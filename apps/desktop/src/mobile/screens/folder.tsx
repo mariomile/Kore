@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { findFolder, folderDisplayName, parseSearchQuery, sortNoteList } from '@kore/core'
 import { ChevronLeft, Folder, MoreHorizontal } from '@/components/icons'
-import { FolderFiles, useFolderLooseFiles } from '@/components/all-notes/folder-files'
+import { useFolderLooseFiles } from '@/components/all-notes/folder-files'
+import { FolderFilesSection, type FolderFilesLayout } from '@/components/all-notes/folder-files-section'
 import { FolderSubfolders } from '@/components/all-notes/folder-subfolders'
 import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { useFolderIncludesSubfolders } from '@/components/all-notes/use-folder-includes-subfolders'
@@ -86,7 +87,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
   const files = useFolderLooseFiles(atTop ? null : folder, includeSubfolders)
   // The grid deals a folder's files among its notes; the list (and a folder
   // with no notes yet) keeps them as a row of cards above.
-  const filesAmongNotes = grid && rows !== undefined && rows.length > 0
+  const filesLayout = (new URLSearchParams(window.location.search).get('files') ?? 'rows') as FolderFilesLayout
   const name = atTop ? 'Folders' : folderDisplayName(folder)
   const openNote = (path: string): void => navigate(routeForPath(path))
 
@@ -97,14 +98,14 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
       ) : (
         <FolderRows folder={node} />
       )}
-      {filesAmongNotes ? null : (
-        <FolderFiles
-          files={files}
-          onOpen={(path) => void openFile(path)}
-          className={MOBILE_CARD_SECTION_CLASS}
-        />
-      )}
-      {rows !== undefined && rows.length > 0 && (node?.folders.length ?? 0) > 0 ? (
+      <FolderFilesSection
+        files={files}
+        onOpen={(path) => void openFile(path)}
+        layout={filesLayout}
+        lines={3}
+        className="px-4 pb-1 pt-3"
+      />
+      {rows !== undefined && rows.length > 0 && ((node?.folders.length ?? 0) > 0 || files.length > 0) ? (
         <h2 className="px-4 pt-3 text-[13px] font-medium text-text-muted">Notes</h2>
       ) : null}
     </div>
@@ -197,8 +198,6 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           rows={rows}
           onOpen={openNote}
           leading={leading}
-          files={files}
-          onOpenFile={(path) => void openFile(path)}
         />
       ) : (
         <NoteRowList rows={rows} onOpen={openNote} onDeleted={removeDeletedRow} leading={leading} />

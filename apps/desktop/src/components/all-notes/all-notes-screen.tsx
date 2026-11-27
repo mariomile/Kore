@@ -19,6 +19,7 @@ import {
   type NoteListFolder,
   type SavedCollectionView,
   type TagPropertyType,
+  type LooseFile,
 } from '@kore/core'
 import { Check, Settings, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -45,6 +46,7 @@ import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { FileKindMenu } from './file-kind-menu'
 import { FolderFiles, useLooseFilesQuery } from './folder-files'
+import { FolderFilesSection, type FolderFilesLayout } from './folder-files-section'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -127,6 +129,8 @@ const NO_NOTES: ClassifiedNoteListEntry[] = []
  * so the header and filter bar stay put while the virtualized table scrolls,
  * wired to the router's per-entry scroll memory by hand.
  */
+const NO_LOOSE_FILES: readonly LooseFile[] = []
+
 export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const tag = filter.kind === 'tag' ? filter.tag : null
   // A type chip on All notes narrows the list in place: same query as the
@@ -355,6 +359,9 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         : filterLooseFilesByKind(filterLooseFiles(looseFilesHere, titleNeedle), kindFilter),
     [looseFilesHere, collectionFilters, titleNeedle, kindFilter],
   )
+  // TEMP mockup switch: ?files=rows|shelf|end
+  const filesLayout = (new URLSearchParams(window.location.search).get('files') ??
+    'rows') as FolderFilesLayout
   const openLooseFile = useCallback(
     (path: string) => {
       void openFile(path)
@@ -742,7 +749,11 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 scroller, a folder of many folders left the notes no room. */}
             <div ref={setSubfoldersElement}>
               <FolderSubfolders folder={folderNode} />
-              {view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />}
+              {filesOnly ? (
+                view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />
+              ) : filesLayout === 'end' ? null : (
+                <FolderFilesSection files={folderFiles} onOpen={openLooseFile} layout={filesLayout} />
+              )}
             </div>
             {filesOnly && (folderFiles.length === 0 || view !== 'grid') ? (
               // Files alone: the list view shows their cards above, the grid
@@ -763,15 +774,20 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                     : 'No notes directly in this folder.'}
               </p>
             ) : view === 'grid' ? (
+              <>
               <AllNotesGrid
                 notes={gridNotes}
-                files={folderFiles}
+                files={filesOnly ? folderFiles : NO_LOOSE_FILES}
                 onOpenFile={openLooseFile}
                 tag={listTag}
                 type={collectionAvailable ? tagType : null}
                 entries={collectionAvailable ? filteredCollection : undefined}
                 onOpen={openNote}
               />
+              {!filesOnly && filesLayout === 'end' ? (
+                <FolderFilesSection files={folderFiles} onOpen={openLooseFile} layout="end" />
+              ) : null}
+              </>
             ) : collectionAvailable &&
               view === 'calendar' &&
               calendarDateProperty !== null &&

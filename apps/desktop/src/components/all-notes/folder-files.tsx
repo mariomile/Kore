@@ -40,7 +40,7 @@ function looseFilesQueryKey(
   return [INDEX_QUERY_SCOPE, root, 'loose-files', folder, includeSubfolders]
 }
 
-const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
+export const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   image: Image,
   pdf: Note,
   html: Globe,

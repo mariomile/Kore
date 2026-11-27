@@ -46,7 +46,7 @@ import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { FileKindMenu } from './file-kind-menu'
 import { FolderFiles, useLooseFilesQuery } from './folder-files'
-import { FolderFilesSection, type FolderFilesLayout } from './folder-files-section'
+import { FolderFilesSection } from './folder-files-section'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -99,6 +99,11 @@ const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 /** The notes a file-kind filter lists: none, one stable list. */
 const NO_NOTES: ClassifiedNoteListEntry[] = []
 
+const NO_LOOSE_FILES: readonly LooseFile[] = []
+
+/** How many lines of file rows a folder page shows above its notes. */
+const FOLDER_FILE_LINES = 2
+
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
  * newest first. The active tag lives on the route so back/forward and "open a
@@ -115,7 +120,8 @@ const NO_NOTES: ClassifiedNoteListEntry[] = []
  * hover gear.
  *
  * A routed folder is that folder's page (Notion's page of child pages): a
- * breadcrumb of its parents, its subfolders as chips, then its notes in the
+ * breadcrumb of its parents, its subfolders as chips, its loose files as a
+ * few compact rows, then its notes in the
  * same list/grid as All notes (its subfolders' notes included unless the
  * folder's settings say otherwise), with a title filter, the settings gear,
  * and a "+" that creates the note in the folder.
@@ -129,8 +135,6 @@ const NO_NOTES: ClassifiedNoteListEntry[] = []
  * so the header and filter bar stay put while the virtualized table scrolls,
  * wired to the router's per-entry scroll memory by hand.
  */
-const NO_LOOSE_FILES: readonly LooseFile[] = []
-
 export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const tag = filter.kind === 'tag' ? filter.tag : null
   // A type chip on All notes narrows the list in place: same query as the
@@ -359,9 +363,6 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         : filterLooseFilesByKind(filterLooseFiles(looseFilesHere, titleNeedle), kindFilter),
     [looseFilesHere, collectionFilters, titleNeedle, kindFilter],
   )
-  // TEMP mockup switch: ?files=rows|shelf|end
-  const filesLayout = (new URLSearchParams(window.location.search).get('files') ??
-    'rows') as FolderFilesLayout
   const openLooseFile = useCallback(
     (path: string) => {
       void openFile(path)
@@ -750,9 +751,18 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             <div ref={setSubfoldersElement}>
               <FolderSubfolders folder={folderNode} />
               {filesOnly ? (
-                view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />
-              ) : filesLayout === 'end' ? null : (
-                <FolderFilesSection files={folderFiles} onOpen={openLooseFile} layout={filesLayout} />
+                view === 'grid' ? null : (
+                  <FolderFiles files={folderFiles} onOpen={openLooseFile} />
+                )
+              ) : (
+                // The folder's notes come first: its files keep a couple of
+                // lines above them, all of them when there are no notes.
+                <FolderFilesSection
+                  key={folderPath}
+                  files={folderFiles}
+                  onOpen={openLooseFile}
+                  lines={notes?.length === 0 ? null : FOLDER_FILE_LINES}
+                />
               )}
             </div>
             {filesOnly && (folderFiles.length === 0 || view !== 'grid') ? (
@@ -763,18 +773,18 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               ) : null
             ) : inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
-            ) : folderPath !== null &&
-              notes?.length === 0 &&
-              (view !== 'grid' || folderFiles.length === 0) ? (
-              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
-                {titleNeedle !== ''
-                  ? 'No notes match the filter.'
-                  : includeSubfolders
-                    ? 'No notes in this folder.'
-                    : 'No notes directly in this folder.'}
-              </p>
+            ) : folderPath !== null && notes?.length === 0 ? (
+              // A folder of files alone is its files section, nothing under it.
+              folderFiles.length > 0 ? null : (
+                <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
+                  {titleNeedle !== ''
+                    ? 'No notes match the filter.'
+                    : includeSubfolders
+                      ? 'No notes in this folder.'
+                      : 'No notes directly in this folder.'}
+                </p>
+              )
             ) : view === 'grid' ? (
-              <>
               <AllNotesGrid
                 notes={gridNotes}
                 files={filesOnly ? folderFiles : NO_LOOSE_FILES}
@@ -784,10 +794,6 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 entries={collectionAvailable ? filteredCollection : undefined}
                 onOpen={openNote}
               />
-              {!filesOnly && filesLayout === 'end' ? (
-                <FolderFilesSection files={folderFiles} onOpen={openLooseFile} layout="end" />
-              ) : null}
-              </>
             ) : collectionAvailable &&
               view === 'calendar' &&
               calendarDateProperty !== null &&

@@ -1,15 +1,12 @@
 import { memo, useLayoutEffect, useState, type ReactElement } from 'react'
 import type { LooseFile } from '@kore/core'
-import { previewThumbnailUrl } from '@/editor/preview-image-url'
-import { usePassiveImageResolver } from '@/hooks/use-note-card-images'
 import { formatBytes } from '@/lib/format-bytes'
 import { cn } from '@/lib/utils'
-import { FileCard, KIND_ICON } from './folder-files'
-import { CARD_SECTION_CLASS } from './grid-card-classes'
+import { columnsThatFit } from '@/lib/deal-columns'
+import { fileStem, fileTypeLabel, KIND_ICON, useFilePicture } from './folder-files'
+import { GRID_CARD_SURFACE_CLASS } from './grid-card-classes'
 
-export type FolderFilesLayout = 'rows' | 'shelf' | 'end'
-
-/** A row is at least this wide: two to four rows side by side on a Mac page. */
+/** A row is at least this wide: two to four side by side on a Mac page, one on a phone. */
 const ROW_MIN_WIDTH_REM = 15
 /** The gap between rows, in px (`gap-2`). */
 const ROW_GAP_PX = 8
@@ -17,22 +14,26 @@ const ROW_GAP_PX = 8
 interface FolderFilesSectionProps {
   files: readonly LooseFile[]
   onOpen: (path: string) => void
-  layout: FolderFilesLayout
-  /** How many lines of rows show before "Show all". */
-  lines?: number
+  /**
+   * How many lines of rows show before "Show all"; `null` shows every file
+   * (a folder of files alone has nothing for them to push down).
+   */
+  lines: number | null
   /** The section's gutters: the Mac page's unless the phone passes its own. */
   className?: string
 }
 
 /**
- * A folder page's loose files as a section of their own, so the notes the
- * folder is about stay at the top of the page.
+ * A folder page's loose files (the PDFs, pages, sheets no note references)
+ * as a compact section above its notes: a couple of lines of small rows and
+ * "Show all" for the rest, so the notes the folder is about start right
+ * under it instead of a few screens down. The rest are not mounted until
+ * asked for. The File type filter still lists them as big cards.
  */
 export function FolderFilesSection({
   files,
   onOpen,
-  layout,
-  lines = 2,
+  lines,
   className = 'pb-6 pl-12 pr-7 pt-2',
 }: FolderFilesSectionProps): ReactElement | null {
   const [expanded, setExpanded] = useState(false)
@@ -41,8 +42,8 @@ export function FolderFilesSection({
   if (files.length === 0) {
     return null
   }
-  const cap = columns * lines
-  const capped = layout === 'rows' && files.length > cap
+  const cap = lines === null ? files.length : columns * lines
+  const capped = files.length > cap
   const shown = capped && !expanded ? files.slice(0, cap) : files
   return (
     <section aria-label="Files" className={className}>
@@ -52,41 +53,22 @@ export function FolderFilesSection({
         {capped ? (
           <button
             type="button"
+            aria-expanded={expanded}
             onClick={() => setExpanded((open) => !open)}
-            className="-mr-3 ml-auto h-7 rounded-full px-3 text-[13px] text-text-secondary transition-colors duration-150 ease-swift hover:bg-surface-hover hover:text-text"
+            // 28pt to the eye, 44pt to the finger.
+            className="relative -mr-3 ml-auto h-7 rounded-full px-3 text-[13px] text-text-secondary transition-colors duration-150 ease-swift after:absolute after:inset-x-0 after:-inset-y-2 hover:bg-surface-hover hover:text-text active:bg-surface-active"
           >
             {expanded ? 'Show less' : `Show all ${files.length}`}
           </button>
         ) : null}
       </div>
-      {layout === 'rows' ? (
-        <ul
-          ref={setGrid}
-          className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2"
-        >
-          {shown.map((file) => (
-            <li key={file.path} className="min-w-0">
-              <FileRow file={file} onOpen={onOpen} />
-            </li>
-          ))}
-        </ul>
-      ) : layout === 'shelf' ? (
-        <ul className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-4rem),transparent)] [scrollbar-width:none]">
-          {files.map((file) => (
-            <li key={file.path} className="w-48 flex-none snap-start">
-              <FileCard file={file} onOpen={onOpen} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul className={cn(CARD_SECTION_CLASS, 'p-0')}>
-          {files.map((file) => (
-            <li key={file.path} className="min-w-0">
-              <FileCard file={file} onOpen={onOpen} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul ref={setGrid} className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2">
+        {shown.map((file) => (
+          <li key={file.path} className="min-w-0">
+            <FileRow file={file} onOpen={onOpen} />
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
@@ -100,7 +82,7 @@ function useColumns(element: HTMLElement | null, minRem: number, gap: number): n
     }
     const measure = (): void => {
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
-      const next = Math.max(1, Math.floor((element.clientWidth + gap) / (minRem * rem + gap)))
+      const next = columnsThatFit(element.clientWidth, minRem * rem, gap)
       setCount((current) => (current === next ? current : next))
     }
     measure()
@@ -123,24 +105,21 @@ const FileRow = memo(function FileRow({
   file: LooseFile
   onOpen: (path: string) => void
 }): ReactElement {
-  const resolve = usePassiveImageResolver()
-  const url = file.kind === 'image' || file.kind === 'pdf' ? resolve(file.path) : null
-  const picture = url === null ? undefined : previewThumbnailUrl(url)
-  const [failed, setFailed] = useState<string | null>(null)
+  const { picture, showPicture, onPictureError } = useFilePicture(file)
   const KindIcon = KIND_ICON[file.kind]
-  const type = file.extension === '' ? 'File' : file.extension.toUpperCase()
-  const meta = `${type} · ${formatBytes(file.size)}`
+  const meta = `${fileTypeLabel(file)} · ${formatBytes(file.size)}`
   // The type is in the line under it: two files of one name stay told apart.
-  const name =
-    file.extension === '' ? file.name : file.name.slice(0, -(file.extension.length + 1))
-  const showPicture = picture !== undefined && failed !== picture
+  const name = fileStem(file)
   return (
     <button
       type="button"
       aria-label={`${file.name}, ${meta}`}
       title={file.name}
       onClick={() => onOpen(file.path)}
-      className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-surface p-2 pr-3 text-left shadow-sm transition-[background-color,box-shadow] duration-150 ease-swift hover:bg-surface-hover hover:shadow-md"
+      className={cn(
+        'flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl p-2 pr-3 text-left transition-shadow duration-150 ease-swift hover:shadow-md active:shadow-none',
+        GRID_CARD_SURFACE_CLASS,
+      )}
     >
       <span
         aria-hidden
@@ -153,7 +132,7 @@ const FileRow = memo(function FileRow({
             loading="lazy"
             decoding="async"
             draggable={false}
-            onError={() => setFailed(picture)}
+            onError={onPictureError}
             className={cn('size-full object-cover', file.kind === 'pdf' && 'object-top')}
           />
         ) : (

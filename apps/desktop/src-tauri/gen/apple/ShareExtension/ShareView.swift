@@ -6,7 +6,9 @@ import UIKit
 /// **How** (the link looks the editor offers), then one Save button. Everything is pre-filled from
 /// the last share, so a repeat share is a single tap. Colors and radii are
 /// Kore's design tokens (`design-system/tokens/colors.css`), mirrored in
-/// `KoreColor` below.
+/// `KoreColor` below. Like the iPhone app it is monochrome: the primary action
+/// is the foreground ink (the tab bar's "+"), selection is a step in the
+/// surface ramp, and nothing is painted with the accent.
 struct ShareView: View {
     @EnvironmentObject var state: ShareState
 
@@ -41,7 +43,7 @@ struct ShareView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
         }
-        .tint(KoreColor.accent)
+        .tint(KoreColor.text)
         .onAppear { state.load() }
     }
 }
@@ -136,8 +138,7 @@ private struct LinkPreview: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("•").foregroundColor(KoreColor.muted)
                 Text(name)
-                    .foregroundColor(KoreColor.accent)
-                    .underline(color: KoreColor.accent.opacity(0.35))
+                    .underline(color: KoreColor.muted)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -201,14 +202,14 @@ private struct LinkPreview: View {
                     SiteTile(host: host, size: 18).frame(width: 32, alignment: .leading)
                     Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 }
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 1.5).fill(KoreColor.accent).frame(width: 3)
-                    Text(quote(selection: selection, description: description))
-                        .font(.subheadline)
-                        .foregroundColor(KoreColor.text)
-                        .lineLimit(5)
-                }
-                .fixedSize(horizontal: false, vertical: true)
+                Text(quote(selection: selection, description: description))
+                    .font(.subheadline)
+                    .foregroundColor(KoreColor.secondary)
+                    .lineLimit(5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(KoreColor.active)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
@@ -226,36 +227,51 @@ private struct LinkPreview: View {
     }
 }
 
-/// The post as its Markdown card lands: a quote with the author linked to
-/// the post, then the words. Drawn like the editor draws a quote.
+/// The post as its card lands in the note: the avatar, the handle over
+/// "Post on X", the [[X posts]] pill on the right, then the words. Drawn like
+/// the editor's filled X post card (`link-cards.css`).
 private struct PostCardPreview: View {
     let handle: String
     let text: String?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // The editor's quote: a 2pt accent-soft rule, secondary ink.
-            Rectangle().fill(KoreColor.accentSoft).frame(width: 2)
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text("@\(handle)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(KoreColor.accent)
-                        .underline(color: KoreColor.accent.opacity(0.35))
-                    Text("on X").font(.subheadline).foregroundColor(KoreColor.muted)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Avatar(handle: handle)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("@\(handle)").font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text("Post on X").font(.caption).foregroundColor(KoreColor.muted)
                 }
-                if let words = text, !words.isEmpty {
-                    Text(words).font(.subheadline).foregroundColor(KoreColor.secondary).lineLimit(5)
-                } else {
-                    Text("The post\u{2019}s words and photos are saved when Kore opens.")
-                        .font(.subheadline)
-                        .foregroundColor(KoreColor.secondary)
-                }
+                Spacer(minLength: 8)
+                Text("X posts")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(KoreColor.secondary)
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(Capsule().fill(KoreColor.active))
             }
+            Text(text.flatMap { $0.isEmpty ? nil : $0 } ?? "The post\u{2019}s words and photos are saved when Kore opens.")
+                .font(.subheadline)
+                .foregroundColor(KoreColor.secondary)
+                .lineLimit(5)
         }
-        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
+    }
+}
+
+/// The author's initial in a round tile, where the note shows their photo.
+private struct Avatar: View {
+    let handle: String
+
+    var body: some View {
+        Circle().fill(KoreColor.activeStrong).frame(width: 32, height: 32)
+            .overlay(
+                Text(String(handle.prefix(1)).uppercased())
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(KoreColor.secondary)
+            )
+            .accessibilityHidden(true)
     }
 }
 
@@ -266,8 +282,7 @@ private struct PostPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                Circle().fill(KoreColor.active).frame(width: 32, height: 32)
-                    .overlay(Text(String(handle.prefix(1)).uppercased()).font(.subheadline.weight(.semibold)).foregroundColor(KoreColor.secondary))
+                Avatar(handle: handle)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("@\(handle)").font(.subheadline.weight(.semibold))
                     Text("Post on X").font(.caption).foregroundColor(KoreColor.muted)
@@ -296,11 +311,11 @@ private struct SiteTile: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size.map { $0 < 24 ? 5 : 10 } ?? 0, style: .continuous)
         shape
-            .fill(KoreColor.accentSoft)
+            .fill(KoreColor.active)
             .overlay(
                 Text(String(host.prefix(1)).uppercased())
                     .font(.system(size: (size ?? 64) * 0.42, weight: .semibold, design: .rounded))
-                    .foregroundColor(KoreColor.accentSoftText)
+                    .foregroundColor(KoreColor.secondary)
             )
             .frame(width: size, height: size)
             .frame(maxWidth: size == nil ? .infinity : nil)
@@ -428,16 +443,17 @@ private struct ChoiceRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(selected ? .white : KoreColor.secondary)
+                // Selected, the tile inverts like the tab bar's "+".
+                .foregroundColor(selected ? KoreColor.surface : KoreColor.secondary)
                 .frame(width: 32, height: 32)
                 .background(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(selected ? KoreColor.accentFill : KoreColor.active)
+                        .fill(selected ? KoreColor.text : KoreColor.active)
                 )
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.body.weight(.semibold))
-                    .foregroundColor(selected ? KoreColor.accentSoftText : KoreColor.text)
+                    .foregroundColor(KoreColor.text)
                     .lineLimit(1)
                 Text(detail)
                     .font(.footnote)
@@ -448,7 +464,7 @@ private struct ChoiceRow: View {
             if selected {
                 Image(systemName: "checkmark")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(KoreColor.accent)
+                    .foregroundColor(KoreColor.text)
             } else if disclosure {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
@@ -459,7 +475,7 @@ private struct ChoiceRow: View {
         .frame(minHeight: 54)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(selected ? KoreColor.accentSoft : Color.clear)
+                .fill(selected ? KoreColor.active : Color.clear)
         )
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -640,18 +656,18 @@ private struct LookPicker: View {
                     UISelectionFeedbackGenerator().selectionChanged()
                 } label: {
                     VStack(spacing: 7) {
-                        LookGlyph(look: look, kind: kind)
+                        LookGlyph(look: look, kind: kind, selected: selection == look)
                             .frame(maxWidth: .infinity)
                             .frame(height: 60)
                             .background(KoreColor.surface)
                             .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                    .strokeBorder(KoreColor.accent, lineWidth: selection == look ? 2 : 0)
+                                    .strokeBorder(KoreColor.text, lineWidth: selection == look ? 1.5 : 0)
                             )
                         Text(look.label(for: kind))
                             .font(.footnote.weight(selection == look ? .semibold : .medium))
-                            .foregroundColor(selection == look ? KoreColor.accent : KoreColor.secondary)
+                            .foregroundColor(selection == look ? KoreColor.text : KoreColor.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
@@ -667,16 +683,18 @@ private struct LookPicker: View {
 }
 
 /// A miniature of each look, drawn with the same bars as the web prototype.
+/// The selected one draws its bars a step darker.
 private struct LookGlyph: View {
     let look: ShareLook
     let kind: ShareContentKind
+    let selected: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             switch look {
             case .link:
                 bar(0.7)
-                bar(0.85, accent: true)
+                bar(0.85, strong: true)
                 bar(0.55)
             case .compact:
                 HStack(spacing: 5) { block(10, 10); bar(1) }
@@ -694,16 +712,26 @@ private struct LookGlyph: View {
                     block(nil, 26).overlay(
                         Image(systemName: "play.fill").font(.system(size: 9)).foregroundColor(KoreColor.secondary))
                 } else {
-                    HStack(spacing: 5) { Circle().fill(ink(0.14)).frame(width: 11, height: 11); bar(0.4) }
+                    HStack(spacing: 5) {
+                        Circle().fill(ink(barInk)).frame(width: 11, height: 11)
+                        bar(0.4)
+                        Text("𝕏").font(.system(size: 9, weight: .bold)).foregroundColor(KoreColor.muted)
+                    }
                     bar(1)
                     bar(0.75)
                 }
             case .text:
-                HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 1.5).fill(KoreColor.accent).frame(width: 3)
-                    VStack(alignment: .leading, spacing: 4) { bar(1); bar(1); bar(0.6) }
+                // A filled card, like the post or page quote it stands for.
+                VStack(alignment: .leading, spacing: 4) {
+                    if kind == .post {
+                        HStack(spacing: 4) { Circle().fill(ink(barInk)).frame(width: 7, height: 7); bar(0.4) }
+                    }
+                    bar(1)
+                    bar(0.6)
                 }
-                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(selected ? KoreColor.activeStrong : KoreColor.active))
             }
         }
         .padding(9)
@@ -712,10 +740,12 @@ private struct LookGlyph: View {
 
     private func ink(_ amount: Double) -> Color { KoreColor.text.opacity(amount) }
 
-    private func bar(_ fraction: CGFloat, accent: Bool = false) -> some View {
+    private var barInk: Double { selected ? 0.3 : 0.14 }
+
+    private func bar(_ fraction: CGFloat, strong: Bool = false) -> some View {
         GeometryReader { proxy in
             Capsule()
-                .fill(accent ? KoreColor.accent.opacity(0.7) : ink(0.14))
+                .fill(ink(strong ? (selected ? 1 : 0.34) : barInk))
                 .frame(width: proxy.size.width * fraction)
         }
         .frame(height: 5)
@@ -723,7 +753,7 @@ private struct LookGlyph: View {
 
     private func block(_ width: CGFloat?, _ height: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .fill(ink(0.1))
+            .fill(ink(selected ? 0.22 : 0.1))
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil)
     }
@@ -761,10 +791,11 @@ private struct SaveButton: View {
             Label(title, systemImage: "arrow.down.to.line")
                 .font(.body.weight(.semibold))
                 .lineLimit(1)
-                .foregroundColor(.white)
+                // The foreground ink, like the tab bar's "+" and the capture send.
+                .foregroundColor(KoreColor.app)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Capsule().fill(KoreColor.accentFill))
+                .background(Capsule().fill(KoreColor.text))
         }
         .buttonStyle(PressScale())
     }
@@ -796,16 +827,13 @@ private struct CloseButton: View {
     }
 }
 
+/// The real app icon, at the size iOS draws it beside a share row.
 private struct KoreMark: View {
     var body: some View {
-        Text("K")
-            .font(.system(size: 12, weight: .heavy, design: .rounded))
-            .foregroundColor(.white)
-            .frame(width: 20, height: 20)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(hex: 0x6366F1), Color(hex: 0x4338CA)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
+        Image("KoreIcon")
+            .resizable()
+            .frame(width: 22, height: 22)
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             .accessibilityHidden(true)
     }
 }
@@ -863,11 +891,9 @@ enum KoreColor {
     static let text = dynamic(light: 0x17181C, dark: 0xEDEDF0)
     static let secondary = dynamic(light: 0x6B6F76, dark: 0x9FA1A7)
     static let muted = dynamic(light: 0x8A8E96, dark: 0x66686F)
-    static let accent = dynamic(light: 0x4F46E5, dark: 0x7B7EF4)
-    static let accentFill = dynamic(light: 0x4F46E5, dark: 0x5E5CE6)
-    static let accentSoftText = dynamic(light: 0x4338CA, dark: 0xA5A8F8)
-    static let accentSoft = dynamic(light: 0xE0E7FF, dark: 0x7B7EF4, darkAlpha: 0.16)
     static let active = dynamic(light: 0x121317, dark: 0xFFFFFF, lightAlpha: 0.06, darkAlpha: 0.07)
+    /// One step above `active`: a selected tile on a surface.
+    static let activeStrong = dynamic(light: 0x121317, dark: 0xFFFFFF, lightAlpha: 0.10, darkAlpha: 0.11)
     static let success = dynamic(light: 0x15703A, dark: 0x4ADE80)
     static let successSoft = dynamic(light: 0x15703A, dark: 0x4ADE80, lightAlpha: 0.1, darkAlpha: 0.12)
 
@@ -890,11 +916,5 @@ private extension UIColor {
             blue: CGFloat(hex & 0xFF) / 255,
             alpha: alpha
         )
-    }
-}
-
-private extension Color {
-    init(hex: UInt32) {
-        self.init(UIColor(hex: hex, alpha: 1))
     }
 }

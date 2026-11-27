@@ -261,6 +261,10 @@ targets:
       # bundle resource the NSExtension attributes reference by base name.
       - path: ShareExtension/ExtensionClass.js
         buildPhase: resources
+      # The real app icon for the sheet's title (an extension cannot read the
+      # host app's asset catalog).
+      - path: ShareExtension/Assets.xcassets
+        buildPhase: resources
     info:
       path: ShareExtension/Info.plist
       properties:

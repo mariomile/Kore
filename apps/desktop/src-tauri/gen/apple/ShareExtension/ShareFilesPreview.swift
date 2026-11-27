@@ -124,9 +124,9 @@ private struct FileRow: View {
         HStack(spacing: 12) {
             Image(systemName: file.isPDF ? "doc.richtext" : "doc")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(KoreColor.accentSoftText)
+                .foregroundColor(KoreColor.secondary)
                 .frame(width: 32, height: 32)
-                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(KoreColor.accentSoft))
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(KoreColor.active))
             VStack(alignment: .leading, spacing: 1) {
                 Text(file.name)
                     .font(.body.weight(.semibold))

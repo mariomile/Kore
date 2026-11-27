@@ -82,6 +82,7 @@ export {
 export { createGist, updateGist, deleteGist, type PublishedGist, type GistFile } from './gists'
 export {
   createSyncEngine,
+  isDeletionPause,
   isSyncError,
   type SyncEngine,
   type SyncEngineOptions,

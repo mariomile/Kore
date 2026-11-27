@@ -520,6 +520,7 @@ pub fn run() {
             git::git_agent_writes_clear,
             git::git_fetch,
             git::git_merge_remote,
+            git::git_sync_deletions,
             git::git_push,
             git::git_note_history,
             git::git_agent_snapshot,

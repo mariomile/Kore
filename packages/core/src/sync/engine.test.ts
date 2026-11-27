@@ -34,9 +34,12 @@ const AGENT_JOURNAL_COMMANDS = new Set([
   'git_commit_paths',
 ])
 
+const NO_DELETIONS = { incoming: 0, outgoing: 0, tracked: 0 }
+
 /**
  * Bridge fake: scripted responses per command, every call recorded except
- * the agent-journal read that opens each cycle (no journal here).
+ * the agent-journal read that opens each cycle (no journal here) and the
+ * deletion count before each merge and push (none unless scripted).
  */
 function fakeGit(respond: (command: string, calls: Call[]) => unknown) {
   const calls: Call[] = []
@@ -44,6 +47,9 @@ function fakeGit(respond: (command: string, calls: Call[]) => unknown) {
     invoke: async (command, args) => {
       if (AGENT_JOURNAL_COMMANDS.has(command)) {
         return { writes: [], lines: 0 }
+      }
+      if (command === 'git_sync_deletions') {
+        return respond(command, calls) ?? NO_DELETIONS
       }
       calls.push({ command, args })
       return respond(command, calls)
@@ -1197,5 +1203,70 @@ describe('createSyncEngine', () => {
     await cycle
     expect(statuses.at(-1)).toEqual({ state: 'idle' })
     engine.stop()
+  })
+
+  describe('mass deletions', () => {
+    const WIPE = { incoming: 10_359, outgoing: 0, tracked: 15_301 }
+
+    it('pauses before merging a remote that would delete much of the vault', async () => {
+      const calls = fakeGit((command) =>
+        command === 'git_sync_deletions' ? WIPE : defaultResponses(command),
+      )
+      const statuses: SyncStatus[] = []
+      const engine = createSyncEngine({
+        generation: 1,
+        getToken: async () => 'tok',
+        onStatus: (status) => {
+          statuses.push(status)
+        },
+      })
+
+      await engine.syncNow()
+
+      expect(commandsOf(calls)).toEqual(['git_commit_all', 'git_fetch'])
+      expect(statuses.at(-1)).toEqual({
+        state: 'error',
+        errorKind: 'massDeletion',
+        message:
+          'Sync paused: changes from another device would delete 10,359 of 15,301 files here. Nothing has been deleted.',
+      })
+
+      // The user's yes merges and pushes it once; the next cycle checks again.
+      await engine.confirmDeletions()
+      expect(commandsOf(calls).slice(2)).toEqual([
+        'git_commit_all',
+        'git_fetch',
+        'git_merge_remote',
+        'git_push',
+      ])
+      expect(statuses.at(-1)).toEqual({ state: 'idle' })
+      await engine.syncNow()
+      expect(commandsOf(calls).slice(6)).toEqual(['git_commit_all', 'git_fetch'])
+      engine.stop()
+    })
+
+    it('pauses before pushing a local commit that deletes much of the vault', async () => {
+      const calls = fakeGit((command) =>
+        command === 'git_sync_deletions'
+          ? { incoming: 0, outgoing: 30, tracked: 100 }
+          : defaultResponses(command),
+      )
+      const statuses: SyncStatus[] = []
+      const engine = createSyncEngine({
+        generation: 1,
+        getToken: async () => 'tok',
+        onStatus: (status) => {
+          statuses.push(status)
+        },
+        idleMs: 10,
+      })
+
+      engine.noteChanged()
+      await vi.runAllTimersAsync()
+
+      expect(commandsOf(calls)).toEqual(['git_commit_all'])
+      expect(statuses.at(-1)).toMatchObject({ state: 'error', errorKind: 'massDeletion' })
+      engine.stop()
+    })
   })
 })

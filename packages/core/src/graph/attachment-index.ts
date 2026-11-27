@@ -1,4 +1,5 @@
 import { errorMessage } from '../errors'
+import type { FileChange } from '../indexing/file-changes'
 import { listAttachments } from './commands'
 import { isAttachmentPath } from './paths'
 import { getVaultLayout } from './vault-layout'
@@ -64,6 +65,36 @@ export async function loadAttachmentIndex(generation?: number): Promise<void> {
 export function noteAttachmentAdded(path: string): void {
   if (activeIndex !== null && !activeIndex.paths.has(path)) {
     setAttachmentIndex([...activeIndex.paths, path])
+  }
+}
+
+/**
+ * Keep the catalog in step with the vault after open: a git pull, iCloud or
+ * another app can add or remove attachments, and a bare `![[x.png]]` must
+ * find a file that arrived after the graph opened (before this, it fell back
+ * to the attachment folder and 404ed). Non-attachment paths are ignored.
+ */
+export function applyAttachmentChanges(changes: readonly FileChange[]): void {
+  if (activeIndex === null) {
+    return
+  }
+  const paths = new Set(activeIndex.paths)
+  let changed = false
+  for (const change of changes) {
+    if (!isAttachmentPath(change.path)) {
+      continue
+    }
+    if (change.kind === 'upsert' ? !paths.has(change.path) : paths.has(change.path)) {
+      if (change.kind === 'upsert') {
+        paths.add(change.path)
+      } else {
+        paths.delete(change.path)
+      }
+      changed = true
+    }
+  }
+  if (changed) {
+    setAttachmentIndex([...paths])
   }
 }
 

@@ -153,11 +153,10 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
         <FolderPathTitle
           folder={folder}
           name={name}
-          maxParents={1}
-          className="pt-1 text-[28px] font-semibold tracking-tight"
+          className="pt-1"
           trailing={
             rows !== undefined && !atTop ? (
-              <span className="shrink-0 pt-1.5 text-[15px] font-normal tracking-normal tabular-nums text-text-muted">
+              <span className="shrink-0 text-[15px] font-normal tracking-normal tabular-nums text-text-muted">
                 {rows.length}
               </span>
             ) : null

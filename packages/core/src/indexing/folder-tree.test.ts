@@ -158,8 +158,4 @@ describe('foldCrumbs', () => {
     expect(foldCrumbs(crumbs, 3)).toEqual([crumbs[0], null, crumbs[2], crumbs[3]])
     expect(foldCrumbs(crumbs, 2)).toEqual([crumbs[0], null, crumbs[3]])
   })
-
-  it('keeps only the nearest folder when one fits', () => {
-    expect(foldCrumbs(crumbs, 1)).toEqual([null, crumbs[3]])
-  })
 })

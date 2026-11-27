@@ -537,7 +537,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {folderPath !== null ? (
-          <FolderPathTitle folder={folderPath} className="app-page-title" maxParents={2} />
+          <FolderPathTitle folder={folderPath} />
         ) : tag === null ? (
           <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (

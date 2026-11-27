@@ -282,15 +282,11 @@ function crumbsOf(segments: readonly string[]): FolderCrumb[] {
 /**
  * Fits a breadcrumb into `max` crumbs: past that it keeps the first and the
  * last `max - 1`, with `null` where the middle folds into an ellipsis
- * (`Areas › … › People › Clients`); with `max` 1 only the nearest stays
- * (`… › Clients`). Shorter paths come back unchanged.
+ * (`Areas › … › People › Clients`). Shorter paths come back unchanged.
  */
 export function foldCrumbs(crumbs: readonly FolderCrumb[], max: number): (FolderCrumb | null)[] {
   if (crumbs.length <= max) {
     return [...crumbs]
-  }
-  if (max <= 1) {
-    return [null, crumbs.at(-1)!]
   }
   return [crumbs[0]!, null, ...crumbs.slice(-(max - 1))]
 }

@@ -276,6 +276,8 @@ export {
   TYPE_FOLDER_TITLE_SEGMENT,
   typeHomeFolder,
   isPanelHiddenLooseKey,
+  hiddenNoteFieldKeys,
+  withNoteFieldHidden,
   isFolderNoteHome,
   typedNoteFolder,
   TAG_EXTENDS_KEY,

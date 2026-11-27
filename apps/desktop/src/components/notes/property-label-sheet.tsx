@@ -6,7 +6,12 @@ import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
-import { SettingsActionRow, SettingsGroup, SettingsNavRow } from '@/mobile/settings-list'
+import {
+  SettingsActionRow,
+  SettingsGroup,
+  SettingsNavRow,
+  SettingsSwitchRow,
+} from '@/mobile/settings-list'
 
 interface PropertyLabelSheetProps {
   open: boolean
@@ -17,13 +22,16 @@ interface PropertyLabelSheetProps {
   onChangeType: (nextType: TagPropertyType) => Promise<boolean>
   onEditSchema: () => void
   onDelete: () => Promise<boolean>
+  /** Whether the vault hides this field from every note's panel. */
+  hidden: boolean
+  onHiddenChange: (hidden: boolean) => void
 }
 
 type SheetPage = 'root' | 'rename' | 'type'
 
 /**
  * Notion-style animated bottom sheet when tapping a property label on iPhone:
- * Rename, Change type, Edit schema fields, or Delete property.
+ * Show in notes, Rename, Change type, Edit schema fields, or Delete property.
  */
 export function PropertyLabelSheet({
   open,
@@ -34,9 +42,16 @@ export function PropertyLabelSheet({
   onChangeType,
   onEditSchema,
   onDelete,
+  hidden,
+  onHiddenChange,
 }: PropertyLabelSheetProps): ReactElement {
   const [page, setPage] = useState<SheetPage>('root')
   const [draftName, setDraftName] = useState(property.name)
+  // The switch answers at once, but the field folds away only once the sheet
+  // has finished closing: the sheet lives in the row, and hiding the row
+  // mid-sheet would cut the sheet off instead of letting it slide down.
+  const [showDraft, setShowDraft] = useState<boolean | null>(null)
+  const shown = showDraft ?? !hidden
   const typeLabel = PROPERTY_TYPE_LABELS[property.type]
   const choices = QUICK_PROPERTY_TYPES.includes(property.type)
     ? QUICK_PROPERTY_TYPES
@@ -78,6 +93,14 @@ export function PropertyLabelSheet({
           setPage('root')
         }
       }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen && showDraft !== null) {
+          setShowDraft(null)
+          if (showDraft === hidden) {
+            onHiddenChange(!showDraft)
+          }
+        }
+      }}
     >
       <DrawerContent aria-label={property.name}>
         <div className="relative flex h-14 shrink-0 items-end justify-center px-16 pb-1">
@@ -104,6 +127,18 @@ export function PropertyLabelSheet({
         </div>
 
         <div className="flex max-h-[65dvh] min-h-[12rem] flex-col gap-5 overflow-y-auto px-4 pt-3 pb-8">
+          {page === 'root' ? (
+            <SettingsGroup footer="Off folds it under the fields, on every note in this vault.">
+              <SettingsSwitchRow
+                label="Show in notes"
+                checked={shown}
+                onCheckedChange={(checked) => {
+                  haptic('toggle')
+                  setShowDraft(checked)
+                }}
+              />
+            </SettingsGroup>
+          ) : null}
           {ownerTag === null ? (
             <SettingsGroup footer="This field isn’t part of a tag schema, so its type is inferred from its value.">
               <div className="flex min-h-12 items-center justify-between px-3.5 text-[15px]">

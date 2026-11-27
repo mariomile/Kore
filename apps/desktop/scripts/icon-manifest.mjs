@@ -64,6 +64,8 @@ export const SOLAR_ICONS = {
   Plus: 'add-linear',
   Replace: 'transfer-horizontal-linear',
   Trash: 'trash-bin-minimalistic-linear',
+  Eye: 'eye-linear',
+  EyeClosed: 'eye-closed-linear',
   Undo: 'undo-left-round-linear',
 
   // State and feedback

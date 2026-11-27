@@ -8,6 +8,7 @@ import {
   hasBridge,
   icloudRequestDownloads,
   isMobilePlatform,
+  applyAttachmentChanges,
   createGraph,
   loadAttachmentIndex,
   loadVaultLayout,
@@ -21,6 +22,7 @@ import {
 import { followHealedMove } from '@/editor/move-note'
 import { resetNoteRowOverlays } from '@/hooks/note-row-overlay'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useFileChanges } from '@/lib/use-file-changes'
 import { invalidateGithubAuth } from '@/lib/github-auth-state'
 import { isICloudRoot } from '@/lib/icloud-controller'
 import { setIndexProgress } from '@/lib/index-progress'
@@ -127,6 +129,10 @@ export function GraphProvider({
       shouldSuspend: () => isMobilePlatform(platform) && document.visibilityState === 'hidden',
     }),
   )
+
+  // Attachments that arrive after open (a pull, iCloud, another app) join the
+  // catalog, so a bare `![[x.png]]` written elsewhere resolves without a relaunch.
+  useFileChanges(applyAttachmentChanges)
 
   useEffect(() => {
     if (!isMobilePlatform(platform) || !isMainWindow()) {

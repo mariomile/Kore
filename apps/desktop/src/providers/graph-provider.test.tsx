@@ -3,7 +3,7 @@ import { renderHook } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { open } from '@tauri-apps/plugin-dialog'
-import { setBridge } from '@kore/core'
+import { emitFileChanges, resolveAttachmentSource, setBridge } from '@kore/core'
 import { GraphProvider, useGraph } from './graph-provider'
 import { SettingsProvider } from './settings-provider'
 import { ICLOUD_STATUS_QUERY_KEY, queryClient as appQueryClient } from '@/lib/query-client'
@@ -35,6 +35,8 @@ let failOpens: boolean
 let storedRecents: Array<{ root: string; name: string; openedMs: number }>
 /** What `list_files` returns — set before render to simulate existing notes. */
 let storedFiles: Array<{ path: string; size: number; modifiedMs: number }>
+/** What `list_attachments` returns at open — the catalog's starting point. */
+let storedAttachments: string[]
 /** The fake `index_meta` table (the welcome marker lives here). */
 let metaStore: Record<string, string>
 /** The fake settings document (`mobileOnboarded`/`mobileStorage` live here). */
@@ -63,6 +65,7 @@ function installFakeBridge(): void {
   failOpens = false
   storedRecents = []
   storedFiles = []
+  storedAttachments = []
   metaStore = {}
   settingsStore = {}
   storedStorage = { localRoot: MOBILE_ROOT, icloudDocumentsRoot: ICLOUD_ROOT, icloudGraphRoots: [] }
@@ -121,7 +124,7 @@ function installFakeBridge(): void {
         case 'obsidian_config_read':
           return { dailyNotes: null, app: null, templates: null }
         case 'list_attachments':
-          return []
+          return storedAttachments.map((path) => ({ path, size: 1, modifiedMs: 1 }))
         // The background index pass that follows an open: nothing to reindex.
         case 'index_reconcile_scan':
           return { total: storedFiles.length, candidates: [], orphans: [], stalePlaceholders: [] }
@@ -319,6 +322,27 @@ describe('GraphProvider open sequencing', () => {
     expect(result.current.indexGeneration).toBeNull()
     expect(open).not.toHaveBeenCalled()
     expect(result.current.recents).toEqual(storedRecents)
+  })
+})
+
+describe('GraphProvider attachment catalog', () => {
+  it('resolves a bare embed for an attachment pulled in after the vault opened', async () => {
+    storedRecents = [{ root: '/a', name: 'a', openedMs: 1 }]
+    storedAttachments = ['old.png']
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await act(async () => {
+      await vi.waitFor(() => expect(pendingOpens.has('/a')).toBe(true))
+      resolveOpen('/a')
+    })
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'))
+    await vi.waitFor(() => expect(resolveAttachmentSource('old.png')).toBe('old.png'))
+
+    // A sync pull lands an image outside the attachment folder.
+    emitFileChanges([{ path: 'Projects/attachments/flow.png', kind: 'upsert' }])
+    expect(resolveAttachmentSource('flow.png')).toBe('Projects/attachments/flow.png')
+
+    emitFileChanges([{ path: 'Projects/attachments/flow.png', kind: 'remove' }])
+    expect(resolveAttachmentSource('flow.png')).not.toBe('Projects/attachments/flow.png')
   })
 })
 

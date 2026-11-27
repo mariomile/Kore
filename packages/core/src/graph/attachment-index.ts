@@ -1,4 +1,5 @@
 import { errorMessage } from '../errors'
+import type { FileChange } from '../indexing/file-changes'
 import { listAttachments } from './commands'
 import { isAttachmentPath } from './paths'
 import { getVaultLayout } from './vault-layout'
@@ -62,8 +63,37 @@ export async function loadAttachmentIndex(generation?: number): Promise<void> {
 
 /** Record an attachment Kore just wrote, so a bare-name reference to it resolves at once. */
 export function noteAttachmentAdded(path: string): void {
-  if (activeIndex !== null && !activeIndex.paths.has(path)) {
-    setAttachmentIndex([...activeIndex.paths, path])
+  applyAttachmentChanges([{ path, kind: 'upsert' }])
+}
+
+/**
+ * Keep the catalog in step with the vault after open: a git pull, iCloud or
+ * another app can add or remove attachments, and a bare `![[x.png]]` must
+ * find a file that arrived after the graph opened (before this, it fell back
+ * to the attachment folder and 404ed). Non-attachment paths are ignored.
+ */
+export function applyAttachmentChanges(changes: readonly FileChange[]): void {
+  const index = activeIndex
+  if (index === null) {
+    return
+  }
+  // Every note save reaches here too: stay allocation-free until an
+  // attachment actually joins or leaves the catalog.
+  let paths: Set<string> | null = null
+  for (const { path, kind } of changes) {
+    const current = paths ?? index.paths
+    if (!isAttachmentPath(path) || current.has(path) === (kind === 'upsert')) {
+      continue
+    }
+    paths ??= new Set(index.paths)
+    if (kind === 'upsert') {
+      paths.add(path)
+    } else {
+      paths.delete(path)
+    }
+  }
+  if (paths !== null) {
+    setAttachmentIndex([...paths])
   }
 }
 

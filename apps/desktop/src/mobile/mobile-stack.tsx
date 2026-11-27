@@ -35,15 +35,17 @@ interface StackLayer {
 
 /**
  * Whether a route renders as a card pushed over a tab root. Note screens, HTML
- * pages and the settings screens (Settings, its Graphs sub-screen) stack;
- * everything else (daily, All, search-as-All) is a root.
+ * pages, the settings screens (Settings, its Graphs sub-screen) and Insights
+ * (a vault's first look) stack; everything else (daily, All, search-as-All)
+ * is a root.
  */
 function isStacked(route: Route): boolean {
   return (
     route.kind === 'note' ||
     route.kind === 'html' ||
     route.kind === 'settings' ||
-    route.kind === 'graphs'
+    route.kind === 'graphs' ||
+    route.kind === 'insights'
   )
 }
 
@@ -63,6 +65,8 @@ function layerKey(route: Route): string {
       return 'settings'
     case 'graphs':
       return 'graphs'
+    case 'insights':
+      return 'insights'
     case 'allNotes':
     case 'search':
       return 'all'

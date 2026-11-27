@@ -102,6 +102,24 @@ export interface EnsureWelcomeNoteOptions {
 }
 
 /**
+ * Below this many notes a vault has nothing to show on its first look: it
+ * opens like a new one, straight to today.
+ */
+export const FIRST_LOOK_MIN_NOTES = 20
+
+/**
+ * What the first open of a graph found: `seeded` — empty, it got the
+ * welcome note and default objects; `existing` — someone's notes, never
+ * opened in Kore before, worth a first look; `known` — opened before, or
+ * too small to tour.
+ */
+export type FirstRunOutcome = 'seeded' | 'existing' | 'known'
+
+function existingOutcome(notes: number): FirstRunOutcome {
+  return notes >= FIRST_LOOK_MIN_NOTES ? 'existing' : 'known'
+}
+
+/**
  * Consider every first-run seed for this graph **exactly once each**: when a
  * seed's marker is absent, an **empty** graph gets its content, while any
  * existing content means this is someone's data and only gets marked. Empty
@@ -114,15 +132,16 @@ export interface EnsureWelcomeNoteOptions {
  * predates a seed (its other markers already set) is marked without being
  * written into. Markers are stamped after their writes: a failed seed
  * retries on the next open, converging to marking once its files exist.
- * Returns whether the graph was the brand-new case.
  */
-export async function ensureFirstRunSeeds(options: EnsureWelcomeNoteOptions): Promise<boolean> {
+export async function ensureFirstRunSeeds(
+  options: EnsureWelcomeNoteOptions,
+): Promise<FirstRunOutcome> {
   const [welcomeMarked, objectsMarked] = await Promise.all([
     getIndexMeta(WELCOME_SEEDED_META_KEY),
     getIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY),
   ])
   if (welcomeMarked !== null && objectsMarked !== null) {
-    return false
+    return 'known'
   }
   const stats = await vaultScanStats(options.fileGeneration)
   const empty = stats.notes === 0 && stats.attachments === 0 && stats.skipped === 0
@@ -143,18 +162,26 @@ export async function ensureFirstRunSeeds(options: EnsureWelcomeNoteOptions): Pr
     }
     await setIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY, 'true', options.indexGeneration)
   }
-  return brandNew
+  if (brandNew) {
+    return 'seeded'
+  }
+  return welcomeMarked === null ? existingOutcome(stats.notes) : 'known'
 }
 
 /**
  * Record every first-run seed as considered without writing anything — for a
  * vault opened from GitHub. Its files belong to the repository: even an empty
  * repo must not get the welcome note or the default objects, which the next
- * sync would push into it.
+ * sync would push into it. A clone full of notes is still worth a first look.
  */
-export async function markFirstRunSeedsConsidered(indexGeneration: number): Promise<void> {
+export async function markFirstRunSeedsConsidered(
+  options: EnsureWelcomeNoteOptions,
+): Promise<FirstRunOutcome> {
+  const welcomeMarked = await getIndexMeta(WELCOME_SEEDED_META_KEY)
+  const stats = welcomeMarked === null ? await vaultScanStats(options.fileGeneration) : null
   await Promise.all([
-    setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', indexGeneration),
-    setIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY, 'true', indexGeneration),
+    setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', options.indexGeneration),
+    setIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY, 'true', options.indexGeneration),
   ])
+  return stats === null ? 'known' : existingOutcome(stats.notes)
 }

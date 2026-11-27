@@ -12,7 +12,11 @@ vi.mock('@kore/core', async (importOriginal) => ({
   loadGraphInsights,
 }))
 vi.mock('@/providers/graph-provider', () => ({
-  useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
+  useGraph: () => ({
+    graph: { root: '/g', name: 'g', generation: 1 },
+    firstLook: null,
+    indexReady: true,
+  }),
 }))
 vi.mock('@/providers/settings-provider', async () => {
   const { DEFAULT_SETTINGS } = await import('@kore/core')

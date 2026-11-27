@@ -2,6 +2,12 @@ import { useMemo, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { addDays, format, subDays } from 'date-fns'
 import { loadGraphInsights, weekStartDow, type GraphInsights } from '@kore/core'
+import { GraphPreview } from '@/components/first-look/graph-preview'
+import { TypeSuggestions } from '@/components/first-look/type-suggestions'
+import { useVaultArrival } from '@/components/first-look/use-vault-arrival'
+import { VaultArrivalHero } from '@/components/first-look/vault-arrival-hero'
+import { VaultChecks } from '@/components/first-look/vault-checks'
+import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
 import { PageLoading } from '@/components/page-loading'
 import { PageBody, PageHeader } from '@/components/ui/page-header'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -20,8 +26,14 @@ const ACTIVITY_WEEKS = 17
 
 /**
  * The Insights view: a read-only dashboard over the index — headline counts,
- * a writing-activity heatmap, the most-linked notes, and the most-used tags.
+ * what Kore sees in the vault (types to make, three checks), a
+ * writing-activity heatmap, the most-linked notes, and the most-used tags.
  * Everything is computed locally; nothing leaves the device.
+ *
+ * It is also a vault's first look: the first time Kore opens someone's
+ * existing notes it lands here, the counts climbing and the newest notes
+ * arriving as cards while the first index fills, then the graph, the types
+ * and the checks once the whole vault has been read.
  */
 export function InsightsScreen(): ReactElement {
   const { graph } = useGraph()
@@ -29,6 +41,7 @@ export function InsightsScreen(): ReactElement {
   const { navigate } = useRouter()
   const bridgeReady = useBridgeReady()
   const today = useToday()
+  const arrival = useVaultArrival()
 
   // The heatmap's first cell: the start of the week ACTIVITY_WEEKS-1 weeks
   // back, honoring the user's week-start day so columns read as real weeks.
@@ -48,7 +61,9 @@ export function InsightsScreen(): ReactElement {
         tagLimit: TAG_LIMIT,
         activitySince: format(gridStart, 'yyyy-MM-dd'),
       }),
-    enabled: bridgeReady && graph !== null,
+    // A first index competes for the same thread: the aggregates wait for
+    // it to finish rather than recount a half-read vault.
+    enabled: bridgeReady && graph !== null && !arrival.filling,
   })
 
   if (isError) {
@@ -58,95 +73,176 @@ export function InsightsScreen(): ReactElement {
       </p>
     )
   }
-  if (data === undefined) {
+  // A first look has its own story to tell before the dashboard's
+  // aggregates arrive; plain Insights waits for them.
+  if (data === undefined && !arrival.arriving) {
     return <PageLoading label="Loading insights" className="h-full" />
   }
 
   const openNote = (path: string): void => navigate(routeForPath(path))
   const openTag = (tag: string): void =>
     navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
-  const maxTagCount = Math.max(1, ...data.topTags.map((facet) => facet.count))
+  const maxTagCount = Math.max(1, ...(data?.topTags ?? []).map((facet) => facet.count))
 
   return (
     <>
-      <PageHeader title="Insights" />
-      <PageBody>
-        <section aria-label="Totals" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="Notes" value={data.noteCount} />
-          <StatTile label="Daily notes" value={data.dailyNoteCount} />
-          <StatTile label="Open tasks" value={data.openTaskCount} />
-          <StatTile label="Done tasks" value={data.completedTaskCount} />
-          <StatTile label="Types" value={data.tagCount} />
-        </section>
+      <PageHeader
+        title={arrival.arriving ? (graph?.name ?? 'Your vault') : 'Insights'}
+        {...(arrival.arriving ? { description: 'Your vault, opened in Kore' } : {})}
+      />
+      <PageBody className="pb-0">
+        {arrival.arriving ? (
+          <VaultArrivalHero
+            tally={arrival.tally}
+            progress={arrival.progress}
+            filling={arrival.filling}
+            readyInMs={arrival.readyInMs}
+          />
+        ) : data === undefined ? null : (
+          <section aria-label="Totals" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <StatTile label="Notes" value={data.noteCount} />
+            <StatTile label="Daily notes" value={data.dailyNoteCount} />
+            <StatTile label="Open tasks" value={data.openTaskCount} />
+            <StatTile label="Done tasks" value={data.completedTaskCount} />
+            <StatTile label="Types" value={data.tagCount} />
+          </section>
+        )}
+      </PageBody>
 
-        <section aria-label="Writing activity" className="mt-10">
-          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Writing activity</h2>
-          <ActivityHeatmap
-            activity={data.activity}
+      {arrival.arriving && arrival.filling && arrival.recent.length > 0 ? (
+        // The grid brings its own page gutters, so it sits between the two
+        // reading columns rather than inside one.
+        <section aria-label="Just read" className="mt-10 max-w-3xl">
+          <h2 className="pl-12 text-2xs font-medium tracking-wide text-text-muted">Just read</h2>
+          <AllNotesGrid notes={arrival.recent} tag={null} onOpen={openNote} />
+        </section>
+      ) : null}
+
+      <PageBody className="pt-10">
+        {arrival.arriving && !arrival.filling ? (
+          <div className="mb-10">
+            <GraphPreview
+              onOpenNote={openNote}
+              onOpenGraph={() => navigate({ kind: 'graphMap' })}
+            />
+          </div>
+        ) : null}
+
+        {arrival.firstLook !== undefined && arrival.firstLook.suggestions.length > 0 ? (
+          <div className="mb-10">
+            <TypeSuggestions suggestions={arrival.firstLook.suggestions} onOpenType={openTag} />
+          </div>
+        ) : null}
+
+        {arrival.firstLook !== undefined ? (
+          <div className="mb-10">
+            <VaultChecks look={arrival.firstLook} onOpenNote={openNote} />
+          </div>
+        ) : null}
+
+        {data === undefined ? null : (
+          <InsightsDashboard
+            data={data}
             gridStart={gridStart}
             today={today}
             dateFormat={settings.dateFormat}
+            maxTagCount={maxTagCount}
+            onOpenNote={openNote}
+            onOpenTag={openTag}
           />
-        </section>
-
-        {data.mostLinked.length > 0 ? (
-          <section aria-label="Most linked notes" className="mt-10">
-            <h2 className="text-2xs font-medium tracking-wide text-text-muted">
-              Most linked notes
-            </h2>
-            <ul className="-mx-2.5 mt-2 flex flex-col">
-              {data.mostLinked.map((note) => (
-                <li key={note.path}>
-                  <button
-                    type="button"
-                    onClick={() => openNote(note.path)}
-                    className="flex w-full items-center gap-3 rounded-md px-2.5 py-1.5 text-left transition-colors duration-100 hover:bg-surface-hover"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-text">
-                      {note.dailyDate !== null
-                        ? formatDayLabel(note.dailyDate, settings.dateFormat)
-                        : note.title}
-                    </span>
-                    <span className="shrink-0 text-xs tabular-nums text-text-muted">
-                      {note.backlinks} {note.backlinks === 1 ? 'link' : 'links'}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {data.topTags.length > 0 ? (
-          <section aria-label="Top types" className="mt-10">
-            <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top types</h2>
-            <ul className="-mx-2.5 mt-2 flex flex-col gap-1">
-              {data.topTags.map((facet) => (
-                <li key={facet.tag}>
-                  <button
-                    type="button"
-                    onClick={() => openTag(facet.tag)}
-                    className="group flex w-full items-center gap-3 rounded-md px-2.5 py-1 text-left transition-colors duration-100 hover:bg-surface-hover"
-                  >
-                    <span className="w-28 shrink-0 truncate text-xs font-medium text-text-secondary group-hover:text-text">
-                      #{facet.tag}
-                    </span>
-                    <span className="h-2 min-w-0 flex-1 rounded-full bg-surface-sunken">
-                      <span
-                        className="block h-full rounded-full bg-accent/60"
-                        style={{ width: `${Math.max(4, (facet.count / maxTagCount) * 100)}%` }}
-                      />
-                    </span>
-                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted">
-                      {facet.count}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+        )}
       </PageBody>
+    </>
+  )
+}
+
+interface InsightsDashboardProps {
+  data: GraphInsights
+  gridStart: Date
+  today: string
+  dateFormat: Parameters<typeof formatDayLabel>[1]
+  maxTagCount: number
+  onOpenNote: (path: string) => void
+  onOpenTag: (tag: string) => void
+}
+
+/** The aggregates under the first look: activity, most-linked notes, top types. */
+function InsightsDashboard({
+  data,
+  gridStart,
+  today,
+  dateFormat,
+  maxTagCount,
+  onOpenNote: openNote,
+  onOpenTag: openTag,
+}: InsightsDashboardProps): ReactElement {
+  return (
+    <>
+      <section aria-label="Writing activity">
+        <h2 className="text-2xs font-medium tracking-wide text-text-muted">Writing activity</h2>
+        <ActivityHeatmap
+          activity={data.activity}
+          gridStart={gridStart}
+          today={today}
+          dateFormat={dateFormat}
+        />
+      </section>
+
+      {data.mostLinked.length > 0 ? (
+        <section aria-label="Most linked notes" className="mt-10">
+          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Most linked notes</h2>
+          <ul className="-mx-2.5 mt-2 flex flex-col">
+            {data.mostLinked.map((note) => (
+              <li key={note.path}>
+                <button
+                  type="button"
+                  onClick={() => openNote(note.path)}
+                  className="flex w-full items-center gap-3 rounded-md px-2.5 py-1.5 text-left transition-colors duration-100 hover:bg-surface-hover"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm text-text">
+                    {note.dailyDate !== null
+                      ? formatDayLabel(note.dailyDate, dateFormat)
+                      : note.title}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-text-muted">
+                    {note.backlinks} {note.backlinks === 1 ? 'link' : 'links'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {data.topTags.length > 0 ? (
+        <section aria-label="Top types" className="mt-10">
+          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top types</h2>
+          <ul className="-mx-2.5 mt-2 flex flex-col gap-1">
+            {data.topTags.map((facet) => (
+              <li key={facet.tag}>
+                <button
+                  type="button"
+                  onClick={() => openTag(facet.tag)}
+                  className="group flex w-full items-center gap-3 rounded-md px-2.5 py-1 text-left transition-colors duration-100 hover:bg-surface-hover"
+                >
+                  <span className="w-28 shrink-0 truncate text-xs font-medium text-text-secondary group-hover:text-text">
+                    #{facet.tag}
+                  </span>
+                  <span className="h-2 min-w-0 flex-1 rounded-full bg-surface-sunken">
+                    <span
+                      className="block h-full rounded-full bg-accent/60"
+                      style={{ width: `${Math.max(4, (facet.count / maxTagCount) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="w-8 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                    {facet.count}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   )
 }

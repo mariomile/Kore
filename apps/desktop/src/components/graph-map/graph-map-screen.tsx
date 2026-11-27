@@ -1,25 +1,17 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { displayNoteTitle, foldTag, getGraphMap, noteFileStem, type GraphMapNode } from '@kore/core'
+import { getGraphMap } from '@kore/core'
 import { PageLoading } from '@/components/page-loading'
 import { SearchPill } from '@/components/ui/search-pill'
 import { Switch } from '@/components/ui/switch'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
-import { tagColorCss } from '@/lib/graph-colors'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
-import { GraphMapCanvas, type CanvasNode } from './graph-map-canvas'
+import { graphCanvasView } from './graph-canvas-view'
+import { GraphMapCanvas } from './graph-map-canvas'
 import { focusedGraphView } from './graph-map-focus'
-
-/** The label a node renders: title, else the daily date, else the file stem. */
-function nodeLabel(node: GraphMapNode): string {
-  if (node.dailyDate !== null) {
-    return node.dailyDate
-  }
-  return displayNoteTitle(node.title === '' ? noteFileStem(node.path) : node.title)
-}
 
 interface GraphMapScreenProps {
   /** A note to open focused on (the local graph's "Open in Graph"), or null. */
@@ -51,28 +43,10 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
     enabled: bridgeReady && graph !== null,
   })
 
-  const view = useMemo(() => {
-    if (data === undefined) {
-      return null
-    }
-    const nodes: CanvasNode[] = data.nodes
-      // A focused daily stays, or hiding dailies would unfocus it.
-      .filter((node) => showDailies || node.dailyDate === null || node.path === focusId)
-      .map((node) => ({
-        id: node.path,
-        label: nodeLabel(node),
-        inbound: node.inbound,
-        isDaily: node.dailyDate !== null,
-        // One hue per first tag: clusters that share a topic read as one
-        // color. Untagged notes keep the neutral fill.
-        color: node.tag === null ? null : tagColorCss(foldTag(node.tag)),
-      }))
-    const kept = new Set(nodes.map((node) => node.id))
-    const edges = data.edges
-      .filter((edge) => kept.has(edge.source) && kept.has(edge.target))
-      .map((edge) => ({ source: edge.source, target: edge.target, weight: edge.weight }))
-    return { nodes, edges }
-  }, [data, showDailies, focusId])
+  const view = useMemo(
+    () => (data === undefined ? null : graphCanvasView(data, { showDailies, keep: focusId })),
+    [data, showDailies, focusId],
+  )
 
   const shown = useMemo(
     () => (view === null ? null : focusedGraphView(view, focusId)),

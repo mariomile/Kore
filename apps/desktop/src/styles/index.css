@@ -2451,3 +2451,10 @@ html[data-sidebar-resizing] aside {
   letter-spacing: 0;
   opacity: 0;
 }
+
+/* The first look's graph has no frame: the map fades out toward its edges so
+   it sits in the page instead of in a box. */
+.graph-preview-fade {
+  -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 50%, black 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 72% at 50% 50%, black 55%, transparent 100%);
+}

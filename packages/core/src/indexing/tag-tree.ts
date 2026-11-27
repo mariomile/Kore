@@ -1,6 +1,8 @@
 import { sql } from 'kysely'
 import { db } from './db'
+import type { IndexedTag } from './indexed-note'
 import type { ListNoteTagsOptions, NoteTagFacet } from './note-list'
+import { inClauseChunks } from './query-utils'
 
 /**
  * Nested tags (`#domain/ai`, `#type/person`) as a tree — the sidebar's Types
@@ -226,6 +228,51 @@ export async function listUsedTagCounts(
   return (await listTagPrefixes(options))
     .filter((row) => row.used !== 0)
     .map(({ tag, count }) => ({ tag, count }))
+}
+
+/**
+ * What one note contributes to {@link listTagPrefixes}: its member tags (key
+ * and display casing) and whether it is private. Two note states with the
+ * same signature give the tag tree the same rows, so a save that keeps it
+ * (an edit to the body, the common case) needn't refetch the tree. A note
+ * with no member tags contributes nothing, whatever its privacy: ''.
+ */
+export function tagTreeSignature(
+  isPrivate: boolean,
+  tags: readonly Pick<IndexedTag, 'tag' | 'tagKey' | 'member'>[],
+): string {
+  const members = tags
+    .filter((tag) => tag.member)
+    .map((tag) => `${tag.tagKey}\u{0}${tag.tag}`)
+    .sort()
+  return members.length === 0 ? '' : `${isPrivate ? 1 : 0}\u{1}${members.join('\u{1}')}`
+}
+
+/** The stored {@link tagTreeSignature} of each note in `paths`; absent means ''. */
+export async function getTagTreeSignaturesByPath(
+  paths: readonly string[],
+): Promise<Map<string, string>> {
+  const rows: { notePath: string; tag: string; tagKey: string; isPrivate: number }[] = []
+  for (const chunk of inClauseChunks([...paths])) {
+    rows.push(
+      ...(await db
+        .selectFrom('tags')
+        .innerJoin('notes', 'notes.path', 'tags.notePath')
+        .where('tags.notePath', 'in', chunk)
+        .where('tags.member', '=', 1)
+        .select(['tags.notePath', 'tags.tag', 'tags.tagKey', 'notes.isPrivate'])
+        .execute()),
+    )
+  }
+  const byPath = new Map<string, { isPrivate: boolean; tags: IndexedTag[] }>()
+  for (const row of rows) {
+    const entry = byPath.get(row.notePath) ?? { isPrivate: row.isPrivate !== 0, tags: [] }
+    entry.tags.push({ tag: row.tag, tagKey: row.tagKey, member: true })
+    byPath.set(row.notePath, entry)
+  }
+  return new Map(
+    [...byPath].map(([path, entry]) => [path, tagTreeSignature(entry.isPrivate, entry.tags)]),
+  )
 }
 
 /** The Types section's tree: every tag on a non-daily note, nested on `/`. */

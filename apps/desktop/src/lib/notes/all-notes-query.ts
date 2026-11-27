@@ -1,5 +1,5 @@
 import { foldTag, type NoteListFolder } from '@kore/core'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { INDEX_QUERY_SCOPE, TAG_FACETS_QUERY } from '@/lib/query-client'
 
 /**
  * The TanStack Query keys for the All Notes screen, in one place so the screen's
@@ -14,7 +14,6 @@ import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
  * watcher rather than the optimistic patch.
  */
 const ALL_NOTES = 'all-notes'
-const ALL_NOTES_TAGS = 'all-notes-tags'
 
 /**
  * The list query key for one tag filter (`null` = all non-daily notes), or
@@ -38,5 +37,5 @@ export function allNotesListPrefix(root: string | undefined): [string, string | 
 export function allNotesTagsQueryKey(
   root: string | undefined,
 ): [string, string | undefined, string] {
-  return [INDEX_QUERY_SCOPE, root, ALL_NOTES_TAGS]
+  return [INDEX_QUERY_SCOPE, root, TAG_FACETS_QUERY]
 }

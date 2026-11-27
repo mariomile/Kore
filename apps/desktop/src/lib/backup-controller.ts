@@ -188,7 +188,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
         if (disposed || notificationEpoch !== remoteIndexEpoch) {
           return
         }
-        const mutations = await applyIndexChanges(
+        const { mutations } = await applyIndexChanges(
           indexable,
           indexGeneration,
           undefined,

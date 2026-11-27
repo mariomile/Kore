@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getTagTree, type TagTreeNode } from '@kore/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { INDEX_QUERY_SCOPE, TAG_TREE_QUERY } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 
 /**
@@ -13,7 +13,7 @@ export function useTagTree(): readonly TagTreeNode[] {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const { data } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-tree'],
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, TAG_TREE_QUERY],
     queryFn: () => getTagTree(),
     enabled: bridgeReady && graph !== null,
   })

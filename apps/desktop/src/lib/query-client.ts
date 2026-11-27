@@ -1,5 +1,10 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query'
-import { folderTreeAffectedBy, type FileChange, type FolderTreeFolder } from '@kore/core'
+import {
+  folderTreeAffectedBy,
+  type FileChange,
+  type FolderTreeFolder,
+  type IndexApplyResult,
+} from '@kore/core'
 
 /**
  * The app's one TanStack Query client (adopted in Plan 07 per architecture
@@ -41,6 +46,8 @@ let lastInvalidateAt = 0
 let invalidateTimer: ReturnType<typeof setTimeout> | null = null
 /** What the next throttled round covers: the batches since the last one, or everything. */
 let pendingChanges: FileChange[] | 'all' = []
+/** Whether any batch since the last round can have changed the tag tree. */
+let pendingTagsChanged = false
 
 /** Most changes one throttled round narrows by before it refreshes everything. */
 const NARROW_INVALIDATION_LIMIT = 256
@@ -48,24 +55,42 @@ const NARROW_INVALIDATION_LIMIT = 256
 /** Key segment of the vault folder tree query (`useFolderTree`). */
 export const FOLDER_TREE_QUERY = 'folder-tree'
 
+/** Key segment of the sidebar's tag tree query (`useTagTree`). */
+export const TAG_TREE_QUERY = 'tag-tree'
+
+/** Key segment of the flat tag facet list (`listNoteTags`, All Notes and the tag pickers). */
+export const TAG_FACETS_QUERY = 'all-notes-tags'
+
 function isFolderTreeKey(key: QueryKey): boolean {
   return key[0] === INDEX_QUERY_SCOPE && key[2] === FOLDER_TREE_QUERY
 }
 
+/** Queries that run the recursive tag-prefix count over every tag in the vault. */
+function isTagCountsKey(key: QueryKey): boolean {
+  return key[0] === INDEX_QUERY_SCOPE && (key[2] === TAG_TREE_QUERY || key[2] === TAG_FACETS_QUERY)
+}
+
 /**
  * Refetch the index queries an applied batch can have changed. Everything is
- * refetched as before, except the folder tree: it reads every note's path and
- * title, and an autosave that only edits a note's body leaves it unchanged, so
- * it refetches only when {@link folderTreeAffectedBy} says the batch moved it.
+ * refetched as before, except two whole-vault reads an autosave that only
+ * edits a note's body leaves unchanged: the folder tree (every note's path
+ * and title) refetches only when {@link folderTreeAffectedBy} says the batch
+ * moved it, and the tag counts (the tree and the facet list, a recursive pass
+ * over every tag, over a second at 100k notes) only when the apply reported
+ * `tagsChanged`.
  */
-function invalidateIndexQueriesFor(changes: readonly FileChange[] | 'all'): void {
+function invalidateIndexQueriesFor(
+  changes: readonly FileChange[] | 'all',
+  tagsChanged: boolean,
+): void {
   if (changes === 'all') {
     invalidateIndexQueries()
     return
   }
   void queryClient.invalidateQueries({
     queryKey: [INDEX_QUERY_SCOPE],
-    predicate: (query) => !isFolderTreeKey(query.queryKey),
+    predicate: (query) =>
+      !isFolderTreeKey(query.queryKey) && (tagsChanged || !isTagCountsKey(query.queryKey)),
   })
   for (const [key, tree] of queryClient.getQueriesData<FolderTreeFolder>({
     queryKey: [INDEX_QUERY_SCOPE],
@@ -94,9 +119,11 @@ function invalidateIndexQueriesFor(changes: readonly FileChange[] | 'all'): void
 
 function flushThrottledInvalidation(): void {
   const changes = pendingChanges
+  const tagsChanged = pendingTagsChanged
   pendingChanges = []
+  pendingTagsChanged = false
   lastInvalidateAt = Date.now()
-  invalidateIndexQueriesFor(changes)
+  invalidateIndexQueriesFor(changes, tagsChanged)
 }
 
 /**
@@ -106,8 +133,15 @@ function flushThrottledInvalidation(): void {
  * — while a burst collapses to one refetch per window, none dropped (the
  * trailing edge always runs). Direct user-action invalidations should keep
  * calling the unthrottled function.
+ *
+ * `changes` and `result` come from an applied watcher batch; without them
+ * (a reconcile, a sync pull) every index query refreshes.
  */
-export function throttledInvalidateIndexQueries(changes?: readonly FileChange[]): void {
+export function throttledInvalidateIndexQueries(
+  changes?: readonly FileChange[],
+  result?: IndexApplyResult,
+): void {
+  pendingTagsChanged ||= result?.tagsChanged ?? true
   // Without the batch nothing can be narrowed: refresh every index query.
   // Past a few hundred changes (a sync pull) checking each costs more than
   // the refetch it could save.

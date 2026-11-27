@@ -15,6 +15,7 @@ import {
 import { detectExternalMoves } from './move-healing'
 import { createPassPacer } from './pacing'
 import { getIndexedFileFactsByPath, getNoteIdsByPath, type IndexedFileFacts } from './queries'
+import { getTagTreeSignaturesByPath, tagTreeSignature } from './tag-tree'
 
 /**
  * Live re-indexing from the Rust watcher (Plan 04b). Batches of
@@ -135,14 +136,47 @@ async function prefetchFacts(paths: string[]): Promise<Map<string, IndexedFileFa
 }
 
 /**
+ * The stored tag-tree signature of each upsert path, or null when unknown —
+ * best-effort like {@link prefetchFacts}: null only costs a tag-tree refetch.
+ */
+async function prefetchTagTreeSignatures(paths: string[]): Promise<Map<string, string> | null> {
+  if (paths.length === 0) {
+    return new Map()
+  }
+  try {
+    return await getTagTreeSignaturesByPath(paths)
+  } catch (error) {
+    console.error('tag signature prefetch failed; the tag tree will refetch:', error)
+    return null
+  }
+}
+
+/** What applying a batch did to the index. */
+export interface IndexApplyResult {
+  /**
+   * Index mutations the batch performed (applies, removes, re-stamps, healed
+   * moves). Zero means every change was already reflected — the caller can
+   * skip its cache invalidation.
+   */
+  readonly mutations: number
+  /**
+   * Whether the batch can have changed the tag tree (a note's member tags or
+   * privacy, a removal, a move). False for the common autosave that edits a
+   * note's body, which spares the whole-vault tag-tree query on every save.
+   */
+  readonly tagsChanged: boolean
+}
+
+const NOTHING_APPLIED: IndexApplyResult = { mutations: 0, tagsChanged: false }
+
+/**
  * Apply a batch of watcher changes to the index at `generation`. Same-batch
  * rename pairs heal as moves first ({@link healBatchMoves}); the rest apply
  * in order. A failing change is reported (default: `console.error`) and
  * skipped, so one unreadable file can't stall the rest of the batch.
  *
- * Returns how many index mutations the batch actually performed (applies,
- * removes, and healed moves). Zero means every change was already reflected
- * in the index — the caller can skip its cache invalidation.
+ * Returns the {@link IndexApplyResult}: how many index mutations the batch
+ * performed, and whether it can have changed the tag tree.
  *
  * `canApply` is checked immediately before each SQLite write. A caller that
  * suspends the lifecycle can therefore abandon the remaining batch; its next
@@ -154,15 +188,15 @@ export async function applyIndexChanges(
   onError: ApplyErrorHandler = logApplyError,
   onMoved?: MovedHandler,
   canApply: () => boolean = () => true,
-): Promise<number> {
+): Promise<IndexApplyResult> {
   if (!canApply()) {
-    return 0
+    return NOTHING_APPLIED
   }
   // The change stream carries more than notes (the watcher also reports
   // audio-memo recordings); only markdown notes reach the index.
   const notes = changes.filter((change) => isNotePath(change.path))
   if (notes.length === 0) {
-    return 0
+    return NOTHING_APPLIED
   }
   let handled: Set<string>
   let mutations = 0
@@ -177,11 +211,19 @@ export async function applyIndexChanges(
     handled = new Set()
   }
 
-  const stored = await prefetchFacts(
-    notes
-      .filter((change) => change.kind === 'upsert' && !handled.has(change.path))
-      .map((change) => change.path),
-  )
+  const upserts = notes
+    .filter((change) => change.kind === 'upsert' && !handled.has(change.path))
+    .map((change) => change.path)
+  const [stored, storedTagSignatures] = await Promise.all([
+    prefetchFacts(upserts),
+    prefetchTagTreeSignatures(upserts),
+  ])
+  // Removals and healed moves change which notes the tree counts.
+  let tagsChanged =
+    storedTagSignatures === null ||
+    mutations > 0 ||
+    notes.some((change) => change.kind === 'remove' && !handled.has(change.path))
+  const result = (count: number): IndexApplyResult => ({ mutations: count, tagsChanged })
   const now = Date.now()
   const changeByPath = new Map(notes.map((change) => [change.path, change]))
   // A write refused even alone (after the batcher's halving retry) reports
@@ -213,11 +255,11 @@ export async function applyIndexChanges(
   const pacer = createPassPacer()
   for (const change of notes) {
     if (!canApply()) {
-      return mutations
+      return result(mutations)
     }
     await pacer.pause()
     if (!canApply()) {
-      return mutations
+      return result(mutations)
     }
     if (handled.has(change.path)) {
       continue
@@ -227,18 +269,18 @@ export async function applyIndexChanges(
         // Flush upserts first: a same-batch upsert(x) … remove(x) sequence
         // must not have the batched upsert land *after* the remove.
         if (!canApply()) {
-          return mutations
+          return result(mutations)
         }
         await batch.flush()
         if (!canApply()) {
-          return mutations
+          return result(mutations)
         }
         pendingRemoves.push(change.path)
         continue
       }
       await flushPendingRemoves()
       if (!canApply()) {
-        return mutations
+        return result(mutations)
       }
       const facts = stored.get(change.path)
       if (matchesTrustedMtime(facts?.mtime, change.modifiedMs, now)) {
@@ -247,7 +289,7 @@ export async function applyIndexChanges(
       const content = await readNote(change.path)
       const fileHash = await hashContent(content)
       if (!canApply()) {
-        return mutations
+        return result(mutations)
       }
       if (facts?.fileHash === fileHash) {
         // Content unchanged; only the mtime moved. Re-stamp the row so the
@@ -255,7 +297,7 @@ export async function applyIndexChanges(
         // and would cost this read on every reconcile and every batch.
         if (change.modifiedMs !== undefined && facts.mtime !== change.modifiedMs) {
           if (!canApply()) {
-            return mutations
+            return result(mutations)
           }
           await touches.add({ path: change.path, mtime: change.modifiedMs })
         }
@@ -266,28 +308,31 @@ export async function applyIndexChanges(
         mtime: change.modifiedMs ?? Date.now(),
       })
       if (!canApply()) {
-        return mutations
+        return result(mutations)
       }
+      tagsChanged ||=
+        tagTreeSignature(projection.isPrivate, projection.tags) !==
+        (storedTagSignatures?.get(change.path) ?? '')
       await batch.add(projection)
     } catch (error) {
       onError(error, change)
     }
   }
   if (!canApply()) {
-    return mutations
+    return result(mutations)
   }
   await batch.flush()
   if (!canApply()) {
-    return mutations + batch.applied()
+    return result(mutations + batch.applied())
   }
   await flushPendingRemoves()
   if (!canApply()) {
-    return mutations + batch.applied()
+    return result(mutations + batch.applied())
   }
   await touches.flush()
   // Re-stamps count as mutations: `updated_at` moved, so recency-ordered
   // queries may return different rows and the caller must invalidate.
-  return mutations + batch.applied() + touches.applied()
+  return result(mutations + batch.applied() + touches.applied())
 }
 
 /**
@@ -299,7 +344,8 @@ export async function applyIndexChanges(
  * the hook for cache invalidation (Plan 07's TanStack Query layer): invalidating
  * on the raw file event would refetch *before* the rows changed. A batch whose
  * changes were all already reflected (mtime/hash skips) fires nothing — there
- * is nothing new to refetch.
+ * is nothing new to refetch. Its {@link IndexApplyResult} tells the caller
+ * whether the tag tree needs a refetch too.
  *
  * After the same apply step, {@link emitIndexApplied} broadcasts the **full**
  * batch (notes *and* asset-file changes) to its subscribers — the seam the
@@ -324,7 +370,7 @@ export async function applyIndexChanges(
  */
 export function subscribeIndexChanges(
   generation: number,
-  onApplied?: (changes: FileChange[]) => void,
+  onApplied?: (changes: FileChange[], result: IndexApplyResult) => void,
   onMoved?: MovedHandler,
   canApply: () => boolean = () => true,
   heldUntil?: Promise<unknown>,
@@ -355,16 +401,16 @@ export function subscribeIndexChanges(
         pendingChanges.clear()
         const notes = changes.filter((change) => isNotePath(change.path))
         try {
-          const mutations =
+          const result =
             notes.length > 0
               ? await applyIndexChanges(notes, generation, undefined, onMoved, canApply)
-              : 0
+              : null
           if (!canApply()) {
             pendingChanges.clear()
             return
           }
-          if (notes.length > 0 && mutations > 0) {
-            onApplied?.(notes)
+          if (result !== null && result.mutations > 0) {
+            onApplied?.(notes, result)
           }
           emitIndexApplied(changes, generation)
         } catch (error) {

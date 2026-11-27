@@ -7,6 +7,8 @@
  * session.
  */
 
+import { JOB_SEARCH_FILES, JOB_SEARCH_NOTES } from './seed-job-search'
+
 /** The seeded notes plus the images they reference, base64 by vault path. */
 export interface VisualVaultSeed {
   files: Record<string, string>
@@ -350,13 +352,14 @@ const APPLICATION_BOARD = [
 export function seedVisualVault(): VisualVaultSeed {
   const assets = new Map(PAINTINGS.map((painting) => [painting.path, paint(painting)]))
   // Loose documents beside the Studio notes (their bytes only need a size).
-  for (const [path, text] of LOOSE_DOCUMENTS) {
+  for (const [path, text] of [...LOOSE_DOCUMENTS, ...JOB_SEARCH_FILES]) {
     assets.set(path, btoa(text))
   }
   assets.set('Maps/Studio map.canvas', btoa(STUDIO_MAP))
   assets.set('Maps/Launch flow.canvas', btoa(LAUNCH_FLOW))
   assets.set('Projects/Application board.base', btoa(APPLICATION_BOARD))
   const files: Record<string, string> = {
+    ...JOB_SEARCH_NOTES,
     'notes/Kore brand directions.md': [
       '---',
       'cover: assets/brand-gradient.png',

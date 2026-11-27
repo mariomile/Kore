@@ -19,6 +19,7 @@ import {
   type NoteListFolder,
   type SavedCollectionView,
   type TagPropertyType,
+  type LooseFile,
 } from '@kore/core'
 import { Check, Settings, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -45,6 +46,7 @@ import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { FileKindMenu } from './file-kind-menu'
 import { FolderFiles, useLooseFilesQuery } from './folder-files'
+import { FolderFilesSection } from './folder-files-section'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -97,6 +99,11 @@ const NO_TYPE_VIEWS: readonly SavedCollectionView[] = []
 /** The notes a file-kind filter lists: none, one stable list. */
 const NO_NOTES: ClassifiedNoteListEntry[] = []
 
+const NO_LOOSE_FILES: readonly LooseFile[] = []
+
+/** How many lines of file rows a folder page shows above its notes. */
+const FOLDER_FILE_LINES = 2
+
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
  * newest first. The active tag lives on the route so back/forward and "open a
@@ -113,7 +120,8 @@ const NO_NOTES: ClassifiedNoteListEntry[] = []
  * hover gear.
  *
  * A routed folder is that folder's page (Notion's page of child pages): a
- * breadcrumb of its parents, its subfolders as chips, then its notes in the
+ * breadcrumb of its parents, its subfolders as chips, its loose files as a
+ * few compact rows, then its notes in the
  * same list/grid as All notes (its subfolders' notes included unless the
  * folder's settings say otherwise), with a title filter, the settings gear,
  * and a "+" that creates the note in the folder.
@@ -742,7 +750,20 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 scroller, a folder of many folders left the notes no room. */}
             <div ref={setSubfoldersElement}>
               <FolderSubfolders folder={folderNode} />
-              {view === 'grid' ? null : <FolderFiles files={folderFiles} onOpen={openLooseFile} />}
+              {filesOnly ? (
+                view === 'grid' ? null : (
+                  <FolderFiles files={folderFiles} onOpen={openLooseFile} />
+                )
+              ) : (
+                // The folder's notes come first: its files keep a couple of
+                // lines above them, all of them when there are no notes.
+                <FolderFilesSection
+                  key={folderPath}
+                  files={folderFiles}
+                  onOpen={openLooseFile}
+                  lines={notes?.length === 0 ? null : FOLDER_FILE_LINES}
+                />
+              )}
             </div>
             {filesOnly && (folderFiles.length === 0 || view !== 'grid') ? (
               // Files alone: the list view shows their cards above, the grid
@@ -752,20 +773,21 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               ) : null
             ) : inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
-            ) : folderPath !== null &&
-              notes?.length === 0 &&
-              (view !== 'grid' || folderFiles.length === 0) ? (
-              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
-                {titleNeedle !== ''
-                  ? 'No notes match the filter.'
-                  : includeSubfolders
-                    ? 'No notes in this folder.'
-                    : 'No notes directly in this folder.'}
-              </p>
+            ) : folderPath !== null && notes?.length === 0 ? (
+              // A folder of files alone is its files section, nothing under it.
+              folderFiles.length > 0 ? null : (
+                <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
+                  {titleNeedle !== ''
+                    ? 'No notes match the filter.'
+                    : includeSubfolders
+                      ? 'No notes in this folder.'
+                      : 'No notes directly in this folder.'}
+                </p>
+              )
             ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}
-                files={folderFiles}
+                files={filesOnly ? folderFiles : NO_LOOSE_FILES}
                 onOpenFile={openLooseFile}
                 tag={listTag}
                 type={collectionAvailable ? tagType : null}

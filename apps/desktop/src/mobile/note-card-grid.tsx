@@ -29,7 +29,7 @@ interface NoteCardGridProps {
   /** Content that scrolls above the cards (a folder page's title and cards). */
   leading?: ReactNode
   /**
-   * A folder page's loose files, dealt among the notes in the page's sort,
+   * The loose files a File type filter lists, as cards in the page's sort,
    * as the Mac grid does.
    */
   files?: readonly LooseFile[]
@@ -68,7 +68,7 @@ export function NoteCardGrid({
   const { settings } = useSettings()
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  // A folder's files are documents of it like its notes: one grid, one order.
+  // Files and notes share one order: the page's sort.
   const items = useMemo(
     () => mergeFolderItems(rows, files, settings.allNotesSort, rowTitle),
     [rows, files, settings.allNotesSort],

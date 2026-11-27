@@ -1,9 +1,9 @@
 import { useMemo, type ReactElement } from 'react'
-import { noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
+import { noteFolderCrumbs, noteIconValue, parseNoteAppearanceFromSource } from '@kore/core'
 import { Image, Smile } from '@/components/icons'
 import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
 import { cn } from '@/lib/utils'
-import { NoteCover, type CoverEdit } from './note-cover'
+import { COVER_GLASS_CLASS, NoteCover, type CoverEdit } from './note-cover'
 import { NoteCoverPicker, type CoverUpload } from './note-cover-picker'
 import { NoteIconGlyph } from './note-icon-glyph'
 import { NoteIconPicker } from './note-icon-picker'
@@ -48,8 +48,8 @@ interface NoteAppearanceProps {
   flushCover?: boolean
 }
 
-const HOVER_ACTION_CLASS =
-  'flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-hover hover:text-text'
+const ADD_ACTION_CLASS =
+  'flex size-7 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text focus-visible:bg-surface-hover focus-visible:text-text focus-visible:outline-none'
 
 /**
  * The note's header: folder breadcrumb, then the cover image and icon from
@@ -97,41 +97,55 @@ export function NoteAppearance({
       )
   }
 
-  // Hidden, not absent, until the note is hovered: the row keeps its height
-  // so the title never jumps under the pointer, and focus reveals it for
-  // keyboard users. An open picker keeps it visible.
   const addIcon = onIconChange !== undefined && icon === null
   const addCover = coverEdit !== null && coverUrl === null
-  const addRow =
+  const hasBreadcrumb = breadcrumbPath !== undefined && noteFolderCrumbs(breadcrumbPath).length > 0
+  // Round icon buttons at the right end of the breadcrumb's line, so adding
+  // an icon or a cover costs the page no row of its own. Hidden until the
+  // note is hovered; focus reveals them for keyboard users, and an open
+  // picker keeps them up. On a cover they sit in a frosted pill opposite the
+  // breadcrumb's; with no breadcrumb they float in the page's top inset.
+  const actionClass = cn(ADD_ACTION_CLASS, coverUrl !== null && 'size-6')
+  const addActions =
     addIcon || addCover ? (
       <div
         className={cn(
-          'flex h-7 items-center gap-1 opacity-0 transition-opacity duration-100 group-hover/note:opacity-100 focus-within:opacity-100 has-data-popup-open:opacity-100',
+          'pointer-events-none absolute inset-x-0 flex justify-end',
+          coverUrl !== null ? 'top-3.5' : hasBreadcrumb ? '-top-1' : 'bottom-full mb-2',
           gutterClassName,
         )}
       >
-        {addIcon ? (
-          <NoteIconPicker
-            value={null}
-            onChange={onIconChange}
-            label="Add icon"
-            className={HOVER_ACTION_CLASS}
-          >
-            <Smile aria-hidden className="size-3.5" />
-            Add icon
-          </NoteIconPicker>
-        ) : null}
-        {addCover ? (
-          <NoteCoverPicker
-            onChange={coverEdit.onChange}
-            upload={coverEdit.upload}
-            label="Add cover"
-            className={HOVER_ACTION_CLASS}
-          >
-            <Image aria-hidden className="size-3.5" />
-            Add cover
-          </NoteCoverPicker>
-        ) : null}
+        <div
+          className={cn(
+            'pointer-events-auto flex gap-0.5 opacity-0 transition-opacity duration-100 group-hover/note:opacity-100 focus-within:opacity-100 has-data-popup-open:opacity-100',
+            coverUrl !== null && cn('rounded-full p-0.5', COVER_GLASS_CLASS),
+          )}
+        >
+          {addIcon ? (
+            <NoteIconPicker
+              value={null}
+              onChange={onIconChange}
+              label="Add icon"
+              hinted
+              align="end"
+              className={actionClass}
+            >
+              <Smile aria-hidden className="size-4" />
+            </NoteIconPicker>
+          ) : null}
+          {addCover ? (
+            <NoteCoverPicker
+              onChange={coverEdit.onChange}
+              upload={coverEdit.upload}
+              label="Add cover"
+              hinted
+              align="end"
+              className={actionClass}
+            >
+              <Image aria-hidden className="size-4" />
+            </NoteCoverPicker>
+          ) : null}
+        </div>
       </div>
     ) : null
 
@@ -159,7 +173,7 @@ export function NoteAppearance({
         {iconEl !== null ? (
           <div className={cn('absolute -bottom-6', gutterClassName)}>{iconEl}</div>
         ) : null}
-        {addRow === null ? null : <div className="mt-2">{addRow}</div>}
+        {addActions}
       </div>
     )
   }
@@ -169,10 +183,10 @@ export function NoteAppearance({
       <NoteFolderBreadcrumb path={breadcrumbPath} className={gutterClassName} />
     )
   return (
-    <>
+    <div className="relative">
       {breadcrumb}
       {iconEl === null ? null : <div className={cn('mb-2', gutterClassName)}>{iconEl}</div>}
-      {addRow}
-    </>
+      {addActions}
+    </div>
   )
 }

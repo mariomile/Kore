@@ -2,23 +2,34 @@ import { useState, type ReactElement } from 'react'
 import {
   FolderMove,
   Hash,
+  Image,
   Lock,
   LockOpen,
   MoreHorizontal,
   Pin,
   PinOff,
   Share,
+  Smile,
   Trash,
 } from '@/components/icons'
-import { errorMessage, isDaily, isTemplatePath } from '@kore/core'
+import {
+  errorMessage,
+  isDaily,
+  isTemplatePath,
+  parseNoteAppearanceFromSource,
+  weekFromWeeklyPath,
+  type NoteAppearance,
+} from '@kore/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { useNoteRowState } from '@/hooks/use-note-row'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
+import { readNoteSource } from '@/lib/note-frontmatter'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { useBridgedNoteToggle } from '@/lib/notes/use-bridged-note-toggle'
 import { MoveToDrawer } from '@/mobile/move-to-drawer'
+import { NoteAppearanceDrawer, type NoteAppearancePart } from '@/mobile/note-appearance-drawer'
 import { NoteDeleteDialog } from '@/mobile/note-delete-dialog'
 import { shareNote } from '@/mobile/share'
 import { useGraph } from '@/providers/graph-provider'
@@ -53,6 +64,12 @@ export function NoteActionsMenu({
   const [actionsOpen, setActionsOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [moving, setMoving] = useState(false)
+  // Daily and weekly notes are named by their date, with no icon or cover
+  // (the Mac header offers none either). Read as the sheet opens, so the
+  // rows say Add or Change and the sheet below knows what it can remove.
+  const periodic = isDaily(path) || weekFromWeeklyPath(path) !== null
+  const [appearance, setAppearance] = useState<NoteAppearance | null>(null)
+  const [editing, setEditing] = useState<NoteAppearancePart | null>(null)
   const {
     isActive: isPrivate,
     isToggling: isTogglingPrivate,
@@ -81,7 +98,17 @@ export function NoteActionsMenu({
 
   return (
     <>
-      <Drawer open={actionsOpen} onOpenChange={setActionsOpen}>
+      <Drawer
+        open={actionsOpen}
+        onOpenChange={(open) => {
+          setActionsOpen(open)
+          if (open && !periodic) {
+            void readNoteSource(path)
+              .then((source) => setAppearance(parseNoteAppearanceFromSource(source)))
+              .catch(() => setAppearance(parseNoteAppearanceFromSource('')))
+          }
+        }}
+      >
         <DrawerTrigger
           render={
             <Button variant="ghost" size="icon" className="size-11" aria-label="Note actions" />
@@ -106,6 +133,34 @@ export function NoteActionsMenu({
                 Add tag
               </Button>
             ) : null}
+            {appearance === null || periodic ? null : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="h-12 justify-start gap-3 text-base"
+                  onClick={() => {
+                    setActionsOpen(false)
+                    setEditing('icon')
+                  }}
+                >
+                  <Smile />
+                  {appearance.icon === null ? 'Add icon' : 'Change icon'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="h-12 justify-start gap-3 text-base"
+                  onClick={() => {
+                    setActionsOpen(false)
+                    setEditing('cover')
+                  }}
+                >
+                  <Image />
+                  {appearance.coverSrc === null ? 'Add cover' : 'Change cover'}
+                </Button>
+              </>
+            )}
             {isDaily(path) ? null : (
               <Button
                 variant="ghost"
@@ -173,6 +228,14 @@ export function NoteActionsMenu({
         </DrawerContent>
       </Drawer>
 
+      {editing !== null && appearance !== null ? (
+        <NoteAppearanceDrawer
+          path={path}
+          part={editing}
+          current={appearance}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
       {/* Mounted only while moving: the picker reads the whole folder tree. */}
       {moving ? (
         <MoveToDrawer target={{ kind: 'note', path }} onClose={() => setMoving(false)} />

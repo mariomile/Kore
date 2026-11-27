@@ -60,7 +60,22 @@ function iconWidget(): HTMLElement {
   return icon
 }
 
-function foldButton(view: EditorView, quotePos: number, folded: boolean): HTMLElement {
+/** The blockquote holding the widget at `widgetPos`, as the position before it. */
+function quoteAt(view: EditorView, widgetPos: number): number | null {
+  const $pos = view.state.doc.resolve(widgetPos)
+  for (let depth = $pos.depth; depth > 0; depth--) {
+    if ($pos.node(depth).type.name === 'blockquote') {
+      return $pos.before(depth)
+    }
+  }
+  return null
+}
+
+function foldButton(
+  view: EditorView,
+  getPos: () => number | undefined,
+  folded: boolean,
+): HTMLElement {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'kore-callout-fold'
@@ -73,19 +88,28 @@ function foldButton(view: EditorView, quotePos: number, folded: boolean): HTMLEl
   })
   button.addEventListener('click', (event) => {
     event.preventDefault()
-    view.dispatch(view.state.tr.setMeta(calloutKey, { toggle: quotePos }))
+    // Resolved at click time: the decoration is mapped across edits, so the
+    // position it was drawn at may have moved.
+    const widgetPos = getPos()
+    const quotePos = widgetPos === undefined ? null : quoteAt(view, widgetPos)
+    if (quotePos !== null) {
+      view.dispatch(view.state.tr.setMeta(calloutKey, { toggle: quotePos }))
+    }
   })
   return button
 }
 
-function buildDecorations(
+/** The callout decorations of every callout in `from`–`to`. */
+function decorateRange(
   state: EditorState,
+  from: number,
+  to: number,
   toggled: readonly number[],
   focused: boolean,
-): DecorationSet {
+): Decoration[] {
   const { doc, selection } = state
   const decorations: Decoration[] = []
-  doc.descendants((node, pos) => {
+  doc.nodesBetween(from, to, (node, pos) => {
     if (node.isTextblock) {
       return false
     }
@@ -147,11 +171,11 @@ function buildDecorations(
     }
     if (marker.fold !== 'none') {
       decorations.push(
-        Decoration.widget(titleEnd, (view) => foldButton(view, pos, folded), {
+        Decoration.widget(titleEnd, (view, getPos) => foldButton(view, getPos, folded), {
           side: 1,
           ignoreSelection: true,
           stopEvent: () => true,
-          key: `callout-fold:${pos}:${folded}`,
+          key: `callout-fold:${folded}`,
         }),
       )
     }
@@ -160,7 +184,106 @@ function buildDecorations(
     }
     return true
   })
-  return DecorationSet.create(doc, decorations)
+  return decorations
+}
+
+function buildDecorations(
+  state: EditorState,
+  toggled: readonly number[],
+  focused: boolean,
+): DecorationSet {
+  return DecorationSet.create(
+    state.doc,
+    decorateRange(state, 0, state.doc.content.size, toggled, focused),
+  )
+}
+
+/**
+ * The top-level blocks of `doc` that `from`–`to` touches, as one span. A
+ * callout's decorations depend only on the blockquote itself, so redrawing
+ * the top-level blocks around a change (which hold any nested quote) is the
+ * same as redrawing the document.
+ */
+function topLevelSpan(doc: ProseMirrorNode, from: number, to: number): [number, number] | null {
+  if (doc.childCount === 0) {
+    return null
+  }
+  const size = doc.content.size
+  const first = Math.min(
+    doc.resolve(Math.max(0, Math.min(from, size))).index(0),
+    doc.childCount - 1,
+  )
+  const last = Math.min(doc.resolve(Math.max(0, Math.min(to, size))).index(0), doc.childCount - 1)
+  let start = 0
+  for (let index = 0; index < first; index++) {
+    start += doc.child(index).nodeSize
+  }
+  let end = start
+  for (let index = first; index <= last; index++) {
+    end += doc.child(index).nodeSize
+  }
+  return [start, end]
+}
+
+/**
+ * Where in the new document this transaction can have changed a callout's
+ * decorations: the edited ranges, plus the old and new selection (a caret on
+ * a title reveals its marker, a caret in a body unfolds it).
+ */
+function touchedRanges(tr: Transaction, oldState: EditorState): Array<[number, number]> {
+  const ranges: Array<[number, number]> = []
+  for (const [index, map] of tr.mapping.maps.entries()) {
+    const rest = tr.mapping.slice(index + 1)
+    map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      ranges.push([rest.map(newStart, -1), rest.map(newEnd, 1)])
+    })
+  }
+  const before = oldState.selection
+  ranges.push([tr.mapping.map(before.from, -1), tr.mapping.map(before.to, 1)])
+  ranges.push([tr.selection.from, tr.selection.to])
+  return ranges
+}
+
+/**
+ * Redraw only the top-level blocks the transaction touched, mapping the rest:
+ * walking the whole document on every keystroke cost ~6 ms per key on a long
+ * note in WebKit.
+ */
+function updateDecorations(
+  tr: Transaction,
+  oldState: EditorState,
+  newState: EditorState,
+  previous: DecorationSet,
+  toggled: readonly number[],
+  focused: boolean,
+): DecorationSet {
+  let decorations = previous.map(tr.mapping, tr.doc)
+  const spans: Array<[number, number]> = []
+  for (const [from, to] of touchedRanges(tr, oldState)) {
+    const span = topLevelSpan(tr.doc, from, to)
+    if (span !== null) {
+      spans.push(span)
+    }
+  }
+  spans.sort((a, b) => a[0] - b[0])
+  const merged: Array<[number, number]> = []
+  for (const span of spans) {
+    const last = merged.at(-1)
+    if (last !== undefined && span[0] <= last[1]) {
+      last[1] = Math.max(last[1], span[1])
+    } else {
+      merged.push([span[0], span[1]])
+    }
+  }
+  for (const [start, end] of merged) {
+    const stale = decorations
+      .find(start, end, () => true)
+      .filter((decoration) => decoration.from >= start && decoration.to <= end)
+    decorations = decorations
+      .remove(stale)
+      .add(tr.doc, decorateRange(newState, start, end, toggled, focused))
+  }
+  return decorations
 }
 
 function nextToggled(
@@ -200,18 +323,20 @@ export function createCalloutPlugin(): Plugin<CalloutState> {
         toggled: [],
         focused: false,
       }),
-      apply: (tr, previous, _oldState, newState) => {
+      apply: (tr, previous, oldState, newState) => {
         const meta = readMeta(tr)
         if (!tr.docChanged && !tr.selectionSet && meta === null) {
           return previous
         }
         const toggled = nextToggled(tr, previous.toggled, meta)
         const focused = meta !== null && 'focused' in meta ? meta.focused : previous.focused
-        return {
-          decorations: buildDecorations(newState, toggled, focused),
-          toggled,
-          focused,
-        }
+        // A fold or focus change redraws every callout; an edit or a caret
+        // move only the blocks it touched.
+        const decorations =
+          meta === null
+            ? updateDecorations(tr, oldState, newState, previous.decorations, toggled, focused)
+            : buildDecorations(newState, toggled, focused)
+        return { decorations, toggled, focused }
       },
     },
     props: {

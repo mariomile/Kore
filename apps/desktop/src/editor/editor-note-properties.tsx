@@ -88,9 +88,24 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
       host.classList.add('kore-note-properties-host')
       root.classList.add('kore-editor-has-properties')
       applyMembershipParagraphCss(host, root, title)
-      root.style.setProperty('--kore-note-properties-space', `${space}px`)
-      slotElement.style.setProperty('top', `${top}px`)
+      // Write only what moved: each inline-style write restyles the editor,
+      // and this runs after every structural edit.
+      setStyleIfChanged(root, '--kore-note-properties-space', `${space}px`)
+      setStyleIfChanged(slotElement, 'top', `${top}px`)
       slotElement.dataset.positioned = 'true'
+    }
+
+    // Edits mutate the document many times per frame (a keystroke, a paste,
+    // a collaborator's batch). Measuring once per frame, in the frame's
+    // animation callback, reads a layout the frame needs anyway instead of
+    // forcing one per mutation record.
+    let measureFrame: number | null = null
+    function scheduleMeasure(): void {
+      if (measureFrame !== null) return
+      measureFrame = requestAnimationFrame(() => {
+        measureFrame = null
+        measure()
+      })
     }
 
     const cancelMount = whenEditorMounted(editor, () => {
@@ -106,7 +121,7 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
         const title = root === null ? null : findNoteTitle(root)
         if (title !== null) resizeObserver?.observe(title)
         resizeObserver?.observe(slotElement)
-        measure()
+        scheduleMeasure()
       })
       mutationObserver.observe(root, { childList: true, subtree: true })
       mutationObserver.observe(slotElement, { childList: true, subtree: true })
@@ -118,6 +133,7 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
     return () => {
       cancelMount()
+      if (measureFrame !== null) cancelAnimationFrame(measureFrame)
       resizeObserver?.disconnect()
       mutationObserver?.disconnect()
       clearPlacement()
@@ -129,4 +145,10 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
       <NotePropertiesHeader path={path} />
     </div>
   )
+}
+
+function setStyleIfChanged(element: HTMLElement, property: string, value: string): void {
+  if (element.style.getPropertyValue(property) !== value) {
+    element.style.setProperty(property, value)
+  }
 }

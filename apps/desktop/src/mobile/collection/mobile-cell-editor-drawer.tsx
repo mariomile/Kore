@@ -12,6 +12,7 @@ import { Check, ExternalLink, Star } from '@/components/icons'
 import {
   editorSeedList,
   editorSeedText,
+  singleLineText,
   typedValueForText,
   useRelationCreateEntry,
   useRelationSuggestions,
@@ -397,11 +398,21 @@ function MobileInputBody({
   const seed = property.type === 'files' ? editorSeedList(value).join(', ') : editorSeedText(value)
   const [draft, setDraft] = useState(seed)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const textRef = useRef<HTMLTextAreaElement | null>(null)
   const settledRef = useRef(false)
   const inputId = useId()
+  // Plain text can be long (a description, a tldr): it gets a field that
+  // grows with it, so the whole value is visible while editing.
+  const longText = property.type === 'text'
 
   useEffect(() => {
-    inputRef.current?.focus()
+    const text = textRef.current
+    if (text === null) {
+      inputRef.current?.focus()
+      return
+    }
+    text.focus()
+    text.setSelectionRange(text.value.length, text.value.length)
   }, [])
 
   const inputType =
@@ -464,18 +475,38 @@ function MobileInputBody({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <input
-        id={inputId}
-        ref={inputRef}
-        type={inputType}
-        inputMode={inputMode}
-        enterKeyHint="done"
-        value={draft}
-        aria-label={property.name}
-        placeholder={property.name}
-        onChange={(event) => setDraft(event.target.value)}
-        className="h-12 w-full rounded-xl border border-border-strong bg-input-bg px-3.5 text-[16px] text-text outline-none focus:border-border-focus placeholder:text-text-muted"
-      />
+      {longText ? (
+        <textarea
+          id={inputId}
+          ref={textRef}
+          rows={1}
+          enterKeyHint="done"
+          value={draft}
+          aria-label={property.name}
+          placeholder={property.name}
+          onChange={(event) => setDraft(singleLineText(event.target.value))}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              event.currentTarget.form?.requestSubmit()
+            }
+          }}
+          className="field-sizing-content block max-h-[40vh] min-h-12 w-full resize-none rounded-xl border border-border-strong bg-input-bg px-3.5 py-3 text-[16px] leading-6 text-text outline-none focus:border-border-focus placeholder:text-text-muted"
+        />
+      ) : (
+        <input
+          id={inputId}
+          ref={inputRef}
+          type={inputType}
+          inputMode={inputMode}
+          enterKeyHint="done"
+          value={draft}
+          aria-label={property.name}
+          placeholder={property.name}
+          onChange={(event) => setDraft(event.target.value)}
+          className="h-12 w-full rounded-xl border border-border-strong bg-input-bg px-3.5 text-[16px] text-text outline-none focus:border-border-focus placeholder:text-text-muted"
+        />
+      )}
       <div className="flex items-center gap-2">
         {value !== undefined ? (
           <button

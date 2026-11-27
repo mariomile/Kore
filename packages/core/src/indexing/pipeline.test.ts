@@ -717,7 +717,7 @@ describe('syncIndex', () => {
 
 describe('applyIndexChanges (watcher dispatch)', () => {
   it('re-indexes upserts (batched) and removes deletes at the given generation', async () => {
-    const mutations = await applyIndexChanges(
+    const { mutations } = await applyIndexChanges(
       [
         { path: 'notes/a.md', kind: 'upsert', modifiedMs: 4242 },
         { path: 'notes/gone.md', kind: 'remove' },
@@ -764,7 +764,7 @@ describe('applyIndexChanges (watcher dispatch)', () => {
       return null
     })
 
-    const mutations = await applyIndexChanges(
+    const { mutations } = await applyIndexChanges(
       [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: 1_000 }],
       9,
     )
@@ -792,7 +792,7 @@ describe('applyIndexChanges (watcher dispatch)', () => {
       return null
     })
 
-    const mutations = await applyIndexChanges(
+    const { mutations } = await applyIndexChanges(
       [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: 2_000 }],
       9,
     )
@@ -829,7 +829,7 @@ describe('applyIndexChanges (watcher dispatch)', () => {
         return null
       })
 
-      const mutations = await applyIndexChanges(
+      const { mutations } = await applyIndexChanges(
         [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: now - 10 }],
         9,
       )
@@ -841,6 +841,60 @@ describe('applyIndexChanges (watcher dispatch)', () => {
     } finally {
       nowSpy.mockRestore()
     }
+  })
+
+  describe('tagsChanged', () => {
+    /** One stored note `notes/a.md` carrying member tag `book`, read back as `content`. */
+    function storedBookNote(content: string): void {
+      mockInvoke.mockImplementation(async (command, args) => {
+        const sql = String(args['sql'] ?? '')
+        if (command === 'db_query' && sql.includes('file_hash')) {
+          return [{ path: 'notes/a.md', file_hash: 'stored', mtime: 1_000 }]
+        }
+        if (command === 'db_query' && sql.includes('"member"')) {
+          return [{ note_path: 'notes/a.md', tag: 'book', tag_key: 'book', is_private: 0 }]
+        }
+        if (command === 'db_query') {
+          return []
+        }
+        if (command === 'note_read') {
+          return content
+        }
+        return null
+      })
+    }
+
+    it('is false for a body edit that keeps the member tags', async () => {
+      storedBookNote('---\ntags: [book]\n---\n# A\n\nnew body text')
+      const result = await applyIndexChanges(
+        [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: 2_000 }],
+        9,
+      )
+      expect(result).toEqual({ mutations: 1, tagsChanged: false })
+    })
+
+    it('is true when the save adds a member tag', async () => {
+      storedBookNote('---\ntags: [book, film]\n---\n# A\n\nbody')
+      const result = await applyIndexChanges(
+        [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: 2_000 }],
+        9,
+      )
+      expect(result.tagsChanged).toBe(true)
+    })
+
+    it('is true when the save makes a tagged note private', async () => {
+      storedBookNote('---\ntags: [book]\nprivate: true\n---\n# A\n\nbody')
+      const result = await applyIndexChanges(
+        [{ path: 'notes/a.md', kind: 'upsert', modifiedMs: 2_000 }],
+        9,
+      )
+      expect(result.tagsChanged).toBe(true)
+    })
+
+    it('is true for a removal', async () => {
+      const result = await applyIndexChanges([{ path: 'notes/gone.md', kind: 'remove' }], 9)
+      expect(result.tagsChanged).toBe(true)
+    })
   })
 })
 

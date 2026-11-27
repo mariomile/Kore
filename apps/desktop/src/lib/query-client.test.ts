@@ -114,3 +114,42 @@ describe('narrowed invalidation of the folder tree', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['index'] })
   })
 })
+
+describe('narrowed invalidation of the tag counts', () => {
+  const tagTreeKey = ['index', '/g', 'tag-tree']
+  const facetsKey = ['index', '/g', 'all-notes-tags']
+  const backlinksKey = ['index', '/g', 'backlinks', 'notes/a.md']
+
+  afterEach(() => {
+    for (const queryKey of [tagTreeKey, facetsKey, backlinksKey]) {
+      queryClient.removeQueries({ queryKey })
+    }
+  })
+
+  /** Which of the cached keys the first invalidation round's predicate refetches. */
+  function refetchedBy(tagsChanged: boolean | undefined): boolean[] {
+    for (const queryKey of [tagTreeKey, facetsKey, backlinksKey]) {
+      queryClient.setQueryData(queryKey, [])
+    }
+    throttledInvalidateIndexQueries(
+      [{ path: 'notes/a.md', kind: 'upsert' }],
+      tagsChanged === undefined ? undefined : { mutations: 1, tagsChanged },
+    )
+    const [filters] = invalidateSpy.mock.calls[0]!
+    return [tagTreeKey, facetsKey, backlinksKey].map(
+      (queryKey) => filters?.predicate?.(queryClient.getQueryCache().find({ queryKey })!) ?? true,
+    )
+  }
+
+  it('skips the tag tree and facets for a save that kept every tag', () => {
+    expect(refetchedBy(false)).toEqual([false, false, true])
+  })
+
+  it('refreshes them when the apply reported a tag change', () => {
+    expect(refetchedBy(true)).toEqual([true, true, true])
+  })
+
+  it('refreshes them when the caller had no apply result', () => {
+    expect(refetchedBy(undefined)).toEqual([true, true, true])
+  })
+})

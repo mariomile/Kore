@@ -43,7 +43,7 @@ function looseFilesQueryKey(
   return [INDEX_QUERY_SCOPE, root, 'loose-files', folder, includeSubfolders]
 }
 
-const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
+export const KIND_ICON: Readonly<Record<LooseFileKind, Icon>> = {
   image: Image,
   pdf: Note,
   html: Globe,
@@ -75,11 +75,9 @@ function cardName(file: LooseFile, pageTitle: string | null | undefined): string
   }
 }
 
-/** The kind a card names under its title. */
-function cardType(file: LooseFile): string {
+/** What kind of file it is, in words: Base, Canvas, else its extension. */
+export function fileTypeLabel(file: LooseFile): string {
   switch (file.kind) {
-    case 'html':
-      return file.name
     case 'base':
       return 'Base'
     case 'canvas':
@@ -87,6 +85,16 @@ function cardType(file: LooseFile): string {
     default:
       return file.extension === '' ? 'File' : file.extension.toUpperCase()
   }
+}
+
+/** The file's name without its extension, which its type line carries. */
+export function fileStem(file: LooseFile): string {
+  return file.extension === '' ? file.name : file.name.slice(0, -(file.extension.length + 1))
+}
+
+/** The kind a card names under its title: a page, its file name. */
+function cardType(file: LooseFile): string {
+  return file.kind === 'html' ? file.name : fileTypeLabel(file)
 }
 
 /**
@@ -139,6 +147,28 @@ export function useLooseFilesQuery(
     : { files, loading: enabled && isPending }
 }
 
+/**
+ * A loose file's picture, as a cached thumbnail: an image shows itself, a
+ * PDF its first page (drawn by the asset protocol). One that fails (a
+ * format the webview can't draw, a file gone since the catalog listed it)
+ * reports it, and the file falls back to its icon.
+ */
+export function useFilePicture(file: LooseFile): {
+  picture: string | undefined
+  showPicture: boolean
+  onPictureError: () => void
+} {
+  const resolve = usePassiveImageResolver()
+  const url = file.kind === 'image' || file.kind === 'pdf' ? resolve(file.path) : null
+  const picture = url === null ? undefined : previewThumbnailUrl(url)
+  const [failed, setFailed] = useState<string | null>(null)
+  return {
+    picture,
+    showPicture: picture !== undefined && failed !== picture,
+    onPictureError: () => setFailed(picture ?? null),
+  }
+}
+
 interface FolderFilesProps {
   files: readonly LooseFile[]
   /** Opens a file the way Kore opens every vault file (use-asset-opener.tsx). */
@@ -148,8 +178,9 @@ interface FolderFilesProps {
 }
 
 /**
- * A folder page's loose files as a row of cards above a list view. The grid
- * view deals them among the notes instead (all-notes-grid.tsx).
+ * Loose files as big cards: what the File type filter lists in the list
+ * view (the grid deals them in all-notes-grid.tsx). A folder page's own
+ * files sit above its notes as compact rows (folder-files-section.tsx).
  */
 export function FolderFiles({
   files,
@@ -183,22 +214,15 @@ interface FileCardProps {
 export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps): ReactElement {
   const { graph } = useGraph()
   const generation = graph?.generation
-  const resolve = usePassiveImageResolver()
-  // A picture shows itself; a PDF its first page, drawn by the asset protocol.
-  const url = file.kind === 'image' || file.kind === 'pdf' ? resolve(file.path) : null
-  const picture = url === null ? undefined : previewThumbnailUrl(url)
+  const { picture, showPicture, onPictureError } = useFilePicture(file)
   const pageUrl =
     file.kind === 'html' && generation !== undefined ? htmlPageUrl(generation, file.path) : null
-  // A picture that fails (a format the card can't draw, a file gone since
-  // the catalog listed it) falls back to the file's icon.
-  const [failed, setFailed] = useState<string | null>(null)
   const pageTitle = useHtmlTitle(pageUrl, file.modifiedMs)
   // A page leads with the title its reader sees and a base or canvas with
   // its name; what the file is goes under it.
   const name = cardName(file, pageTitle)
   const meta = `${cardType(file)} · ${formatBytes(file.size)}`
   const KindIcon = KIND_ICON[file.kind]
-  const showPicture = picture !== undefined && failed !== picture
   return (
     <div className={GRID_CARD_CLASS}>
       <button
@@ -223,7 +247,7 @@ export const FileCard = memo(function FileCard({ file, onOpen }: FileCardProps):
             loading="lazy"
             decoding="async"
             draggable={false}
-            onError={() => setFailed(picture)}
+            onError={onPictureError}
             // A page reads from its top: a PDF shows its heading, not its middle.
             className={cn('size-full object-cover', file.kind === 'pdf' && 'object-top')}
           />

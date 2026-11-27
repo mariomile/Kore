@@ -296,7 +296,7 @@ export function createIcloudController(options: IcloudControllerOptions): Icloud
         undefined,
         undefined,
         () => !emitFileChangesFromWatch || document.visibilityState !== 'hidden',
-      ).then((mutations) => {
+      ).then(({ mutations }) => {
         if (mutations > 0) {
           throttledInvalidateIndexQueries()
         }

@@ -32,6 +32,7 @@ export {
   subscribeIndexChanges,
   applyIndexChanges,
   type ApplyErrorHandler,
+  type IndexApplyResult,
   type MovedHandler,
 } from './live'
 export { hashContent } from './hash'

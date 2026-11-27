@@ -13,6 +13,24 @@ sibling and closes the root with reason `sibling-open`. Drop the patch and its
 that PR and `note-editor.test.tsx` ("keeps the block menu open while the Turn
 into submenu is hovered") still passes.
 
+## ProseKit
+
+`@prosekit/core@0.13.3` and `@prosekit/web@0.9.3`: batch the extensions that
+React hooks add in the same task. `useExtension` queues each extension on its
+own `setTimeout`, and every `editor.use` that changes the plugin set
+reconfigures the view; when node or mark views change, ProseMirror redraws
+the whole document. A note editor mounts a few dozen Kore and Meowdown
+extensions, so opening a long note redrew it a few dozen times (measured on a
+284k-character note: 3.6 s of blocked main thread to open, 2.4 s with the
+patch).
+
+- `@prosekit/core`: `EditorInstance.batch(fn)` (and `Editor.batch`) runs `fn`
+  and applies the plugin changes it made with one reconfigure at the end.
+- `@prosekit/web`: `queueExtension` collects the adds queued in one task and
+  runs them inside one `editor.batch`. Removal is unchanged.
+
+Drop both once ProseKit batches queued extensions itself.
+
 ## Meowdown
 
 Kore patches the exact installed `@meowdown/core@0.74.1` and

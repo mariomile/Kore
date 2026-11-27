@@ -1,3 +1,4 @@
+import type { ReactElement, ReactNode } from 'react'
 import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
@@ -13,6 +14,14 @@ function resolve(src: string): string | null {
     return src
   }
   return null
+}
+
+/**
+ * The page's top inset, which hosts provide: with no breadcrumb, the add
+ * controls float there, above the header.
+ */
+function PageTop({ children }: { children: ReactNode }): ReactElement {
+  return <div className="pt-14">{children}</div>
 }
 
 describe('NoteAppearance', () => {
@@ -86,7 +95,9 @@ describe('NoteAppearance', () => {
   it('adds an icon from the picker when the header is editable', async () => {
     const onIconChange = vi.fn()
     const view = await render(
-      <NoteAppearance source={''} resolveImageUrl={resolve} onIconChange={onIconChange} />,
+      <PageTop>
+        <NoteAppearance source={''} resolveImageUrl={resolve} onIconChange={onIconChange} />
+      </PageTop>,
     )
     await view.getByRole('button', { name: 'Add icon' }).click()
     await view.getByRole('button', { name: '🚀' }).click()
@@ -112,12 +123,14 @@ describe('NoteAppearance', () => {
   it('sets the cover from an https image link', async () => {
     const onCoverChange = vi.fn()
     const view = await render(
-      <NoteAppearance
-        source={''}
-        resolveImageUrl={resolve}
-        onCoverChange={onCoverChange}
-        uploadCover={vi.fn()}
-      />,
+      <PageTop>
+        <NoteAppearance
+          source={''}
+          resolveImageUrl={resolve}
+          onCoverChange={onCoverChange}
+          uploadCover={vi.fn()}
+        />
+      </PageTop>,
     )
     await view.getByRole('button', { name: 'Add cover' }).click()
     await userEvent.fill(view.getByLabelText('Cover image link'), 'https://example.com/hero.jpg')
@@ -129,12 +142,14 @@ describe('NoteAppearance', () => {
   it('refuses a cover link that is not https', async () => {
     const onCoverChange = vi.fn()
     const view = await render(
-      <NoteAppearance
-        source={''}
-        resolveImageUrl={resolve}
-        onCoverChange={onCoverChange}
-        uploadCover={vi.fn()}
-      />,
+      <PageTop>
+        <NoteAppearance
+          source={''}
+          resolveImageUrl={resolve}
+          onCoverChange={onCoverChange}
+          uploadCover={vi.fn()}
+        />
+      </PageTop>,
     )
     await view.getByRole('button', { name: 'Add cover' }).click()
     await userEvent.fill(view.getByLabelText('Cover image link'), 'http://example.com/hero.jpg')
@@ -148,12 +163,14 @@ describe('NoteAppearance', () => {
     const onCoverChange = vi.fn()
     const uploadCover = vi.fn(async () => 'assets/pasted-1.png')
     const view = await render(
-      <NoteAppearance
-        source={''}
-        resolveImageUrl={resolve}
-        onCoverChange={onCoverChange}
-        uploadCover={uploadCover}
-      />,
+      <PageTop>
+        <NoteAppearance
+          source={''}
+          resolveImageUrl={resolve}
+          onCoverChange={onCoverChange}
+          uploadCover={uploadCover}
+        />
+      </PageTop>,
     )
     await view.getByRole('button', { name: 'Add cover' }).click()
     const zone = view.getByTestId('cover-drop-zone').element()

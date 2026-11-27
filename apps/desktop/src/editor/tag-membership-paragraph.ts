@@ -38,9 +38,10 @@ export function membershipParagraphCss(
   root: HTMLElement,
   title: HTMLElement | null = root.querySelector<HTMLElement>(':scope > h1:first-child'),
 ): string {
-  const paragraphs = [...root.querySelectorAll(':scope > p')]
   // The paragraph right under the title (which may follow blank lines), or
-  // with no title the first non-blank one.
+  // with no title the first non-blank one. Only these three positions can
+  // hold a membership line, so only they are tested: this runs on every
+  // structural edit, and a long note has thousands of paragraphs.
   const next = title?.nextElementSibling
   const lead = next?.tagName === 'P' ? next : null
   const first =
@@ -49,23 +50,19 @@ export function membershipParagraphCss(
       : root.querySelector(':scope > p:first-child')
   const last = root.querySelector(':scope > p:last-child')
   const children = [...root.children]
-  const selectors: string[] = []
-  for (const paragraph of paragraphs) {
-    if (!(paragraph instanceof HTMLElement)) {
-      continue
-    }
-    if (!isTagOnlyParagraph(paragraph)) {
-      continue
-    }
-    if (paragraph !== lead && paragraph !== first && paragraph !== last) {
-      continue
-    }
-    const childIndex = children.indexOf(paragraph) + 1
-    if (childIndex === 0) {
-      continue
-    }
-    selectors.push(`.kore-editor.kore-editor-has-properties > :nth-child(${String(childIndex)})`)
-  }
+  const selectors = [...new Set([lead, first, last])]
+    .filter(
+      (paragraph): paragraph is HTMLElement =>
+        paragraph instanceof HTMLElement &&
+        paragraph.tagName === 'P' &&
+        paragraph.parentElement === root &&
+        isTagOnlyParagraph(paragraph),
+    )
+    .map((paragraph) => children.indexOf(paragraph) + 1)
+    .sort((left, right) => left - right)
+    .map(
+      (childIndex) => `.kore-editor.kore-editor-has-properties > :nth-child(${String(childIndex)})`,
+    )
   if (selectors.length === 0) {
     return ''
   }

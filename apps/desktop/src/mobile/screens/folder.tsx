@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { findFolder, folderDisplayName, parseSearchQuery, sortNoteList } from '@kore/core'
 import { ChevronLeft, Folder, MoreHorizontal } from '@/components/icons'
-import { FolderFiles, useFolderLooseFiles } from '@/components/all-notes/folder-files'
+import { useFolderLooseFiles } from '@/components/all-notes/folder-files'
+import { FolderFilesSection } from '@/components/all-notes/folder-files-section'
 import { FolderSubfolders } from '@/components/all-notes/folder-subfolders'
 import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { useFolderIncludesSubfolders } from '@/components/all-notes/use-folder-includes-subfolders'
@@ -29,6 +30,9 @@ import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
+/** How many file rows the page shows above its notes before "Show all". */
+const FOLDER_FILE_ROWS = 3
+
 interface MobileFolderProps {
   /** Graph-relative folder; `''` is the vault's top level ("Folders"). */
   folder: string
@@ -36,8 +40,8 @@ interface MobileFolderProps {
 
 /**
  * The iPhone folder page, the Mac folder page's twin: the folder's place in
- * the vault above its name, then its subfolders and loose files as cards,
- * then its notes in the Notes tab's list or grid (its subfolders' notes too
+ * the vault above its name, then its subfolders as cards, its loose files
+ * as a few compact rows, then its notes in the Notes tab's list or grid (its subfolders' notes too
  * unless the folder's settings say otherwise, the same per-folder choice as
  * the Mac). ⋯ holds what the Mac's folder menu does. `folder === ''` is the
  * vault's top level, reached from the Notes tab's Folders chip: its folders
@@ -84,9 +88,6 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
 
   const grid = settings.allNotesView === 'grid'
   const files = useFolderLooseFiles(atTop ? null : folder, includeSubfolders)
-  // The grid deals a folder's files among its notes; the list (and a folder
-  // with no notes yet) keeps them as a row of cards above.
-  const filesAmongNotes = grid && rows !== undefined && rows.length > 0
   const name = atTop ? 'Folders' : folderDisplayName(folder)
   const openNote = (path: string): void => navigate(routeForPath(path))
 
@@ -97,14 +98,18 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
       ) : (
         <FolderRows folder={node} />
       )}
-      {filesAmongNotes ? null : (
-        <FolderFiles
-          files={files}
-          onOpen={(path) => void openFile(path)}
-          className={MOBILE_CARD_SECTION_CLASS}
-        />
-      )}
-      {rows !== undefined && rows.length > 0 && (node?.folders.length ?? 0) > 0 ? (
+      {/* The folder's notes come first: its files keep a few rows above
+          them, all of them when there are no notes. */}
+      <FolderFilesSection
+        key={folder}
+        files={files}
+        onOpen={(path) => void openFile(path)}
+        lines={rows === undefined || rows.length > 0 ? FOLDER_FILE_ROWS : null}
+        className="px-4 pb-1 pt-3"
+      />
+      {rows !== undefined &&
+      rows.length > 0 &&
+      ((node?.folders.length ?? 0) > 0 || files.length > 0) ? (
         <h2 className="px-4 pt-3 text-[13px] font-medium text-text-muted">Notes</h2>
       ) : null}
     </div>
@@ -181,7 +186,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           }}
         >
           {leading}
-          {(node?.folders.length ?? 0) === 0 ? (
+          {(node?.folders.length ?? 0) === 0 && files.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-6 pt-24 text-center text-text-muted">
               <Folder className="size-6" />
               <p className="text-sm">This folder is empty</p>
@@ -195,13 +200,7 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
           ) : null}
         </div>
       ) : grid ? (
-        <NoteCardGrid
-          rows={rows}
-          onOpen={openNote}
-          leading={leading}
-          files={files}
-          onOpenFile={(path) => void openFile(path)}
-        />
+        <NoteCardGrid rows={rows} onOpen={openNote} leading={leading} />
       ) : (
         <NoteRowList rows={rows} onOpen={openNote} onDeleted={removeDeletedRow} leading={leading} />
       )}

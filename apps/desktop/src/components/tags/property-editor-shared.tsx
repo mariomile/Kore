@@ -46,8 +46,10 @@ export interface PropertyEditorProps {
   /**
    * `'table-cell'` fills the bordered table cell, paints cell hover and active
    * focus frames, and edits scalar inputs directly inline in the cell.
+   * `'panel'` is a label/value property row (the note's properties): text is
+   * read wrapped and edited in place; other types behave as `'default'`.
    */
-  variant?: 'default' | 'table-cell'
+  variant?: 'default' | 'panel' | 'table-cell'
   /** Move to the adjacent editable cell on Tab / Shift+Tab (table cells). */
   onStepCell?: (direction: 'next' | 'prev') => void
 }
@@ -66,6 +68,11 @@ export function editorSeedList(value: CollectionValue | undefined): string[] {
     return decodeStoredList(value.value) ?? []
   }
   return value.value === '' ? [] : [value.value]
+}
+
+/** Frontmatter text is one line: line breaks (typed or pasted) become spaces. */
+export function singleLineText(text: string): string {
+  return text.replaceAll(/\r?\n/g, ' ')
 }
 
 /** Convert an input's committed text into the typed YAML value. */
@@ -95,7 +102,7 @@ export function typedValueForText(property: TagProperty, text: string): unknown 
 export interface EditorTriggerProps {
   name: string
   children: ReactNode
-  variant?: 'default' | 'table-cell'
+  variant?: PropertyEditorProps['variant']
 }
 
 /** The one read-only trigger every popover editor opens from: cell-sized

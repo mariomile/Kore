@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { CheckboxPropertyEditor } from './checkbox-property-editor'
+import { InlineTextPropertyEditor } from './inline-text-property-editor'
 import { InputPropertyEditor } from './input-property-editor'
 import { MultiRelationPropertyEditor } from './multi-relation-property-editor'
 import type { PropertyEditorProps } from './property-editor-shared'
@@ -38,6 +39,14 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
         <span className="flex h-full w-full min-w-0 items-center px-2.5">{props.children}</span>
       ) : (
         <>{props.children}</>
+      )
+    case 'text':
+      // Long text is read and edited in place on property rows; cells and
+      // cards keep their one-line input.
+      return props.variant === 'panel' ? (
+        <InlineTextPropertyEditor {...props} />
+      ) : (
+        <InputPropertyEditor {...props} />
       )
     default:
       return <InputPropertyEditor {...props} />

@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useAssetOpener } from '@/hooks/use-asset-opener'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { haptic } from '@/lib/haptics'
 import { LayoutToggle, type NotesLayout } from '@/mobile/layout-toggle'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
@@ -99,7 +99,7 @@ export function MobileAllNotes({
   )
 
   const { data: facets } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'all-notes-tags'],
+    queryKey: allNotesTagsQueryKey(graph?.root),
     queryFn: () => listNoteTags(),
     enabled,
   })

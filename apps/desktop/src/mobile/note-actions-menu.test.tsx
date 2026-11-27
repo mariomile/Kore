@@ -11,6 +11,8 @@ const toggleNotePinned = vi.hoisted(() => vi.fn(async () => true))
 const toggleNotePrivate = vi.hoisted(() => vi.fn(async () => true))
 const deleteOpenNote = vi.hoisted(() => vi.fn(async () => {}))
 const shareNote = vi.hoisted(() => vi.fn(async () => {}))
+const readNoteSource = vi.hoisted(() => vi.fn(async () => ''))
+const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() =>
   vi.fn(() => ({
@@ -118,6 +120,10 @@ vi.mock('@/lib/note-private', () => ({ toggleNotePrivate }))
 vi.mock('@/lib/note-delete', () => ({ deleteOpenNote }))
 vi.mock('@/mobile/share', () => ({ shareNote }))
 vi.mock('@/lib/operations', () => ({ startOperation }))
+vi.mock('@/lib/note-frontmatter', () => ({ readNoteSource, commitNoteFrontmatter }))
+vi.mock('@/editor/use-asset-persistence', () => ({
+  useAssetPersistence: () => ({ saveFile: vi.fn(async () => null) }),
+}))
 
 const { NoteActionsMenu } = await import('./note-actions-menu')
 
@@ -148,6 +154,8 @@ beforeEach(() => {
   toggleNotePrivate.mockReset().mockResolvedValue(true)
   deleteOpenNote.mockReset().mockResolvedValue(undefined)
   shareNote.mockReset().mockResolvedValue(undefined)
+  readNoteSource.mockReset().mockResolvedValue('')
+  commitNoteFrontmatter.mockReset().mockResolvedValue(undefined)
   startOperation.mockClear()
   operationFail.mockClear()
 })
@@ -166,6 +174,30 @@ async function openActions(): Promise<void> {
 }
 
 describe('NoteActionsMenu', () => {
+  it('changes the note icon from a sheet, since touch has no header hover', async () => {
+    readNoteSource.mockResolvedValue('---\nicon: ✨\n---\n')
+    const { view } = await mount()
+
+    await openActions()
+    await view.getByRole('button', { name: 'Change icon' }).click()
+    await expect.element(view.getByRole('button', { name: 'Add cover' })).not.toBeInTheDocument()
+    await view.getByRole('button', { name: '🚀' }).click()
+
+    await vi.waitFor(() =>
+      expect(commitNoteFrontmatter).toHaveBeenCalledWith('notes/meeting.md', { icon: '🚀' }, 7),
+    )
+  })
+
+  it('offers no icon or cover on a daily note', async () => {
+    currentNoteRow = noteRow('daily/2026-06-10.md', false, 'June 10th, 2026')
+    const { view } = await mount('daily/2026-06-10.md')
+
+    await openActions()
+    await expect.element(view.getByRole('button', { name: 'Pin' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Add icon' })).not.toBeInTheDocument()
+    expect(readNoteSource).not.toHaveBeenCalled()
+  })
+
   it('offers Lock note for a public note, toggles canonically, and closes the drawer', async () => {
     const { view } = await mount()
 

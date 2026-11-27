@@ -35,6 +35,8 @@ interface SyncContextValue {
   /** Sign the machine out of GitHub (every connected graph stops syncing). */
   signOut: () => Promise<void>
   backUpNow: () => Promise<void>
+  /** Apply a sync paused before a mass deletion, once. */
+  confirmDeletions: () => Promise<void>
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null)
@@ -115,6 +117,7 @@ export function SyncProvider({ graph, children }: SyncProviderProps): ReactEleme
       disconnectGraph: () => require().disconnectGraph(),
       signOut: () => require().signOut(),
       backUpNow: () => require().backUpNow(),
+      confirmDeletions: () => require().confirmDeletions(),
     }
   }, [controller, backup])
 

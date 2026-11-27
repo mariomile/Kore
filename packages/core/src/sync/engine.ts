@@ -1,11 +1,13 @@
 import { isAppError } from '../errors'
 import { commitAgentWrites } from './agent-commits'
 import { autoMergeConflicts } from './auto-merge'
+import { assertNoMassDeletion, MassDeletionError } from './mass-deletion'
 import {
   gitCommitAll,
   gitFetch,
   gitMergeRemote,
   gitPush,
+  gitSyncDeletions,
   type ChangedFile,
   type SkippedFile,
 } from './commands'
@@ -34,9 +36,12 @@ import {
  * `auth` = credential rejected or refresh lapsed (offer reconnect);
  * `rejected` = the remote refused the push for a non-divergence reason, e.g.
  * push protection (show the message — retrying won't help until the user
- * acts); `other` = anything else (retried implicitly on the next cycle).
+ * acts); `massDeletion` = the merge or push would delete a large share of the
+ * vault, so the cycle paused before writing anything (offer
+ * {@link SyncEngine.confirmDeletions}); `other` = anything else (retried
+ * implicitly on the next cycle).
  */
-export type SyncErrorKind = 'auth' | 'rejected' | 'other'
+export type SyncErrorKind = 'auth' | 'rejected' | 'massDeletion' | 'other'
 
 /**
  * The product states, as a discriminated union — `{ state: 'idle',
@@ -62,6 +67,11 @@ export type SyncStep = 'preparing' | 'saving' | 'downloading' | 'merging' | 'upl
 export interface SyncProgress {
   step: SyncStep
   since: number
+}
+
+/** A cycle paused before a mass deletion, waiting for {@link SyncEngine.confirmDeletions}. */
+export function isDeletionPause(status: SyncStatus): boolean {
+  return status.state === 'error' && status.errorKind === 'massDeletion'
 }
 
 /** Narrows to the `error` arm — the one state that needs user attention. */
@@ -137,6 +147,11 @@ export interface SyncEngine {
   /** Full cycle now — commit, pull/merge, push. For launch/focus/manual. */
   syncNow(): Promise<void>
   /**
+   * The user's yes to a paused mass deletion: one full cycle that merges and
+   * pushes it. Later cycles check again.
+   */
+  confirmDeletions(): Promise<void>
+  /**
    * Abort the engine: cancel timers, suppress further status emissions, and
    * unwind any in-flight cycle at its next step boundary.
    */
@@ -199,6 +214,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   let rerunMode: 'push' | 'full' | null = null
   /** A timed-out command still running natively; set until it settles. */
   let lingering: Promise<void> | null = null
+  /** Set by {@link SyncEngine.confirmDeletions}; the next cycle to start spends it. */
+  let deletionsConfirmed = false
 
   function emit(status: SyncStatus): void {
     if (signal.aborted) {
@@ -335,6 +352,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     }
     running = (async () => {
       const remoteChangeTasks: Promise<void>[] = []
+      const allowMassDeletion = deletionsConfirmed
+      deletionsConfirmed = false
       // This cycle commits everything dirty so far — a pending debounce pass
       // (e.g. queued before a launch/focus/manual sync) would only duplicate it.
       if (timer !== null) {
@@ -344,7 +363,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       deadline = null
       emit({ state: 'syncing' })
       try {
-        await cycle(mode, (changes) => {
+        await cycle(mode, allowMassDeletion, (changes) => {
           remoteChangeTasks.push(startRemoteChanges(changes))
         })
         await settleRemoteChanges(remoteChangeTasks)
@@ -379,8 +398,27 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
 
   async function cycle(
     mode: 'push' | 'full',
+    allowMassDeletion: boolean,
     remoteChanges: (changes: ChangedFile[]) => void,
   ): Promise<void> {
+    /** Pause before a merge or push that would delete much of the vault. */
+    async function guardDeletions(direction: 'incoming' | 'outgoing'): Promise<void> {
+      if (allowMassDeletion) {
+        return
+      }
+      const counts = await step(
+        bounded(
+          direction === 'incoming' ? 'merging' : 'uploading',
+          gitSyncDeletions(options.generation),
+        ),
+      )
+      assertNoMassDeletion(direction, counts)
+    }
+    async function merge(): Promise<{ kind: string }> {
+      await guardDeletions('incoming')
+      return await mergeRemote(remoteChanges)
+    }
+
     enter('preparing')
     const token =
       options.localOnly === true ? null : await step(bounded('preparing', options.getToken()))
@@ -408,7 +446,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       // Launch/focus: pick up other devices' changes even with nothing to push.
       enter('downloading')
       const delta = await step(gitFetch(token, options.generation))
-      const merged = await merge(remoteChanges)
+      const merged = await merge()
       const localOnly = commit.committed || delta.ahead > 0
       if (!localOnly && (merged.kind === 'upToDate' || merged.kind === 'fastForward')) {
         return // pulled cleanly and have nothing of our own — no push needed
@@ -416,6 +454,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     }
     for (let attempt = 0; attempt < MAX_PUSH_ATTEMPTS; attempt++) {
       enter('uploading')
+      await guardDeletions('outgoing')
       const push = await step(gitPush(token, options.generation))
       if (push.pushed) {
         return
@@ -427,7 +466,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       // retry — a conflicted merge still commits (markers in the note).
       enter('downloading')
       await step(gitFetch(token, options.generation))
-      await merge(remoteChanges)
+      await merge()
     }
     throw new PushRejectedError(
       'the backup repo kept changing while syncing; will retry on the next edit',
@@ -435,7 +474,9 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   }
 
   /** Merge fetched changes and start any changed-file notification. */
-  async function merge(remoteChanges: (changes: ChangedFile[]) => void): Promise<{ kind: string }> {
+  async function mergeRemote(
+    remoteChanges: (changes: ChangedFile[]) => void,
+  ): Promise<{ kind: string }> {
     enter('merging')
     const outcome = await step(bounded('merging', gitMergeRemote(options.generation)), (result) => {
       // The command may already have rewritten files before suspension. Fan
@@ -465,6 +506,11 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     return run('full')
   }
 
+  function confirmDeletions(): Promise<void> {
+    deletionsConfirmed = true
+    return run('full')
+  }
+
   function stop(): void {
     abort.abort()
     if (timer !== null) {
@@ -473,12 +519,15 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     }
   }
 
-  return { noteChanged, syncNow, stop }
+  return { noteChanged, syncNow, confirmDeletions, stop }
 }
 
 function statusForError(error: unknown): SyncStatus {
   if (error instanceof PushRejectedError) {
     return { state: 'error', errorKind: 'rejected', message: error.message }
+  }
+  if (error instanceof MassDeletionError) {
+    return { state: 'error', errorKind: 'massDeletion', message: error.message }
   }
   if (isAppError(error)) {
     if (error.kind === 'network') {

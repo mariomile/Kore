@@ -64,7 +64,13 @@ function backupDot(backup: BackupState): { className: string; label: string } | 
     case 'offline':
       return { className: 'bg-warning', label: 'Sync waiting for a connection' }
     case 'error':
-      return { className: 'bg-danger', label: 'Sync failed — see Settings' }
+      return {
+        className: 'bg-danger',
+        label:
+          backup.status.errorKind === 'massDeletion'
+            ? 'Sync paused — see Settings'
+            : 'Sync failed — see Settings',
+      }
   }
 }
 

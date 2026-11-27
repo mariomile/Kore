@@ -219,6 +219,24 @@ export async function gitMergeRemote(generation: number): Promise<MergeOutcome> 
   return await call('git_merge_remote', { generation }, mergeOutcomeSchema)
 }
 
+/**
+ * Files each side removed since the local branch and the fetched remote
+ * branch diverged: `incoming` = what merging would delete here, `outgoing` =
+ * what pushing would delete on the remote, `tracked` = files in their common
+ * ancestor. Unchanged moves count as renames, not deletions.
+ */
+export const syncDeletionsSchema = z.object({
+  incoming: z.number(),
+  outgoing: z.number(),
+  tracked: z.number(),
+})
+export type SyncDeletions = z.infer<typeof syncDeletionsSchema>
+
+/** Count what the next merge or push would delete; writes nothing. */
+export async function gitSyncDeletions(generation: number): Promise<SyncDeletions> {
+  return await call('git_sync_deletions', { generation }, syncDeletionsSchema)
+}
+
 /** Push to `origin`; rejections come back as data, not thrown errors. */
 export async function gitPush(token: string | null, generation: number): Promise<PushOutcome> {
   return await call('git_push', { token, generation }, pushOutcomeSchema)

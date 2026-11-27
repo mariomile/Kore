@@ -4,6 +4,7 @@ import {
   aiProvider,
   aiProviderRequiresApiKey,
   errorMessage,
+  isDeletionPause,
   listNotes,
   normalizeChatSystemPrompt,
   configuredTranscriptionProviders,
@@ -106,6 +107,7 @@ export function MobileSettings(): ReactElement {
   // over conflict markers already on disk and then flips.
   const status = useMobileSyncStatus()
   const [disconnecting, setDisconnecting] = useState(false)
+  const [confirmingDeletions, setConfirmingDeletions] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [settingsQuery, setSettingsQuery] = useState('')
   const { providers, defaultProvider, addProvider, removeProvider, makeDefault, setDefaultModel } =
@@ -146,6 +148,18 @@ export function MobileSettings(): ReactElement {
   // per device — unlinking is signing out). The local clone stays; the
   // controller restarts into its disconnected state, and re-connecting
   // re-onboards.
+  async function confirmDeletions(): Promise<void> {
+    if (sync === null) {
+      return
+    }
+    setConfirmingDeletions(true)
+    try {
+      await sync.confirmDeletions()
+    } finally {
+      setConfirmingDeletions(false)
+    }
+  }
+
   async function disconnect(): Promise<void> {
     if (sync === null) {
       return
@@ -378,6 +392,14 @@ export function MobileSettings(): ReactElement {
               {status !== null ? <SettingsValueRow label="Status" value={status.label} /> : null}
               {canConnect ? (
                 <SettingsActionRow label="Connect GitHub" onPress={() => setConnectOpen(true)} />
+              ) : null}
+              {sync?.backup.phase === 'connected' && isDeletionPause(sync.backup.status) ? (
+                <SettingsActionRow
+                  label="Delete files anyway"
+                  tone="destructive"
+                  pending={confirmingDeletions}
+                  onPress={() => void confirmDeletions()}
+                />
               ) : null}
               {repo !== null ? (
                 <SettingsActionRow

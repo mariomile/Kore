@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactElement } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useQuery } from '@tanstack/react-query'
-import { getConflictedNotes, getDuplicateNoteIds } from '@kore/core'
+import { getConflictedNotes, getDuplicateNoteIds, isDeletionPause } from '@kore/core'
 import { ExternalLink } from '@/components/icons'
 import { ConnectGithubDialog } from '@/components/settings/connect-github-dialog'
 import { ConflictedNoteLinks } from '@/components/settings/conflicted-note-links'
@@ -29,6 +29,9 @@ function statusLine(backup: Extract<BackupState, { phase: 'connected' }>): strin
     case 'offline':
       return backup.status.message
     case 'error':
+      if (backup.status.errorKind === 'massDeletion') {
+        return backup.status.message // already says it paused and why
+      }
       // "Reconnect GitHub" only helps when GitHub is the remote; a generic
       // remote's auth message already names the fix (ssh-add, known_hosts…).
       return backup.status.errorKind === 'auth' && backup.repo !== null
@@ -67,7 +70,7 @@ function githubRepoBrowserUrl(
  * note also shows its own banner when opened.
  */
 export function BackupSettingsField(): ReactElement {
-  const { backup, disconnectGraph, signOut, backUpNow } = useSync()
+  const { backup, disconnectGraph, signOut, backUpNow, confirmDeletions } = useSync()
   const { graph } = useGraph()
   const githubConnected = useGithubConnected()
   const [connectOpen, setConnectOpen] = useState(false)
@@ -189,6 +192,16 @@ export function BackupSettingsField(): ReactElement {
                 {githubNeedsReconnect(backup) ? (
                   <Button size="sm" onClick={() => setConnectOpen(true)}>
                     Reconnect GitHub…
+                  </Button>
+                ) : null}
+                {isDeletionPause(backup.status) ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={action.pending}
+                    onClick={() => void action.run(confirmDeletions)}
+                  >
+                    Delete files anyway
                   </Button>
                 ) : null}
                 <Button

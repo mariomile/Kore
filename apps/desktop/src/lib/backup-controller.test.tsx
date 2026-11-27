@@ -85,6 +85,9 @@ function fakeBridge(options: FakeOptions = {}) {
   const pushOutcomes = [...(options.pushOutcomes ?? [])]
   setBridge({
     invoke: async (command, args) => {
+      if (command === 'git_sync_deletions') {
+        return { incoming: 0, outgoing: 0, tracked: 0 } // the guard, covered by engine.test.ts
+      }
       calls.push(command)
       invocations.push({ command, args })
       switch (command) {

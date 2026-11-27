@@ -65,6 +65,7 @@ export {
   updateGist,
   deleteGist,
   createSyncEngine,
+  isDeletionPause,
   isSyncError,
   type GitStatus,
   type NoteVersion,

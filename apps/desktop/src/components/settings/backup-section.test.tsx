@@ -16,6 +16,7 @@ const sync = vi.hoisted(() => ({
   disconnectGraph: vi.fn(async () => {}),
   signOut: vi.fn(async () => {}),
   backUpNow: vi.fn(async () => {}),
+  confirmDeletions: vi.fn(async () => {}),
 }))
 const github = vi.hoisted(() => ({ connected: false }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
@@ -110,6 +111,22 @@ describe('BackupSettingsField', () => {
     await expect
       .element(page.getByRole('button', { name: 'Reconnect GitHub…' }))
       .not.toBeInTheDocument()
+  })
+
+  it('shows a sync paused before a mass deletion and applies it only on request', async () => {
+    const message =
+      'Sync paused: changes from another device would delete 10,359 of 15,301 files here. Nothing has been deleted.'
+    await renderSection({
+      phase: 'connected',
+      remoteUrl: 'https://github.com/alex/notes.git',
+      repo: { owner: 'alex', name: 'notes' },
+      status: { state: 'error', errorKind: 'massDeletion', message },
+    })
+
+    await expect.element(page.getByText(message, { exact: true })).toBeVisible()
+    expect(sync.confirmDeletions).not.toHaveBeenCalled()
+    await userEvent.click(page.getByRole('button', { name: 'Delete files anyway' }))
+    expect(sync.confirmDeletions).toHaveBeenCalledOnce()
   })
 
   it('opens the connected GitHub repository', async () => {

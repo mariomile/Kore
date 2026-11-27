@@ -160,20 +160,10 @@ fn uncommitted(content: &str) -> Blame {
 /// version of the note.
 fn walk(repo: &git2::Repository, rel_path: &str) -> AppResult<Committed> {
     let mut walk = VersionWalk::default();
-    let mut failure = None;
     super::history::walk_note_changes(repo, rel_path, |commit, own, before| {
-        match walk.step(repo, commit, own, before) {
-            Ok(more) => more,
-            Err(error) => {
-                failure = Some(error);
-                false
-            }
-        }
+        walk.step(repo, commit, own, before)
     })?;
-    match failure {
-        Some(error) => Err(error),
-        None => Ok(walk.finish()),
-    }
+    Ok(walk.finish())
 }
 
 /// The state of [`walk`] between two versions of the note.

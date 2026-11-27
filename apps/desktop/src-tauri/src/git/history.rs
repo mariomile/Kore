@@ -98,13 +98,14 @@ fn parent_chain<'repo>(
 /// Walk first parents from `HEAD` and call `visit` with each commit where
 /// `rel_path`'s blob changed (created or modified), newest first, along with
 /// the note's blob in that commit and in its first parent (`None` when the
-/// parent has no such note). `visit` returns `false` to stop. Shared by the
+/// parent has no such note). `visit` returns `false` to stop, and an error
+/// from it ends the walk with that error. Shared by the
 /// version timeline and line blame, which both care only about the commits
 /// that touched the note, never the thousands of autosaves in between.
 pub(super) fn walk_note_changes<'repo>(
     repo: &'repo git2::Repository,
     rel_path: &str,
-    mut visit: impl FnMut(&git2::Commit<'repo>, git2::Oid, Option<git2::Oid>) -> bool,
+    mut visit: impl FnMut(&git2::Commit<'repo>, git2::Oid, Option<git2::Oid>) -> AppResult<bool>,
 ) -> AppResult<()> {
     let components: Vec<&str> = rel_path
         .split('/')
@@ -133,7 +134,7 @@ pub(super) fn walk_note_changes<'repo>(
         };
         let before = blob_in_chain(&parent_chain, &components);
         if let Some(own) = own {
-            if Some(own) != before && !visit(&commit, own, before) {
+            if Some(own) != before && !visit(&commit, own, before)? {
                 break;
             }
         }
@@ -162,7 +163,7 @@ pub(super) fn note_history(
             time_ms: commit.time().seconds() * 1000,
             summary: commit.summary().ok().flatten().unwrap_or("").to_string(),
         });
-        versions.len() < limit
+        Ok(versions.len() < limit)
     })?;
     Ok(versions)
 }

@@ -567,6 +567,8 @@ export {
   folderTreeAffectedBy,
   folderDisplayName,
   noteFolderCrumbs,
+  folderParentCrumbs,
+  foldCrumbs,
   type FolderCrumb,
   hasOwnFolders,
   isProtectedFolder,

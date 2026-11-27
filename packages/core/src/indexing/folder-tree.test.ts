@@ -6,6 +6,8 @@ import {
   folderTreeAffectedBy,
   hasOwnFolders,
   noteFolderCrumbs,
+  folderParentCrumbs,
+  foldCrumbs,
 } from './folder-tree'
 
 describe('buildFolderTree', () => {
@@ -129,5 +131,35 @@ describe('noteFolderCrumbs', () => {
       { name: 'notes', path: 'notes' },
       { name: 'Work', path: 'notes/Work' },
     ])
+  })
+})
+
+describe('folderParentCrumbs', () => {
+  it('lists the folders above a folder, root first', () => {
+    expect(folderParentCrumbs('Active/Goals/Q1')).toEqual([
+      { name: 'Active', path: 'Active' },
+      { name: 'Goals', path: 'Active/Goals' },
+    ])
+  })
+
+  it('is empty for a top-level folder', () => {
+    expect(folderParentCrumbs('Active')).toEqual([])
+  })
+})
+
+describe('foldCrumbs', () => {
+  const crumbs = folderParentCrumbs('A/B/C/D/E')
+
+  it('keeps a path that fits', () => {
+    expect(foldCrumbs(crumbs.slice(0, 2), 2)).toEqual(crumbs.slice(0, 2))
+  })
+
+  it('keeps the first and the last max - 1, folding the middle', () => {
+    expect(foldCrumbs(crumbs, 3)).toEqual([crumbs[0], null, crumbs[2], crumbs[3]])
+    expect(foldCrumbs(crumbs, 2)).toEqual([crumbs[0], null, crumbs[3]])
+  })
+
+  it('keeps only the nearest folder when one fits', () => {
+    expect(foldCrumbs(crumbs, 1)).toEqual([null, crumbs[3]])
   })
 })

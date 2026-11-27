@@ -5,7 +5,7 @@ import { FolderFiles, useFolderLooseFiles } from '@/components/all-notes/folder-
 import { FolderSubfolders } from '@/components/all-notes/folder-subfolders'
 import { MOBILE_CARD_SECTION_CLASS } from '@/components/all-notes/grid-card-classes'
 import { useFolderIncludesSubfolders } from '@/components/all-notes/use-folder-includes-subfolders'
-import { NoteFolderBreadcrumb } from '@/components/note-folder-breadcrumb'
+import { FolderPathTitle } from '@/components/folder-path-title'
 import { FolderDialogs, type FolderDialogState } from '@/components/folders/folder-dialogs'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -150,16 +150,19 @@ export function MobileFolder({ folder }: MobileFolderProps): ReactElement {
             <MoreHorizontal />
           </Button>
         </div>
-        <NoteFolderBreadcrumb path={folder} className="mb-0 pt-1" />
-        <div className="flex min-w-0 items-center gap-2.5 pt-1">
-          <Folder aria-hidden className="size-6 shrink-0 text-text-muted" />
-          <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight">{name}</h1>
-          {rows !== undefined && !atTop ? (
-            <span className="shrink-0 pt-1.5 text-[15px] tabular-nums text-text-muted">
-              {rows.length}
-            </span>
-          ) : null}
-        </div>
+        <FolderPathTitle
+          folder={folder}
+          name={name}
+          maxParents={1}
+          className="pt-1 text-[28px] font-semibold tracking-tight"
+          trailing={
+            rows !== undefined && !atTop ? (
+              <span className="shrink-0 pt-1.5 text-[15px] font-normal tracking-normal tabular-nums text-text-muted">
+                {rows.length}
+              </span>
+            ) : null
+          }
+        />
       </header>
 
       {enabled && rows === undefined ? (

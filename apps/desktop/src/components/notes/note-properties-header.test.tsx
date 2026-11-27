@@ -12,7 +12,13 @@ const data = vi.hoisted(() => ({
   tagTypes: [] as TagTypeEntry[],
   suggestions: [] as TagSuggestion[],
   values: {} as Record<string, CollectionValue>,
+  vault: {} as Record<string, unknown>,
 }))
+const writeVaultSettings = vi.hoisted(() =>
+  vi.fn(async (next: Record<string, unknown>) => {
+    data.vault = next
+  }),
+)
 const commitProperty = vi.hoisted(() => vi.fn())
 
 vi.mock('@kore/core', async (importOriginal) => ({
@@ -21,6 +27,8 @@ vi.mock('@kore/core', async (importOriginal) => ({
   listTagTypes: async () => data.tagTypes,
   suggestTags: async () => data.suggestions,
   getNoteProperties: async () => data.values,
+  readVaultSettings: async () => data.vault,
+  writeVaultSettings,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
@@ -73,6 +81,8 @@ beforeEach(() => {
   data.tagTypes = []
   data.suggestions = []
   data.values = {}
+  data.vault = {}
+  writeVaultSettings.mockClear()
   commitProperty.mockClear()
   removeTag.mockClear()
   addTag.mockClear()
@@ -326,8 +336,37 @@ describe('NotePropertiesHeader', () => {
     await expect.element(header.getByText('Due')).toBeInTheDocument()
     await expect.element(header.getByText('Priority')).toBeInTheDocument()
 
-    await header.getByRole('button', { name: 'Hide empty' }).click()
+    await header.getByRole('button', { name: 'Show less' }).click()
     await expect.element(header.getByText('Due')).not.toBeInTheDocument()
+  })
+
+  it('folds fields the vault hides, even with a value, and hides one from its label', async () => {
+    data.vault = { properties: { hiddenInNote: ['created_by'] } }
+    data.values = {
+      created_by: { value: 'career', valueType: 'string', valueNumber: null },
+      updated: { value: '2026-11-26', valueType: 'string', valueNumber: null },
+      tldr: { value: 'Friday call', valueType: 'string', valueNumber: null },
+    }
+    const view = await render(<Subject />)
+    const header = view.getByRole('region', { name: 'Properties' })
+
+    await expect.element(header.getByRole('button', { name: '1 hidden' })).toBeInTheDocument()
+    expect(header.getByText('career').elements()).toHaveLength(0)
+
+    await header.getByRole('button', { name: 'updated (Text)' }).click()
+    await view.getByRole('menuitem', { name: 'Hide in notes' }).click()
+    await expect.element(header.getByRole('button', { name: '2 hidden' })).toBeInTheDocument()
+    await vi.waitFor(() =>
+      expect(data.vault).toEqual({ properties: { hiddenInNote: ['created_by', 'updated'] } }),
+    )
+
+    await header.getByRole('button', { name: '2 hidden' }).click()
+    await expect.element(header.getByText('career')).toBeInTheDocument()
+    await header.getByRole('button', { name: 'created_by (Text)' }).click()
+    await view.getByRole('menuitem', { name: 'Show in notes' }).click()
+    await vi.waitFor(() =>
+      expect(data.vault).toEqual({ properties: { hiddenInNote: ['updated'] } }),
+    )
   })
 
   it('shows a long text value in full and edits it in place', async () => {

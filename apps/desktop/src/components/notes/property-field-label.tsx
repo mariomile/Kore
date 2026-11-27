@@ -5,7 +5,7 @@ import {
   type TagProperty,
   type TagPropertyType,
 } from '@kore/core'
-import { Settings, Trash } from '@/components/icons'
+import { Eye, EyeClosed, Settings, Trash } from '@/components/icons'
 import { PROPERTY_TYPE_ICONS } from '@/components/tags/property-type-icons'
 import { PROPERTY_TYPE_LABELS } from '@/components/tags/tag-config-drafts'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
@@ -37,6 +37,10 @@ interface PropertyFieldLabelProps {
   ownerTag: string | null
   /** Width of the label column — header uses `w-32`, the rail uses `w-24`. */
   className?: string
+  /** Whether the vault hides this field from every note's panel. */
+  hidden: boolean
+  /** Hide the field from every note, or show it again. */
+  onHiddenChange: (hidden: boolean) => void
 }
 
 /**
@@ -49,6 +53,8 @@ export function PropertyFieldLabel({
   property,
   ownerTag,
   className,
+  hidden,
+  onHiddenChange,
 }: PropertyFieldLabelProps): ReactElement {
   const { graph } = useGraph()
   const mobile = isMobileSurface()
@@ -148,6 +154,8 @@ export function PropertyFieldLabel({
           onChangeType={changeType}
           onEditSchema={() => setConfiguring(true)}
           onDelete={remove}
+          hidden={hidden}
+          onHiddenChange={onHiddenChange}
         />
         {configuring && ownerTag !== null ? (
           <TagConfigDialog tag={ownerTag} onClose={() => setConfiguring(false)} />
@@ -173,6 +181,15 @@ export function PropertyFieldLabel({
           }
         />
         <DropdownMenuContent align="start" className="w-60">
+          <DropdownMenuItem onClick={() => onHiddenChange(!hidden)}>
+            {hidden ? (
+              <Eye aria-hidden className="size-3.5" />
+            ) : (
+              <EyeClosed aria-hidden className="size-3.5" />
+            )}
+            {hidden ? 'Show in notes' : 'Hide in notes'}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           {ownerTag === null ? (
             <DropdownMenuGroup>
               <DropdownMenuLabel>Type: {typeLabel}</DropdownMenuLabel>

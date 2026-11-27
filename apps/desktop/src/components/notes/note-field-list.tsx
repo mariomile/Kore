@@ -30,6 +30,7 @@ import {
   useCommitNoteProperty,
 } from '@/lib/tags/use-commit-note-property'
 import type { NoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
+import { useHiddenNoteFields } from '@/lib/tags/use-hidden-note-fields'
 import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
 import {
@@ -84,6 +85,44 @@ function isEmptyField(property: TagProperty, value: CollectionValue | undefined)
   return !reading.mismatch && reading.text === ''
 }
 
+interface FieldFold {
+  /** The fields listed while folded: filled and not hidden by the vault. */
+  shown: TagProperty[]
+  /** The toggle's folded label: `3 empty`, `2 hidden`, or `5 more` for both. */
+  label: string
+}
+
+/**
+ * Split the note's fields into what the panel lists and what folds behind its
+ * toggle: empty fields, and fields the vault hides from every note (Notion's
+ * "Hide in page"). A hidden field folds even with a value; it never vanishes.
+ */
+function foldFields(
+  properties: readonly TagProperty[],
+  values: Record<string, CollectionValue> | undefined,
+  hidden: ReadonlySet<string>,
+): FieldFold {
+  let empty = 0
+  let hiddenCount = 0
+  const shown: TagProperty[] = []
+  for (const property of properties) {
+    if (hidden.has(property.key)) {
+      hiddenCount += 1
+    } else if (isEmptyField(property, values?.[property.key])) {
+      empty += 1
+    } else {
+      shown.push(property)
+    }
+  }
+  const label =
+    hiddenCount === 0
+      ? `${empty} empty`
+      : empty === 0
+        ? `${hiddenCount} hidden`
+        : `${empty + hiddenCount} more`
+  return { shown, label }
+}
+
 const INLINE_TYPE_LABELS = Object.fromEntries(
   INLINE_TYPES.map((type) => [type, PROPERTY_TYPE_LABELS[type]]),
 ) as Record<TagPropertyType, string>
@@ -101,10 +140,10 @@ interface NoteFieldListProps {
 /**
  * A note's fields as Notion-style property rows: the Tags row, schema-owned
  * properties with rich typed faces, loose frontmatter properties after a
- * little air, and an inline `+ Add a property` action. Empty fields fold
- * behind one quiet "N empty" toggle so the panel reads as what the note says,
- * not as the form its type could fill; long text wraps in full. On iPhone every
- * value tap opens the animated `MobileCellEditorDrawer` bottom sheet instead
+ * little air, and an inline `+ Add a property` action. Empty fields and
+ * fields the vault hides fold behind one quiet toggle, so the panel reads as
+ * what the note says, not as the form its type could fill; long text wraps in
+ * full. On iPhone every value tap opens the animated `MobileCellEditorDrawer` bottom sheet instead
  * of a tiny desktop popover.
  */
 export function NoteFieldList({
@@ -121,14 +160,15 @@ export function NoteFieldList({
   const [editingCell, setEditingCell] = useState<MobileCellTarget | null>(null)
   const [addingMobile, setAddingMobile] = useState(false)
   const [configuringTag, setConfiguringTag] = useState<string | null>(null)
-  // Which note the empty fields were unfolded on: opening another note folds
+  const { hidden, setHidden } = useHiddenNoteFields()
+  // Which note the folded fields were opened on: opening another note folds
   // them again without an effect to reset the flag.
-  const [showEmptyOn, setShowEmptyOn] = useState<string | null>(null)
-  const showEmpty = showEmptyOn === path
+  const [unfoldedOn, setUnfoldedOn] = useState<string | null>(null)
+  const unfolded = unfoldedOn === path
 
-  const filled = properties.filter((property) => !isEmptyField(property, values?.[property.key]))
-  const emptyCount = properties.length - filled.length
-  const listed = showEmpty ? properties : filled
+  const fold = foldFields(properties, values, hidden)
+  const listed = unfolded ? properties : fold.shown
+  const foldedCount = properties.length - fold.shown.length
   const schemaProperties = listed.filter((property) => ownerTagOf(property.key) !== null)
   const looseProperties = listed.filter((property) => ownerTagOf(property.key) === null)
   const primaryTag =
@@ -157,6 +197,8 @@ export function NoteFieldList({
         <PropertyFieldLabel
           property={property}
           ownerTag={ownerTagOf(property.key)}
+          hidden={hidden.has(property.key)}
+          onHiddenChange={(next) => setHidden(property.key, next)}
           className={labelClassName}
         />
         {mobile ? (
@@ -220,7 +262,7 @@ export function NoteFieldList({
           <li aria-hidden className="h-2" />
         ) : null}
         {looseProperties.map(renderRow)}
-        {primaryTag !== undefined || emptyCount > 0 ? (
+        {primaryTag !== undefined || foldedCount > 0 ? (
           <li className="flex items-center gap-1 pt-1">
             {primaryTag === undefined ? null : mobile ? (
               <button
@@ -240,12 +282,12 @@ export function NoteFieldList({
                 onEditSchema={() => setConfiguringTag(primaryTag)}
               />
             )}
-            {emptyCount > 0 ? (
+            {foldedCount > 0 ? (
               <button
                 type="button"
-                aria-expanded={showEmpty}
+                aria-expanded={unfolded}
                 onClick={() => {
-                  setShowEmptyOn(showEmpty ? null : path)
+                  setUnfoldedOn(unfolded ? null : path)
                 }}
                 className={footerActionClass(mobile)}
               >
@@ -254,10 +296,10 @@ export function NoteFieldList({
                   className={cn(
                     'shrink-0 transition-transform duration-150',
                     mobile ? 'size-4' : 'size-3.5',
-                    !showEmpty && '-rotate-90',
+                    !unfolded && '-rotate-90',
                   )}
                 />
-                <span>{showEmpty ? 'Hide empty' : `${emptyCount} empty`}</span>
+                <span>{unfolded ? 'Show less' : fold.label}</span>
               </button>
             ) : null}
           </li>

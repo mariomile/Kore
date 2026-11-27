@@ -41,7 +41,7 @@ interface AllNotesGridProps {
   /** The typed tag's collection rows, for the property values by path. */
   entries?: readonly CollectionEntry[] | undefined
   /**
-   * A folder page's loose files, dealt among the notes in the page's sort
+   * The loose files a File type filter lists, as cards in the page's sort
    * (already filtered like the notes).
    */
   files?: readonly LooseFile[]
@@ -128,7 +128,7 @@ export function AllNotesGrid({
   const { settings } = useSettings()
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  // A folder's files are documents of it like its notes: one grid, one order.
+  // Files and notes share one order: the page's sort.
   const items = useMemo(
     () =>
       notes === undefined

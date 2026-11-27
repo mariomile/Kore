@@ -5,6 +5,7 @@ import { ChevronDown } from '@/components/icons'
 import { selectOptionBadgeClass, selectOptionDotClass } from '@/components/tags/select-colors'
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
+import { useHiddenNoteFields } from '@/lib/tags/use-hidden-note-fields'
 import type { NoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { useSettings } from '@/providers/settings-provider'
 
@@ -63,10 +64,11 @@ interface NoteFieldSummaryProps {
  */
 export function NoteFieldSummary({ fields, children }: NoteFieldSummaryProps): ReactElement {
   const { settings } = useSettings()
+  const { hidden } = useHiddenNoteFields()
   const [open, setOpen] = useState(false)
   const [rendered, setRendered] = useState(false)
   const previews = fields.properties
-    .filter((property) => fields.ownerTagOf(property.key) !== null)
+    .filter((property) => fields.ownerTagOf(property.key) !== null && !hidden.has(property.key))
     .map((property) => summaryPreview(property, fields.values?.[property.key], settings.dateFormat))
     .filter((item): item is SummaryPreview => item !== null)
     .slice(0, 2)

@@ -6,6 +6,7 @@ import {
   foldTag,
   getNote,
   getNoteProperties,
+  isPanelHiddenLooseKey,
   listTagsOnNote,
   localCalendarDate,
   tagNameForDefinitionPath,
@@ -78,11 +79,15 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     enabled,
   })
 
+  // A loose `up:` stays in the file but not in the panel (folders and tags
+  // organize notes); a key a schema declares is always listed.
   const properties = useMemo(() => {
     return deriveCollectionPropertySchema(
       tagTypes,
       values === undefined ? [] : [{ properties: values }],
-    ).type.properties
+    )
+      .fields.filter((field) => field.declaredBy.length > 0 || !isPanelHiddenLooseKey(field.key))
+      .map((field) => field.property)
   }, [tagTypes, values])
 
   // The `updated` fields are a view over the index's mtime, exactly like the

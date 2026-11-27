@@ -56,10 +56,12 @@ export function PropertyFieldValue({
   const { settings } = useSettings()
   const mobile = isMobileSurface()
   const reading = readCellValue(property, value)
-  const textSize = mobile ? 'text-[14px]' : 'text-[13px]'
+  const textSize = mobile ? 'text-[14px] leading-5' : 'text-[13px] leading-5'
+  // The box is as tall as the label beside it (Mac 28px, iPhone 36px), so a
+  // one-line value sits on the label's line and a long one wraps downward.
   const rowBox = cn(
-    'flex min-w-0 flex-1 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-surface-hover',
-    mobile && 'min-h-9 active:bg-surface-hover',
+    'flex min-w-0 flex-1 items-center rounded-md px-1.5 transition-colors hover:bg-surface-hover',
+    mobile ? 'min-h-9 py-2 active:bg-surface-hover' : 'min-h-7 py-1',
   )
 
   if (property.type === 'checkbox' && !reading.mismatch) {
@@ -159,7 +161,9 @@ export function PropertyFieldValue({
     <span className={rowBox}>
       <span
         className={cn(
-          'min-w-0 truncate',
+          // Wrapped, never cut: a description or a tldr is read in full, the
+          // way Notion and Craft show long text properties.
+          'min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]',
           textSize,
           (property.type === 'number' || property.type === 'rating') &&
             !reading.mismatch &&

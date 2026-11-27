@@ -1,7 +1,13 @@
 import { useState, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { tagPropertyTypeSchema, type TagProperty, type TagPropertyType } from '@kore/core'
-import { Plus } from '@/components/icons'
+import {
+  tagPropertyTypeSchema,
+  type CollectionValue,
+  type TagProperty,
+  type TagPropertyType,
+} from '@kore/core'
+import { readCellValue } from '@/components/all-notes/collection-cell'
+import { ChevronDown, Plus } from '@/components/icons'
 import { PropertyFieldLabel } from '@/components/notes/property-field-label'
 import { PropertyFieldValue } from '@/components/tags/property-field-value'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
@@ -63,6 +69,21 @@ const INLINE_TYPES: readonly TagPropertyType[] = [
   'updated',
 ]
 
+/**
+ * A field with nothing to read. Checkboxes never count: unchecked is an answer,
+ * and folding a toggle away would turn one tap into two.
+ */
+function isEmptyField(property: TagProperty, value: CollectionValue | undefined): boolean {
+  if (property.type === 'checkbox') {
+    return false
+  }
+  if (value === undefined) {
+    return true
+  }
+  const reading = readCellValue(property, value)
+  return !reading.mismatch && reading.text === ''
+}
+
 const INLINE_TYPE_LABELS = Object.fromEntries(
   INLINE_TYPES.map((type) => [type, PROPERTY_TYPE_LABELS[type]]),
 ) as Record<TagPropertyType, string>
@@ -79,8 +100,10 @@ interface NoteFieldListProps {
 
 /**
  * A note's fields as Notion-style property rows: the Tags row, schema-owned
- * properties with rich typed faces, loose frontmatter properties below a
- * quiet divider, and an inline `+ Add a property` action. On iPhone every
+ * properties with rich typed faces, loose frontmatter properties after a
+ * little air, and an inline `+ Add a property` action. Empty fields fold
+ * behind one quiet "N empty" toggle so the panel reads as what the note says,
+ * not as the form its type could fill; long text wraps in full. On iPhone every
  * value tap opens the animated `MobileCellEditorDrawer` bottom sheet instead
  * of a tiny desktop popover.
  */
@@ -98,9 +121,16 @@ export function NoteFieldList({
   const [editingCell, setEditingCell] = useState<MobileCellTarget | null>(null)
   const [addingMobile, setAddingMobile] = useState(false)
   const [configuringTag, setConfiguringTag] = useState<string | null>(null)
+  // Which note the empty fields were unfolded on: opening another note folds
+  // them again without an effect to reset the flag.
+  const [showEmptyOn, setShowEmptyOn] = useState<string | null>(null)
+  const showEmpty = showEmptyOn === path
 
-  const schemaProperties = properties.filter((property) => ownerTagOf(property.key) !== null)
-  const looseProperties = properties.filter((property) => ownerTagOf(property.key) === null)
+  const filled = properties.filter((property) => !isEmptyField(property, values?.[property.key]))
+  const emptyCount = properties.length - filled.length
+  const listed = showEmpty ? properties : filled
+  const schemaProperties = listed.filter((property) => ownerTagOf(property.key) !== null)
+  const looseProperties = listed.filter((property) => ownerTagOf(property.key) === null)
   const primaryTag =
     tagTypes[0] !== undefined
       ? (tags.find((entry) => entry.tagKey === tagTypes[0]?.tagKey)?.tag ?? tagTypes[0].tagKey)
@@ -123,10 +153,7 @@ export function NoteFieldList({
     const isCheckbox = property.type === 'checkbox'
     const checked = value?.valueType === 'boolean' && value.value === 'true'
     return (
-      <li
-        key={property.key}
-        className={cn('flex items-center gap-2', mobile ? 'min-h-10' : 'min-h-8')}
-      >
+      <li key={property.key} className="flex items-start gap-2 py-0.5">
         <PropertyFieldLabel
           property={property}
           ownerTag={ownerTagOf(property.key)}
@@ -172,6 +199,7 @@ export function NoteFieldList({
           <PropertyValueEditor
             property={property}
             value={value}
+            variant="panel"
             onCommit={(next) => commitProperty(path, property.key, next)}
             onOpenRelation={openRelation}
             {...(align === undefined ? {} : { align })}
@@ -189,18 +217,18 @@ export function NoteFieldList({
         <NoteTypeField path={path} tags={tags} labelClassName={labelClassName} />
         {schemaProperties.map(renderRow)}
         {schemaProperties.length > 0 && looseProperties.length > 0 ? (
-          <li aria-hidden className="my-1.5 border-t border-border/70" />
+          <li aria-hidden className="h-2" />
         ) : null}
         {looseProperties.map(renderRow)}
-        {primaryTag !== undefined ? (
-          <li className="pt-1">
-            {mobile ? (
+        {primaryTag !== undefined || emptyCount > 0 ? (
+          <li className="flex items-center gap-1 pt-1">
+            {primaryTag === undefined ? null : mobile ? (
               <button
                 type="button"
                 onClick={() => {
                   setAddingMobile(true)
                 }}
-                className="flex min-h-9 w-full items-center gap-2 rounded-md px-1.5 text-left text-[14px] text-text-muted transition-colors active:bg-surface-hover active:text-text"
+                className={footerActionClass(mobile)}
               >
                 <Plus aria-hidden className="size-4 shrink-0" />
                 <span>Add a property</span>
@@ -212,6 +240,26 @@ export function NoteFieldList({
                 onEditSchema={() => setConfiguringTag(primaryTag)}
               />
             )}
+            {emptyCount > 0 ? (
+              <button
+                type="button"
+                aria-expanded={showEmpty}
+                onClick={() => {
+                  setShowEmptyOn(showEmpty ? null : path)
+                }}
+                className={footerActionClass(mobile)}
+              >
+                <ChevronDown
+                  aria-hidden
+                  className={cn(
+                    'shrink-0 transition-transform duration-150',
+                    mobile ? 'size-4' : 'size-3.5',
+                    !showEmpty && '-rotate-90',
+                  )}
+                />
+                <span>{showEmpty ? 'Hide empty' : `${emptyCount} empty`}</span>
+              </button>
+            ) : null}
           </li>
         ) : null}
       </ul>
@@ -237,6 +285,16 @@ export function NoteFieldList({
         <TagConfigDialog tag={configuringTag} onClose={() => setConfiguringTag(null)} />
       ) : null}
     </>
+  )
+}
+
+/** The quiet ghost actions under the fields: Add a property, N empty. */
+function footerActionClass(mobile: boolean): string {
+  return cn(
+    'flex items-center gap-2 rounded-md px-1.5 text-text-muted transition-colors',
+    mobile
+      ? 'min-h-11 text-[14px] active:bg-surface-hover active:text-text'
+      : 'min-h-7 text-[13px] hover:bg-surface-hover hover:text-text',
   )
 }
 
@@ -288,10 +346,7 @@ function DesktopAddPropertyRow({
         }
       }}
     >
-      <PopoverTrigger
-        aria-label="Add a property"
-        className="flex min-h-7 items-center gap-2 rounded-md px-1.5 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-      >
+      <PopoverTrigger aria-label="Add a property" className={footerActionClass(false)}>
         <Plus aria-hidden className="size-3.5 shrink-0" />
         <span>Add a property</span>
       </PopoverTrigger>

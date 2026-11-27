@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
 import type { CollectionValue, NoteTagEntry, TagSuggestion, TagTypeEntry } from '@kore/core'
@@ -237,6 +238,7 @@ describe('NotePropertiesHeader', () => {
         type: { properties: [{ name: 'Company', key: 'company', type: 'relation' }] },
       },
     ]
+    data.values = { company: { value: '[[Acme]]', valueType: 'string', valueNumber: null } }
     const view = await render(<Subject />)
 
     await view.getByRole('button', { name: 'Company (Relation)' }).click()
@@ -259,6 +261,7 @@ describe('NotePropertiesHeader', () => {
         type: { properties: [{ name: 'Author', key: 'author', type: 'text' }] },
       },
     ]
+    data.values = { author: { value: 'Le Guin', valueType: 'string', valueNumber: null } }
     const view = await render(<Subject />)
 
     await view.getByRole('button', { name: 'Author (Text)' }).click()
@@ -267,6 +270,102 @@ describe('NotePropertiesHeader', () => {
     await vi.waitFor(() =>
       expect(setTagPropertyType).toHaveBeenCalledWith('book', 1, 'author', 'number'),
     )
+  })
+
+  it('keeps a loose up: link out of the panel', async () => {
+    data.values = {
+      up: { value: '[[Projects]]', valueType: 'string', valueNumber: null },
+      related: { value: '[[Ada]]', valueType: 'string', valueNumber: null },
+    }
+    const view = await render(<Subject />)
+    const header = view.getByRole('region', { name: 'Properties' })
+    await expect.element(header.getByText('related')).toBeInTheDocument()
+    expect(header.getByText('up', { exact: true }).elements()).toHaveLength(0)
+  })
+
+  it('lists up when a type declares it', async () => {
+    data.tags = [
+      {
+        tag: 'area',
+        tagKey: 'area',
+        definitionPath: 'tags/area.md',
+        type: { properties: [{ name: 'Parent', key: 'up', type: 'relation' }] },
+      },
+    ]
+    data.values = { up: { value: '[[Projects]]', valueType: 'string', valueNumber: null } }
+    const view = await render(<Subject />)
+    await expect.element(view.getByText('Parent')).toBeInTheDocument()
+  })
+
+  it('folds empty fields behind one toggle and unfolds them on this note only', async () => {
+    data.tags = [
+      {
+        tag: 'project',
+        tagKey: 'project',
+        definitionPath: 'tags/project.md',
+        type: {
+          properties: [
+            { name: 'Status', key: 'status', type: 'status', options: ['active'] },
+            { name: 'Due', key: 'due', type: 'date' },
+            { name: 'Priority', key: 'priority', type: 'select', options: ['High'] },
+            { name: 'Done', key: 'done', type: 'checkbox' },
+          ],
+        },
+      },
+    ]
+    data.values = { status: { value: 'active', valueType: 'string', valueNumber: null } }
+    const view = await render(<Subject />)
+    const header = view.getByRole('region', { name: 'Properties' })
+
+    await expect.element(header.getByText('active')).toBeInTheDocument()
+    // An unchecked checkbox is an answer, not an empty field.
+    await expect.element(header.getByRole('checkbox', { name: 'Done' })).toBeInTheDocument()
+    expect(header.getByText('Due').elements()).toHaveLength(0)
+
+    await header.getByRole('button', { name: '2 empty' }).click()
+    await expect.element(header.getByText('Due')).toBeInTheDocument()
+    await expect.element(header.getByText('Priority')).toBeInTheDocument()
+
+    await header.getByRole('button', { name: 'Hide empty' }).click()
+    await expect.element(header.getByText('Due')).not.toBeInTheDocument()
+  })
+
+  it('shows a long text value in full and edits it in place', async () => {
+    const long =
+      'Documento unico per la Product Deep Dive del 27 nov con contesto della call, ' +
+      'walkthrough sui 4 pilastri, seconda storia, follow-up, domande da fare e cose da non dire'
+    data.values = { description: { value: long, valueType: 'string', valueNumber: null } }
+    const view = await render(<Subject />)
+    const header = view.getByRole('region', { name: 'Properties' })
+
+    const face = header.getByText(long)
+    await expect.element(face).toBeVisible()
+    const element = face.element() as HTMLElement
+    // Wrapped onto several lines, never cut with an ellipsis.
+    expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth)
+    expect(element.getBoundingClientRect().height).toBeGreaterThan(30)
+
+    await header.getByRole('button', { name: 'Edit description' }).click()
+    const field = header.getByRole('textbox', { name: 'description' })
+    await expect.element(field).toHaveValue(long)
+    await field.fill('Short\nand sweet')
+    await expect.element(field).toHaveValue('Short and sweet')
+    await userEvent.keyboard('{Enter}')
+    expect(commitProperty).toHaveBeenCalledWith(
+      'notes/dispossessed.md',
+      'description',
+      'Short and sweet',
+    )
+  })
+
+  it('cancels an in-place text edit on Escape', async () => {
+    data.values = { tldr: { value: 'Friday call', valueType: 'string', valueNumber: null } }
+    const view = await render(<Subject />)
+    await view.getByRole('button', { name: 'Edit tldr' }).click()
+    await view.getByRole('textbox', { name: 'tldr' }).fill('Changed')
+    await userEvent.keyboard('{Escape}')
+    await expect.element(view.getByText('Friday call')).toBeInTheDocument()
+    expect(commitProperty).not.toHaveBeenCalled()
   })
 
   it('names a loose field type without offering a change', async () => {

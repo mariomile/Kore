@@ -57,7 +57,7 @@ function WarmNoteView({ path, active }: { path: string; active: boolean }): Reac
           so arrivals elsewhere never re-anchor or refocus it. */}
       <RouterFreeze frozen={!active}>
         <PaneErrorBoundary resetKey={path} surface="note" path={path}>
-          <SingleNoteView path={path} />
+          <SingleNoteView path={path} shown={active} />
         </PaneErrorBoundary>
       </RouterFreeze>
     </div>

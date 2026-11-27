@@ -1,4 +1,11 @@
-import { useRef, useState, type ReactElement, type ReactNode } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { ScrollVeil } from '@/components/scroll-veil'
@@ -20,6 +27,12 @@ interface SingleNoteViewProps {
    * window's day label, standing in for the title a daily doesn't carry.
    */
   heading?: ReactNode
+  /**
+   * Set when the view is a warm note tab (`WarmNoteViews`): false while the
+   * tab is hidden. The view then keeps its scroll offset across hiding, which
+   * a hidden container may drop, and coming back does not reset it.
+   */
+  shown?: boolean
 }
 
 /**
@@ -31,7 +44,12 @@ interface SingleNoteViewProps {
  * padding, so clicking anywhere in the note body (blank side margins
  * included) focuses it.
  */
-export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps): ReactElement {
+export function SingleNoteView({
+  path,
+  dailyDate,
+  heading,
+  shown,
+}: SingleNoteViewProps): ReactElement {
   // For the veil: the element itself, in state, so the veil's listener
   // attaches once ScrollRestored's container exists.
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
@@ -43,6 +61,21 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
   // yank the caret out of whatever the user just clicked.
   const paneIsActive = usePaneIsActive()
   const rootRef = useRef<HTMLDivElement>(null)
+  // The offset as of the last scroll while shown. Read from the scroll
+  // events, not at hide time: by the time a hiding commit's effects run the
+  // container is already out of layout and may report 0.
+  const shownScrollTop = useRef(0)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const bindScrollElement = useCallback((element: HTMLDivElement | null) => {
+    scrollRef.current = element
+    setScrollElement(element)
+  }, [])
+  useLayoutEffect(() => {
+    const element = scrollRef.current
+    if (element !== null && shown === true) {
+      element.scrollTop = shownScrollTop.current
+    }
+  }, [shown, scrollElement])
   const [arrival, setArrival] = useState({ path, autoFocus: paneIsActive })
   if (arrival.path !== path) {
     setArrival({ path, autoFocus: paneIsActive })
@@ -51,7 +84,14 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
     // The relative wrapper pins the floating outline rail to the viewport
     // edge of the pane while the note itself scrolls beneath it.
     <div ref={rootRef} className="relative h-full">
-      <ScrollRestored className="h-full overflow-auto px-0" elementRef={setScrollElement}>
+      <ScrollRestored
+        className="h-full overflow-auto px-0"
+        elementRef={bindScrollElement}
+        keepUnsavedEntries={shown !== undefined}
+        onScroll={(top) => {
+          if (shown !== false) shownScrollTop.current = top
+        }}
+      >
         {/* With no heading the note opens the page, so its cover may bleed
             up through the top inset (`kore-note-page-top`). */}
         <div

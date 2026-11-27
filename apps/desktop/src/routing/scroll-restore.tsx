@@ -11,6 +11,15 @@ interface ScrollRestoredProps {
    * may still be null when its effect runs.
    */
   elementRef?: (element: HTMLDivElement | null) => void
+  /**
+   * A history entry with no saved offset leaves the scroll where it is,
+   * instead of resetting it to the top. For a container that only ever shows
+   * one thing (a warm note tab): coming back to it is a new entry, but the
+   * same note, where the reader left it.
+   */
+  keepUnsavedEntries?: boolean
+  /** Every scroll offset, after it is saved to the history entry. */
+  onScroll?: (top: number) => void
 }
 
 /**
@@ -28,6 +37,8 @@ export function ScrollRestored({
   className,
   children,
   elementRef,
+  keepUnsavedEntries = false,
+  onScroll,
 }: ScrollRestoredProps): ReactElement {
   const { entryId, saveScrollState, savedScroll } = useRouter()
   const ref = useRef<HTMLDivElement | null>(null)
@@ -36,10 +47,11 @@ export function ScrollRestored({
   // the same mounted container): restore the entry's offset, or reset to the
   // top for an entry that has none — never carry the previous view's position.
   useEffect(() => {
-    if (ref.current) {
-      ref.current.scrollTop = savedScroll() ?? 0
+    const saved = savedScroll()
+    if (ref.current && (saved !== null || !keepUnsavedEntries)) {
+      ref.current.scrollTop = saved ?? 0
     }
-  }, [entryId, savedScroll])
+  }, [entryId, savedScroll, keepUnsavedEntries])
 
   // Memoized so the callback keeps its identity across renders — an inline
   // arrow would make React detach/re-attach it (null, then the element) on
@@ -56,7 +68,10 @@ export function ScrollRestored({
     <div
       ref={mergedRef}
       className={cn(className, 'relative')}
-      onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
+      onScroll={(event) => {
+        saveScrollState(event.currentTarget.scrollTop)
+        onScroll?.(event.currentTarget.scrollTop)
+      }}
     >
       {children}
     </div>

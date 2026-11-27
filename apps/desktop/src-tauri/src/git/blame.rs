@@ -799,6 +799,80 @@ mod tests {
     }
 
     #[test]
+    fn a_note_born_on_a_merged_branch_keeps_each_branch_edit() {
+        // The vault sync's shape: the remote comes in as the second parent,
+        // so the note is created and edited only off the first-parent line.
+        let dir = tempdir().unwrap();
+        let repo = Repository::init(dir.path()).unwrap();
+        let me = ("Mario", "mario@example.com");
+        let agent = ("Grok", "grok@agents.kore");
+        let note = "daily/today.md";
+        let main = commit_tree(&repo, &[], &[("other.md", Some("o\n"))], me, true);
+        let created = commit_tree(&repo, &[main], &[(note, Some("a\nb\n"))], agent, false);
+        let edited = commit_tree(
+            &repo,
+            &[created],
+            &[(note, Some("a\nb\nc\n"))],
+            agent,
+            false,
+        );
+        let main2 = commit_tree(&repo, &[main], &[("other.md", Some("o2\n"))], me, false);
+        // First parent has no note at all; second parent's version wins.
+        let merge1 = commit_tree(
+            &repo,
+            &[main2, edited],
+            &[(note, Some("a\nb\nc\n"))],
+            me,
+            false,
+        );
+        let side = commit_tree(
+            &repo,
+            &[merge1],
+            &[(note, Some("a\nb\nc\nd\n"))],
+            agent,
+            false,
+        );
+        let merge2 = commit_tree(
+            &repo,
+            &[merge1, side],
+            &[(note, Some("a\nb\nc\nd\n"))],
+            me,
+            false,
+        );
+        let edit2 = commit_tree(&repo, &[merge2], &[(note, Some("a\nB\nc\nd\n"))], me, false);
+        let merge3 = commit_tree(
+            &repo,
+            &[main2, edit2],
+            &[(note, Some("a\nB\nc\nd\n"))],
+            me,
+            false,
+        );
+        // Each device merging the other (criss-cross), the note untouched.
+        let cross_a = commit_tree(&repo, &[merge3, main2], &[("x.md", Some("1\n"))], me, false);
+        let cross_b = commit_tree(&repo, &[main2, merge3], &[("y.md", Some("2\n"))], me, false);
+        let top = commit_tree(
+            &repo,
+            &[cross_a, cross_b],
+            &[("y.md", Some("2\n"))],
+            me,
+            false,
+        );
+        repo.set_head_detached(top).unwrap();
+
+        let shown = "a\nB\nc\nd\ne\n";
+        let blame = assert_matches_libgit2(dir.path(), note, shown);
+        let expected = [created, edit2, edited, side];
+        for (line, commit) in expected.iter().enumerate() {
+            assert_eq!(blame_line(&blame, line + 1), Some(commit.to_string()));
+        }
+        assert_eq!(blame_line(&blame, 5), None);
+    }
+
+    fn blame_line(blame: &Blame, line: usize) -> Option<String> {
+        owners(blame)[line - 1].clone()
+    }
+
+    #[test]
     fn a_note_recreated_after_a_delete_starts_its_history_again() {
         let dir = tempdir().unwrap();
         let repo = Repository::init(dir.path()).unwrap();

@@ -1,6 +1,7 @@
 import type { TaskMarker } from '@kore/core'
 import type { FrontmatterPatch } from './note-session-frontmatter'
 import type { RoundTripFidelity } from './roundtrip'
+import type { EditorRead } from './note-session-editor-read'
 
 export type NoteSessionStatus = 'loading' | 'ready' | 'error'
 
@@ -141,7 +142,7 @@ export interface NoteSession {
    * content into the editor (`applyContent`) the read is immediate, which
    * keeps that re-entrant change recognizable.
    */
-  editorDirtied: (read: () => string | null) => void
+  editorDirtied: (read: EditorRead) => void
   /**
    * Read a change {@link NoteSession.editorDirtied} left pending now. Call it
    * before the editor that reported it goes away.

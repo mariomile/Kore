@@ -208,21 +208,12 @@ function topLevelSpan(doc: ProseMirrorNode, from: number, to: number): [number, 
   if (doc.childCount === 0) {
     return null
   }
-  const size = doc.content.size
-  const first = Math.min(
-    doc.resolve(Math.max(0, Math.min(from, size))).index(0),
-    doc.childCount - 1,
-  )
-  const last = Math.min(doc.resolve(Math.max(0, Math.min(to, size))).index(0), doc.childCount - 1)
-  let start = 0
-  for (let index = 0; index < first; index++) {
-    start += doc.child(index).nodeSize
-  }
-  let end = start
-  for (let index = first; index <= last; index++) {
-    end += doc.child(index).nodeSize
-  }
-  return [start, end]
+  const clamp = (pos: number): number => Math.max(0, Math.min(pos, doc.content.size))
+  const $from = doc.resolve(clamp(from))
+  const $to = doc.resolve(clamp(to))
+  const first = Math.min($from.index(0), doc.childCount - 1)
+  const last = Math.min($to.index(0), doc.childCount - 1)
+  return [$from.posAtIndex(first, 0), $to.posAtIndex(last + 1, 0)]
 }
 
 /**
@@ -277,7 +268,7 @@ function updateDecorations(
   }
   for (const [start, end] of merged) {
     const stale = decorations
-      .find(start, end, () => true)
+      .find(start, end)
       .filter((decoration) => decoration.from >= start && decoration.to <= end)
     decorations = decorations
       .remove(stale)

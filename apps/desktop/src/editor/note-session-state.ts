@@ -9,6 +9,7 @@ import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
 import { sameSnapshot } from './note-session-snapshot'
+import { createPendingEditorRead, type EditorRead } from './note-session-editor-read'
 import { createRepeatSpawner, createTaskCommits } from './note-session-tasks'
 import type {
   NoteSession,
@@ -18,14 +19,6 @@ import type {
 } from './note-session-types'
 
 const DEFAULT_SAVE_DEBOUNCE_MS = 800
-/**
- * How long after the last editor change the session reads the document out
- * of the editor, and the longest a change stays unread while typing goes on.
- * Serializing a long note takes milliseconds, which on every keystroke was a
- * visible part of typing lag; every reader of the buffer settles first.
- */
-const EDITOR_SETTLE_MS = 150
-const EDITOR_SETTLE_MAX_MS = 1000
 
 /** Create the document session for one note. See note-session.ts for semantics. */
 export function createNoteSession(options: NoteSessionOptions): NoteSession {
@@ -86,34 +79,14 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
-  /** The editor's last reported change, not yet read into the buffer. */
-  let pendingRead: (() => string | null) | null = null
-  let settleTimer: ReturnType<typeof setTimeout> | null = null
-  /** When the oldest unread change arrived, for the settle ceiling. */
-  let pendingSince = 0
+  /**
+   * The editor's latest change, not yet read into the buffer. Every entry
+   * point that reads or replaces the buffer settles it first.
+   */
+  const pendingEdit = createPendingEditorRead((markdown) => editorChanged(markdown))
+  const settleEditor = pendingEdit.settle
 
-  function clearSettleTimer(): void {
-    if (settleTimer !== null) {
-      clearTimeout(settleTimer)
-      settleTimer = null
-    }
-  }
-
-  /** Read a pending editor change into the buffer. Every buffer reader calls this first. */
-  function settleEditor(): void {
-    clearSettleTimer()
-    const read = pendingRead
-    if (read === null) {
-      return
-    }
-    pendingRead = null
-    const markdown = read()
-    if (markdown !== null) {
-      editorChanged(markdown)
-    }
-  }
-
-  function editorDirtied(read: () => string | null): void {
+  function editorDirtied(read: EditorRead): void {
     if (applyingContent) {
       // Our own applyContent re-entering: read it now, while the flag still
       // marks it as not a user edit.
@@ -123,19 +96,12 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       }
       return
     }
-    const now = Date.now()
-    if (pendingRead === null) {
-      pendingSince = now
-    }
-    pendingRead = read
+    pendingEdit.note(read)
     // Typing goes on, so a save already scheduled waits for it to pause, as
     // it did when every keystroke arrived serialized.
     if (saveTimer !== null) {
       scheduleSave()
     }
-    clearSettleTimer()
-    const wait = Math.max(0, Math.min(EDITOR_SETTLE_MS, pendingSince + EDITOR_SETTLE_MAX_MS - now))
-    settleTimer = setTimeout(settleEditor, wait)
   }
 
   function emit(): void {
@@ -302,8 +268,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   function editorChanged(markdown: string): void {
     // A serialized change supersedes any unread one: it is the newer document.
-    pendingRead = null
-    clearSettleTimer()
+    pendingEdit.drop()
     if (applyingContent) {
       // This change is our own applyContent pushing disk content, not a user
       // edit. The editor's serialization may normalize (trailing newline, loose
@@ -663,8 +628,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   function discard(): void {
     cancelScheduledSave()
-    clearSettleTimer()
-    pendingRead = null
+    pendingEdit.drop()
     discarded = true
     disposed = true
   }

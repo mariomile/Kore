@@ -1,0 +1,68 @@
+diff --git a/dist/editor.d.ts b/dist/editor.d.ts
+index 5b54922eb93de49091fff45db92fc5472826ff95..456759657f51790847398a493849169f4046a17a 100644
+--- a/dist/editor.d.ts
++++ b/dist/editor.d.ts
+@@ -571,6 +571,10 @@ declare class Editor<E extends Extension = any> {
+    * extension.
+    */
+   use: (extension: Extension) => VoidFunction;
++  /**
++   * Kore patch: apply every extension `fn` adds or removes with one view reconfigure.
++   */
++  batch: (fn: () => void) => void;
+   /**
+    * Update the editor's state.
+    *
+diff --git a/dist/editor.js b/dist/editor.js
+index 2814f08df430c89ede769ce267b17048faea06e8..816ea09e2cfa53586f0713964bad0a1700c13e05 100644
+--- a/dist/editor.js
++++ b/dist/editor.js
+@@ -912,7 +912,8 @@ var EditorInstance = class {
+ 		this.tree = add ? unionFacetNode(this.tree, tree) : subtractFacetNode(this.tree, tree);
+ 		const newPayload = this.tree.getRootOutput();
+ 		const newPlugins = [...newPayload?.state?.plugins ?? []];
+-		if (!isDeepEqual(oldPlugins, newPlugins)) {
++		if (this.batchDepth > 0) this.batchChanged = true;
++		else if (!isDeepEqual(oldPlugins, newPlugins)) {
+ 			const state = view.state.reconfigure({ plugins: newPlugins });
+ 			view.updateState(state);
+ 		}
+@@ -922,6 +923,28 @@ var EditorInstance = class {
+ 			for (const name of names) this.defineCommand(name, commands[name]);
+ 		}
+ 	}
++	/**
++	* Kore patch: run `fn`, applying every extension it adds or removes with one
++	* view reconfigure at the end instead of one per extension. Each reconfigure
++	* that changes node or mark views redraws the whole document, so a note
++	* editor mounting a few dozen extensions paid that redraw a few dozen times.
++	*/
++	batch(fn) {
++		this.batchDepth = (this.batchDepth ?? 0) + 1;
++		try {
++			fn();
++		} finally {
++			this.batchDepth -= 1;
++			if (this.batchDepth === 0 && this.batchChanged) {
++				this.batchChanged = false;
++				const view = this.view;
++				if (view && !view.isDestroyed) {
++					const plugins = [...this.tree.getRootOutput()?.state?.plugins ?? []];
++					if (!isDeepEqual([...view.state.plugins], plugins)) view.updateState(view.state.reconfigure({ plugins }));
++				}
++			}
++		}
++	}
+ 	use(extension) {
+ 		if (!this.mounted) {
+ 			let canceled = false;
+@@ -1020,6 +1043,9 @@ var Editor = class {
+ 		this.use = (extension) => {
+ 			return this.instance.use(extension);
+ 		};
++		this.batch = (fn) => {
++			this.instance.batch(fn);
++		};
+ 		this.updateState = (state) => {
+ 			this.instance.updateState(state);
+ 		};

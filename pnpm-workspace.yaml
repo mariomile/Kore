@@ -45,3 +45,5 @@ patchedDependencies:
   '@meowdown/core@0.74.1': patches/@meowdown__core@0.74.1.patch
   '@meowdown/markdown@0.72.0': patches/@meowdown__markdown@0.72.0.patch
   '@meowdown/react@0.73.1': patches/@meowdown__react@0.73.1.patch
+  '@prosekit/core@0.13.3': patches/@prosekit__core@0.13.3.patch
+  '@prosekit/web@0.9.3': patches/@prosekit__web@0.9.3.patch

@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-27 — 0.156.4
+
+- Shipped #715: line authors no longer stall the Mac on long notes (blame computed once, not the whole git history in parallel).
+
 ## 2026-11-26 — 0.156.3
 
 - Shipped #708: Kore date grid on iPhone with 44pt days, round selection, stable height across months.

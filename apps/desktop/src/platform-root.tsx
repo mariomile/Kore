@@ -56,7 +56,7 @@ export function warmPlatformRoot(): void {
 // there.
 type DevPlatformOverride = AppPlatform | 'none'
 
-const devPlatformOverride: DevPlatformOverride | null = true
+const devPlatformOverride: DevPlatformOverride | null = import.meta.env.DEV
   ? readDevPlatformOverride()
   : null
 
@@ -75,7 +75,7 @@ function readDevPlatformOverride(): DevPlatformOverride | null {
  * first render, so a bridge at mount time means Tauri, not this harness.
  */
 function devBridgePlatform(): AppPlatform | null {
-  if (!true || devPlatformOverride === 'none') {
+  if (!import.meta.env.DEV || devPlatformOverride === 'none') {
     return null
   }
   return devPlatformOverride ?? 'desktop'
@@ -106,13 +106,13 @@ export function PlatformRoot(): ReactElement {
   useEffect(() => {
     let active = true
     const devPlatform = devBridgePlatform()
-    // `true` is repeated here even though `devBridgePlatform`
+    // `import.meta.env.DEV` is repeated here even though `devBridgePlatform`
     // already checks it: define-substitution folds a literal `false` at this
     // call site, which is what actually drops the dynamic import. Behind the
     // function call the bundler cannot propagate the constant, so the dev
     // bridge chunk, sqlite3.wasm and the OPFS proxy all shipped in release
     // builds despite being unreachable.
-    if (true && devPlatform !== null && !bridgeReady) {
+    if (import.meta.env.DEV && devPlatform !== null && !bridgeReady) {
       void import('@/dev/install-dev-bridge')
         .then(async (module) => {
           await module.installDevBridge(devPlatform)

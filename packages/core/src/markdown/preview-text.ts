@@ -1,6 +1,12 @@
 import type { SyntaxNode } from '@meowdown/markdown'
 import type { Span } from './model'
-import { buildPlainText, plainTextOfRange, type Cut } from './plain-text'
+import {
+  buildPlainText,
+  plainTextOfRange,
+  plainTextSpans,
+  type Cut,
+  type PlainTextSpans,
+} from './plain-text'
 import type { PreviewSpans } from './preview-noise'
 
 /**
@@ -33,12 +39,7 @@ export function tablePreviewText(rows: readonly (readonly string[])[]): string {
  * node of its own in the tree, so cells are counted off the pipes around
  * them: every pipe but a row's leading one closes a cell.
  */
-function tableRows(
-  body: string,
-  table: SyntaxNode,
-  cuts: readonly Cut[],
-  literalRanges: Span[],
-): string[][] {
+function tableRows(body: string, table: SyntaxNode, spans: PlainTextSpans): string[][] {
   const rows: string[][] = []
   for (let row = table.firstChild; row !== null; row = row.nextSibling) {
     if (row.name !== 'TableHeader' && row.name !== 'TableRow') {
@@ -48,7 +49,7 @@ function tableRows(
     let cell: string | null = null
     for (let child = row.firstChild; child !== null; child = child.nextSibling) {
       if (child.name === 'TableCell') {
-        cell = plainTextOfRange(body, child.from, child.to, cuts, literalRanges)
+        cell = plainTextOfRange(body, child.from, child.to, spans)
       } else if (child.name === 'TableDelimiter') {
         if (child.prevSibling !== null) {
           cells.push(cell ?? '')
@@ -83,12 +84,13 @@ export interface PreviewParts {
  */
 export function buildPreviewText(body: string, parts: PreviewParts): string {
   const noise = [...parts.noise, ...parts.spans.noise]
+  const noiseSpans = plainTextSpans(noise, parts.literalRanges)
   const content: Cut[] = [
     ...noise,
     ...parts.tables.map((table) => ({
       from: table.from,
       to: table.to,
-      text: ` ${tablePreviewText(tableRows(body, table, noise, parts.literalRanges))} `,
+      text: ` ${tablePreviewText(tableRows(body, table, noiseSpans))} `,
     })),
   ]
   const prose = buildPlainText(

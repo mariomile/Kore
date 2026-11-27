@@ -144,10 +144,7 @@ export function MobileSettings(): ReactElement {
   // connected.
   const canConnect = mobileStorageKind === 'local' && backup?.phase === 'disconnected'
 
-  // Stop backing this graph up and forget the GitHub credential (one graph
-  // per device — unlinking is signing out). The local clone stays; the
-  // controller restarts into its disconnected state, and re-connecting
-  // re-onboards.
+  /** The user's yes to a sync paused before a mass deletion. */
   async function confirmDeletions(): Promise<void> {
     if (sync === null) {
       return
@@ -160,6 +157,10 @@ export function MobileSettings(): ReactElement {
     }
   }
 
+  // Stop backing this graph up and forget the GitHub credential (one graph
+  // per device — unlinking is signing out). The local clone stays; the
+  // controller restarts into its disconnected state, and re-connecting
+  // re-onboards.
   async function disconnect(): Promise<void> {
     if (sync === null) {
       return
@@ -393,7 +394,7 @@ export function MobileSettings(): ReactElement {
               {canConnect ? (
                 <SettingsActionRow label="Connect GitHub" onPress={() => setConnectOpen(true)} />
               ) : null}
-              {sync?.backup.phase === 'connected' && isDeletionPause(sync.backup.status) ? (
+              {backup?.phase === 'connected' && isDeletionPause(backup.status) ? (
                 <SettingsActionRow
                   label="Delete files anyway"
                   tone="destructive"

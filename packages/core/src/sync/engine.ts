@@ -216,6 +216,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
   let lingering: Promise<void> | null = null
   /** Set by {@link SyncEngine.confirmDeletions}; the next cycle to start spends it. */
   let deletionsConfirmed = false
+  /** Whether the in-flight cycle (single flight: at most one) skips the deletion guard. */
+  let cycleAllowsMassDeletion = false
 
   function emit(status: SyncStatus): void {
     if (signal.aborted) {
@@ -352,7 +354,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     }
     running = (async () => {
       const remoteChangeTasks: Promise<void>[] = []
-      const allowMassDeletion = deletionsConfirmed
+      cycleAllowsMassDeletion = deletionsConfirmed
       deletionsConfirmed = false
       // This cycle commits everything dirty so far — a pending debounce pass
       // (e.g. queued before a launch/focus/manual sync) would only duplicate it.
@@ -363,7 +365,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       deadline = null
       emit({ state: 'syncing' })
       try {
-        await cycle(mode, allowMassDeletion, (changes) => {
+        await cycle(mode, (changes) => {
           remoteChangeTasks.push(startRemoteChanges(changes))
         })
         await settleRemoteChanges(remoteChangeTasks)
@@ -398,27 +400,8 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
 
   async function cycle(
     mode: 'push' | 'full',
-    allowMassDeletion: boolean,
     remoteChanges: (changes: ChangedFile[]) => void,
   ): Promise<void> {
-    /** Pause before a merge or push that would delete much of the vault. */
-    async function guardDeletions(direction: 'incoming' | 'outgoing'): Promise<void> {
-      if (allowMassDeletion) {
-        return
-      }
-      const counts = await step(
-        bounded(
-          direction === 'incoming' ? 'merging' : 'uploading',
-          gitSyncDeletions(options.generation),
-        ),
-      )
-      assertNoMassDeletion(direction, counts)
-    }
-    async function merge(): Promise<{ kind: string }> {
-      await guardDeletions('incoming')
-      return await mergeRemote(remoteChanges)
-    }
-
     enter('preparing')
     const token =
       options.localOnly === true ? null : await step(bounded('preparing', options.getToken()))
@@ -446,7 +429,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       // Launch/focus: pick up other devices' changes even with nothing to push.
       enter('downloading')
       const delta = await step(gitFetch(token, options.generation))
-      const merged = await merge()
+      const merged = await merge(remoteChanges)
       const localOnly = commit.committed || delta.ahead > 0
       if (!localOnly && (merged.kind === 'upToDate' || merged.kind === 'fastForward')) {
         return // pulled cleanly and have nothing of our own — no push needed
@@ -466,18 +449,29 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       // retry — a conflicted merge still commits (markers in the note).
       enter('downloading')
       await step(gitFetch(token, options.generation))
-      await merge()
+      await merge(remoteChanges)
     }
     throw new PushRejectedError(
       'the backup repo kept changing while syncing; will retry on the next edit',
     )
   }
 
+  /** Pause before a merge or push that would delete much of the vault. */
+  async function guardDeletions(direction: 'incoming' | 'outgoing'): Promise<void> {
+    if (cycleAllowsMassDeletion) {
+      return
+    }
+    const phase = direction === 'incoming' ? 'merging' : 'uploading'
+    assertNoMassDeletion(
+      direction,
+      await step(bounded(phase, gitSyncDeletions(options.generation))),
+    )
+  }
+
   /** Merge fetched changes and start any changed-file notification. */
-  async function mergeRemote(
-    remoteChanges: (changes: ChangedFile[]) => void,
-  ): Promise<{ kind: string }> {
+  async function merge(remoteChanges: (changes: ChangedFile[]) => void): Promise<{ kind: string }> {
     enter('merging')
+    await guardDeletions('incoming')
     const outcome = await step(bounded('merging', gitMergeRemote(options.generation)), (result) => {
       // The command may already have rewritten files before suspension. Fan
       // those changes out before the boundary gate stops subsequent Git work.

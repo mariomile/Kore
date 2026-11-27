@@ -839,6 +839,8 @@ private struct KoreMark: View {
             .resizable()
             .frame(width: 22, height: 22)
             .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            // A hairline so the black tile keeps its edge on the dark sheet.
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(KoreColor.activeStrong, lineWidth: 0.5))
             .accessibilityHidden(true)
     }
 }

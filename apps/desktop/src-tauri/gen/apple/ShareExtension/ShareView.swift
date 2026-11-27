@@ -236,13 +236,7 @@ private struct PostCardPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                Avatar(handle: handle)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("@\(handle)").font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Text("Post on X").font(.caption).foregroundColor(KoreColor.muted)
-                }
-                Spacer(minLength: 8)
+            PostByline(handle: handle) {
                 Text("X posts")
                     .font(.caption.weight(.medium))
                     .foregroundColor(KoreColor.secondary)
@@ -250,28 +244,42 @@ private struct PostCardPreview: View {
                     .frame(height: 24)
                     .background(Capsule().fill(KoreColor.active))
             }
-            Text(text.flatMap { $0.isEmpty ? nil : $0 } ?? "The post\u{2019}s words and photos are saved when Kore opens.")
-                .font(.subheadline)
-                .foregroundColor(KoreColor.secondary)
-                .lineLimit(5)
+            if let words = text, !words.isEmpty {
+                Text(words).font(.subheadline).foregroundColor(KoreColor.secondary).lineLimit(5)
+            } else {
+                Text("The post\u{2019}s words and photos are saved when Kore opens.")
+                    .font(.subheadline)
+                    .foregroundColor(KoreColor.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
     }
 }
 
-/// The author's initial in a round tile, where the note shows their photo.
-private struct Avatar: View {
+/// A post's first line, as both post looks draw it: the author's initial in a
+/// round tile (where the note shows their photo), the handle over "Post on X",
+/// and the look's own mark on the right.
+private struct PostByline<Trailing: View>: View {
     let handle: String
+    @ViewBuilder let trailing: Trailing
 
     var body: some View {
-        Circle().fill(KoreColor.activeStrong).frame(width: 32, height: 32)
-            .overlay(
-                Text(String(handle.prefix(1)).uppercased())
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(KoreColor.secondary)
-            )
-            .accessibilityHidden(true)
+        HStack(spacing: 12) {
+            Circle().fill(KoreColor.activeStrong).frame(width: 32, height: 32)
+                .overlay(
+                    Text(String(handle.prefix(1)).uppercased())
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(KoreColor.secondary)
+                )
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("@\(handle)").font(.subheadline.weight(.semibold)).lineLimit(1)
+                Text("Post on X").font(.caption).foregroundColor(KoreColor.muted)
+            }
+            Spacer(minLength: 8)
+            trailing
+        }
     }
 }
 
@@ -281,13 +289,7 @@ private struct PostPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Avatar(handle: handle)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("@\(handle)").font(.subheadline.weight(.semibold))
-                    Text("Post on X").font(.caption).foregroundColor(KoreColor.muted)
-                }
-                Spacer()
+            PostByline(handle: handle) {
                 Text("𝕏").font(.system(size: 17, weight: .bold)).foregroundColor(KoreColor.text)
             }
             if let words = text, !words.isEmpty {
@@ -740,12 +742,15 @@ private struct LookGlyph: View {
 
     private func ink(_ amount: Double) -> Color { KoreColor.text.opacity(amount) }
 
+    /// Ink levels: the selected glyph draws everything a step darker.
     private var barInk: Double { selected ? 0.3 : 0.14 }
+    private var strongInk: Double { selected ? 1 : 0.34 }
+    private var blockInk: Double { selected ? 0.22 : 0.1 }
 
     private func bar(_ fraction: CGFloat, strong: Bool = false) -> some View {
         GeometryReader { proxy in
             Capsule()
-                .fill(ink(strong ? (selected ? 1 : 0.34) : barInk))
+                .fill(ink(strong ? strongInk : barInk))
                 .frame(width: proxy.size.width * fraction)
         }
         .frame(height: 5)
@@ -753,7 +758,7 @@ private struct LookGlyph: View {
 
     private func block(_ width: CGFloat?, _ height: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .fill(ink(selected ? 0.22 : 0.1))
+            .fill(ink(blockInk))
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil)
     }

@@ -293,6 +293,7 @@ export {
   type NoteSkeletonRow,
 } from '../markdown/note-skeleton'
 export {
+  applyAttachmentChanges,
   loadAttachmentIndex,
   noteAttachmentAdded,
   resolveAttachmentSource,

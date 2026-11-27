@@ -4,7 +4,7 @@ import type { BrainCommand, BrainResult } from '../../cyber-brain/script'
 import { tool } from './define-tool'
 
 /**
- * The cyber-brain memory tools for the API-key chat (Plan 35): the same five
+ * The cyber-brain memory tools for the API-key chat (Plan 35): the same
  * tools `kore mcp` serves to agent CLIs, ChatGPT and Grok, with the same
  * names and fields, each running the vault's own `brain.mjs` through the
  * desktop's gated `kit_script_run`. They exist only in a kit vault (the
@@ -70,6 +70,21 @@ export const recordDecisionInput = z.object({
   tradeoffs: optional('What it costs, what it buys'),
 })
 
+export const logEpisodeInput = z.object({
+  title: text('What the session was about, a few words'),
+  summary: text('What you did and agreed, one to three sentences'),
+  facts: z
+    .array(z.string().trim().min(1))
+    .optional()
+    .describe(
+      'What you learned, one fact each as `fact -> Note.md` (the note it belongs in), or `fact -> ?` when you do not know the note',
+    ),
+  touched: z
+    .array(z.string().trim().min(1))
+    .optional()
+    .describe('Notes you read or changed (paths)'),
+})
+
 /** What a memory tool returns: the kit's own summary, or its refusal. */
 export type MemoryWriteOutput =
   | { ok: true; output: string; commit: string | null }
@@ -83,6 +98,7 @@ export const MEMORY_TOOL_NAMES = [
   'update_loop',
   'close_loop',
   'record_decision',
+  'log_episode',
 ] as const
 
 export type MemoryToolName = (typeof MEMORY_TOOL_NAMES)[number]
@@ -106,6 +122,7 @@ export type MemoryTools = {
   update_loop: Tool<z.infer<typeof updateLoopInput>, MemoryWriteOutput>
   close_loop: Tool<z.infer<typeof closeLoopInput>, MemoryWriteOutput>
   record_decision: Tool<z.infer<typeof recordDecisionInput>, MemoryWriteOutput>
+  log_episode: Tool<z.infer<typeof logEpisodeInput>, MemoryWriteOutput>
 }
 
 /** Drop the fields the model left out, so the kit gets no empty flags. */
@@ -115,7 +132,7 @@ function given<T extends object>(input: T): { [K in keyof T]: Exclude<T[K], unde
   }
 }
 
-/** Build the six memory tools over `deps`. */
+/** Build the memory tools over `deps`. */
 export function buildMemoryTools(deps: MemoryToolDeps): MemoryTools {
   const write = async (command: BrainCommand): Promise<MemoryWriteOutput> => {
     if (!deps.allowEdits) return { ok: false, error: MEMORY_EDITS_DISABLED_ERROR }
@@ -168,6 +185,13 @@ export function buildMemoryTools(deps: MemoryToolDeps): MemoryTools {
       execute: async (input): Promise<MemoryWriteOutput> =>
         await write({ ...given(input), kind: 'decision' }),
     }),
+    log_episode: tool({
+      description:
+        "End a working session with one episode, the vault's kit format: a note of what you did and what you learned, linked to the notes it touched, each learned fact written to the note it belongs in. Call it once, as your last step, after a session that read or changed the vault, never once per change. No transcripts, no secrets.",
+      inputSchema: logEpisodeInput,
+      execute: async (input): Promise<MemoryWriteOutput> =>
+        await write({ ...given(input), kind: 'episode' }),
+    }),
   }
 }
 
@@ -184,6 +208,7 @@ export function memoryToolLabel(name: MemoryToolName, input: Record<string, unkn
     case 'close_loop':
       return field('id')
     case 'record_decision':
+    case 'log_episode':
       return field('title')
   }
 }

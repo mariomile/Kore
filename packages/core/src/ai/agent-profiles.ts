@@ -542,6 +542,7 @@ export function memoryKitUpkeepLines(memoryKit: MemoryKitContext, canEdit: boole
       `Memory upkeep: this vault keeps memory with its cyber-brain kit (${memoryKit.contractPath}). Write every durable fact, loop, decision and forget request with the memory tools — remember, forget, open_loop, update_loop, close_loop, record_decision — in the same turn; they run the vault's own memory script, so the format, the run record and the commit match every other agent. Never write memory files, loops or decisions by hand, and never store secrets or the content of private notes.`,
       "Dates for the memory tools are YYYY-MM-DD: resolve “Friday”, “tomorrow” or “next week” from today's date yourself. Record a decision only when the user took it, not a hypothesis.",
       'If a memory tool says the vault’s memory script is new or changed, tell the user to allow it in Settings → Agents and do not write the memory any other way.',
+      'When a reply finishes work that read or changed the vault, end it with one log_episode: a few-word title, what you did in one to three sentences, and each thing you learned as `fact -> Note.md`. One episode per piece of work, never one per change, and never write in the daily note.',
     ]
   }
   return [

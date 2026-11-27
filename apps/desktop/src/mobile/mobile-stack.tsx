@@ -35,7 +35,7 @@ interface StackLayer {
 
 /**
  * Whether a route renders as a card pushed over a tab root. Note screens, HTML
- * pages and the settings screens (Settings, its Graphs sub-screen) stack;
+ * pages and the settings screens (Settings, its Graphs and Memory sub-screens) stack;
  * everything else (daily, All, search-as-All) is a root.
  */
 function isStacked(route: Route): boolean {
@@ -43,7 +43,8 @@ function isStacked(route: Route): boolean {
     route.kind === 'note' ||
     route.kind === 'html' ||
     route.kind === 'settings' ||
-    route.kind === 'graphs'
+    route.kind === 'graphs' ||
+    route.kind === 'memory'
   )
 }
 
@@ -63,6 +64,8 @@ function layerKey(route: Route): string {
       return 'settings'
     case 'graphs':
       return 'graphs'
+    case 'memory':
+      return 'memory'
     case 'allNotes':
     case 'search':
       return 'all'

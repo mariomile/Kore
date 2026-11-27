@@ -29,6 +29,8 @@ function fakeSession(path: string) {
     },
     load: () => {},
     editorChanged: () => {},
+    editorDirtied: () => {},
+    settleEditor: () => {},
     externalChanged: () => {},
     flush,
     flushOnClose: flush,

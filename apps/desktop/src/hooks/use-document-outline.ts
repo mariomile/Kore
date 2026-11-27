@@ -20,10 +20,10 @@ const SURFACE = ':is(.ProseMirror.kore-note-surface, .kore-note-surface .ProseMi
 /**
  * Only *direct* children of the editor root. A `## Meetings` nested in a
  * blockquote or a list item is quoted prose, not a section — the same rule
- * `topLevelHeadings` applies to the parsed model, expressed here as a
- * child combinator instead.
+ * `topLevelHeadings` applies to the parsed model, expressed here as a walk
+ * over the root's children instead.
  */
-const HEADINGS = ':is(h1, h2, h3, h4, h5, h6)'
+const HEADING_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6'])
 
 /**
  * How far down the view a heading may sit and still be the section the
@@ -44,9 +44,16 @@ function readHeadings(scope: ParentNode): HTMLElement[] {
     return []
   }
   const title = findNoteTitle(surface)
-  return [...surface.querySelectorAll<HTMLElement>(`:scope > ${HEADINGS}`)].filter(
-    (heading) => heading !== title,
-  )
+  // Walk the root's children rather than querying the subtree: this runs once
+  // a frame while typing, and a selector match visits every element of a
+  // long note, where the children are only its blocks.
+  const headings: HTMLElement[] = []
+  for (const child of surface.children) {
+    if (child instanceof HTMLElement && HEADING_TAGS.has(child.tagName) && child !== title) {
+      headings.push(child)
+    }
+  }
+  return headings
 }
 
 function toEntries(elements: readonly HTMLElement[]): OutlineEntry[] {

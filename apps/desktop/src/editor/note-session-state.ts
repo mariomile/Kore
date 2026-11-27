@@ -9,6 +9,7 @@ import { splitDoc } from './note-session-doc'
 import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
 import { sameSnapshot } from './note-session-snapshot'
+import { createPendingEditorRead, type EditorRead } from './note-session-editor-read'
 import { createRepeatSpawner, createTaskCommits } from './note-session-tasks'
 import type {
   NoteSession,
@@ -78,6 +79,31 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
+  /**
+   * The editor's latest change, not yet read into the buffer. Every entry
+   * point that reads or replaces the buffer settles it first.
+   */
+  const pendingEdit = createPendingEditorRead((markdown) => editorChanged(markdown))
+  const settleEditor = pendingEdit.settle
+
+  function editorDirtied(read: EditorRead): void {
+    if (applyingContent) {
+      // Our own applyContent re-entering: read it now, while the flag still
+      // marks it as not a user edit.
+      const markdown = read()
+      if (markdown !== null) {
+        editorChanged(markdown)
+      }
+      return
+    }
+    pendingEdit.note(read)
+    // Typing goes on, so a save already scheduled waits for it to pause, as
+    // it did when every keystroke arrived serialized.
+    if (saveTimer !== null) {
+      scheduleSave()
+    }
+  }
+
   function emit(): void {
     if (disposed) {
       return
@@ -100,6 +126,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function save(): void {
+    settleEditor()
     // A discarded session never writes: its file is being deleted, so any
     // save — including a teardown `flush()` (the pane unmounts via flush →
     // dispose) or an already-queued step — would recreate it. A parked
@@ -117,6 +144,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
         // have reverted or kept typing, or the session may have been discarded
         // for a delete. (After dispose the buffer is frozen, so this same step
         // doubles as the final flush.)
+        settleEditor()
         if (discarded || !dirty || isProtected || conflict !== null) {
           return
         }
@@ -135,6 +163,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
           }
           return
         }
+        settleEditor()
         if (discarded || !dirty || isProtected || conflict !== null) {
           return
         }
@@ -210,6 +239,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * and leave the note itself on the version from disk. Never blocks.
    */
   function preserveParkedConflict(): Promise<void> | undefined {
+    settleEditor()
     const writeCopy = io.writeConflictCopy
     if (discarded || !writeCopy || !dirty || isProtected || conflict === null) {
       return undefined
@@ -237,6 +267,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function editorChanged(markdown: string): void {
+    // A serialized change supersedes any unread one: it is the newer document.
+    pendingEdit.drop()
     if (applyingContent) {
       // This change is our own applyContent pushing disk content, not a user
       // edit. The editor's serialization may normalize (trailing newline, loose
@@ -322,6 +354,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     if (disposed || sequence !== readSequence) {
       return // a newer read (reconcile or load) owns the outcome
     }
+    // Unsaved typing must count as dirty below, or the reload would replace it.
+    settleEditor()
     if (content === disk || content === inFlightWrite) {
       // Nothing to reconcile (stale, or an echo of our own possibly
       // still-settling save) — but a successful read of a previously-missing
@@ -426,6 +460,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function keepMine(): void {
+    settleEditor()
     // "Mine" now supersedes the parked version: it is the base this buffer
     // overwrites, so the compare-before-write check must not re-park it.
     if (conflict !== null) {
@@ -438,6 +473,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   }
 
   function loadTheirs(): void {
+    settleEditor()
     if (conflict === null) {
       return
     }
@@ -452,6 +488,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     if (disposed || isProtected || status !== 'ready') {
       return false
     }
+    settleEditor()
     // The patch only touches the frontmatter, so the buffer still ends the
     // document: the header is whatever now precedes it. Re-splitting instead
     // would let the header absorb blank lines the buffer still holds.
@@ -518,6 +555,9 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     if (io.write === null || disposed || isProtected || status !== 'ready' || conflict !== null) {
       return false
     }
+    // The transform runs on the live document and then replaces the editor's,
+    // so typing the session hasn't read yet must be in it.
+    settleEditor()
     const previousHeader = header
     const previousBuffer = buffer
     const doc = splitDoc(transform(header + buffer))
@@ -535,6 +575,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     // thrown). Never roll a newer edit back to the pre-transform snapshot.
     if (shouldPersist && error !== null) {
       const message = error
+      settleEditor()
       if (header + buffer === transformedContent) {
         header = previousHeader
         buffer = previousBuffer
@@ -587,6 +628,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   function discard(): void {
     cancelScheduledSave()
+    pendingEdit.drop()
     discarded = true
     disposed = true
   }
@@ -600,14 +642,25 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     },
     load,
     editorChanged,
+    editorDirtied,
+    settleEditor,
     externalChanged,
     flush,
     flushOnClose,
     keepMine,
     loadTheirs,
-    content: () => header + buffer,
-    liveContent: () => (status === 'ready' ? header + buffer : null),
-    isDirty: () => dirty,
+    content: () => {
+      settleEditor()
+      return header + buffer
+    },
+    liveContent: () => {
+      settleEditor()
+      return status === 'ready' ? header + buffer : null
+    },
+    isDirty: () => {
+      settleEditor()
+      return dirty
+    },
     updateFrontmatter,
     commitFrontmatter,
     ...taskCommits,

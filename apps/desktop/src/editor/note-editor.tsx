@@ -238,6 +238,13 @@ interface NoteEditorProps {
   initialContent: string
   /** Called with the current markdown whenever the user edits the document. */
   onChange?: (markdown: string) => void
+  /**
+   * Called instead of {@link NoteEditorProps.onChange} on every edit, with a
+   * function that serializes the document when the caller needs it (`null`
+   * once this editor is gone). Serializing a long note costs milliseconds,
+   * so a caller that can wait reads it once typing pauses.
+   */
+  onDocChanged?: (read: () => string | null) => void
   /** How markdown syntax characters are shown. */
   markMode?: MarkMode
   /** Whether the browser underlines misspelled words (default on). */
@@ -383,6 +390,7 @@ interface NoteEditorProps {
 export function NoteEditor({
   initialContent,
   onChange,
+  onDocChanged,
   markMode = 'hide',
   spellCheck = true,
   smoothCaretAnimation = true,
@@ -444,6 +452,7 @@ export function NoteEditor({
   // the note that was just navigated away from.
   const latest = {
     onChange,
+    onDocChanged,
     onWikiLinkClick,
     onNoteLinkClick,
     onTagClick,
@@ -505,9 +514,15 @@ export function NoteEditor({
     [],
   )
 
+  const readMarkdown = useCallback(() => innerRef.current?.getMarkdown() ?? null, [])
   const handleDocChange = useCallback(() => {
-    latestRef.current.onChange?.(innerRef.current?.getMarkdown() ?? '')
-  }, [])
+    const { onChange, onDocChanged } = latestRef.current
+    if (onDocChanged !== undefined) {
+      onDocChanged(readMarkdown)
+    } else {
+      onChange?.(innerRef.current?.getMarkdown() ?? '')
+    }
+  }, [readMarkdown])
 
   const handleExitBoundary: ExitBoundaryHandler = useCallback(
     (options) => latestRef.current.onExitBoundary?.(options) ?? false,

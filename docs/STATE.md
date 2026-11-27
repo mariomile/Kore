@@ -1,8 +1,8 @@
 # Kore working state
 
-## 2026-11-27 — 0.157.1
+## 2026-11-27 — 0.158.0
 
-- Shipped #724: long notes no longer restyle the whole document on every keystroke. #727: tag tree and lists reload on save only when tags changed; properties panel measures at most once per frame. #730: editor sets up in one pass, long notes open faster.
+- Shipped #724: long notes no longer restyle the whole document on every keystroke. #727: tag tree and lists reload on save only when tags changed; properties panel measures at most once per frame. #730: editor sets up in one pass, long notes open faster. #722: folder files in a compact Files section above notes. #723: Hide in notes per property, saved in the vault.
 
 ## 2026-11-27 — 0.157.0
 

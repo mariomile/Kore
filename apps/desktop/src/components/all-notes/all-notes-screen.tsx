@@ -25,6 +25,7 @@ import { Check, Settings, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
+import { FolderPathTitle } from '@/components/folder-path-title'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection, useTagChildren } from '@/hooks/use-collection'
@@ -75,7 +76,6 @@ import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
 import { SearchPill } from '@/components/ui/search-pill'
-import { FolderPageTitle } from './folder-page-title'
 import { FolderSettingsMenu } from './folder-settings-menu'
 import { FolderSubfolders } from './folder-subfolders'
 import { NewFolderNoteButton } from './new-folder-note-button'
@@ -545,7 +545,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {folderPath !== null ? (
-          <FolderPageTitle folder={folderPath} />
+          <FolderPathTitle folder={folderPath} />
         ) : tag === null ? (
           <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (

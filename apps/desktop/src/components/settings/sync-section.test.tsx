@@ -30,6 +30,7 @@ const sync = vi.hoisted(() => ({
   disconnectGraph: vi.fn(async () => {}),
   signOut: vi.fn(async () => {}),
   backUpNow: vi.fn(async () => {}),
+  confirmDeletions: vi.fn(async () => {}),
 }))
 
 vi.mock('@kore/core', async (importOriginal) => ({

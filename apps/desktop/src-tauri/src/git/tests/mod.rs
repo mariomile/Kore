@@ -1099,6 +1099,7 @@ fn diverging_renames_keep_both_files_and_never_wedge() {
 
 mod agents;
 mod blame;
+mod deletions;
 
 /// A remote that accepts the connection and then never answers is what a
 /// socket killed mid-fetch looks like. Without a timeout libgit2 waits on it

@@ -20,6 +20,7 @@ mod agent_writes;
 mod blame;
 mod commit;
 mod commit_message;
+mod deletions;
 mod edit_times;
 mod history;
 mod merge;
@@ -349,6 +350,17 @@ pub async fn git_merge_remote(
     let root = crate::fs::root_for_generation(&state, generation)?;
     crate::fs::invalidate_file_catalog(&state, &root);
     outcome
+}
+
+/// How many files merging the fetched remote branch, or pushing the local
+/// one, would delete. Writes nothing; see [`deletions`].
+#[tauri::command]
+pub async fn git_sync_deletions(
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<deletions::SyncDeletions> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || deletions::sync_deletions(&root)).await
 }
 
 /// A note's version timeline: the commits (newest first) where its content

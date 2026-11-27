@@ -4,6 +4,7 @@ import {
   aiProvider,
   aiProviderRequiresApiKey,
   errorMessage,
+  isDeletionPause,
   listNotes,
   normalizeChatSystemPrompt,
   configuredTranscriptionProviders,
@@ -106,6 +107,7 @@ export function MobileSettings(): ReactElement {
   // over conflict markers already on disk and then flips.
   const status = useMobileSyncStatus()
   const [disconnecting, setDisconnecting] = useState(false)
+  const [confirmingDeletions, setConfirmingDeletions] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [settingsQuery, setSettingsQuery] = useState('')
   const { providers, defaultProvider, addProvider, removeProvider, makeDefault, setDefaultModel } =
@@ -141,6 +143,19 @@ export function MobileSettings(): ReactElement {
   // `loading` phase so the row never flashes on a graph that turns out to be
   // connected.
   const canConnect = mobileStorageKind === 'local' && backup?.phase === 'disconnected'
+
+  /** The user's yes to a sync paused before a mass deletion. */
+  async function confirmDeletions(): Promise<void> {
+    if (sync === null) {
+      return
+    }
+    setConfirmingDeletions(true)
+    try {
+      await sync.confirmDeletions()
+    } finally {
+      setConfirmingDeletions(false)
+    }
+  }
 
   // Stop backing this graph up and forget the GitHub credential (one graph
   // per device — unlinking is signing out). The local clone stays; the
@@ -378,6 +393,14 @@ export function MobileSettings(): ReactElement {
               {status !== null ? <SettingsValueRow label="Status" value={status.label} /> : null}
               {canConnect ? (
                 <SettingsActionRow label="Connect GitHub" onPress={() => setConnectOpen(true)} />
+              ) : null}
+              {backup?.phase === 'connected' && isDeletionPause(backup.status) ? (
+                <SettingsActionRow
+                  label="Delete files anyway"
+                  tone="destructive"
+                  pending={confirmingDeletions}
+                  onPress={() => void confirmDeletions()}
+                />
               ) : null}
               {repo !== null ? (
                 <SettingsActionRow

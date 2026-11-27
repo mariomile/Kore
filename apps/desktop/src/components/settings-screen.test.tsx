@@ -40,6 +40,7 @@ vi.mock('@/providers/sync-provider', () => {
     disconnectGraph: async () => {},
     signOut: async () => {},
     backUpNow: async () => {},
+    confirmDeletions: async () => {},
   }
   return { useSync: () => sync, useSyncContext: () => sync }
 })

@@ -122,6 +122,8 @@ export interface BackupController {
   signOut(): Promise<void>
   /** Full cycle now: commit, pull/merge, push. */
   backUpNow(): Promise<void>
+  /** The user's yes to a sync paused before a mass deletion: apply it once. */
+  confirmDeletions(): Promise<void>
   /** Tear everything down; the controller is unusable afterwards. */
   dispose(): void
 }
@@ -456,6 +458,9 @@ export function createBackupController(options: BackupControllerOptions): Backup
     },
     backUpNow: async () => {
       await engine?.syncNow()
+    },
+    confirmDeletions: async () => {
+      await engine?.confirmDeletions()
     },
     dispose: () => {
       disposed = true

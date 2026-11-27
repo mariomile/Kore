@@ -22,6 +22,8 @@ import { checkRoundTrip } from './roundtrip'
 export interface NoteDocument extends NoteSessionSnapshot {
   /** Wire to the editor: every document change enters the pipeline here. */
   onEditorChange: (markdown: string) => void
+  /** The lazy form of {@link NoteDocument.onEditorChange}, for `NoteEditor`'s `onDocChanged`. */
+  onEditorDirtied: (read: () => string | null) => void
   /** Wire to the editor's imperative handle (reload/conflict application). */
   bindEditor: (handle: NoteEditorHandle | null) => void
   /** Resolve a conflict by keeping the buffer (rewrites the file). */
@@ -250,15 +252,26 @@ export function useNoteDocument(
     [binding],
   )
 
-  const bindEditor = useCallback((handle: NoteEditorHandle | null) => {
-    if (handle === null) {
-      // React detaches this consumer ref while the child editor handle is
-      // still live. Reconcile before dropping it; onDocChange updates the
-      // current session synchronously only when pending input changed state.
-      editorRef.current?.getMarkdown()
-    }
-    editorRef.current = handle
-  }, [])
+  const onEditorDirtied = useCallback(
+    (read: () => string | null) => {
+      binding.session()?.editorDirtied(read)
+    },
+    [binding],
+  )
+
+  const bindEditor = useCallback(
+    (handle: NoteEditorHandle | null) => {
+      if (handle === null) {
+        // React detaches this consumer ref while the child editor handle is
+        // still live. Reconcile before dropping it, then read any change the
+        // session left pending: once the editor is gone it can't be read.
+        editorRef.current?.getMarkdown()
+        binding.session()?.settleEditor()
+      }
+      editorRef.current = handle
+    },
+    [binding],
+  )
 
   const keepMine = useCallback(() => {
     binding.session()?.keepMine()
@@ -271,6 +284,7 @@ export function useNoteDocument(
   return {
     ...snapshot,
     onEditorChange,
+    onEditorDirtied,
     bindEditor,
     keepMine,
     loadTheirs,

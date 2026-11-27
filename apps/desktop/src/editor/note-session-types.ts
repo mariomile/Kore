@@ -133,6 +133,20 @@ export interface NoteSession {
   load: () => void
   /** Every editor document change enters the pipeline here. Completing a `@repeat` task via the in-editor checkbox also appends the next occurrence. */
   editorChanged: (markdown: string) => void
+  /**
+   * The editor's document changed; `read` serializes it, or returns `null`
+   * once that editor is gone. The session reads it later, after typing
+   * pauses, and before anything reads or writes the buffer, so serializing a
+   * long note never runs on every keystroke. While the session is pushing
+   * content into the editor (`applyContent`) the read is immediate, which
+   * keeps that re-entrant change recognizable.
+   */
+  editorDirtied: (read: () => string | null) => void
+  /**
+   * Read a change {@link NoteSession.editorDirtied} left pending now. Call it
+   * before the editor that reported it goes away.
+   */
+  settleEditor: () => void
   /** The watcher reported an on-disk change to this note; reconcile. */
   externalChanged: () => void
   /**

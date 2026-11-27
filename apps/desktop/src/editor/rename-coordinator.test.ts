@@ -116,6 +116,8 @@ function fakeSession(content: string): NoteSession & {
     }),
     load: () => {},
     editorChanged: () => {},
+    editorDirtied: () => {},
+    settleEditor: () => {},
     externalChanged: () => {},
     flush: vi.fn(async () => {}),
     flushOnClose: async () => {},

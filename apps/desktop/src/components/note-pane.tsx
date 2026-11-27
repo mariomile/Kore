@@ -333,7 +333,7 @@ export function NotePaneComponent({
     typedEmbeds.seed === document.initialContent
       ? typedEmbeds.embeds
       : seedEmbeds
-  const handleEditorChange = useCallback(
+  const showTypedEmbeds = useCallback(
     (markdown: string) => {
       const next = parseBodyEmbeds(markdown)
       const epoch = document.sessionEpoch
@@ -345,9 +345,29 @@ export function NotePaneComponent({
             : seedEmbeds
         return sameBodyEmbeds(shown, next) ? current : { embeds: next, epoch, seed }
       })
+    },
+    [document.sessionEpoch, document.initialContent, seedEmbeds],
+  )
+  const handleEditorChange = useCallback(
+    (markdown: string) => {
+      showTypedEmbeds(markdown)
       document.onEditorChange(markdown)
     },
-    [document, seedEmbeds],
+    [document, showTypedEmbeds],
+  )
+  // Typing hands the session a reader, not the markdown: it serializes the
+  // note once typing pauses, and the embeds below the editor follow then.
+  const handleEditorDirtied = useCallback(
+    (read: () => string | null) => {
+      document.onEditorDirtied(() => {
+        const markdown = read()
+        if (markdown !== null) {
+          showTypedEmbeds(markdown)
+        }
+        return markdown
+      })
+    },
+    [document, showTypedEmbeds],
   )
   const {
     menu: tagMenu,
@@ -590,7 +610,7 @@ export function NotePaneComponent({
         // for that would throw away the cursor mid-thought.
         key={document.sessionEpoch}
         initialContent={editorSeed}
-        onChange={handleEditorChange}
+        onDocChanged={handleEditorDirtied}
         markMode={markModeFromSyntax(settings.editorMarkdownSyntax)}
         spellCheck={settings.editorSpellCheck}
         searchQuery={searchQuery}

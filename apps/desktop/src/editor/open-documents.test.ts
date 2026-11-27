@@ -8,6 +8,8 @@ function fakeSession(path: string, log: string[]): NoteSession {
     retarget: () => {},
     load: () => {},
     editorChanged: () => {},
+    editorDirtied: () => {},
+    settleEditor: () => {},
     externalChanged: () => {},
     flush: async () => {},
     flushOnClose: async () => {

@@ -33,11 +33,13 @@ vi.mock('@/editor/note-editor', async () => {
     NoteEditor: ({
       initialContent,
       onChange,
+      onDocChanged,
       handleRef,
       renderWikilinkHoverCard,
     }: {
       initialContent: string
-      onChange: (markdown: string) => void
+      onChange?: (markdown: string) => void
+      onDocChanged?: (read: () => string | null) => void
       handleRef?: (handle: NoteEditorHandle | null) => void
       renderWikilinkHoverCard?: unknown
     }) => {
@@ -45,7 +47,11 @@ vi.mock('@/editor/note-editor', async () => {
       const markdownRef = useRef(initialContent)
       editorProbe.onChange = (markdown) => {
         markdownRef.current = markdown
-        onChange(markdown)
+        if (onDocChanged !== undefined) {
+          onDocChanged(() => markdownRef.current)
+        } else {
+          onChange?.(markdown)
+        }
       }
       useEffect(() => {
         handleRef?.({

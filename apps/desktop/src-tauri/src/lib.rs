@@ -14,6 +14,7 @@
 //! [`menu`] (the macOS app menu, incl. Paste and Match Style),
 //! [`error`] (the shared error contract).
 
+mod agent_activity;
 mod agent_cli;
 mod app_dir;
 mod background_task;
@@ -516,6 +517,7 @@ pub fn run() {
             git::git_activity,
             git::git_blame,
             git::git_undo_preview,
+            agent_activity::agent_activity_since,
             git::git_agent_writes,
             git::git_agent_writes_clear,
             git::git_fetch,

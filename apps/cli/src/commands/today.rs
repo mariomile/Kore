@@ -34,6 +34,7 @@ pub fn run(graph: &Graph, json: bool, path_only: bool) -> Result<(), CliError> {
         )));
     }
     let note = read_note(&graph.root, &rel_path)?;
+    crate::agent_activity::record_read(&absolute);
     if json {
         return print_json(&NoteJson {
             date: Some(&date),

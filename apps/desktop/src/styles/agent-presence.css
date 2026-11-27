@@ -1,0 +1,281 @@
+/* Agents at work (agent presence: the capsule in the chrome, the avatar at
+   the end of an agent's lines, the avatar on a sidebar row it reads).
+
+   One sign, the agent's avatar: its real logo on a round tile, and while it
+   works a thin accent arc turning around it. That arc is the only colour an
+   agent brings. Its words arrive as ink: they resolve out of a blur in the
+   accent and settle into the page's own ink, once. After that the page is
+   the user's again; no bars, no washes, no badges. */
+
+/* ── Avatar ───────────────────────────────────────────────────────────── */
+
+.kore-agent-avatar {
+  --kore-agent-avatar-size: 20px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--kore-agent-avatar-size);
+  height: var(--kore-agent-avatar-size);
+  border-radius: 9999px;
+  background: var(--surface-sunken);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.kore-agent-avatar[data-size='xs'] {
+  --kore-agent-avatar-size: 16px;
+}
+.kore-agent-avatar[data-size='md'] {
+  --kore-agent-avatar-size: 28px;
+}
+.kore-agent-avatar[data-size='lg'] {
+  --kore-agent-avatar-size: 40px;
+}
+
+.kore-agent-avatar > svg:first-child {
+  width: 58%;
+  height: 58%;
+}
+
+.kore-agent-avatar-initial {
+  font-size: calc(var(--kore-agent-avatar-size) * 0.5);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* The working ring: a short arc on a hairline track, turning. It sits just
+   outside the tile so the logo never shifts when work starts or stops. */
+.kore-agent-avatar-ring {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  opacity: 0;
+  transform: rotate(-90deg);
+  transition: opacity var(--duration-slow) var(--ease-swift);
+  pointer-events: none;
+}
+
+.kore-agent-avatar-ring circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 28 72;
+}
+
+.kore-agent-avatar[data-size='xs'] .kore-agent-avatar-ring {
+  inset: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+}
+
+.kore-agent-avatar[data-working='true'] .kore-agent-avatar-ring {
+  opacity: 1;
+  animation: kore-agent-turn 1.1s linear infinite;
+}
+
+@keyframes kore-agent-turn {
+  from {
+    transform: rotate(-90deg);
+  }
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+/* ── Ink: an agent's new lines write themselves in ────────────────────── */
+
+.kore-editor .kore-agent-ink {
+  animation: kore-agent-ink 2.2s var(--ease-swift) both;
+}
+
+@keyframes kore-agent-ink {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+    color: var(--accent);
+    clip-path: inset(0 100% 0 0);
+  }
+  30% {
+    opacity: 1;
+    filter: blur(0);
+    color: var(--accent);
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    filter: blur(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ── The agent's mark at the end of its last line ─────────────────────── */
+
+.kore-agent-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 6px;
+  vertical-align: -0.2em;
+  border-radius: 9999px;
+  user-select: none;
+  white-space: nowrap;
+  outline: none;
+}
+
+/* While writing, a caret in the accent leads the avatar, the way another
+   person's cursor sits in a shared document. */
+.kore-agent-caret {
+  width: 2px;
+  height: 1.15em;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: kore-agent-caret 1s steps(1) infinite;
+}
+
+@keyframes kore-agent-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Settled: the avatar opens a small drawer, name and Undo, on hover, focus
+   or tap. The drawer grows from zero width, so the line never jumps until
+   it is asked for. */
+.kore-agent-mark[data-writing='false'] {
+  position: relative;
+  gap: 0;
+  padding: 2px;
+  margin-inline-start: 4px;
+  transition: background var(--duration-base) var(--ease-swift);
+  cursor: default;
+}
+
+/* A 16px avatar is a fine mark but a poor target: on touch the mark answers
+   a finger-sized area around it (44pt), without growing on screen. */
+@media (pointer: coarse) {
+  .kore-agent-mark[data-writing='false']::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
+
+.kore-agent-mark-drawer {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns var(--duration-slow) var(--ease-swift);
+}
+
+.kore-agent-mark-drawer-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.kore-agent-mark:hover,
+.kore-agent-mark:focus-within {
+  background: var(--surface-hover);
+}
+
+/* A tap or click opens the drawer by focusing the mark from code, which the
+   browser counts as visible focus: the ring stays a keyboard-only signal. */
+.kore-agent-mark[data-pointer-focus]:focus-visible {
+  outline: none;
+}
+
+.kore-agent-mark:hover .kore-agent-mark-drawer,
+.kore-agent-mark:focus-within .kore-agent-mark-drawer {
+  grid-template-columns: 1fr;
+}
+
+/* A 16px avatar is a fine mark but a poor target: on touch the mark answers
+   a finger-sized area around it (44pt), without growing on screen. */
+@media (pointer: coarse) {
+  .kore-agent-mark[data-writing='false']::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
+
+.kore-agent-mark-name {
+  padding-inline: 6px 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.kore-agent-mark-undo {
+  border-radius: 9999px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    inset 0 0 0 1px var(--border);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.kore-agent-mark-undo:active {
+  transform: scale(0.96);
+}
+
+/* ── Capsule ──────────────────────────────────────────────────────────── */
+
+.kore-agent-capsule {
+  animation: kore-agent-capsule-in 420ms var(--ease-swift) both;
+}
+
+@keyframes kore-agent-capsule-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(0.94);
+  }
+}
+
+/* Each new sentence rises in place of the last. */
+.kore-agent-capsule-line {
+  animation: kore-agent-line-in 320ms var(--ease-swift) both;
+}
+
+@keyframes kore-agent-line-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(35%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kore-agent-avatar[data-working='true'] .kore-agent-avatar-ring,
+  .kore-agent-caret,
+  .kore-editor .kore-agent-ink,
+  .kore-agent-capsule,
+  .kore-agent-capsule-line {
+    animation: none;
+  }
+  /* A 16px avatar is a fine mark but a poor target: on touch the mark answers
+   a finger-sized area around it (44pt), without growing on screen. */
+  @media (pointer: coarse) {
+    .kore-agent-mark[data-writing='false']::after {
+      content: '';
+      position: absolute;
+      inset: -14px;
+    }
+  }
+
+  .kore-agent-mark-drawer {
+    transition: none;
+  }
+}

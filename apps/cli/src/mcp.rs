@@ -26,6 +26,7 @@ use crate::agent_keys::Access;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 
 use serde_json::{json, Map, Value};
 
@@ -84,9 +85,16 @@ pub trait Runner {
 
     /// Run a tool call on behalf of `agent`, so a runner that records writes
     /// can sign them as that agent ([`Runner::run`] is the vault's owner).
-    /// Runners that record nothing just run.
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
-        let _ = agent;
+    /// `client` is the MCP client the call came from (its `clientInfo.name`),
+    /// for the live activity log. Runners that record nothing just run.
+    fn run_as(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: &AgentIdentity,
+        client: Option<&str>,
+    ) -> RunOutput {
+        let _ = (agent, client);
         self.run(args, stdin)
     }
 }
@@ -99,12 +107,19 @@ pub struct ProcessRunner {
 
 impl Runner for ProcessRunner {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
-        self.spawn(args, stdin, None)
+        self.spawn(args, stdin, None, None)
     }
 
-    /// A tool call: the child records the notes it writes as this agent's.
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
-        self.spawn(args, stdin, Some(agent))
+    /// A tool call: the child records the notes it writes as this agent's,
+    /// and what it reads and writes in the live activity log.
+    fn run_as(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: &AgentIdentity,
+        client: Option<&str>,
+    ) -> RunOutput {
+        self.spawn(args, stdin, Some(agent), client)
     }
 }
 
@@ -114,8 +129,13 @@ impl ProcessRunner {
         args: &[String],
         stdin: Option<&str>,
         agent: Option<&AgentIdentity>,
+        client: Option<&str>,
     ) -> RunOutput {
         let mut command = Command::new(&self.exe);
+        match client {
+            Some(client) => command.env(crate::agent_activity::AGENT_CLIENT_ENV, client),
+            None => command.env_remove(crate::agent_activity::AGENT_CLIENT_ENV),
+        };
         match agent {
             Some(agent) => command
                 .env(crate::write::AGENT_ENV, &agent.name)
@@ -434,6 +454,10 @@ pub struct Server<R: Runner> {
     memory_only: bool,
     /// Who the stdio client is, for signing its writes (`kore mcp --agent`).
     owner_name: Option<String>,
+    /// The stdio client's own name from `initialize` (`clientInfo.name`),
+    /// passed to the live activity log. Never kept for the HTTP server,
+    /// whose callers are many and name themselves by key.
+    client_name: Mutex<Option<String>>,
 }
 
 impl<R: Runner> Server<R> {
@@ -447,6 +471,7 @@ impl<R: Runner> Server<R> {
             memory_kit: false,
             memory_only: false,
             owner_name: None,
+            client_name: Mutex::new(None),
         }
     }
 
@@ -555,6 +580,17 @@ impl<R: Runner> Server<R> {
     }
 
     fn initialize(&self, params: &Value) -> Value {
+        if self.local {
+            let client = params
+                .pointer("/clientInfo/name")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(|name| name.chars().take(64).collect::<String>());
+            if let Ok(mut slot) = self.client_name.lock() {
+                *slot = client;
+            }
+        }
         let requested = params.get("protocolVersion").and_then(Value::as_str);
         let version = requested
             .filter(|version| PROTOCOL_VERSIONS.contains(version))
@@ -637,9 +673,13 @@ impl<R: Runner> Server<R> {
         if caller.access == Access::Propose && tool.effect != Effect::Read {
             return Ok(self.propose(&agent, &tool, args));
         }
-        let output = self
-            .runner
-            .run_as(&invocation.args, invocation.stdin.as_deref(), &agent);
+        let client = self.client_name.lock().ok().and_then(|slot| slot.clone());
+        let output = self.runner.run_as(
+            &invocation.args,
+            invocation.stdin.as_deref(),
+            &agent,
+            client.as_deref(),
+        );
         Ok(tool_text(output.text, !output.success))
     }
 
@@ -1425,6 +1465,52 @@ mod tests {
             .handle(&json!({ "jsonrpc": "2.0", "id": 2, "method": "completion/complete" }))
             .unwrap();
         assert_eq!(unknown["error"]["code"], -32601);
+    }
+
+    /// Remembers the client name each tool call was made for.
+    #[derive(Default)]
+    struct ClientRecorder {
+        clients: RefCell<Vec<Option<String>>>,
+    }
+
+    impl Runner for &ClientRecorder {
+        fn run(&self, _args: &[String], _stdin: Option<&str>) -> RunOutput {
+            RunOutput {
+                success: true,
+                text: "{}".to_string(),
+            }
+        }
+
+        fn run_as(
+            &self,
+            args: &[String],
+            stdin: Option<&str>,
+            _agent: &AgentIdentity,
+            client: Option<&str>,
+        ) -> RunOutput {
+            self.clients.borrow_mut().push(client.map(str::to_string));
+            self.run(args, stdin)
+        }
+    }
+
+    #[test]
+    fn the_stdio_clients_own_name_reaches_its_tool_calls_and_the_http_ones_never_does() {
+        let initialize = json!({ "jsonrpc": "2.0", "id": 0, "method": "initialize",
+            "params": { "protocolVersion": "2024-11-05", "clientInfo": { "name": "claude-code", "version": "2.0" } } });
+        let today = json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": { "name": "today", "arguments": {} } });
+
+        let stdio = ClientRecorder::default();
+        let server = Server::new(&stdio, false).for_this_machine();
+        server.handle(&initialize);
+        server.handle(&today);
+        assert_eq!(*stdio.clients.borrow(), [Some("claude-code".to_string())]);
+
+        let http = ClientRecorder::default();
+        let server = Server::new(&http, false);
+        server.handle(&initialize);
+        server.handle(&today);
+        assert_eq!(*http.clients.borrow(), [None]);
     }
 
     /// Answers each subcommand from a canned table; anything missing fails

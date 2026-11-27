@@ -486,7 +486,15 @@ impl<R: Runner> Runner for VaultSync<R> {
         self.run_operation(args, stdin, None)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+    /// The synced host's callers name themselves by key, and no app tails
+    /// its activity log, so the client name goes no further.
+    fn run_as(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: &AgentIdentity,
+        _client: Option<&str>,
+    ) -> RunOutput {
         self.run_operation(args, stdin, Some(agent.clone()))
     }
 }
@@ -519,8 +527,14 @@ impl Runner for AnyRunner {
         self.as_ref().run(args, stdin)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
-        self.as_ref().run_as(args, stdin, agent)
+    fn run_as(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: &AgentIdentity,
+        client: Option<&str>,
+    ) -> RunOutput {
+        self.as_ref().run_as(args, stdin, agent, client)
     }
 }
 
@@ -529,8 +543,14 @@ impl<R: Runner> Runner for std::sync::Arc<VaultSync<R>> {
         self.as_ref().run(args, stdin)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
-        self.as_ref().run_as(args, stdin, agent)
+    fn run_as(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: &AgentIdentity,
+        client: Option<&str>,
+    ) -> RunOutput {
+        self.as_ref().run_as(args, stdin, agent, client)
     }
 }
 
@@ -802,8 +822,13 @@ mod tests {
         git(&fixture.host, &["remote", "set-url", "origin", "/nowhere"]);
         let write = args(&["capture", "from grok", "--to", "daily/2026-11-04.md"]);
         assert!(
-            sync.run_as(&write, None, &AgentIdentity::for_caller(Some("Grok <bot>")))
-                .success
+            sync.run_as(
+                &write,
+                None,
+                &AgentIdentity::for_caller(Some("Grok <bot>")),
+                None
+            )
+            .success
         );
         mac_capture(&fixture, "- later on the mac");
         git(

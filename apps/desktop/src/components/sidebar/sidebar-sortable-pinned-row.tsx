@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { displayNoteTitle, errorMessage } from '@kore/core'
 import type { PinnedNote } from '@kore/core'
 import { invalidatePinnedNotesCache, updatePinnedNotesCache } from '@/lib/notes/pinned-notes-cache'
+import { useAgentReading } from '@/lib/agent-presence'
 import { formatDayLabel } from '@/lib/dates'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { openNativeContextMenu } from '@/lib/native-menu/context-menu'
@@ -29,6 +30,7 @@ export const SidebarSortablePinnedRow = memo(function SidebarSortablePinnedRow({
   const { settings } = useSettings()
   const { graph } = useGraph()
   const queryClient = useQueryClient()
+  const agentReading = useAgentReading(note.path)
   const target = routeForPath(note.path)
   const active = routesEqual(route, target)
   const label =
@@ -80,7 +82,12 @@ export const SidebarSortablePinnedRow = memo(function SidebarSortablePinnedRow({
         className="block w-full"
         {...listeners}
       >
-        <SidebarPinnedRowPreview active={active} label={label} placeholder={isDragging} />
+        <SidebarPinnedRowPreview
+          active={active}
+          label={label}
+          placeholder={isDragging}
+          agentReading={agentReading}
+        />
       </button>
     </li>
   )

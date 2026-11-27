@@ -520,3 +520,19 @@ export {
   type ResourceOrigin,
 } from '../actions/resource-collection'
 export { fetchLinkText, saveLinkText, type LinkText } from '../actions/link-text'
+export {
+  AGENT_IDLE_AFTER_MS,
+  AGENT_READ_GLOW_MS,
+  createAgentPresenceStore,
+  type AgentPresence,
+  type AgentPresenceEvent,
+  type AgentPresenceStore,
+  type AgentStatus,
+  type AgentWrite,
+} from '../ai/agent-presence'
+export {
+  agentActivitySince,
+  agentDisplayName,
+  parseAgentActivity,
+  type AgentActivityChunk,
+} from '../ai/agent-activity'

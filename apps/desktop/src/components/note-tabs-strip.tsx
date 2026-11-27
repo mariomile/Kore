@@ -6,6 +6,7 @@ import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { TabContextMenu } from '@/components/note-tabs-context-menu'
 import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
+import { AgentPresenceLayer } from '@/components/agent-presence/agent-presence-layer'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import {
@@ -139,6 +140,8 @@ export function WorkspaceTabsStrip({
         </div>
       )}
 
+      {/* One pane speaks for the window: the focused one. */}
+      {paneActive ? <AgentPresenceLayer className="ml-auto pl-3" /> : null}
       {showContextToggle ? (
         <div
           className={cn(

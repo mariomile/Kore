@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AgentAvatar } from '@/components/agent-presence/agent-avatar'
 import { cn } from '@/lib/utils'
 import { SIDEBAR_ROW_HEIGHT_CLASS, sidebarRowState } from './sidebar-row-style'
 
@@ -7,6 +8,8 @@ interface SidebarPinnedRowPreviewProps {
   active: boolean
   overlay?: boolean
   placeholder?: boolean
+  /** An agent is reading this note right now (agent presence). */
+  agentReading?: string | null
 }
 
 export function SidebarPinnedRowPreview({
@@ -14,6 +17,7 @@ export function SidebarPinnedRowPreview({
   label,
   overlay = false,
   placeholder = false,
+  agentReading = null,
 }: SidebarPinnedRowPreviewProps): ReactElement {
   const stateClass = placeholder
     ? 'bg-surface-hover text-transparent'
@@ -33,6 +37,11 @@ export function SidebarPinnedRowPreview({
       <span className={cn('min-w-0 flex-1 pl-3 pr-2.5 text-left', placeholder && 'invisible')}>
         <span className="block truncate text-xs font-medium">{label}</span>
       </span>
+      {agentReading !== null && !placeholder ? (
+        <span title={`${agentReading} is reading this note`} className="mr-2 flex flex-none">
+          <AgentAvatar agent={agentReading} size="xs" working />
+        </span>
+      ) : null}
     </span>
   )
 }

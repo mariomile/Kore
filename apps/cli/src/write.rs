@@ -29,8 +29,14 @@ pub fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
         .parent()
         .ok_or_else(|| CliError::Runtime(format!("no parent directory for {}", path.display())))?;
     fs::create_dir_all(dir)?;
+    // What the note held, for the live activity log: read only for a tool
+    // call an agent made, so the owner's own writes pay nothing.
+    let before = current_agent().map(|_| fs::read_to_string(path).unwrap_or_default());
     persist_synced(dir, path, contents, false).map_err(|err| CliError::Runtime(err.to_string()))?;
     record_agent_write(path);
+    if let Some(before) = before {
+        crate::agent_activity::record_write(path, &before, contents);
+    }
     Ok(())
 }
 
@@ -104,6 +110,7 @@ pub fn atomic_create(path: &Path, contents: &str) -> Result<(), CreateError> {
         }
     })?;
     record_agent_write(path);
+    crate::agent_activity::record_write(path, "", contents);
     Ok(())
 }
 
@@ -164,7 +171,7 @@ pub fn current_agent() -> Option<AgentIdentity> {
 /// The graph the tool call runs against (`AGENT_GRAPH_ENV`) and `path`
 /// relative to it with `/` separators. `None` for anything inside
 /// `.kore/` itself or outside that graph.
-fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
+pub(crate) fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
     let root = PathBuf::from(std::env::var_os(AGENT_GRAPH_ENV)?);
     let rel = path
         .strip_prefix(&root)

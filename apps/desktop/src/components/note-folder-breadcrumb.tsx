@@ -1,5 +1,5 @@
 import { Fragment, type ReactElement } from 'react'
-import { noteFolderCrumbs, type FolderCrumb } from '@kore/core'
+import { foldCrumbs, noteFolderCrumbs } from '@kore/core'
 import { ChevronRight, Folder } from '@/components/icons'
 import { COVER_GLASS_CLASS } from '@/components/notes/note-cover'
 import { cn } from '@/lib/utils'
@@ -42,10 +42,7 @@ export function NoteFolderBreadcrumb({
     return null
   }
 
-  const folded = crumbs.length > MAX_VISIBLE_CRUMBS
-  const visible: (FolderCrumb | null)[] = folded
-    ? [crumbs[0]!, null, ...crumbs.slice(-(MAX_VISIBLE_CRUMBS - 1))]
-    : crumbs
+  const visible = foldCrumbs(crumbs, MAX_VISIBLE_CRUMBS)
   const fullPath = crumbs.at(-1)!.path
 
   return (

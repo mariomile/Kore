@@ -29,15 +29,15 @@ pub struct NoteVersion {
 }
 
 /// Ceiling on commits walked, so a decade-old graph can't stall the panel.
-const MAX_WALKED_COMMITS: usize = 20_000;
+pub(super) const MAX_WALKED_COMMITS: usize = 20_000;
 
 /// The trees along a note's folders in one commit: index 0 is the root tree,
 /// index `n` the folder `components[n - 1]`, `None` from the first missing
 /// folder down.
-type FolderChain<'repo> = Vec<Option<git2::Tree<'repo>>>;
+pub(super) type FolderChain<'repo> = Vec<Option<git2::Tree<'repo>>>;
 
 /// The note's blob id at the bottom of `chain`, or `None` when absent.
-fn blob_in_chain(chain: &FolderChain<'_>, components: &[&str]) -> Option<git2::Oid> {
+pub(super) fn blob_in_chain(chain: &FolderChain<'_>, components: &[&str]) -> Option<git2::Oid> {
     let folder = chain.last()?.as_ref()?;
     let entry = folder.get_name(components.last()?)?;
     (entry.kind() == Some(git2::ObjectType::Blob)).then(|| entry.id())
@@ -50,7 +50,7 @@ fn subfolder_id(tree: Option<&git2::Tree<'_>>, name: &str) -> Option<git2::Oid> 
 }
 
 /// `root`'s folder chain along `components`, resolved from scratch.
-fn folder_chain<'repo>(
+pub(super) fn folder_chain<'repo>(
     repo: &'repo git2::Repository,
     root: git2::Tree<'repo>,
     components: &[&str],
@@ -70,7 +70,7 @@ fn folder_chain<'repo>(
 /// commits touch other folders, so they cost one root tree and an entry
 /// lookup per level, never a reload of a large folder (which libgit2 does
 /// not cache) or a second full path resolution per commit.
-fn parent_chain<'repo>(
+pub(super) fn parent_chain<'repo>(
     repo: &'repo git2::Repository,
     chain: &FolderChain<'repo>,
     parent_root: git2::Tree<'repo>,
@@ -95,56 +95,6 @@ fn parent_chain<'repo>(
     parent
 }
 
-/// Walk first parents from `HEAD` and call `visit` with each commit where
-/// `rel_path`'s blob changed (created or modified), newest first, along with
-/// the note's blob in that commit and in its first parent (`None` when the
-/// parent has no such note). `visit` returns `false` to stop, and an error
-/// from it ends the walk with that error. Shared by the
-/// version timeline and line blame, which both care only about the commits
-/// that touched the note, never the thousands of autosaves in between.
-pub(super) fn walk_note_changes<'repo>(
-    repo: &'repo git2::Repository,
-    rel_path: &str,
-    mut visit: impl FnMut(&git2::Commit<'repo>, git2::Oid, Option<git2::Oid>) -> AppResult<bool>,
-) -> AppResult<()> {
-    let components: Vec<&str> = rel_path
-        .split('/')
-        .filter(|part| !part.is_empty())
-        .collect();
-    if components.is_empty() {
-        return Ok(());
-    }
-    let Ok(head) = repo.head() else {
-        return Ok(()); // Unborn branch: no commits yet.
-    };
-    let head = head.peel_to_commit()?;
-    let mut chain = folder_chain(repo, head.tree()?, &components);
-    let mut own = blob_in_chain(&chain, &components);
-    let mut current = Some(head);
-    let mut walked = 0;
-    while let Some(commit) = current {
-        walked += 1;
-        if walked > MAX_WALKED_COMMITS {
-            break;
-        }
-        let parent = commit.parent(0).ok();
-        let parent_chain = match parent.as_ref().map(git2::Commit::tree).transpose()? {
-            Some(parent_root) => parent_chain(repo, &chain, parent_root, &components),
-            None => vec![None; chain.len()],
-        };
-        let before = blob_in_chain(&parent_chain, &components);
-        if let Some(own) = own {
-            if Some(own) != before && !visit(&commit, own, before)? {
-                break;
-            }
-        }
-        own = before;
-        chain = parent_chain;
-        current = parent;
-    }
-    Ok(())
-}
-
 /// The commits (newest first, following first parents) where `rel_path`'s
 /// content changed — its version timeline.
 pub(super) fn note_history(
@@ -154,17 +104,45 @@ pub(super) fn note_history(
 ) -> AppResult<Vec<NoteVersion>> {
     let repo = super::repo::open_existing(root)?;
     let mut versions = Vec::new();
-    if limit == 0 {
+    let components: Vec<&str> = rel_path
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect();
+    if components.is_empty() {
         return Ok(versions);
     }
-    walk_note_changes(&repo, rel_path, |commit, _, _| {
-        versions.push(NoteVersion {
-            commit: commit.id().to_string(),
-            time_ms: commit.time().seconds() * 1000,
-            summary: commit.summary().ok().flatten().unwrap_or("").to_string(),
-        });
-        Ok(versions.len() < limit)
-    })?;
+    let Ok(head) = repo.head() else {
+        return Ok(versions); // Unborn branch: no commits yet.
+    };
+    let head = head.peel_to_commit()?;
+    let mut chain = folder_chain(&repo, head.tree()?, &components);
+    let mut own = blob_in_chain(&chain, &components);
+    let mut current = Some(head);
+    let mut walked = 0;
+    while let Some(commit) = current {
+        walked += 1;
+        if versions.len() >= limit || walked > MAX_WALKED_COMMITS {
+            break;
+        }
+        let parent = commit.parent(0).ok();
+        let parent_chain = match parent.as_ref().map(git2::Commit::tree).transpose()? {
+            Some(parent_root) => parent_chain(&repo, &chain, parent_root, &components),
+            None => vec![None; chain.len()],
+        };
+        let before = blob_in_chain(&parent_chain, &components);
+        if let Some(own) = own {
+            if Some(own) != before {
+                versions.push(NoteVersion {
+                    commit: commit.id().to_string(),
+                    time_ms: commit.time().seconds() * 1000,
+                    summary: commit.summary().ok().flatten().unwrap_or("").to_string(),
+                });
+            }
+        }
+        own = before;
+        chain = parent_chain;
+        current = parent;
+    }
     Ok(versions)
 }
 

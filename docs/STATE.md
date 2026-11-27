@@ -1,5 +1,9 @@
 # Kore working state
 
+## 2026-11-27 — 0.157.0
+
+- Shipped #704: Obsidian .base files as folder cards that open as databases with the type-page view bar on Mac and iPhone; view changes written back to the .base file.
+
 ## 2026-11-27 — 0.156.4
 
 - Shipped #715: line authors no longer stall the Mac on long notes (blame computed once, not the whole git history in parallel).

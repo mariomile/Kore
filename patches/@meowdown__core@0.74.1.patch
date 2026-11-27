@@ -236,3 +236,28 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..ba11c2946994a34f9e3c5e6f608d8a56
  			forceReflow(this.#caret);
  			this.#caret.style.transitionProperty = "";
  		}
+diff --git a/dist/style.css b/dist/style.css
+index 4978f654c6804c6999e5757e847eb760e517d821..7b3d3b98d390b33e42c9b2f0bb1b8bf79ce06267 100644
+--- a/dist/style.css
++++ b/dist/style.css
+@@ -1243,10 +1243,19 @@
+     display: block;
+   }
+ 
+-  .ProseMirror .md-image-view-preview:has( > .md-embed-resizable:not([data-width])), .ProseMirror .md-image-view-preview:has( > meowdown-embed-youtube:not([style])) {
++  .ProseMirror .md-image-view-preview:has( > .md-embed-resizable:not([data-width])) {
+     width: 550px;
+   }
+ 
++  /* Kore: sized on the embed rather than through `:has(> …:not([style]))`.
++     A `[style]` test inside `:has()` makes every inline-style write in the
++     document (the virtual caret moves on each keystroke) restyle the whole
++     editor subtree: two full style recalcs per key on a long note. */
++  .ProseMirror .md-image-view-preview > meowdown-embed-youtube:not([style]) {
++    width: 550px;
++    max-width: 100%;
++  }
++
+   .ProseMirror .md-embed-resizable {
+     isolation: isolate;
+     min-width: 2.5rem;

@@ -2,7 +2,7 @@
 
 ## 2026-11-27 — 0.157.1
 
-- Shipped #724: long notes no longer restyle the whole document on every keystroke.
+- Shipped #724: long notes no longer restyle the whole document on every keystroke. #727: tag tree and lists reload on save only when tags changed; properties panel measures at most once per frame.
 
 ## 2026-11-27 — 0.157.0
 

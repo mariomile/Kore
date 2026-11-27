@@ -7,7 +7,7 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- 0.157.1 (2026-11-27): #724 smoother typing in long notes.
+- 0.157.1 (2026-11-27): #724 smoother typing in long notes; #727 fewer reloads on save in big vaults.
 - 0.157.0 (2026-11-27): #704 bases as folder cards that open as databases; #713 icon and cover from the breadcrumb and the iPhone ⋯ menu; #720 long text properties in full, empty fields folded; #714 monochrome share sheet.
 - 0.156.4 (2026-11-27): #715 line authors no longer stall the Mac on long notes.
 - 0.156.3 (2026-11-26): #708 44pt days and round selection in the iPhone date grid.

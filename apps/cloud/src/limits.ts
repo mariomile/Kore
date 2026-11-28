@@ -5,7 +5,7 @@
  */
 
 /** The Worker's own version, reported on `/info`; bump with any API change. */
-export const WORKER_VERSION = '0.2.0'
+export const WORKER_VERSION = '0.3.0'
 
 /**
  * Dynamic client registrations allowed per day. Registration is open (the

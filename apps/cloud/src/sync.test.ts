@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fakeD1 } from './d1-fake'
 import { NoteStore } from './store'
-import { MAX_PUSH_WRITES, MAX_UNPARSED_PUSH_WRITES, handleSync } from './sync'
+import { MASS_DELETION_REASON, MAX_PUSH_WRITES, MAX_UNPARSED_PUSH_WRITES, handleSync } from './sync'
 
 let store: NoteStore
 
@@ -96,5 +96,96 @@ describe('sync meta caps', () => {
   it('refuses meta text larger than a note may be', async () => {
     const meta = { title: 't', tags: [], text: 'x'.repeat(1_000_001) }
     expect((await push([{ path: 'a.md', source: '# A\n', baseVersion: 0, meta }])).status).toBe(400)
+  })
+})
+
+describe('sync mass-deletion guard', () => {
+  const now = Date.parse('2026-11-28T10:30:00.000Z')
+  let clocked: NoteStore
+
+  beforeEach(async () => {
+    clocked = new NoteStore(fakeD1().binding, () => new Date(now).toISOString())
+    await clocked.ensureSchema()
+    for (let start = 0; start < 40; start += 20) {
+      await clocked.writeMany(
+        Array.from({ length: 20 }, (_, n) => ({
+          path: `${start + n}.md`,
+          source: `# ${start + n}\n`,
+          baseVersion: 0,
+        })),
+      )
+    }
+  })
+
+  async function pushTo(body: unknown) {
+    const response = await handleSync(
+      new Request('https://kore.example/sync/push', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+      clocked,
+      now,
+    )
+    return (await response.json()) as {
+      paused?: { deleted: number; tracked: number }
+      results: { path: string; status: string; reason?: string }[]
+    }
+  }
+
+  const deletions = (from: number, count: number) =>
+    Array.from({ length: count }, (_, n) => ({
+      path: `${from + n}.md`,
+      source: null,
+      baseVersion: 1,
+    }))
+
+  it('lets a few deletions through and holds back a wipe split across pushes', async () => {
+    const few = await pushTo({ writes: deletions(0, 5) })
+    expect(few.paused).toBeUndefined()
+    expect(few.results.every((result) => result.status === 'ok')).toBe(true)
+    const more = await pushTo({
+      writes: [...deletions(5, 15), { path: 'new.md', source: '# New\n', baseVersion: 0 }],
+    })
+    expect(more.paused).toEqual({ deleted: 20, tracked: 40 })
+    expect(more.results.filter((result) => result.reason === MASS_DELETION_REASON)).toHaveLength(15)
+    expect(more.results.at(-1)).toMatchObject({ path: 'new.md', status: 'ok' })
+    expect(await clocked.get('5.md')).not.toBeNull()
+  })
+
+  it('deletes after the user confirms', async () => {
+    await pushTo({ writes: deletions(0, 5) })
+    const confirmed = await pushTo({ writes: deletions(5, 15), confirmDeletions: true })
+    expect(confirmed.paused).toBeUndefined()
+    expect(await clocked.get('5.md')).toBeNull()
+  })
+})
+
+describe('sync history and trash', () => {
+  it('lists a deleted note in the trash and serves its text', async () => {
+    await push([{ path: 'n.md', source: '# N\n', baseVersion: 0 }])
+    await push([{ path: 'n.md', source: null, baseVersion: 1 }])
+    const trash = (await (
+      await handleSync(new Request('https://kore.example/sync/trash'), store)
+    ).json()) as { notes: { id: number; path: string }[] }
+    expect(trash.notes.map((note) => note.path)).toEqual(['n.md'])
+    const kept = (await (
+      await handleSync(
+        new Request(`https://kore.example/sync/version?id=${trash.notes[0]?.id}`),
+        store,
+      )
+    ).json()) as { source: string }
+    expect(kept.source).toBe('# N\n')
+    const history = await handleSync(
+      new Request('https://kore.example/sync/history?path=n.md'),
+      store,
+    )
+    expect(((await history.json()) as { versions: unknown[] }).versions).toHaveLength(1)
+    expect(
+      (await handleSync(new Request('https://kore.example/sync/history?path=.git/x'), store))
+        .status,
+    ).toBe(400)
+    expect(
+      (await handleSync(new Request('https://kore.example/sync/version?id=999'), store)).status,
+    ).toBe(404)
   })
 })

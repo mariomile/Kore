@@ -1,6 +1,6 @@
 import { dateFromDailyPath } from '@kore/core/graph/paths'
 import { describeNote } from './note'
-import { SCHEMA } from './schema'
+import { HISTORY_DAYS, SCHEMA } from './schema'
 
 /** A live note as the store returns it. */
 export interface StoredNote {
@@ -55,6 +55,63 @@ export interface WriteRequest {
   meta?: NoteText | undefined
   /** The agent making the write; null or absent for the owner. */
   author?: string | null | undefined
+}
+
+/** One kept earlier version of a note, without its text. */
+export interface NoteVersion {
+  id: number
+  path: string
+  version: number
+  /** Who wrote this version; null for the owner. */
+  author: string | null
+  writtenAt: string
+  /** When the next write replaced it (or deleted the note). */
+  replacedAt: string
+  replacedBy: string | null
+  /** The write that replaced it was a deletion. */
+  deleted: boolean
+}
+
+/** A kept version with its text, for showing or restoring it. */
+export interface NoteVersionSource extends NoteVersion {
+  source: string
+}
+
+/** How many live notes there are and how many were deleted since a moment. */
+export interface DeletionPressure {
+  live: number
+  recentlyDeleted: number
+}
+
+interface VersionRow {
+  id: number
+  path: string
+  version: number
+  author: string | null
+  written_at: string
+  replaced_at: string
+  replaced_by: string | null
+  deleted: number
+}
+
+const VERSION_COLUMNS = 'id, path, version, author, written_at, replaced_at, replaced_by, deleted'
+
+function toVersion(row: VersionRow): NoteVersion {
+  return {
+    id: row.id,
+    path: row.path,
+    version: row.version,
+    author: row.author,
+    writtenAt: row.written_at,
+    replacedAt: row.replaced_at,
+    replacedBy: row.replaced_by,
+    deleted: row.deleted === 1,
+  }
+}
+
+/** The ISO time `days` before `iso`. */
+function daysBefore(iso: string, days: number): string {
+  return new Date(Date.parse(iso) - days * 86_400_000).toISOString()
 }
 
 /** The parsed parts of a note the search index needs. */
@@ -302,6 +359,11 @@ export class NoteStore {
         )
       }
     }
+    statements.push(
+      this.#db
+        .prepare('DELETE FROM note_versions WHERE replaced_at < ?1')
+        .bind(daysBefore(now, HISTORY_DAYS)),
+    )
     const results = await this.#db.batch<{ version: number; seq: number }>(statements)
     const outcomes: (WriteOutcome | null)[] = requests.map((_, index) => {
       const row = results[index + 1]?.results[0]
@@ -327,6 +389,59 @@ export class NoteStore {
         source: row === undefined || row.deleted === 1 ? null : row.source,
       }
     })
+  }
+
+  /** A note's kept versions, newest first (the live one is not among them). */
+  async history(path: string, limit: number): Promise<NoteVersion[]> {
+    const { results } = await this.#db
+      .prepare(
+        `SELECT ${VERSION_COLUMNS} FROM note_versions WHERE path = ?1
+         ORDER BY replaced_at DESC, id DESC LIMIT ?2`,
+      )
+      .bind(path, limit)
+      .all<VersionRow>()
+    return results.map(toVersion)
+  }
+
+  /** One kept version with its text, or null when it was pruned or never existed. */
+  async version(id: number): Promise<NoteVersionSource | null> {
+    const row = await this.#db
+      .prepare(`SELECT ${VERSION_COLUMNS}, source FROM note_versions WHERE id = ?1`)
+      .bind(id)
+      .first<VersionRow & { source: string }>()
+    return row === null ? null : { ...toVersion(row), source: row.source }
+  }
+
+  /**
+   * Deleted notes still in the trash, most recently deleted first: each one's
+   * last kept version, the text it had when it was deleted.
+   */
+  async trash(limit: number): Promise<NoteVersion[]> {
+    const { results } = await this.#db
+      .prepare(
+        `SELECT ${VERSION_COLUMNS.split(', ')
+          .map((column) => `v.${column}`)
+          .join(', ')}
+         FROM notes n JOIN note_versions v ON v.id = (
+           SELECT max(id) FROM note_versions WHERE path = n.path AND deleted = 1
+         )
+         WHERE n.deleted = 1 ORDER BY n.updated_at DESC LIMIT ?1`,
+      )
+      .bind(limit)
+      .all<VersionRow>()
+    return results.map(toVersion)
+  }
+
+  /** Live notes, and notes deleted after `since`: what the mass-deletion guard weighs. */
+  async deletionPressure(since: string): Promise<DeletionPressure> {
+    const row = await this.#db
+      .prepare(
+        `SELECT (SELECT count(*) FROM notes WHERE deleted = 0) AS live,
+           (SELECT count(*) FROM notes WHERE deleted = 1 AND updated_at > ?1) AS recentlyDeleted`,
+      )
+      .bind(since)
+      .first<DeletionPressure>()
+    return row ?? { live: 0, recentlyDeleted: 0 }
   }
 
   async #rows(paths: readonly string[]): Promise<Map<string, NoteRow>> {

@@ -1,3 +1,4 @@
+import { isMassDeletion } from '@kore/core/sync/mass-deletion'
 import { z } from 'zod'
 import { MAX_SOURCE_BYTES, byteLength, isNotePath, isPrivateSource } from './note'
 import type { NoteStore, WriteOutcome, WriteRequest } from './store'
@@ -14,6 +15,14 @@ import type { NoteStore, WriteOutcome, WriteRequest } from './store'
  *   app's own parser read them, which spares the Worker's CPU budget. Each comes back `ok` with its new version, or
  *   `conflict` with the note as it is now so the client keeps both sides,
  *   or `rejected` with the reason (bad path, private, too large).
+ *   Deletions that would make a mass deletion (the same rule as git sync,
+ *   counted over the last hour so a wipe split across pushes is caught too)
+ *   come back `rejected` and the response carries `paused`; the client asks
+ *   the user and pushes again with `confirmDeletions: true`.
+ * - `GET /sync/history?path=<p>&limit=<n>`: a note's kept versions, newest first.
+ * - `GET /sync/version?id=<id>`: one kept version with its text.
+ * - `GET /sync/trash?limit=<n>`: deleted notes still kept, newest first. A
+ *   note is restored by pushing its kept text with the tombstone's version.
  */
 
 /**
@@ -28,6 +37,12 @@ export const MAX_PUSH_WRITES = 20
  * 5,165-note vault, p95 2.7 ms) and Workers Free allows 10 ms per request.
  */
 export const MAX_UNPARSED_PUSH_WRITES = 5
+
+/** Deletions within this window count together against the mass-deletion guard. */
+export const DELETION_WINDOW_MS = 60 * 60 * 1000
+
+/** Why the guard holds a deletion back, as the client matches it. */
+export const MASS_DELETION_REASON = 'massDeletion'
 
 const DEFAULT_CHANGES = 200
 const MAX_CHANGES = 500
@@ -98,9 +113,17 @@ const writeSchema = z.object({
   meta: metaSchema.nullish(),
 })
 
-const pushSchema = z.object({ writes: z.array(writeSchema).max(MAX_PUSH_WRITES) })
+const pushSchema = z.object({
+  writes: z.array(writeSchema).max(MAX_PUSH_WRITES),
+  confirmDeletions: z.boolean().optional(),
+})
 
-function parseWrites(body: unknown): WriteRequest[] | string {
+interface ParsedPush {
+  writes: WriteRequest[]
+  confirmDeletions: boolean
+}
+
+function parsePush(body: unknown): ParsedPush | string {
   const parsed = pushSchema.safeParse(body)
   if (!parsed.success) {
     return z.prettifyError(parsed.error)
@@ -121,28 +144,57 @@ function parseWrites(body: unknown): WriteRequest[] | string {
   if (unparsed > MAX_UNPARSED_PUSH_WRITES) {
     return `at most ${MAX_UNPARSED_PUSH_WRITES} writes without meta per push`
   }
-  return writes
+  return { writes, confirmDeletions: parsed.data.confirmDeletions === true }
 }
 
-async function push(request: Request, store: NoteStore): Promise<Response> {
+/** How many notes a push would delete, out of how many, when that needs the user's yes. */
+async function massDeletion(
+  writes: readonly WriteRequest[],
+  store: NoteStore,
+  now: number,
+): Promise<{ deleted: number; tracked: number } | null> {
+  const incoming = writes.filter((write) => write.source === null).length
+  if (incoming === 0) {
+    return null
+  }
+  const { live, recentlyDeleted } = await store.deletionPressure(
+    new Date(now - DELETION_WINDOW_MS).toISOString(),
+  )
+  const deleted = recentlyDeleted + incoming
+  const tracked = live + recentlyDeleted
+  return isMassDeletion(deleted, tracked) ? { deleted, tracked } : null
+}
+
+async function push(request: Request, store: NoteStore, now: number): Promise<Response> {
   let body: unknown
   try {
     body = await request.json()
   } catch {
     return badRequest('body is not JSON')
   }
-  const writes = parseWrites(body)
-  if (typeof writes === 'string') {
-    return badRequest(writes)
+  const parsed = parsePush(body)
+  if (typeof parsed === 'string') {
+    return badRequest(parsed)
   }
+  const { writes } = parsed
   const results: (PushResult | null)[] = writes.map((write) => {
     const reason = rejectWrite(write)
     return reason === null ? null : { path: write.path, status: 'rejected', reason }
   })
+  const valid = writes.filter((_, index) => results[index] === null)
+  const paused = parsed.confirmDeletions ? null : await massDeletion(valid, store, now)
+  if (paused !== null) {
+    for (const [index, write] of writes.entries()) {
+      if (results[index] === null && write.source === null) {
+        results[index] = { path: write.path, status: 'rejected', reason: MASS_DELETION_REASON }
+      }
+    }
+  }
   const accepted = writes.filter((_, index) => results[index] === null)
   const outcomes = await store.writeMany(accepted)
   let next = 0
   return json({
+    ...(paused === null ? {} : { paused }),
     results: results.map((result, index) => {
       if (result !== null) {
         return result
@@ -154,14 +206,61 @@ async function push(request: Request, store: NoteStore): Promise<Response> {
   })
 }
 
+const DEFAULT_VERSIONS = 50
+const MAX_VERSIONS = 200
+
+function listLimit(url: URL): number | null {
+  const limit = nonNegativeInteger(url.searchParams.get('limit'), DEFAULT_VERSIONS)
+  return limit === null || limit === 0 ? null : Math.min(limit, MAX_VERSIONS)
+}
+
+async function history(url: URL, store: NoteStore): Promise<Response> {
+  const path = url.searchParams.get('path')
+  const limit = listLimit(url)
+  if (path === null || !isNotePath(path) || limit === null) {
+    return badRequest('`path` must be a note path and `limit` at least 1')
+  }
+  return json({ versions: await store.history(path, limit) })
+}
+
+async function version(url: URL, store: NoteStore): Promise<Response> {
+  const id = nonNegativeInteger(url.searchParams.get('id'), 0)
+  if (id === null || id === 0) {
+    return badRequest('`id` must be a positive integer')
+  }
+  const found = await store.version(id)
+  return found === null ? json({ error: 'not found' }, 404) : json(found)
+}
+
+async function trash(url: URL, store: NoteStore): Promise<Response> {
+  const limit = listLimit(url)
+  if (limit === null) {
+    return badRequest('`limit` must be at least 1')
+  }
+  return json({ notes: await store.trash(limit) })
+}
+
 /** Handle `/sync/*` (already authenticated with the owner key). */
-export async function handleSync(request: Request, store: NoteStore): Promise<Response> {
+export async function handleSync(
+  request: Request,
+  store: NoteStore,
+  now: number = Date.now(),
+): Promise<Response> {
   const url = new URL(request.url)
-  if (url.pathname === '/sync/changes' && request.method === 'GET') {
-    return await changes(url, store)
+  if (request.method === 'GET') {
+    switch (url.pathname) {
+      case '/sync/changes':
+        return await changes(url, store)
+      case '/sync/history':
+        return await history(url, store)
+      case '/sync/version':
+        return await version(url, store)
+      case '/sync/trash':
+        return await trash(url, store)
+    }
   }
   if (url.pathname === '/sync/push' && request.method === 'POST') {
-    return await push(request, store)
+    return await push(request, store, now)
   }
   return json({ error: 'not found' }, 404)
 }

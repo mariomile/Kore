@@ -17,6 +17,7 @@
     "./cloud": "./src/cloud/index.ts",
     "./cloud/note-rules": "./src/cloud/note-rules.ts",
     "./cloud/upload": "./src/cloud/upload.ts",
+    "./sync/mass-deletion": "./src/sync/mass-deletion.ts",
     "./cyber-brain/format": "./src/cyber-brain/format.ts"
   },
   "scripts": {

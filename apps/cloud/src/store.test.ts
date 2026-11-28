@@ -119,3 +119,73 @@ describe('ftsQuery', () => {
     expect(ftsQuery('  ')).toBe('')
   })
 })
+
+describe('NoteStore history', () => {
+  let minute = 0
+  let timed: NoteStore
+
+  beforeEach(async () => {
+    minute = 0
+    timed = new NoteStore(fakeD1().binding, () => {
+      const at = new Date(Date.UTC(2026, 10, 28, 10, 0) + minute * 60_000).toISOString()
+      minute += 1
+      return at
+    })
+    await timed.ensureSchema()
+  })
+
+  it('keeps one snapshot per ten minutes while the same writer types, newest first', async () => {
+    for (let version = 0; version < 13; version += 1) {
+      await timed.write({ path: 'n.md', source: `# N\n\n${version}\n`, baseVersion: version })
+    }
+    const versions = await timed.history('n.md', 50)
+    expect(versions.map((entry) => entry.version)).toEqual([11, 1])
+    expect((await timed.version(versions[1]?.id ?? 0))?.source).toBe('# N\n\n0\n')
+  })
+
+  it('always keeps the text a different writer replaces', async () => {
+    await timed.write({ path: 'n.md', source: '# Mine\n', baseVersion: 0 })
+    await timed.write({ path: 'n.md', source: '# Agent\n', baseVersion: 1, author: 'Grok' })
+    await timed.write({ path: 'n.md', source: '# Mine again\n', baseVersion: 2 })
+    const versions = await timed.history('n.md', 50)
+    expect(versions.map((entry) => [entry.version, entry.author, entry.replacedBy])).toEqual([
+      [2, 'Grok', null],
+      [1, null, 'Grok'],
+    ])
+  })
+
+  it('keeps a deleted note in the trash with the text it had, until it is restored', async () => {
+    await timed.write({ path: 'n.md', source: '# Keep me\n', baseVersion: 0 })
+    await timed.write({ path: 'n.md', source: null, baseVersion: 1 })
+    const [trashed] = await timed.trash(10)
+    expect(trashed).toMatchObject({ path: 'n.md', version: 1, deleted: true })
+    expect((await timed.version(trashed?.id ?? 0))?.source).toBe('# Keep me\n')
+    expect(
+      await timed.write({ path: 'n.md', source: '# Keep me\n', baseVersion: 0 }),
+    ).toMatchObject({ status: 'ok', version: 3 })
+    expect(await timed.trash(10)).toEqual([])
+  })
+
+  it('counts live notes and recent deletions for the mass-deletion guard', async () => {
+    await timed.write({ path: 'a.md', source: '# A\n', baseVersion: 0 })
+    await timed.write({ path: 'b.md', source: '# B\n', baseVersion: 0 })
+    await timed.write({ path: 'a.md', source: null, baseVersion: 1 })
+    expect(await timed.deletionPressure(60 * 60_000)).toEqual({ live: 1, recentlyDeleted: 1 })
+    minute += 120
+    expect(await timed.deletionPressure(60 * 60_000)).toEqual({ live: 1, recentlyDeleted: 0 })
+  })
+
+  it('prunes versions older than a year', async () => {
+    const db = fakeD1().binding
+    let now = '2025-11-01T10:00:00.000Z'
+    const aging = new NoteStore(db, () => now)
+    await aging.ensureSchema()
+    await aging.write({ path: 'n.md', source: '# Old\n', baseVersion: 0 })
+    now = '2025-11-01T11:00:00.000Z'
+    await aging.write({ path: 'n.md', source: '# Newer\n', baseVersion: 1 })
+    expect(await aging.history('n.md', 10)).toHaveLength(1)
+    now = '2026-11-28T10:00:00.000Z'
+    await aging.write({ path: 'other.md', source: '# Other\n', baseVersion: 0 })
+    expect(await aging.history('n.md', 10)).toEqual([])
+  })
+})

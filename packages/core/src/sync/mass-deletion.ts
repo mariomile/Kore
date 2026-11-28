@@ -27,16 +27,24 @@ export class MassDeletionError extends Error {
   }
 }
 
+/**
+ * Whether deleting `deleted` of `tracked` files needs the user's yes. Shared
+ * by git sync and Kore Cloud, which applies it on the server to every writer.
+ */
+export function isMassDeletion(deleted: number, tracked: number): boolean {
+  return (
+    deleted >= MASS_DELETION_FILES ||
+    (deleted >= MASS_DELETION_MIN_FILES && deleted >= tracked * MASS_DELETION_SHARE)
+  )
+}
+
 /** Throw {@link MassDeletionError} when `direction`'s deletions need the user's yes. */
 export function assertNoMassDeletion(
   direction: 'incoming' | 'outgoing',
   counts: SyncDeletions,
 ): void {
   const deleted = counts[direction]
-  if (
-    deleted >= MASS_DELETION_FILES ||
-    (deleted >= MASS_DELETION_MIN_FILES && deleted >= counts.tracked * MASS_DELETION_SHARE)
-  ) {
+  if (isMassDeletion(deleted, counts.tracked)) {
     throw new MassDeletionError(direction, deleted, counts.tracked)
   }
 }

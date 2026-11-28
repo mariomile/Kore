@@ -170,14 +170,9 @@ describe('NoteStore history', () => {
     await timed.write({ path: 'a.md', source: '# A\n', baseVersion: 0 })
     await timed.write({ path: 'b.md', source: '# B\n', baseVersion: 0 })
     await timed.write({ path: 'a.md', source: null, baseVersion: 1 })
-    expect(await timed.deletionPressure('2026-11-28T09:00:00.000Z')).toEqual({
-      live: 1,
-      recentlyDeleted: 1,
-    })
-    expect(await timed.deletionPressure('2026-11-28T11:00:00.000Z')).toEqual({
-      live: 1,
-      recentlyDeleted: 0,
-    })
+    expect(await timed.deletionPressure(60 * 60_000)).toEqual({ live: 1, recentlyDeleted: 1 })
+    minute += 120
+    expect(await timed.deletionPressure(60 * 60_000)).toEqual({ live: 1, recentlyDeleted: 0 })
   })
 
   it('prunes versions older than a year', async () => {

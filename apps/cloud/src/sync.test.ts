@@ -124,7 +124,6 @@ describe('sync mass-deletion guard', () => {
         body: JSON.stringify(body),
       }),
       clocked,
-      now,
     )
     return (await response.json()) as {
       paused?: { deleted: number; tracked: number }

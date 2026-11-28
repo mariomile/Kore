@@ -151,21 +151,18 @@ function parsePush(body: unknown): ParsedPush | string {
 async function massDeletion(
   writes: readonly WriteRequest[],
   store: NoteStore,
-  now: number,
 ): Promise<{ deleted: number; tracked: number } | null> {
   const incoming = writes.filter((write) => write.source === null).length
   if (incoming === 0) {
     return null
   }
-  const { live, recentlyDeleted } = await store.deletionPressure(
-    new Date(now - DELETION_WINDOW_MS).toISOString(),
-  )
+  const { live, recentlyDeleted } = await store.deletionPressure(DELETION_WINDOW_MS)
   const deleted = recentlyDeleted + incoming
   const tracked = live + recentlyDeleted
   return isMassDeletion(deleted, tracked) ? { deleted, tracked } : null
 }
 
-async function push(request: Request, store: NoteStore, now: number): Promise<Response> {
+async function push(request: Request, store: NoteStore): Promise<Response> {
   let body: unknown
   try {
     body = await request.json()
@@ -182,7 +179,7 @@ async function push(request: Request, store: NoteStore, now: number): Promise<Re
     return reason === null ? null : { path: write.path, status: 'rejected', reason }
   })
   const valid = writes.filter((_, index) => results[index] === null)
-  const paused = parsed.confirmDeletions ? null : await massDeletion(valid, store, now)
+  const paused = parsed.confirmDeletions ? null : await massDeletion(valid, store)
   if (paused !== null) {
     for (const [index, write] of writes.entries()) {
       if (results[index] === null && write.source === null) {
@@ -241,11 +238,7 @@ async function trash(url: URL, store: NoteStore): Promise<Response> {
 }
 
 /** Handle `/sync/*` (already authenticated with the owner key). */
-export async function handleSync(
-  request: Request,
-  store: NoteStore,
-  now: number = Date.now(),
-): Promise<Response> {
+export async function handleSync(request: Request, store: NoteStore): Promise<Response> {
   const url = new URL(request.url)
   if (request.method === 'GET') {
     switch (url.pathname) {
@@ -260,7 +253,7 @@ export async function handleSync(
     }
   }
   if (url.pathname === '/sync/push' && request.method === 'POST') {
-    return await push(request, store, now)
+    return await push(request, store)
   }
   return json({ error: 'not found' }, 404)
 }

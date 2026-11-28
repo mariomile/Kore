@@ -109,9 +109,9 @@ function toVersion(row: VersionRow): NoteVersion {
   }
 }
 
-/** The ISO time `days` before `iso`. */
-function daysBefore(iso: string, days: number): string {
-  return new Date(Date.parse(iso) - days * 86_400_000).toISOString()
+/** The ISO time `ms` before `iso`. */
+function before(iso: string, ms: number): string {
+  return new Date(Date.parse(iso) - ms).toISOString()
 }
 
 /** The parsed parts of a note the search index needs. */
@@ -359,10 +359,11 @@ export class NoteStore {
         )
       }
     }
+    // Retention rides every write batch: one indexed range delete, no cron to provision.
     statements.push(
       this.#db
         .prepare('DELETE FROM note_versions WHERE replaced_at < ?1')
-        .bind(daysBefore(now, HISTORY_DAYS)),
+        .bind(before(now, HISTORY_DAYS * 86_400_000)),
     )
     const results = await this.#db.batch<{ version: number; seq: number }>(statements)
     const outcomes: (WriteOutcome | null)[] = requests.map((_, index) => {
@@ -419,21 +420,20 @@ export class NoteStore {
   async trash(limit: number): Promise<NoteVersion[]> {
     const { results } = await this.#db
       .prepare(
-        `SELECT ${VERSION_COLUMNS.split(', ')
-          .map((column) => `v.${column}`)
-          .join(', ')}
-         FROM notes n JOIN note_versions v ON v.id = (
-           SELECT max(id) FROM note_versions WHERE path = n.path AND deleted = 1
+        `SELECT ${VERSION_COLUMNS} FROM note_versions WHERE id IN (
+           SELECT max(v.id) FROM note_versions v JOIN notes n ON n.path = v.path
+           WHERE n.deleted = 1 AND v.deleted = 1 GROUP BY v.path
          )
-         WHERE n.deleted = 1 ORDER BY n.updated_at DESC LIMIT ?1`,
+         ORDER BY replaced_at DESC LIMIT ?1`,
       )
       .bind(limit)
       .all<VersionRow>()
     return results.map(toVersion)
   }
 
-  /** Live notes, and notes deleted after `since`: what the mass-deletion guard weighs. */
-  async deletionPressure(since: string): Promise<DeletionPressure> {
+  /** Live notes, and notes deleted in the last `windowMs`: what the mass-deletion guard weighs. */
+  async deletionPressure(windowMs: number): Promise<DeletionPressure> {
+    const since = before(this.#now(), windowMs)
     const row = await this.#db
       .prepare(
         `SELECT (SELECT count(*) FROM notes WHERE deleted = 0) AS live,
